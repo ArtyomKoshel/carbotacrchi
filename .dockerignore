@@ -1,0 +1,13 @@
+.git
+.env
+.cursor
+agent-transcripts
+terminals
+laravel/vendor
+laravel/node_modules
+laravel/storage/logs/*.log
+laravel/storage/framework/cache/data/*
+laravel/storage/framework/sessions/*
+laravel/storage/framework/views/*
+PLAN.md
+PLAN_FILTERS.md
