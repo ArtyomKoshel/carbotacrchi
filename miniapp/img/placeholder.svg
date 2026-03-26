@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" rx="8" fill="#1a1a2e"/>
+  <rect x="100" y="145" width="200" height="65" rx="12" fill="#252540"/>
+  <rect x="120" y="120" width="160" height="35" rx="8" fill="#252540"/>
+  <path d="M155 155 L160 140 H240 L245 155" stroke="#3390ec" stroke-width="1.5" fill="none" opacity="0.5"/>
+  <circle cx="145" cy="215" r="20" fill="#1a1a2e" stroke="#3390ec" stroke-width="2" opacity="0.4"/>
+  <circle cx="145" cy="215" r="8" fill="#3390ec" opacity="0.15"/>
+  <circle cx="255" cy="215" r="20" fill="#1a1a2e" stroke="#3390ec" stroke-width="2" opacity="0.4"/>
+  <circle cx="255" cy="215" r="8" fill="#3390ec" opacity="0.15"/>
+  <rect x="105" y="200" width="190" height="10" rx="5" fill="#252540"/>
+  <rect x="170" y="165" width="60" height="5" rx="2.5" fill="#3390ec" opacity="0.2"/>
+  <rect x="160" y="175" width="80" height="4" rx="2" fill="#2a2a45"/>
+  <circle cx="200" cy="90" r="24" fill="#252540"/>
+  <path d="M190 90 L200 80 L210 90 M200 80 V100" stroke="#3390ec" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+  <text x="200" y="260" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="13" font-weight="500" fill="#5a5a7e" text-anchor="middle" letter-spacing="0.5">No photo available</text>
+</svg>

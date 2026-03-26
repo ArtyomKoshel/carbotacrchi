@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: carbot_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./laravel/public:/var/www/html/public:ro
+      - ./miniapp:/var/www/html/miniapp:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - carbot
+    restart: unless-stopped
+
+  php:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: carbot_php
+    volumes:
+      - ./laravel:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      MINIAPP_URL: ${MINIAPP_URL:-}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-auction_bot}
+      DB_USERNAME: ${DB_USERNAME:-carbot}
+      DB_PASSWORD: ${DB_PASSWORD:-carbot_pass}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      CACHE_STORE: file
+      LOG_CHANNEL: stderr
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - carbot
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: carbot_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_pass}
+      MYSQL_DATABASE: ${DB_DATABASE:-auction_bot}
+      MYSQL_USER: ${DB_USERNAME:-carbot}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-carbot_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_pass"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - carbot
+    restart: unless-stopped
+
+networks:
+  carbot:
+    driver: bridge
+
+volumes:
+  mysql_data:

@@ -1,0 +1,13 @@
+.env
+laravel/vendor/
+laravel/bootstrap/cache/*.php
+laravel/storage/logs/*.log
+laravel/storage/framework/cache/data/*
+laravel/storage/framework/sessions/*
+laravel/storage/framework/views/*
+!laravel/storage/framework/cache/data/.gitkeep
+!laravel/storage/framework/sessions/.gitkeep
+!laravel/storage/framework/views/.gitkeep
+.cursor/
+agent-transcripts/
+terminals/
