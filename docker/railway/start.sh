@@ -31,6 +31,11 @@ if [ -n "$DB_HOST" ]; then
 
     echo "[start] Running migrations..."
     php "$APP_DIR/artisan" migrate --force --no-interaction
+
+    if [ -n "$TEST_TELEGRAM_ID" ]; then
+        echo "[start] Seeding demo data for user $TEST_TELEGRAM_ID..."
+        php "$APP_DIR/artisan" demo:seed --telegram-id="$TEST_TELEGRAM_ID" || true
+    fi
 fi
 
 echo "[start] Starting nginx + php-fpm via supervisord..."
