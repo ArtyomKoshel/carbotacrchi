@@ -7,10 +7,37 @@ if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
 fi
 
-APP_KEY_VAL=$(grep "^APP_KEY=" "$APP_DIR/.env" | cut -d= -f2)
-if [ -z "$APP_KEY_VAL" ] || [ "$APP_KEY_VAL" = "base64:PLACEHOLDER=" ]; then
-    echo "[start] Generating application key..."
-    php "$APP_DIR/artisan" key:generate --force
+if [ -n "$APP_KEY" ]; then
+    sed -i "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" "$APP_DIR/.env"
+else
+    APP_KEY_VAL=$(grep "^APP_KEY=" "$APP_DIR/.env" | cut -d= -f2)
+    if [ -z "$APP_KEY_VAL" ] || [ "$APP_KEY_VAL" = "base64:PLACEHOLDER=" ]; then
+        echo "[start] Generating application key..."
+        php "$APP_DIR/artisan" key:generate --force
+    fi
+fi
+
+if [ -n "$APP_ENV" ]; then
+    sed -i "s|^APP_ENV=.*|APP_ENV=${APP_ENV}|" "$APP_DIR/.env"
+fi
+if [ -n "$APP_DEBUG" ]; then
+    sed -i "s|^APP_DEBUG=.*|APP_DEBUG=${APP_DEBUG}|" "$APP_DIR/.env"
+fi
+if [ -n "$APP_URL" ]; then
+    sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|" "$APP_DIR/.env"
+fi
+if [ -n "$MINIAPP_URL" ]; then
+    sed -i "s|^MINIAPP_URL=.*|MINIAPP_URL=${MINIAPP_URL}|" "$APP_DIR/.env"
+fi
+if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+    sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}|" "$APP_DIR/.env"
+fi
+if [ -n "$DB_HOST" ]; then
+    sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|" "$APP_DIR/.env"
+    sed -i "s|^DB_PORT=.*|DB_PORT=${DB_PORT:-3306}|" "$APP_DIR/.env"
+    sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE}|" "$APP_DIR/.env"
+    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" "$APP_DIR/.env"
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" "$APP_DIR/.env"
 fi
 
 echo "[start] Clearing config cache..."
