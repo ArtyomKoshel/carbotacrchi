@@ -47,6 +47,8 @@ class WebhookController extends Controller
             $this->handleMySubs($chatId, $userId);
         } elseif ($text === '/demo') {
             $this->handleDemo($chatId, $userId);
+        } elseif ($text === '/demo2') {
+            $this->handleDemoSeed($chatId, $userId, $firstName);
         }
 
         $webAppData = $message['web_app_data']['data'] ?? null;
@@ -80,7 +82,10 @@ class WebhookController extends Controller
             ['text' => '🔔 Мои подписки', 'callback_data' => 'mysubs'],
             ['text' => '📨 Демо уведомления', 'callback_data' => 'demo_notify'],
         ];
-        $keyboard[] = [['text' => 'ℹ️ Помощь', 'callback_data' => 'help']];
+        $keyboard[] = [
+            ['text' => '🗂 Загрузить демо-данные', 'callback_data' => 'demo_seed'],
+            ['text' => 'ℹ️ Помощь', 'callback_data' => 'help'],
+        ];
 
         $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
     }
@@ -146,6 +151,29 @@ class WebhookController extends Controller
         }
 
         $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
+    }
+
+    private function handleDemoSeed(int|string $chatId, int|string $userId, string $firstName): void
+    {
+        $this->bot->sendMessage($chatId, "⏳ Создаю демо-данные...");
+
+        try {
+            \Artisan::call('demo:seed', ['--telegram-id' => $userId]);
+            $output = trim(\Artisan::output());
+
+            $this->bot->sendMessage($chatId,
+                "✅ Готово, <b>{$firstName}</b>!\n\n"
+                ."Созданы:\n"
+                ."• 4 подписки (Toyota, Honda, BMW, Tesla)\n"
+                ."• 6 избранных лотов\n\n"
+                ."Теперь попробуй:\n"
+                ."• /demo — симулировать уведомления\n"
+                ."• /mysubs — посмотреть подписки\n"
+                ."• Открой Mini App → Избранное"
+            );
+        } catch (\Throwable $e) {
+            $this->bot->sendMessage($chatId, "❌ Ошибка: " . htmlspecialchars($e->getMessage()));
+        }
     }
 
     private function handleDemo(int|string $chatId, int|string $userId): void
@@ -220,6 +248,13 @@ class WebhookController extends Controller
         if ($data === 'demo_notify') {
             $this->bot->answerCallbackQuery($callbackId, '⏳ Отправляю...');
             $this->handleDemo($chatId, $userId);
+            return;
+        }
+
+        if ($data === 'demo_seed') {
+            $this->bot->answerCallbackQuery($callbackId, '⏳ Создаю...');
+            $firstName = $callback['from']['first_name'] ?? '';
+            $this->handleDemoSeed($chatId, $userId, $firstName);
             return;
         }
 
