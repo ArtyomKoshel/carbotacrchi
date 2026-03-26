@@ -172,7 +172,7 @@ class WebhookController extends Controller
             }
 
             $fakeLots = array_slice($result->lots, 0, 3);
-            $this->bot->notifyNewLots($chatId, $sub->label(), $fakeLots, $sub->id);
+            $this->bot->notifyNewLots($chatId, $sub->label(), $fakeLots, $sub->id, $sub->query ?? []);
 
             $previews = array_map(fn ($l) => [
                 'id' => $l->id, 'make' => $l->make, 'model' => $l->model,

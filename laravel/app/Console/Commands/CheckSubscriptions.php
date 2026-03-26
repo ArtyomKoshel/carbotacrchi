@@ -61,7 +61,7 @@ class CheckSubscriptions extends Command
             $newLots = array_values($newLots);
             $this->info("  Sub #{$sub->id} (user {$sub->user_id}): {$sub->label()} → ".count($newLots)." new lot(s)");
 
-            $this->bot->notifyNewLots($sub->user_id, $sub->label(), $newLots, $sub->id);
+            $this->bot->notifyNewLots($sub->user_id, $sub->label(), $newLots, $sub->id, $sub->query ?? []);
 
             $previews = array_map(fn ($l) => [
                 'id'        => $l->id,

@@ -19,7 +19,23 @@ const App = (() => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    switchTab('search');
+    const deepQuery = parseDeepLink();
+    if (deepQuery) {
+      await searchWithQuery(deepQuery);
+    } else {
+      switchTab('search');
+    }
+  }
+
+  function parseDeepLink() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('search');
+      if (!raw) return null;
+      const q = JSON.parse(raw);
+      if (typeof q === 'object' && q !== null) return q;
+    } catch (_) {}
+    return null;
   }
 
   function switchTab(tab) {

@@ -67,7 +67,7 @@ class DemoNotify extends Command
             $this->info("  Sub #{$sub->id} ({$sub->label()}): found ".count($unknown)." unknown lots, sending ".count($fakeLots).".");
         }
 
-        $this->bot->notifyNewLots($sub->user_id, $sub->label(), $fakeLots, $sub->id);
+        $this->bot->notifyNewLots($sub->user_id, $sub->label(), $fakeLots, $sub->id, $sub->query ?? []);
 
         $previews = array_map(fn ($l) => [
             'id'         => $l->id,

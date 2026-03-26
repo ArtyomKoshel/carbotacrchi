@@ -128,7 +128,7 @@ class TelegramBot
         return 'новых лотов';
     }
 
-    public function notifyNewLots(int|string $chatId, string $label, array $lots, ?int $subscriptionId = null): void
+    public function notifyNewLots(int|string $chatId, string $label, array $lots, ?int $subscriptionId = null, array $subscriptionQuery = []): void
     {
         $count     = count($lots);
         $miniAppUrl = config('auction.miniapp_url');
@@ -152,7 +152,11 @@ class TelegramBot
 
         $footerButtons = [];
         if ($miniAppUrl) {
-            $footerButtons[] = [['text' => '📱 Все результаты', 'web_app' => ['url' => $miniAppUrl]]];
+            $deepLink = $miniAppUrl;
+            if (!empty($subscriptionQuery)) {
+                $deepLink .= '?search=' . urlencode(json_encode($subscriptionQuery));
+            }
+            $footerButtons[] = [['text' => '📱 Все результаты', 'web_app' => ['url' => $deepLink]]];
         }
         if ($subscriptionId) {
             $footerButtons[] = [['text' => '🔕 Отписаться', 'callback_data' => "unsub:{$subscriptionId}"]];
