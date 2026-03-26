@@ -35,6 +35,11 @@ if [ -n "$DB_HOST" ]; then
     if [ -n "$TEST_TELEGRAM_ID" ]; then
         echo "[start] Seeding demo data for user $TEST_TELEGRAM_ID..."
         php "$APP_DIR/artisan" demo:seed --telegram-id="$TEST_TELEGRAM_ID" || true
+
+        if [ "$DEMO_NOTIFY" = "1" ]; then
+            echo "[start] Sending demo notifications..."
+            php "$APP_DIR/artisan" demo:notify --telegram-id="$TEST_TELEGRAM_ID" || true
+        fi
     fi
 fi
 
