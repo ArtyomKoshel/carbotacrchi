@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Bot;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\ProviderAggregator;
+use App\Services\SearchQuery;
 use App\Services\TelegramBot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -43,6 +45,8 @@ class WebhookController extends Controller
             $this->handleHelp($chatId);
         } elseif ($text === '/mysubs') {
             $this->handleMySubs($chatId, $userId);
+        } elseif ($text === '/demo') {
+            $this->handleDemo($chatId, $userId);
         }
 
         $webAppData = $message['web_app_data']['data'] ?? null;
@@ -72,7 +76,10 @@ class WebhookController extends Controller
         if ($this->miniAppUrl) {
             $keyboard[] = [['text' => '🔍 Открыть поиск', 'web_app' => ['url' => $this->miniAppUrl]]];
         }
-        $keyboard[] = [['text' => '🔔 Мои подписки', 'callback_data' => 'mysubs']];
+        $keyboard[] = [
+            ['text' => '🔔 Мои подписки', 'callback_data' => 'mysubs'],
+            ['text' => '📨 Демо уведомления', 'callback_data' => 'demo_notify'],
+        ];
         $keyboard[] = [['text' => 'ℹ️ Помощь', 'callback_data' => 'help']];
 
         $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
@@ -141,6 +148,51 @@ class WebhookController extends Controller
         $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
     }
 
+    private function handleDemo(int|string $chatId, int|string $userId): void
+    {
+        $subs = Subscription::where('user_id', $userId)->active()->get();
+
+        if ($subs->isEmpty()) {
+            $this->bot->sendMessage($chatId, "⚠️ Нет активных подписок.\n\nСначала откройте поиск, найдите лоты и нажмите <b>«Подписаться»</b>.");
+            return;
+        }
+
+        $this->bot->sendMessage($chatId, "⏳ Симулирую проверку подписок...");
+
+        $aggregator = app(ProviderAggregator::class);
+        $sent = 0;
+
+        foreach ($subs as $sub) {
+            $query        = SearchQuery::fromArray($sub->query ?? []);
+            $query->limit = 50;
+            $result       = $aggregator->search($query);
+
+            if (empty($result->lots)) {
+                continue;
+            }
+
+            $fakeLots = array_slice($result->lots, 0, 3);
+            $this->bot->notifyNewLots($chatId, $sub->label(), $fakeLots, $sub->id);
+
+            $previews = array_map(fn ($l) => [
+                'id' => $l->id, 'make' => $l->make, 'model' => $l->model,
+                'year' => $l->year, 'price' => $l->price, 'imageUrl' => $l->imageUrl,
+                'sourceName' => $l->sourceName, 'lotUrl' => $l->lotUrl ?? null,
+                'damage' => $l->damage ?? null,
+            ], $fakeLots);
+
+            $sub->update([
+                'last_checked_at'  => now(),
+                'new_lots_count'   => $sub->new_lots_count + count($fakeLots),
+                'new_lot_previews' => array_slice(array_merge($previews, $sub->new_lot_previews ?? []), 0, 5),
+            ]);
+
+            $sent++;
+        }
+
+        $this->bot->sendMessage($chatId, "✅ Готово! Отправлены уведомления по <b>{$sent}</b> подпискам.");
+    }
+
     private function handleCallback(array $callback): void
     {
         $callbackId = $callback['id'];
@@ -162,6 +214,12 @@ class WebhookController extends Controller
         if ($data === 'help') {
             $this->bot->answerCallbackQuery($callbackId);
             $this->handleHelp($chatId);
+            return;
+        }
+
+        if ($data === 'demo_notify') {
+            $this->bot->answerCallbackQuery($callbackId, '⏳ Отправляю...');
+            $this->handleDemo($chatId, $userId);
             return;
         }
 
