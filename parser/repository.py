@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time as _time
 from datetime import datetime
@@ -46,21 +47,35 @@ class LotRepository:
                 id, source, make, model, year, price, mileage, vin,
                 body_type, transmission, fuel, drive_type,
                 damage, secondary_damage, title, document,
-                location, color, `trim`,
+                location, color, seat_color, `trim`, `options`,
                 engine_volume, cylinders, has_keys,
                 retail_value, repair_cost,
                 image_url, lot_url, raw_data,
                 fetched_at, price_krw, is_active, parsed_at,
+                plate_number, registration_date,
+                lien_status, seizure_status, tax_paid,
+                accident_status, total_loss_history, flood_history,
+                owners_count, insurance_count, mileage_grade,
+                new_car_price_ratio, ai_price_min, ai_price_max,
+                dealer_name, dealer_company, dealer_location,
+                dealer_phone, dealer_description,
                 created_at, updated_at
             ) VALUES (
                 %(id)s, %(source)s, %(make)s, %(model)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
                 %(body_type)s, %(transmission)s, %(fuel)s, %(drive_type)s,
                 %(damage)s, %(secondary_damage)s, %(title)s, %(document)s,
-                %(location)s, %(color)s, %(trim)s,
+                %(location)s, %(color)s, %(seat_color)s, %(trim)s, %(options)s,
                 %(engine_volume)s, %(cylinders)s, %(has_keys)s,
                 %(retail_value)s, %(repair_cost)s,
                 %(image_url)s, %(lot_url)s, %(raw_data)s,
                 %(now)s, %(price_krw)s, 1, %(now)s,
+                %(plate_number)s, %(registration_date)s,
+                %(lien_status)s, %(seizure_status)s, %(tax_paid)s,
+                %(accident_status)s, %(total_loss_history)s, %(flood_history)s,
+                %(owners_count)s, %(insurance_count)s, %(mileage_grade)s,
+                %(new_car_price_ratio)s, %(ai_price_min)s, %(ai_price_max)s,
+                %(dealer_name)s, %(dealer_company)s, %(dealer_location)s,
+                %(dealer_phone)s, %(dealer_description)s,
                 %(now)s, %(now)s
             ) ON DUPLICATE KEY UPDATE
                 price=VALUES(price), mileage=VALUES(mileage),
@@ -71,11 +86,32 @@ class LotRepository:
                 drive_type=COALESCE(VALUES(drive_type), drive_type),
                 engine_volume=COALESCE(VALUES(engine_volume), engine_volume),
                 color=COALESCE(VALUES(color), color),
+                seat_color=COALESCE(VALUES(seat_color), seat_color),
                 location=VALUES(location), `trim`=COALESCE(VALUES(`trim`), `trim`),
+                `options`=COALESCE(VALUES(`options`), `options`),
                 image_url=COALESCE(VALUES(image_url), image_url),
                 lot_url=VALUES(lot_url),
                 raw_data=VALUES(raw_data),
                 price_krw=VALUES(price_krw), is_active=1,
+                plate_number=COALESCE(VALUES(plate_number), plate_number),
+                registration_date=COALESCE(VALUES(registration_date), registration_date),
+                lien_status=COALESCE(VALUES(lien_status), lien_status),
+                seizure_status=COALESCE(VALUES(seizure_status), seizure_status),
+                tax_paid=COALESCE(VALUES(tax_paid), tax_paid),
+                accident_status=COALESCE(VALUES(accident_status), accident_status),
+                total_loss_history=COALESCE(VALUES(total_loss_history), total_loss_history),
+                flood_history=COALESCE(VALUES(flood_history), flood_history),
+                owners_count=COALESCE(VALUES(owners_count), owners_count),
+                insurance_count=COALESCE(VALUES(insurance_count), insurance_count),
+                mileage_grade=COALESCE(VALUES(mileage_grade), mileage_grade),
+                new_car_price_ratio=COALESCE(VALUES(new_car_price_ratio), new_car_price_ratio),
+                ai_price_min=COALESCE(VALUES(ai_price_min), ai_price_min),
+                ai_price_max=COALESCE(VALUES(ai_price_max), ai_price_max),
+                dealer_name=COALESCE(VALUES(dealer_name), dealer_name),
+                dealer_company=COALESCE(VALUES(dealer_company), dealer_company),
+                dealer_location=COALESCE(VALUES(dealer_location), dealer_location),
+                dealer_phone=COALESCE(VALUES(dealer_phone), dealer_phone),
+                dealer_description=COALESCE(VALUES(dealer_description), dealer_description),
                 parsed_at=VALUES(parsed_at), updated_at=VALUES(updated_at)
         """
 
