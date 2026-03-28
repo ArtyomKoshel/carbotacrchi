@@ -1,8 +1,9 @@
 <?php
 
 return [
-    'anthropic_key' => env('ANTHROPIC_API_KEY', ''),
-    'model'         => env('AI_MODEL', 'claude-haiku-4-5-20251001'),
-    'max_tokens'    => 300,
-    'temperature'   => 0,
+    'api_key'     => env('AI_API_KEY', ''),
+    'api_url'     => env('AI_API_URL', 'https://api.groq.com/openai/v1/chat/completions'),
+    'model'       => env('AI_MODEL', 'llama-3.3-70b-versatile'),
+    'max_tokens'  => 300,
+    'temperature' => 0,
 ];

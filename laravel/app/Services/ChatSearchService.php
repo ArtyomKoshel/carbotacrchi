@@ -8,12 +8,14 @@ use Illuminate\Support\Facades\Log;
 class ChatSearchService
 {
     private string $apiKey;
+    private string $apiUrl;
     private string $model;
 
     public function __construct()
     {
-        $this->apiKey = config('ai.anthropic_key', '');
-        $this->model  = config('ai.model', 'claude-haiku-4-5-20251001');
+        $this->apiKey = config('ai.api_key', '');
+        $this->apiUrl = config('ai.api_url', 'https://api.groq.com/openai/v1/chat/completions');
+        $this->model  = config('ai.model', 'llama-3.3-70b-versatile');
     }
 
     public function isAvailable(): bool
@@ -55,26 +57,25 @@ class ChatSearchService
         try {
             $response = Http::timeout(15)
                 ->withHeaders([
-                    'x-api-key'         => $this->apiKey,
-                    'anthropic-version'  => '2023-06-01',
-                    'content-type'       => 'application/json',
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type'  => 'application/json',
                 ])
-                ->post('https://api.anthropic.com/v1/messages', [
-                    'model'      => $this->model,
-                    'max_tokens' => config('ai.max_tokens', 300),
-                    'temperature'=> config('ai.temperature', 0),
-                    'system'     => $this->getSystemPrompt(),
-                    'messages'   => [
-                        ['role' => 'user', 'content' => $text],
+                ->post($this->apiUrl, [
+                    'model'       => $this->model,
+                    'max_tokens'  => config('ai.max_tokens', 300),
+                    'temperature' => config('ai.temperature', 0),
+                    'messages'    => [
+                        ['role' => 'system', 'content' => $this->getSystemPrompt()],
+                        ['role' => 'user',   'content' => $text],
                     ],
                 ]);
 
             if (!$response->successful()) {
-                Log::warning('[ChatSearch] API error: ' . $response->status());
+                Log::warning('[ChatSearch] API error: ' . $response->status() . ' ' . $response->body());
                 return $this->fallbackParse($text);
             }
 
-            $content = $response->json('content.0.text', '');
+            $content = $response->json('choices.0.message.content', '');
             $json    = $this->extractJson($content);
 
             if (!$json || isset($json['error'])) {
