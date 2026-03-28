@@ -91,19 +91,10 @@ class KBChaParser(AbstractParser):
             logger.debug(f"[kbcha] carMaker.json response type: {type(data).__name__}, "
                          f"keys: {list(data.keys())[:10] if isinstance(data, dict) else f'list[{len(data)}]' if isinstance(data, list) else '?'}")
 
-            maker_list = []
-            if isinstance(data, list):
-                maker_list = data
-            elif isinstance(data, dict):
-                for key in ("makerList", "data", "list", "makers", "result"):
-                    if key in data and isinstance(data[key], list):
-                        maker_list = data[key]
-                        break
-                if not maker_list:
-                    for val in data.values():
-                        if isinstance(val, list) and val and isinstance(val[0], dict):
-                            maker_list = val
-                            break
+            import json as _json
+            logger.debug(f"[kbcha] carMaker raw (first 2000 chars): {_json.dumps(data, ensure_ascii=False, default=str)[:2000]}")
+
+            maker_list = self._find_maker_list(data)
 
             for group in maker_list:
                 if isinstance(group, dict):
@@ -164,6 +155,12 @@ class KBChaParser(AbstractParser):
 
             logger.debug(f"[kbcha] Response keys: {list(data.keys()) if isinstance(data, dict) else type(data).__name__}")
 
+            if isinstance(data, dict) and "list" in data and isinstance(data["list"], list) and data["list"]:
+                import json as _json
+                first_item = data["list"][0]
+                dump = _json.dumps(first_item, ensure_ascii=False, default=str)[:1000]
+                logger.debug(f"[kbcha] list[0] FULL DUMP: {dump}")
+
             results = self._extract_listings(data)
             if results:
                 return results
@@ -191,6 +188,22 @@ class KBChaParser(AbstractParser):
             self._stats["errors"] += 1
             return []
 
+    def _find_maker_list(self, data) -> list[dict]:
+        """Recursively find maker list in response."""
+        if isinstance(data, list):
+            return data
+        if not isinstance(data, dict):
+            return []
+        for key in ("makerList", "data", "list", "makers", "result", "params"):
+            val = data.get(key)
+            if isinstance(val, list) and val and isinstance(val[0], dict):
+                return val
+            if isinstance(val, dict):
+                nested = self._find_maker_list(val)
+                if nested:
+                    return nested
+        return []
+
     def _extract_listings(self, data) -> list[dict]:
         """Try multiple paths to find car listings in the response."""
         if isinstance(data, list):
@@ -204,9 +217,23 @@ class KBChaParser(AbstractParser):
         for key in ("searchList", "data", "list", "carList", "resultList", "items", "cars", "result", "records"):
             val = data.get(key)
             if isinstance(val, list) and val:
-                if isinstance(val[0], dict) and any(k in val[0] for k in ("carSeq", "carId", "carNo", "makerName", "price", "modelName")):
-                    logger.debug(f"[kbcha] Found listings under key '{key}': {len(val)} items")
+                sample = val[0] if isinstance(val[0], dict) else {}
+                sample_keys = list(sample.keys())[:15]
+                logger.debug(f"[kbcha] Key '{key}' is list[{len(val)}], first item keys: {sample_keys}")
+
+                if isinstance(val[0], dict) and any(k in val[0] for k in ("carSeq", "carId", "carNo", "makerName", "price", "modelName", "carNm", "yearModel")):
+                    logger.debug(f"[kbcha] Found car listings under key '{key}': {len(val)} items")
                     return val
+
+                for item in val:
+                    if isinstance(item, dict):
+                        for subkey, subval in item.items():
+                            if isinstance(subval, list) and subval and isinstance(subval[0], dict):
+                                sub_keys = list(subval[0].keys())[:15]
+                                if any(k in subval[0] for k in ("carSeq", "carId", "carNo", "makerName", "price", "modelName", "carNm", "yearModel")):
+                                    logger.debug(f"[kbcha] Found car listings under '{key}[].{subkey}': {len(subval)} items, keys: {sub_keys}")
+                                    return subval
+                                logger.debug(f"[kbcha] Nested list '{key}[].{subkey}': {len(subval)} items, keys: {sub_keys}")
 
         for key, val in data.items():
             if isinstance(val, dict):
