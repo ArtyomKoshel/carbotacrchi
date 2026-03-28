@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:carapis.com)",
+      "WebSearch",
+      "WebFetch(domain:docs.carapis.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.kbchachacha.com)",
+      "WebFetch(domain:www.kb-cha.com)",
+      "WebFetch(domain:libraries.io)",
+      "WebFetch(domain:api.encar.com)",
+      "WebFetch(domain:www.listly.io)",
+      "WebFetch(domain:namu.wiki)",
+      "WebFetch(domain:www.piwheels.org)",
+      "WebFetch(domain:www.similarweb.com)",
+      "WebFetch(domain:www.semrush.com)",
+      "Bash(python -c \"import importlib.util; spec = importlib.util.find_spec\\(''koreancar''\\); print\\(spec.submodule_search_locations if spec else ''NOT FOUND''\\)\")",
+      "Bash(pip show:*)",
+      "WebFetch(domain:auto-api.com)",
+      "WebFetch(domain:m.kbchachacha.com)",
+      "Bash(python -c \"import importlib.metadata; files = importlib.metadata.files\\(''koreancar''\\); print\\([str\\(f\\) for f in files]\\)\")",
+      "WebFetch(domain:builtwith.com)",
+      "WebFetch(domain:www.wappalyzer.com)",
+      "Bash(pip download:*)",
+      "Read(//tmp/**)",
+      "Bash(python -m zipfile -l koreancar-2.0.2-py3-none-any.whl)",
+      "Bash(python -c \":*)"
+    ]
+  }
+}

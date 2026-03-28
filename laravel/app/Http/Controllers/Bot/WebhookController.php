@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Bot;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\ChatSearchService;
 use App\Services\ProviderAggregator;
 use App\Services\SearchQuery;
 use App\Services\TelegramBot;
@@ -49,6 +50,8 @@ class WebhookController extends Controller
             $this->handleDemo($chatId, $userId);
         } elseif ($text === '/demo2') {
             $this->handleDemoSeed($chatId, $userId, $firstName);
+        } elseif ($text !== '' && !str_starts_with($text, '/')) {
+            $this->handleTextSearch($chatId, $userId, $text);
         }
 
         $webAppData = $message['web_app_data']['data'] ?? null;
@@ -158,8 +161,8 @@ class WebhookController extends Controller
         $this->bot->sendMessage($chatId, "⏳ Создаю демо-данные...");
 
         try {
-            \Artisan::call('demo:seed', ['--telegram-id' => $userId]);
-            $output = trim(\Artisan::output());
+            \Illuminate\Support\Facades\Artisan::call('demo:seed', ['--telegram-id' => $userId]);
+            $output = trim(\Illuminate\Support\Facades\Artisan::output());
 
             $this->bot->sendMessage($chatId,
                 "✅ Готово, <b>{$firstName}</b>!\n\n"
@@ -221,6 +224,62 @@ class WebhookController extends Controller
         $this->bot->sendMessage($chatId, "✅ Готово! Отправлены уведомления по <b>{$sent}</b> подпискам.");
     }
 
+    private function handleTextSearch(int|string $chatId, int|string $userId, string $text): void
+    {
+        $chatSearch = new ChatSearchService();
+        $parsed     = $chatSearch->parseAndSearch($text);
+
+        if ($parsed === null) {
+            return;
+        }
+
+        $query         = $parsed['query'];
+        $tolerantQuery = $parsed['tolerantQuery'];
+        $description   = $parsed['description'];
+        $toleranceNote = $parsed['toleranceNote'];
+
+        $statusText = "🔍 Ищу: <b>{$description}</b>";
+        if ($toleranceNote) {
+            $statusText .= "\n📊 С учётом погрешности: {$toleranceNote}";
+        }
+        $this->bot->sendMessage($chatId, $statusText);
+
+        $aggregator = app(ProviderAggregator::class);
+        $result     = $aggregator->search($tolerantQuery);
+
+        if (empty($result->lots)) {
+            $this->bot->sendMessage($chatId, "😕 Ничего не найдено. Попробуйте изменить запрос.");
+            return;
+        }
+
+        $this->bot->sendMessage($chatId,
+            "✅ Найдено <b>{$result->total}</b> лотов. Топ-5:"
+        );
+
+        foreach (array_slice($result->lots, 0, 5) as $lot) {
+            $lotData = $lot->toArray();
+            $lotUrl  = $lotData['lotUrl'] ?? '#';
+            $buttons = $lotUrl !== '#'
+                ? [[['text' => '🔗 Открыть лот', 'url' => $lotUrl]]]
+                : null;
+            $this->bot->sendLotCard($chatId, $lotData, $buttons);
+        }
+
+        $queryArray    = array_filter($parsed['query']->toSearchArray());
+        $footerButtons = [];
+
+        if ($this->miniAppUrl) {
+            $deepLink = $this->miniAppUrl . '?search=' . urlencode(json_encode($queryArray));
+            $footerButtons[] = [['text' => '📱 Все результаты (' . $result->total . ')', 'web_app' => ['url' => $deepLink]]];
+        }
+        $footerButtons[] = [['text' => '🔔 Подписаться на обновления', 'callback_data' => 'sub_chat:' . base64_encode(json_encode($queryArray))]];
+
+        $this->bot->sendMessageWithKeyboard($chatId,
+            "Показаны 5 из {$result->total}. Подпишитесь, чтобы получать уведомления о новых лотах.",
+            $footerButtons
+        );
+    }
+
     private function handleCallback(array $callback): void
     {
         $callbackId = $callback['id'];
@@ -255,6 +314,37 @@ class WebhookController extends Controller
             $this->bot->answerCallbackQuery($callbackId, '⏳ Создаю...');
             $firstName = $callback['from']['first_name'] ?? '';
             $this->handleDemoSeed($chatId, $userId, $firstName);
+            return;
+        }
+
+        if (str_starts_with($data, 'sub_chat:')) {
+            $encoded   = substr($data, 9);
+            $queryData = json_decode(base64_decode($encoded), true);
+
+            if (!$queryData) {
+                $this->bot->answerCallbackQuery($callbackId, 'Ошибка данных');
+                return;
+            }
+
+            $aggregator = app(ProviderAggregator::class);
+            $query      = SearchQuery::fromArray($queryData);
+            $query->limit = 100;
+            $result     = $aggregator->search($query);
+            $knownIds   = array_map(fn ($l) => $l->id, $result->lots);
+
+            $sub = Subscription::create([
+                'user_id'         => $userId,
+                'query'           => $queryData,
+                'known_lot_ids'   => $knownIds,
+                'active'          => true,
+                'last_checked_at' => now(),
+            ]);
+
+            $this->bot->answerCallbackQuery($callbackId, '✅ Подписка создана!');
+            $this->bot->sendMessage($chatId,
+                "🔔 Подписка создана: <b>" . htmlspecialchars($sub->label()) . "</b>\n\n"
+                . "Вы получите уведомление, когда появятся новые лоты."
+            );
             return;
         }
 

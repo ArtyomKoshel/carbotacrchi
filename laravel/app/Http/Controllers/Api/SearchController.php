@@ -17,7 +17,12 @@ class SearchController extends Controller
     {
         $query = SearchQuery::fromArray($request->input('query', []));
 
-        $result = $this->aggregator->search($query);
+        $searchQuery = $query;
+        if (config('search_tolerance.apply_to') === 'all') {
+            $searchQuery = $query->withTolerance();
+        }
+
+        $result = $this->aggregator->search($searchQuery);
 
         try {
             Search::create([

@@ -429,44 +429,41 @@ UNIQUE (user_id, lot_id)
 
 ---
 
-## ПОРЯДОК НАПИСАНИЯ ФАЙЛОВ
+## ПОРЯДОК НАПИСАНИЯ ФАЙЛОВ (все выполнены)
 
 ```
-[ ] 1.  config.php
-[ ] 2.  dto/LotDTO.php
-[ ] 3.  services/SearchQuery.php
-[ ] 4.  services/SearchResult.php
-[ ] 5.  providers/ProviderInterface.php
-[ ] 6.  providers/AbstractProvider.php
-[ ] 7.  providers/CopartProvider.php
-[ ] 8.  providers/IAIProvider.php
-[ ] 9.  providers/ManheimProvider.php
-[ ] 10. providers/EncarProvider.php
-[ ] 11. providers/KBChachaProvider.php
-[ ] 12. data/mock_copart.json
-[ ] 13. data/mock_iai.json
-[ ] 14. data/mock_manheim.json
-[ ] 15. data/mock_encar.json
-[ ] 16. data/mock_kbcha.json
-[ ] 17. services/ProviderAggregator.php
-[ ] 18. core/Database.php
-[ ] 19. core/Auth.php
-[ ] 20. core/Response.php
-[ ] 21. api/search.php
-[ ] 22. api/filters.php
-[ ] 23. bot/TelegramBot.php
-[ ] 24. bot/webhook.php
-[ ] 25. register_webhook.php            ← вспомогательный скрипт для ngrok
-[ ] 26. database/schema.sql
-[ ] 27. miniapp/js/telegram.js
-[ ] 28. miniapp/js/api.js
-[ ] 29. miniapp/js/filters.js
-[ ] 30. miniapp/js/results.js
-[ ] 31. miniapp/js/app.js
-[ ] 32. miniapp/index.html
-[ ] 33. miniapp/css/app.css
-[ ] 34. miniapp/css/cards.css
-[ ] 35. miniapp/css/filters.css
+[x] 1.  config/auction.php (Laravel config)
+[x] 2.  app/Dto/LotDTO.php (расширен: +13 полей)
+[x] 3.  app/Services/SearchQuery.php (расширен: +14 фильтров)
+[x] 4.  app/Services/SearchResult.php
+[x] 5.  app/AuctionProviders/ProviderInterface.php
+[x] 6.  app/AuctionProviders/AbstractProvider.php (14 фильтров + маппинг)
+[x] 7.  app/AuctionProviders/CopartProvider.php
+[x] 8.  app/AuctionProviders/IAIProvider.php
+[x] 9.  app/AuctionProviders/ManheimProvider.php
+[x] 10. app/AuctionProviders/EncarProvider.php
+[x] 11. app/AuctionProviders/KBChachaProvider.php
+[x] 12-16. storage/app/data/mock_*.json (все 5 файлов с расширенными полями)
+[x] 17. app/Services/ProviderAggregator.php
+[x] 18. Laravel migrations (7 миграций)
+[x] 19. app/Http/Middleware/ValidateTelegramAuth.php
+[x] 20. app/Http/Controllers/Api/SearchController.php
+[x] 21. app/Http/Controllers/Api/FiltersController.php
+[x] 22. app/Http/Controllers/Api/FavoritesController.php
+[x] 23. app/Http/Controllers/Api/SubscriptionsController.php
+[x] 24. app/Services/TelegramBot.php
+[x] 25. app/Http/Controllers/Bot/WebhookController.php
+[x] 26. app/Console/Commands/CheckSubscriptions.php
+[x] 27. app/Console/Commands/DemoNotify.php + SeedDemo.php
+[x] 28. miniapp/js/telegram.js
+[x] 29. miniapp/js/api.js
+[x] 30. miniapp/js/filters.js (14 фильтров + чипсы + селекты)
+[x] 31. miniapp/js/results.js (карточки + bottom sheet)
+[x] 32. miniapp/js/subscriptions.js
+[x] 33. miniapp/js/app.js (роутинг 4 экранов)
+[x] 34. miniapp/index.html
+[x] 35. miniapp/css/app.css + cards.css + filters.css
+[x] 36. Docker + docker-compose.yml + railway.toml
 ```
 
 ---
@@ -474,16 +471,13 @@ UNIQUE (user_id, lot_id)
 ## ТАЙМЛАЙН
 
 ```
-Фаза 1   1 день    Локальное окружение + ngrok + BotFather
-Фаза 2   4-5 дней  Frontend Mini App
-Фаза 3   3-4 дня   Backend (Interface → Abstract → Providers → Aggregator)
-Фаза 4   2 дня     Mock данные + тест всей цепочки
-Фаза 5   2 дня     Webhook + чат + БД
+Фаза 1   1 день    Локальное окружение + ngrok + BotFather          ✅ DONE
+Фаза 2   4-5 дней  Frontend Mini App                                ✅ DONE
+Фаза 3   3-4 дня   Backend (Interface → Abstract → Providers → Agg) ✅ DONE
+Фаза 4   2 дня     Mock данные + тест всей цепочки                  ✅ DONE
+Фаза 5   2 дня     Webhook + чат + БД + подписки + уведомления      ✅ DONE
 ─────────────────────────────────────────────────────────────
-Итого    ~2 недели  Рабочий MVP с mock данными локально
+Итого    ~2 недели  Рабочий MVP с mock данными — ЗАВЕРШЁН
 
-Фаза 6+            Заменяем fetchRaw() по одному провайдеру:
-                   Copart/IAAI → auction-api.app
-                   Encar       → HTTP парсер JSON endpoint
-                   KBChacha    → HTML парсер
+Фаза 6+            → см. PLAN_V2.md (AI-поиск, погрешности, парсеры)
 ```
