@@ -88,12 +88,33 @@ class KBChaParser(AbstractParser):
             resp.raise_for_status()
             data = resp.json()
 
-            for group in data if isinstance(data, list) else data.get("makerList", data.get("data", [])):
+            logger.debug(f"[kbcha] carMaker.json response type: {type(data).__name__}, "
+                         f"keys: {list(data.keys())[:10] if isinstance(data, dict) else f'list[{len(data)}]' if isinstance(data, list) else '?'}")
+
+            maker_list = []
+            if isinstance(data, list):
+                maker_list = data
+            elif isinstance(data, dict):
+                for key in ("makerList", "data", "list", "makers", "result"):
+                    if key in data and isinstance(data[key], list):
+                        maker_list = data[key]
+                        break
+                if not maker_list:
+                    for val in data.values():
+                        if isinstance(val, list) and val and isinstance(val[0], dict):
+                            maker_list = val
+                            break
+
+            for group in maker_list:
                 if isinstance(group, dict):
-                    code = str(group.get("makerCode", group.get("code", "")))
-                    name = group.get("makerName", group.get("name", ""))
+                    code = str(group.get("makerCode", group.get("code", group.get("makerCd", ""))))
+                    name = group.get("makerName", group.get("name", group.get("makerNm", "")))
                     if code and name:
                         self._makers[code] = name
+
+            if maker_list and not self._makers:
+                sample = maker_list[0] if maker_list else {}
+                logger.warning(f"[kbcha] Makers parsed 0 from {len(maker_list)} items. Sample keys: {list(sample.keys())[:10]}")
 
             logger.info(f"[kbcha] Loaded {len(self._makers)} makers in {elapsed:.1f}s")
             logger.debug(f"[kbcha] Makers: {self._makers}")
@@ -141,11 +162,16 @@ class KBChaParser(AbstractParser):
             resp.raise_for_status()
             data = resp.json()
 
-            results = data.get("searchList", data.get("data", data.get("list", [])))
-            if isinstance(results, list):
+            logger.debug(f"[kbcha] Response keys: {list(data.keys()) if isinstance(data, dict) else type(data).__name__}")
+
+            results = self._extract_listings(data)
+            if results:
                 return results
 
-            logger.warning(f"[kbcha] Unexpected response structure for {maker_name} page {page}: keys={list(data.keys())}")
+            if isinstance(data, dict):
+                logger.info(f"[kbcha] No listings found for {maker_name} page {page}. "
+                            f"Top keys: {list(data.keys())[:10]}. "
+                            f"Sample values: {{{', '.join(f'{k}: {type(v).__name__}' for k, v in list(data.items())[:5])}}}")
             return []
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
@@ -164,6 +190,32 @@ class KBChaParser(AbstractParser):
             logger.error(f"[kbcha] Fetch error {maker_name} ({maker_code}) page {page}: {type(e).__name__}: {e}")
             self._stats["errors"] += 1
             return []
+
+    def _extract_listings(self, data) -> list[dict]:
+        """Try multiple paths to find car listings in the response."""
+        if isinstance(data, list):
+            if data and isinstance(data[0], dict) and any(k in data[0] for k in ("carSeq", "carId", "carNo", "makerName")):
+                return data
+            return []
+
+        if not isinstance(data, dict):
+            return []
+
+        for key in ("searchList", "data", "list", "carList", "resultList", "items", "cars", "result", "records"):
+            val = data.get(key)
+            if isinstance(val, list) and val:
+                if isinstance(val[0], dict) and any(k in val[0] for k in ("carSeq", "carId", "carNo", "makerName", "price", "modelName")):
+                    logger.debug(f"[kbcha] Found listings under key '{key}': {len(val)} items")
+                    return val
+
+        for key, val in data.items():
+            if isinstance(val, dict):
+                nested = self._extract_listings(val)
+                if nested:
+                    logger.debug(f"[kbcha] Found listings nested under '{key}'")
+                    return nested
+
+        return []
 
     def normalize(self, raw: dict) -> dict | None:
         car_id = raw.get("carSeq") or raw.get("carId") or raw.get("id")
