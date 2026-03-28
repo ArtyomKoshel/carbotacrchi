@@ -3,7 +3,7 @@ import logging
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from config import Config
-from db import DBWriter
+from repository import LotRepository
 from parsers.kbcha import KBChaParser
 
 logger = logging.getLogger(__name__)
@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 
 def run_kbcha():
     logger.info("Scheduled KBChacha import starting...")
-    db = DBWriter()
+    repo = LotRepository()
     try:
-        parser = KBChaParser(db)
+        parser = KBChaParser(repo)
         count = parser.run()
         logger.info(f"KBChacha import finished: {count} lots")
     except Exception as e:
         logger.error(f"KBChacha import failed: {e}")
     finally:
-        db.close()
+        repo.close()
 
 
 def start_scheduler():
