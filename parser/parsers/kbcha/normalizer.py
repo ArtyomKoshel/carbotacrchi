@@ -10,7 +10,10 @@ FUEL_MAP: dict[str, str] = {
     "전기": "Electric", "electric": "Electric",
     "가솔린+전기": "Hybrid", "디젤+전기": "Hybrid",
     "hybrid": "Hybrid", "하이브리드": "Hybrid",
+    "가솔린 하이브리드": "Hybrid", "디젤 하이브리드": "Hybrid",
+    "플러그인 하이브리드": "Hybrid", "PHEV": "Hybrid", "HEV": "Hybrid",
     "LPG": "LPG", "lpg": "LPG",
+    "수소": "Hydrogen", "hydrogen": "Hydrogen",
 }
 
 TRANSMISSION_MAP: dict[str, str] = {
@@ -28,7 +31,7 @@ BODY_TYPE_MAP: dict[str, str] = {
     "컨버터블": "Convertible", "convertible": "Convertible",
     "밴": "Van", "van": "Van",
     "트럭": "Truck", "truck": "Truck",
-    "RV": "Van", "MPV": "Van",
+    "RV": "SUV", "MPV": "Van",
     "경차": "Hatchback",
     "대형": "Sedan",
     "준대형": "Sedan",
@@ -109,7 +112,16 @@ class KBChaNormalizer:
     def normalize_fuel(self, value: str | None) -> str | None:
         if not value:
             return None
-        return FUEL_MAP.get(value.strip(), FUEL_MAP.get(value.strip().lower()))
+        clean = value.strip()
+        result = FUEL_MAP.get(clean) or FUEL_MAP.get(clean.lower())
+        if result:
+            return result
+        if "하이브리드" in clean or "hybrid" in clean.lower() or "+전기" in clean:
+            return "Hybrid"
+        for key, mapped in FUEL_MAP.items():
+            if key in clean:
+                return mapped
+        return None
 
     def normalize_transmission(self, value: str | None) -> str | None:
         if not value:

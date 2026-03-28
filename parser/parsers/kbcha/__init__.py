@@ -129,20 +129,35 @@ class KBChaParser(AbstractParser):
     def _enrich_with_details(self, lots: list[CarLot], stats: dict) -> None:
         source = self.get_source_key()
         delay = max(Config.REQUEST_DELAY, 1.5)
+        enriched_fields: dict[str, int] = {}
 
         for i, lot in enumerate(lots):
             car_seq = lot.id.replace("kbcha_", "")
             try:
                 html = self._client.fetch_detail_page(car_seq)
                 details = self._detail_parser.parse(html)
+
+                for field in details:
+                    enriched_fields[field] = enriched_fields.get(field, 0) + 1
+
                 lot.merge_details(details)
                 stats["detail_fetched"] += 1
 
-                if (i + 1) % 20 == 0:
-                    logger.info(f"[{source}] Detail progress: {i + 1}/{len(lots)}")
+                logger.debug(f"[{source}] Detail {lot.id}: {lot.make} {lot.model} -> "
+                              f"fuel={lot.fuel}, trans={lot.transmission}, body={lot.body_type}, "
+                              f"engine={lot.engine_volume}L, color={lot.color}")
+
+                if (i + 1) % 10 == 0:
+                    logger.info(f"[{source}] Detail progress: {i + 1}/{len(lots)} "
+                                 f"({stats['detail_fetched']} ok, {stats['errors']} err)")
 
             except Exception as e:
                 logger.warning(f"[{source}] Detail fetch failed for {lot.id}: {type(e).__name__}: {e}")
                 stats["errors"] += 1
 
             _time.sleep(delay)
+
+        logger.info(f"[{source}] Detail enrichment summary:")
+        for field, count in sorted(enriched_fields.items(), key=lambda x: -x[1]):
+            pct = count / len(lots) * 100 if lots else 0
+            logger.info(f"[{source}]   {field}: {count}/{len(lots)} ({pct:.0f}%)")
