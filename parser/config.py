@@ -11,7 +11,7 @@ class Config:
     KBCHA_ENABLED = os.getenv("KBCHA_ENABLED", "true").lower() == "true"
     KBCHA_INTERVAL_MINUTES = int(os.getenv("KBCHA_INTERVAL_MINUTES", "60"))
     KBCHA_PROXY = os.getenv("KBCHA_PROXY", "")
-    KBCHA_MAX_PAGES = int(os.getenv("KBCHA_MAX_PAGES", "50"))
+    KBCHA_MAX_PAGES = int(os.getenv("KBCHA_MAX_PAGES", "5"))
 
     ENCAR_ENABLED = os.getenv("ENCAR_ENABLED", "false").lower() == "true"
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "30"))

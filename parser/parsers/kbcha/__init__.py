@@ -41,41 +41,38 @@ class KBChaParser(AbstractParser):
         existing_ids = self.repo.get_existing_ids(source)
         logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
 
-        all_lots: list[CarLot] = []
         seen_ids: set[str] = set()
         maker_stats: dict[str, int] = {}
 
         for maker_code, maker_name in MAKER_CODES.items():
             maker_start = _time.monotonic()
+
             maker_lots = self._fetch_maker(maker_code, maker_name, seen_ids)
+            if not maker_lots:
+                continue
+
+            new_lots = [lot for lot in maker_lots if lot.id not in existing_ids]
+            updated_lots = [lot for lot in maker_lots if lot.id in existing_ids]
+
+            if new_lots:
+                logger.info(f"[{source}] {maker_name}: enriching {len(new_lots)} new lots with details...")
+                self._enrich_with_details(new_lots, stats)
+
+            all_maker_lots = new_lots + updated_lots
+            if all_maker_lots:
+                self.repo.upsert_batch(all_maker_lots)
+                stats["total"] += len(all_maker_lots)
+                stats["new"] += len(new_lots)
+                stats["updated"] += len(updated_lots)
+
+            maker_elapsed = _time.monotonic() - maker_start
             maker_stats[maker_name] = len(maker_lots)
-            all_lots.extend(maker_lots)
-
-            if maker_lots:
-                elapsed = _time.monotonic() - maker_start
-                logger.info(f"[{source}] {maker_name}: {len(maker_lots)} lots in {elapsed:.1f}s")
-
-        new_lots = [lot for lot in all_lots if lot.id not in existing_ids]
-        updated_lots = [lot for lot in all_lots if lot.id in existing_ids]
-        stats["new"] = len(new_lots)
-        stats["updated"] = len(updated_lots)
-
-        logger.info(f"[{source}] Fetched {len(all_lots)} lots total ({len(new_lots)} new, {len(updated_lots)} existing)")
-
-        if new_lots:
-            logger.info(f"[{source}] Fetching detail pages for {len(new_lots)} new lots...")
-            self._enrich_with_details(new_lots, stats)
-
-        all_enriched = new_lots + updated_lots
-        if all_enriched:
-            for i in range(0, len(all_enriched), Config.BATCH_SIZE):
-                batch = all_enriched[i:i + Config.BATCH_SIZE]
-                self.repo.upsert_batch(batch)
-                stats["total"] += len(batch)
+            logger.info(f"[{source}] {maker_name}: {len(maker_lots)} lots "
+                         f"({len(new_lots)} new, {len(updated_lots)} upd) "
+                         f"in {maker_elapsed:.1f}s -> DB OK")
 
         stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
         counts = self.repo.count_by_source(source)
-
         run_elapsed = _time.monotonic() - run_start
 
         logger.info(f"[{source}] ========== IMPORT COMPLETE ==========")
@@ -101,6 +98,8 @@ class KBChaParser(AbstractParser):
         source = self.get_source_key()
         lots: list[CarLot] = []
 
+        logger.info(f"[{source}] --- {maker_name} ({maker_code}) ---")
+
         for page in range(1, Config.KBCHA_MAX_PAGES + 1):
             try:
                 html = self._client.fetch_list_page(maker_code, page)
@@ -110,6 +109,7 @@ class KBChaParser(AbstractParser):
 
             page_lots = self._list_parser.parse(html, maker_code)
             if not page_lots:
+                logger.debug(f"[{source}] {maker_name} p.{page}: empty -> done")
                 break
 
             new_on_page = 0
@@ -157,7 +157,8 @@ class KBChaParser(AbstractParser):
 
             _time.sleep(delay)
 
-        logger.info(f"[{source}] Detail enrichment summary:")
-        for field, count in sorted(enriched_fields.items(), key=lambda x: -x[1]):
-            pct = count / len(lots) * 100 if lots else 0
-            logger.info(f"[{source}]   {field}: {count}/{len(lots)} ({pct:.0f}%)")
+        if enriched_fields:
+            logger.info(f"[{source}] Detail enrichment summary:")
+            for field, count in sorted(enriched_fields.items(), key=lambda x: -x[1]):
+                pct = count / len(lots) * 100 if lots else 0
+                logger.info(f"[{source}]   {field}: {count}/{len(lots)} ({pct:.0f}%)")
