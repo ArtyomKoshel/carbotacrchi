@@ -66,6 +66,27 @@ services:
       - carbot
     restart: unless-stopped
 
+  parser:
+    build: ./parser
+    container_name: carbot_parser
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-auction_bot}
+      DB_USERNAME: ${DB_USERNAME:-carbot}
+      DB_PASSWORD: ${DB_PASSWORD:-carbot_pass}
+      KBCHA_ENABLED: ${KBCHA_ENABLED:-true}
+      KBCHA_INTERVAL_MINUTES: ${KBCHA_INTERVAL_MINUTES:-60}
+      KBCHA_PROXY: ${KBCHA_PROXY:-}
+      USD_KRW_RATE: ${USD_KRW_RATE:-1350}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - carbot
+    restart: unless-stopped
+
 networks:
   carbot:
     driver: bridge
