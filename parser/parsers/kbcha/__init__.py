@@ -56,15 +56,17 @@ class KBChaParser(AbstractParser):
             new_lots = [lot for lot in maker_lots if lot.id not in existing_ids]
             updated_lots = [lot for lot in maker_lots if lot.id in existing_ids]
 
+            if maker_lots:
+                logger.info(f"[{source}] {maker_name}: enriching {len(maker_lots)} lots with details "
+                            f"({len(new_lots)} new, {len(updated_lots)} existing)...")
+                self._enrich_with_details(maker_lots, stats)
+
             if new_lots:
-                logger.info(f"[{source}] {maker_name}: enriching {len(new_lots)} new lots with details...")
-                self._enrich_with_details(new_lots, stats)
                 self._enrich_with_inspection(new_lots, stats)
 
-            all_maker_lots = new_lots + updated_lots
-            if all_maker_lots:
-                self.repo.upsert_batch(all_maker_lots)
-                stats["total"] += len(all_maker_lots)
+            if maker_lots:
+                self.repo.upsert_batch(maker_lots)
+                stats["total"] += len(maker_lots)
                 stats["new"] += len(new_lots)
                 stats["updated"] += len(updated_lots)
 
