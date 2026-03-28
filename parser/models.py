@@ -21,6 +21,7 @@ class CarLot:
     body_type: str | None = None
     drive_type: str | None = None
     engine_volume: float | None = None
+    fuel_economy: float | None = None
     cylinders: int | None = None
     color: str | None = None
     seat_color: str | None = None
@@ -37,6 +38,8 @@ class CarLot:
     registration_date: str | None = None
     title: str = "Clean"
     document: str | None = None
+
+    # Legal / registration status
     lien_status: str | None = None
     seizure_status: str | None = None
     tax_paid: bool | None = None
@@ -44,13 +47,13 @@ class CarLot:
     # Condition & history
     damage: str | None = None
     secondary_damage: str | None = None
-    accident_status: str | None = None
-    total_loss_history: bool | None = None
+    has_accident: bool | None = None
     flood_history: bool | None = None
+    total_loss_history: bool | None = None
     owners_count: int | None = None
     insurance_count: int | None = None
-    mileage_grade: str | None = None
     has_keys: bool | None = None
+    mileage_grade: str | None = None
 
     # Pricing
     retail_value: int | None = None
@@ -61,6 +64,7 @@ class CarLot:
 
     # Options
     options: list | None = None
+    paid_options: list | None = None
 
     # Dealer info
     dealer_name: str | None = None
@@ -68,6 +72,7 @@ class CarLot:
     dealer_location: str | None = None
     dealer_phone: str | None = None
     dealer_description: str | None = None
+    warranty_text: str | None = None
 
     # Raw data
     raw_data: dict = field(default_factory=dict)
@@ -75,6 +80,7 @@ class CarLot:
     def to_db_row(self) -> dict:
         raw_json = json.dumps(self.raw_data, ensure_ascii=False, default=str) if self.raw_data else None
         options_json = json.dumps(self.options, ensure_ascii=False) if self.options else None
+        paid_options_json = json.dumps(self.paid_options, ensure_ascii=False) if self.paid_options else None
 
         return {
             "id": self.id,
@@ -91,45 +97,100 @@ class CarLot:
             "drive_type": self.drive_type,
             "damage": self.damage,
             "secondary_damage": self.secondary_damage,
+            "has_accident": self.has_accident,
+            "flood_history": self.flood_history,
+            "owners_count": self.owners_count,
+            "insurance_count": self.insurance_count,
             "title": self.title,
             "document": self.document,
             "location": self.location,
             "color": self.color,
+            "seat_color": self.seat_color,
             "trim": self.trim,
-            "engine_volume": self.engine_volume,
             "cylinders": self.cylinders,
+            "engine_volume": self.engine_volume,
+            "fuel_economy": self.fuel_economy,
+            "lien_status": self.lien_status,
+            "seizure_status": self.seizure_status,
+            "tax_paid": self.tax_paid,
+            "total_loss_history": self.total_loss_history,
+            "mileage_grade": self.mileage_grade,
             "has_keys": self.has_keys,
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
+            "new_car_price_ratio": self.new_car_price_ratio,
+            "ai_price_min": self.ai_price_min,
+            "ai_price_max": self.ai_price_max,
             "image_url": self.image_url,
             "lot_url": self.lot_url,
             "raw_data": raw_json,
             "price_krw": self.price_krw,
-            # Extended fields
             "plate_number": self.plate_number,
             "registration_date": self.registration_date,
-            "seat_color": self.seat_color,
-            "lien_status": self.lien_status,
-            "seizure_status": self.seizure_status,
-            "tax_paid": self.tax_paid,
-            "accident_status": self.accident_status,
-            "total_loss_history": self.total_loss_history,
-            "flood_history": self.flood_history,
-            "owners_count": self.owners_count,
-            "insurance_count": self.insurance_count,
-            "mileage_grade": self.mileage_grade,
-            "new_car_price_ratio": self.new_car_price_ratio,
-            "ai_price_min": self.ai_price_min,
-            "ai_price_max": self.ai_price_max,
             "options": options_json,
+            "paid_options": paid_options_json,
             "dealer_name": self.dealer_name,
             "dealer_company": self.dealer_company,
             "dealer_location": self.dealer_location,
             "dealer_phone": self.dealer_phone,
             "dealer_description": self.dealer_description,
+            "warranty_text": self.warranty_text,
         }
 
     def merge_details(self, details: dict) -> None:
         for key, value in details.items():
             if value is not None and hasattr(self, key):
                 setattr(self, key, value)
+
+
+@dataclass
+class InspectionRecord:
+    lot_id: str
+    source: str = "carmodoo"
+
+    cert_no: str | None = None
+    inspection_date: str | None = None
+    valid_from: str | None = None
+    valid_until: str | None = None
+    report_url: str | None = None
+
+    first_registration: str | None = None
+    inspection_mileage: int | None = None
+    insurance_fee: int | None = None
+
+    has_accident: bool | None = None
+    has_outer_damage: bool | None = None
+    has_flood: bool | None = None
+    has_fire: bool | None = None
+    has_tuning: bool | None = None
+
+    accident_detail: str | None = None
+    outer_detail: str | None = None
+
+    details: dict = field(default_factory=dict)
+
+    def to_db_row(self) -> dict:
+        details_json = (
+            json.dumps(self.details, ensure_ascii=False, default=str)
+            if self.details else None
+        )
+        return {
+            "lot_id":             self.lot_id,
+            "source":             self.source,
+            "cert_no":            self.cert_no,
+            "inspection_date":    self.inspection_date,
+            "valid_from":         self.valid_from,
+            "valid_until":        self.valid_until,
+            "report_url":         self.report_url,
+            "first_registration": self.first_registration,
+            "inspection_mileage": self.inspection_mileage,
+            "insurance_fee":      self.insurance_fee,
+            "has_accident":       self.has_accident,
+            "has_outer_damage":   self.has_outer_damage,
+            "has_flood":          self.has_flood,
+            "has_fire":           self.has_fire,
+            "has_tuning":         self.has_tuning,
+            "accident_detail":    self.accident_detail,
+            "outer_detail":       self.outer_detail,
+            "details":            details_json,
+        }

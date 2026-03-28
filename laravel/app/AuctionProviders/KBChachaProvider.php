@@ -19,8 +19,7 @@ class KBChachaProvider extends AbstractProvider
                 ->where('source', 'kbcha')
                 ->where('is_active', true)
                 ->get()
-                ->map(fn ($row) => json_decode($row->raw_data, true))
-                ->filter()
+                ->map(fn ($row) => (array) $row)
                 ->values()
                 ->toArray();
         }
@@ -50,6 +49,60 @@ class KBChachaProvider extends AbstractProvider
 
     public function normalize(array $raw): LotDTO
     {
+        // When reading from DB columns $raw is a flat row.
+        // When reading from mock JSON it is the original KBChacha API payload.
+        $fromDb = isset($raw['id']);
+
+        if ($fromDb) {
+            return new LotDTO(
+                id:           $raw['id'],
+                source:       $this->getKey(),
+                sourceName:   $this->getName(),
+                make:         $raw['make']  ?? '',
+                model:        $raw['model'] ?? '',
+                year:         (int) ($raw['year']    ?? 0),
+                price:        (int) ($raw['price']   ?? 0),
+                mileage:      (int) ($raw['mileage'] ?? 0),
+                damage:       $raw['damage'] ?? null,
+                title:        $raw['title']  ?? 'Clean',
+                location:     $raw['location'] ?? 'Korea',
+                lotUrl:       $raw['lot_url']   ?? '',
+                imageUrl:     $raw['image_url'] ?? null,
+                vin:          $raw['vin']       ?? null,
+                auctionDate:  $raw['registration_date'] ?? null,
+                createdAt:    $raw['created_at'] ?? date('c'),
+                transmission: $raw['transmission']  ?? null,
+                fuel:         $raw['fuel']          ?? null,
+                bodyType:     $raw['body_type']     ?? null,
+                driveType:    $raw['drive_type']    ?? null,
+                color:        $raw['color']         ?? null,
+                engineVolume: isset($raw['engine_volume']) ? (float) $raw['engine_volume'] : null,
+                fuelEconomy:  isset($raw['fuel_economy'])  ? (float) $raw['fuel_economy']  : null,
+                cylinders:    isset($raw['cylinders'])     ? (int)   $raw['cylinders']     : null,
+                trim:         $raw['trim']          ?? null,
+                hasKeys:      isset($raw['has_keys'])   ? (bool) $raw['has_keys']   : null,
+                retailValue:  isset($raw['retail_value']) ? (int) $raw['retail_value'] : null,
+                repairCost:   isset($raw['repair_cost'])  ? (int) $raw['repair_cost']  : null,
+                hasAccident:      isset($raw['has_accident'])      ? (bool) $raw['has_accident']      : null,
+                floodHistory:     isset($raw['flood_history'])     ? (bool) $raw['flood_history']     : null,
+                totalLossHistory: isset($raw['total_loss_history']) ? (bool) $raw['total_loss_history'] : null,
+                ownersCount:      isset($raw['owners_count'])      ? (int)  $raw['owners_count']      : null,
+                plateNumber:      $raw['plate_number'] ?? null,
+                dealerName:       $raw['dealer_name']  ?? null,
+                dealerPhone:      $raw['dealer_phone'] ?? null,
+                warrantyText:     $raw['warranty_text']   ?? null,
+                paidOptions:      isset($raw['paid_options']) ? (is_array($raw['paid_options']) ? $raw['paid_options'] : json_decode($raw['paid_options'], true)) : null,
+                lienStatus:       $raw['lien_status']     ?? null,
+                seizureStatus:    $raw['seizure_status']  ?? null,
+                taxPaid:          isset($raw['tax_paid'])          ? (bool) $raw['tax_paid']          : null,
+                mileageGrade:     $raw['mileage_grade']   ?? null,
+                newCarPriceRatio: isset($raw['new_car_price_ratio']) ? (int) $raw['new_car_price_ratio'] : null,
+                aiPriceMin:       isset($raw['ai_price_min'])      ? (int)  $raw['ai_price_min']      : null,
+                aiPriceMax:       isset($raw['ai_price_max'])      ? (int)  $raw['ai_price_max']      : null,
+            );
+        }
+
+        // Mock / legacy JSON path
         $uid = $raw['carSeq'] ?? $raw['carId'] ?? md5($raw['carNm'] ?? uniqid());
 
         return new LotDTO(

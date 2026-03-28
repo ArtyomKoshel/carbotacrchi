@@ -4,11 +4,12 @@ import logging
 import time as _time
 
 from config import Config
-from models import CarLot
+from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser
 from .client import KBChaClient
 from .detail_parser import KBChaDetailParser
+from .inspection_parser import CarmodooInspectionParser
 from .list_parser import KBChaListParser
 from .normalizer import KBChaNormalizer, MAKER_CODES
 
@@ -22,6 +23,7 @@ class KBChaParser(AbstractParser):
         self._normalizer = KBChaNormalizer()
         self._list_parser = KBChaListParser(self._normalizer)
         self._detail_parser = KBChaDetailParser(self._normalizer)
+        self._inspection_parser = CarmodooInspectionParser()
 
     def get_source_key(self) -> str:
         return "kbcha"
@@ -57,6 +59,7 @@ class KBChaParser(AbstractParser):
             if new_lots:
                 logger.info(f"[{source}] {maker_name}: enriching {len(new_lots)} new lots with details...")
                 self._enrich_with_details(new_lots, stats)
+                self._enrich_with_inspection(new_lots, stats)
 
             all_maker_lots = new_lots + updated_lots
             if all_maker_lots:
@@ -126,6 +129,67 @@ class KBChaParser(AbstractParser):
 
         return lots
 
+    def _enrich_with_inspection(self, lots: list[CarLot], stats: dict) -> None:
+        source = self.get_source_key()
+        delay = max(Config.REQUEST_DELAY, 1.5)
+        found = 0
+
+        for lot in lots:
+            check_num = lot.raw_data.get("inspection_no")
+            carmodoo_url = lot.raw_data.get("carmodoo_url")
+            if not (check_num and carmodoo_url):
+                continue
+            try:
+                html = self._client.fetch_carmodoo(check_num)
+                insp = self._inspection_parser.parse(html)
+
+                # ── Promote filterable fields to lots ─────────────────────
+                if insp.get("vin"):
+                    lot.vin = insp["vin"]
+                    logger.debug(f"[{source}] {lot.id}: VIN -> '{lot.vin}'")
+                if "inspection_accident" in insp:
+                    lot.has_accident = insp["inspection_accident"]
+                if "inspection_flood" in insp:
+                    lot.flood_history = insp["inspection_flood"]
+
+                # ── Build InspectionRecord for lot_inspections table ───────
+                structural = insp.get("damaged_structural_panels", [])
+                outer = insp.get("damaged_outer_panels", [])
+                rec = InspectionRecord(
+                    lot_id=lot.id,
+                    source="carmodoo",
+                    cert_no=insp.get("inspection_cert_no"),
+                    valid_from=insp.get("inspection_valid_from"),
+                    valid_until=insp.get("inspection_valid_until"),
+                    report_url=lot.raw_data.get("carmodoo_url"),
+                    first_registration=insp.get("first_registration"),
+                    inspection_mileage=insp.get("inspection_mileage"),
+                    insurance_fee=insp.get("inspection_fee"),
+                    has_accident=insp.get("inspection_accident"),
+                    has_outer_damage=bool(outer),
+                    has_flood=insp.get("inspection_flood"),
+                    has_fire=insp.get("inspection_fire"),
+                    has_tuning=insp.get("inspection_tuning"),
+                    accident_detail=", ".join(structural) if structural else None,
+                    outer_detail=", ".join(outer) if outer else None,
+                    details={
+                        "damaged_structural_panels": structural,
+                        "damaged_outer_panels": outer,
+                        "bad_components": insp.get("bad_components", []),
+                        "inspector_note": insp.get("inspector_note"),
+                    },
+                )
+                self.repo.upsert_inspection(rec)
+
+                found += 1
+                _time.sleep(delay)
+            except Exception as e:
+                logger.warning(f"[{source}] Inspection fetch failed for {lot.id}: "
+                               f"{type(e).__name__}: {e}")
+
+        if found:
+            logger.info(f"[{source}] Inspection enrichment: {found}/{len(lots)} lots got real VIN")
+
     def _enrich_with_details(self, lots: list[CarLot], stats: dict) -> None:
         source = self.get_source_key()
         delay = max(Config.REQUEST_DELAY, 1.5)
@@ -141,6 +205,9 @@ class KBChaParser(AbstractParser):
                     enriched_fields[field] = enriched_fields.get(field, 0) + 1
 
                 lot.merge_details(details)
+                for extra_key in ("autocafe_url", "carmodoo_url", "inspection_no"):
+                    if extra_key in details:
+                        lot.raw_data[extra_key] = details[extra_key]
                 stats["detail_fetched"] += 1
 
                 logger.debug(f"[{source}] Detail {lot.id}: {lot.make} {lot.model} -> "

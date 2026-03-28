@@ -5,6 +5,11 @@ import re
 
 from bs4 import BeautifulSoup, Tag
 
+from .glossary import (
+    INFO_FIELDS, HISTORY_BOOL_LABELS,
+    MILEAGE_GRADE_PATTERN, CYLINDERS_PATTERN,
+    WARRANTY_PATTERN, PAID_OPTIONS_PATTERN,
+)
 from .normalizer import KBChaNormalizer
 
 logger = logging.getLogger(__name__)
@@ -25,8 +30,11 @@ class KBChaDetailParser:
         self._parse_mileage_analysis(soup, result)
         self._parse_pricing(soup, result)
         self._parse_options(soup, result)
+        self._parse_paid_options(soup, result)
+        self._parse_warranty(soup, result)
         self._parse_dealer(soup, result)
         self._parse_trim_from_title(soup, result)
+        self._parse_autocafe_url(soup, result)
 
         logger.info(f"[kbcha:detail] Parsed {len(result)} fields: {sorted(result.keys())}")
         if not result:
@@ -44,56 +52,57 @@ class KBChaDetailParser:
 
         logger.debug(f"[kbcha:detail] Info table keys: {list(info.keys())}")
 
-        normalized_fields = {
-            "연료":   ("fuel",          self._norm.normalize_fuel),
-            "변속기":  ("transmission",  self._norm.normalize_transmission),
-            "차종":   ("body_type",     self._norm.normalize_body_type),
-            "배기량":  ("engine_volume", self._norm.parse_engine_cc),
-            "차량색상": ("color",        self._norm.normalize_color),
-        }
-
-        for kr_key, (field_name, fn) in normalized_fields.items():
+        for kr_key, (field_name, method) in INFO_FIELDS.items():
             raw = info.get(kr_key)
-            if raw:
-                val = fn(raw)
-                if val:
+            if raw is None:
+                continue
+
+            if method is None:
+                if field_name == "vin" and "vin" in result:
+                    continue
+                result[field_name] = raw
+                logger.debug(f"[kbcha:detail] {field_name}: '{raw}'")
+
+            elif method == "_parse_year":
+                year = self._norm.parse_year(raw)
+                if year:
+                    result["year"] = year
+                result["registration_date"] = raw
+                logger.debug(f"[kbcha:detail] year/reg: '{raw}' -> {year}")
+
+            elif method == "_parse_mileage":
+                mileage = self._norm.parse_mileage(raw)
+                if mileage:
+                    result["mileage"] = mileage
+
+            elif method == "_parse_owners":
+                m = re.search(r"(\d+)", raw)
+                if m:
+                    result["owners_count"] = int(m.group(1))
+                    logger.debug(f"[kbcha:detail] owners_count: {result['owners_count']}")
+
+            elif hasattr(self._norm, method):
+                val = getattr(self._norm, method)(raw)
+                if val is not None:
                     result[field_name] = val
                     logger.debug(f"[kbcha:detail] {field_name}: '{raw}' -> '{val}'")
                 else:
                     logger.debug(f"[kbcha:detail] {field_name}: '{raw}' -> unmapped")
 
-        if "연식" in info:
-            year = self._norm.parse_year(info["연식"])
-            if year:
-                result["year"] = year
-            result["registration_date"] = info["연식"]
-            logger.debug(f"[kbcha:detail] year/reg: '{info['연식']}' -> {year}")
-
-        if "주행거리" in info:
-            mileage = self._norm.parse_mileage(info["주행거리"])
-            if mileage:
-                result["mileage"] = mileage
-
-        if "차량정보" in info:
-            result["plate_number"] = info["차량정보"]
-            logger.debug(f"[kbcha:detail] plate: '{info['차량정보']}'")
-
-        if "시트색상" in info:
-            result["seat_color"] = info["시트색상"]
-
-        direct_map = {
-            "저당":   "lien_status",
-            "압류":   "seizure_status",
-        }
-        for kr_key, field_name in direct_map.items():
-            if kr_key in info:
-                result[field_name] = info[kr_key]
-                logger.debug(f"[kbcha:detail] {field_name}: '{info[kr_key]}'")
-
+        # 세금미납: "없음" means tax is paid
         if "세금미납" in info:
             val = info["세금미납"]
             result["tax_paid"] = (val == "없음")
             logger.debug(f"[kbcha:detail] tax_paid: '{val}' -> {result['tax_paid']}")
+
+        # Cylinder count from engine description (e.g. '2.0L 4기통')
+        for key, val in info.items():
+            m = re.search(CYLINDERS_PATTERN, val)
+            if m:
+                result["cylinders"] = int(m.group(1))
+                logger.debug(f"[kbcha:detail] cylinders: {result['cylinders']} (from '{key}')") 
+                break
+
 
     def _extract_info_table(self, soup: BeautifulSoup) -> dict[str, str]:
         info: dict[str, str] = {}
@@ -115,13 +124,10 @@ class KBChaDetailParser:
         accident_match = re.search(r"보험사고정보\s*(사고있음|사고없음|없음)", text)
         if accident_match:
             val = accident_match.group(1)
-            result["accident_status"] = val
-            logger.debug(f"[kbcha:detail] accident_status: '{val}'")
+            result["has_accident"] = (val == "사고있음")
+            logger.debug(f"[kbcha:detail] has_accident: '{val}' -> {result['has_accident']}")
 
-        for label, field, default_false in [
-            ("전손이력", "total_loss_history", True),
-            ("침수이력", "flood_history", True),
-        ]:
+        for label, field in HISTORY_BOOL_LABELS.items():
             el = soup.find(string=re.compile(label))
             if el and el.parent:
                 sibling = el.parent.find_next_sibling()
@@ -130,7 +136,7 @@ class KBChaDetailParser:
                     result[field] = (val != "없음")
                     logger.debug(f"[kbcha:detail] {field}: '{val}' -> {result[field]}")
 
-        owner_el = soup.find(string=re.compile(r"소유자변경"))
+        owner_el = soup.find(string=re.compile(r"소유자(?:변경|이력)"))
         if owner_el and owner_el.parent:
             sibling = owner_el.parent.find_next_sibling()
             if sibling:
@@ -148,7 +154,7 @@ class KBChaDetailParser:
 
     def _parse_mileage_analysis(self, soup: BeautifulSoup, result: dict) -> None:
         text = soup.get_text()
-        grade_match = re.search(r"주행거리.*?대비\s*\[\s*(짧음|보통|많음|매우많음)\s*\]", text)
+        grade_match = re.search(MILEAGE_GRADE_PATTERN, text)
         if grade_match:
             result["mileage_grade"] = grade_match.group(1)
             logger.debug(f"[kbcha:detail] mileage_grade: '{result['mileage_grade']}'")
@@ -168,6 +174,31 @@ class KBChaDetailParser:
             result["ai_price_min"] = int(range_match.group(1).replace(",", ""))
             result["ai_price_max"] = int(range_match.group(2).replace(",", ""))
             logger.debug(f"[kbcha:detail] ai_price: {result['ai_price_min']}~{result['ai_price_max']}만원")
+
+        for script in soup.find_all("script"):
+            s = script.get_text()
+            if "신차" not in s or "가격" not in s:
+                continue
+            m = re.search(
+                r'category["\s:]+신차["\s,}]+[^}]*?value["\s:]+([\d]+)',
+                s, re.DOTALL
+            ) or re.search(
+                r'"신차"\s*,\s*value\s*:\s*([\d]+)',
+                s
+            ) or re.search(
+                r'sellAmt\s*=\s*"(\d+)".*?newCarSellAmt|newCarSellAmt\s*=\s*"(\d+)"',
+                s, re.DOTALL
+            )
+            if m:
+                raw = m.group(1) or m.group(2) if m.lastindex and m.lastindex >= 2 else m.group(1)
+                try:
+                    price_man = int(raw)
+                    if 500 < price_man < 50000:
+                        result["retail_value"] = self._norm.krw_to_usd(float(price_man))
+                        logger.debug(f"[kbcha:detail] retail_value: {price_man}만원")
+                except (ValueError, TypeError):
+                    pass
+                break
 
     # ── Options (주요옵션) ──────────────────────────────────────────────────
 
@@ -263,6 +294,103 @@ class KBChaDetailParser:
                             logger.debug(f"[kbcha:detail] dealer_description: '{desc[:80]}'")
                         break
                 node = node.parent
+
+    # ── Autocafe (성능점검기록부) URL ────────────────────────────────────────
+
+    def _parse_autocafe_url(self, soup: BeautifulSoup, result: dict) -> None:
+        full_text = str(soup)
+
+        # Priority 1: carmodoo.com (has real 17-char VIN in the report)
+        m = re.search(r'carmodoo\.com[^"\s]*checkNum=(\d+)', full_text, re.I)
+        if m:
+            result["carmodoo_url"] = (
+                f"https://ck.carmodoo.com/carCheck/carmodooPrint.do"
+                f"?print=0&checkNum={m.group(1)}"
+            )
+            result["inspection_no"] = m.group(1)
+            logger.debug(f"[kbcha:detail] carmodoo checkNum: '{m.group(1)}'")
+
+        # Priority 2: autocafe.co.kr (fallback)
+        found_autocafe = False
+        for tag in soup.find_all(href=re.compile(r"autocafe\.co\.kr", re.I)):
+            href = tag.get("href", "")
+            m2 = re.search(r"OnCarNo=(\d+)", href, re.I)
+            if m2:
+                url = href if href.startswith("http") else f"https:{href}"
+                result["autocafe_url"] = url
+                if "inspection_no" not in result:
+                    result["inspection_no"] = m2.group(1)
+                logger.debug(f"[kbcha:detail] autocafe OnCarNo: '{m2.group(1)}'")
+                found_autocafe = True
+                break
+
+        if not found_autocafe:
+            m2 = re.search(r'autocafe\.co\.kr[^"\s]*OnCarNo=(\d+)', full_text, re.I)
+            if m2:
+                result["autocafe_url"] = (
+                    f"https://autocafe.co.kr/ASSO/CarCheck_Form.asp?OnCarNo={m2.group(1)}"
+                )
+                if "inspection_no" not in result:
+                    result["inspection_no"] = m2.group(1)
+                logger.debug(f"[kbcha:detail] autocafe OnCarNo (text): '{m2.group(1)}'")
+
+        if "carmodoo_url" not in result and "autocafe_url" not in result:
+            logger.debug("[kbcha:detail] No inspection URL found in page")
+
+    # ── Paid optional packages (선택옵션) ─────────────────────────────────
+
+    def _parse_paid_options(self, soup: BeautifulSoup, result: dict) -> None:
+        header = soup.find(string=re.compile(r"\d+개의\s*선택옵션"))
+        if not header:
+            return
+
+        section = header.parent
+        for _ in range(4):
+            if not section:
+                break
+            section = section.parent
+
+        if not section:
+            return
+
+        paid = []
+        for li in section.find_all("li", recursive=True):
+            text = li.get_text(" ", strip=True)
+            if re.search(r"\d+만원", text) and len(text) < 60:
+                clean = re.sub(r"\s+", " ", text).strip()
+                if clean and clean not in paid:
+                    paid.append(clean)
+
+        if paid:
+            result["paid_options"] = paid
+            logger.debug(f"[kbcha:detail] paid_options: {paid}")
+
+    # ── Manufacturer warranty remaining (제조사 보증) ─────────────────────
+
+    def _parse_warranty(self, soup: BeautifulSoup, result: dict) -> None:
+        header = soup.find(string=re.compile(r"제조사\s*보증"))
+        if not header:
+            return
+
+        section = header.parent
+        for _ in range(5):
+            if not section:
+                break
+            sibling = section.find_next_sibling()
+            if sibling:
+                text = sibling.get_text(" ", strip=True)
+                m = re.search(r"([\d,]+\s*km\s*/\s*\d+개월\s*남음|만료)", text)
+                if m:
+                    result["warranty_text"] = m.group(1).strip()
+                    logger.debug(f"[kbcha:detail] warranty_text: '{result['warranty_text']}'")
+                    return
+            section = section.parent
+
+        text = soup.get_text()
+        m = re.search(r"제조사\s*보증[^。\n]{0,80}?([\d,]+\s*km\s*/\s*\d+개월\s*남음|만료)", text)
+        if m:
+            result["warranty_text"] = m.group(1).strip()
+            logger.debug(f"[kbcha:detail] warranty_text (text): '{result['warranty_text']}'")
 
     # ── Trim from title ────────────────────────────────────────────────────
 

@@ -74,10 +74,13 @@ const Results = (() => {
           </div>
           ${lot.damage ? `<div class="lot-card__damage">⚡ ${escHtml(lot.damage)}</div>` : ''}
           <div class="lot-card__tags">
-            ${lot.bodyType     ? `<span class="lot-card__tag">${escHtml(lot.bodyType)}</span>`     : ''}
-            ${lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>` : ''}
-            ${lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`         : ''}
-            ${lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`    : ''}
+            ${lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`    : ''}
+            ${lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>`  : ''}
+            ${lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`        : ''}
+            ${lot.bodyType     ? `<span class="lot-card__tag">${escHtml(lot.bodyType)}</span>`        : ''}
+            ${lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>`   : ''}
+            ${lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`            : ''}
+            ${lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`       : ''}
           </div>
         </div>
       </div>`;
@@ -193,7 +196,34 @@ const Results = (() => {
             <span class="sheet-detail-label">Стоимость ремонта</span>
             <span class="sheet-detail-value" style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>
           </div>` : ''}
+          ${lot.hasAccident !== null && lot.hasAccident !== undefined ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Авария (офиц.)</span>
+            <span class="sheet-detail-value" style="color:${lot.hasAccident ? 'var(--danger)' : 'var(--success)'}"
+            >${lot.hasAccident ? 'Да' : 'Нет'}</span>
+          </div>` : ''}
+          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Затопление</span>
+            <span class="sheet-detail-value" style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}"
+            >${lot.floodHistory ? 'Да' : 'Нет'}</span>
+          </div>` : ''}
+          ${lot.ownersCount ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Владельцев</span>
+            <span class="sheet-detail-value">${lot.ownersCount}</span>
+          </div>` : ''}
+          ${lot.plateNumber ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Номер</span>
+            <span class="sheet-detail-value" style="font-family:monospace">${escHtml(lot.plateNumber)}</span>
+          </div>` : ''}
+          ${lot.dealerName ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Дилер</span>
+            <span class="sheet-detail-value">${escHtml(lot.dealerName)}</span>
+          </div>` : ''}
+          ${lot.dealerPhone ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Телефон</span>
+            <span class="sheet-detail-value">${escHtml(lot.dealerPhone)}</span>
+          </div>` : ''}
         </div>
+        <div id="sheet-inspection" style="margin:0 0 12px"></div>
         <div class="sheet-actions">
           <a href="${escHtml(lot.lotUrl)}" target="_blank" rel="noopener"
              class="btn btn-primary" style="text-decoration:none;flex:1">Открыть лот</a>
@@ -205,6 +235,23 @@ const Results = (() => {
 
     overlay.classList.add('open');
     TG.haptic('impact', 'medium');
+
+    API.getInspection(lot.id).then(insp => {
+      const el = document.getElementById('sheet-inspection');
+      if (!el || !insp) return;
+      const rows = [];
+      if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(insp.valid_until)}</span></div>`);
+      if (insp.cert_no)     rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Номер акта</span><span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(insp.cert_no)}</span></div>`);
+      if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(insp.first_registration)}</span></div>`);
+      if (insp.inspection_mileage)  rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Пробег (акт)</span><span class="sheet-detail-value">${Number(insp.inspection_mileage).toLocaleString()} km</span></div>`);
+      if (insp.accident_detail) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Структурные повреждения</span><span class="sheet-detail-value" style="color:var(--danger)">${escHtml(insp.accident_detail)}</span></div>`);
+      if (insp.outer_detail)    rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Внешние ремонты</span><span class="sheet-detail-value">${escHtml(insp.outer_detail)}</span></div>`);
+      const note = insp.details?.inspector_note;
+      if (note) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Заметки инспектора</span><span class="sheet-detail-value" style="font-size:11px">${escHtml(note)}</span></div>`);
+      if (rows.length) {
+        el.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 4px">Инспекция</div><div class="sheet-details">${rows.join('')}</div>`;
+      }
+    }).catch(() => {});
   }
 
   function sheetToggleFav() {

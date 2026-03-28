@@ -67,5 +67,12 @@ const API = (() => {
     });
   }
 
-  return { getFilters, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen };
+  async function getInspection(lotId) {
+    const res = await fetch(`${BASE}/lots/${encodeURIComponent(lotId)}/inspection`);
+    if (res.status === 404) return null;
+    const json = await res.json();
+    return json?.data ?? null;
+  }
+
+  return { getFilters, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen, getInspection };
 })();

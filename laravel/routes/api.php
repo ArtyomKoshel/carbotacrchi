@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\Api\FavoritesController;
 use App\Http\Controllers\Api\FiltersController;
+use App\Http\Controllers\Api\InspectionsController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SubscriptionsController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/lots/{lotId}/inspection', [InspectionsController::class, 'show']);
 
 Route::middleware('telegram.auth')->group(function () {
     Route::post('/search',                    [SearchController::class,       'search']);

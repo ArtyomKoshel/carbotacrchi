@@ -10,6 +10,7 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.kbchachacha.com"
+CARMODOO_URL = "https://ck.carmodoo.com"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -54,6 +55,23 @@ class KBChaClient:
 
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] detail carSeq={car_seq} "
+                      f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
+        return resp.text
+
+    def fetch_carmodoo(self, check_num: str) -> str:
+        url = f"{CARMODOO_URL}/carCheck/carmodooPrint.do"
+        params = {"print": "0", "checkNum": check_num}
+        headers = {
+            "User-Agent": HEADERS["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "ko-KR,ko;q=0.9",
+            "Referer": "https://www.kbchachacha.com/",
+        }
+        t0 = _time.monotonic()
+        resp = self._client.get(url, params=params, headers=headers)
+        elapsed = _time.monotonic() - t0
+        resp.raise_for_status()
+        logger.debug(f"[kbcha:http] carmodoo checkNum={check_num} "
                       f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 

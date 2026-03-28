@@ -9,7 +9,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 
 from config import Config
-from models import CarLot
+from models import CarLot, InspectionRecord
 
 logger = logging.getLogger(__name__)
 
@@ -46,34 +46,36 @@ class LotRepository:
             INSERT INTO lots (
                 id, source, make, model, year, price, mileage, vin,
                 body_type, transmission, fuel, drive_type,
-                damage, secondary_damage, title, document,
-                location, color, seat_color, `trim`, `options`,
-                engine_volume, cylinders, has_keys,
+                cylinders, engine_volume, fuel_economy,
+                damage, secondary_damage,
+                lien_status, seizure_status, tax_paid,
+                has_accident, flood_history, total_loss_history,
+                owners_count, insurance_count, has_keys, mileage_grade,
+                title, document,
+                location, color, seat_color, `trim`, `options`, paid_options, warranty_text,
                 retail_value, repair_cost,
+                new_car_price_ratio, ai_price_min, ai_price_max,
                 image_url, lot_url, raw_data,
                 fetched_at, price_krw, is_active, parsed_at,
                 plate_number, registration_date,
-                lien_status, seizure_status, tax_paid,
-                accident_status, total_loss_history, flood_history,
-                owners_count, insurance_count, mileage_grade,
-                new_car_price_ratio, ai_price_min, ai_price_max,
                 dealer_name, dealer_company, dealer_location,
                 dealer_phone, dealer_description,
                 created_at, updated_at
             ) VALUES (
                 %(id)s, %(source)s, %(make)s, %(model)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
                 %(body_type)s, %(transmission)s, %(fuel)s, %(drive_type)s,
-                %(damage)s, %(secondary_damage)s, %(title)s, %(document)s,
-                %(location)s, %(color)s, %(seat_color)s, %(trim)s, %(options)s,
-                %(engine_volume)s, %(cylinders)s, %(has_keys)s,
+                %(cylinders)s, %(engine_volume)s, %(fuel_economy)s,
+                %(damage)s, %(secondary_damage)s,
+                %(lien_status)s, %(seizure_status)s, %(tax_paid)s,
+                %(has_accident)s, %(flood_history)s, %(total_loss_history)s,
+                %(owners_count)s, %(insurance_count)s, %(has_keys)s, %(mileage_grade)s,
+                %(title)s, %(document)s,
+                %(location)s, %(color)s, %(seat_color)s, %(trim)s, %(options)s, %(paid_options)s, %(warranty_text)s,
                 %(retail_value)s, %(repair_cost)s,
+                %(new_car_price_ratio)s, %(ai_price_min)s, %(ai_price_max)s,
                 %(image_url)s, %(lot_url)s, %(raw_data)s,
                 %(now)s, %(price_krw)s, 1, %(now)s,
                 %(plate_number)s, %(registration_date)s,
-                %(lien_status)s, %(seizure_status)s, %(tax_paid)s,
-                %(accident_status)s, %(total_loss_history)s, %(flood_history)s,
-                %(owners_count)s, %(insurance_count)s, %(mileage_grade)s,
-                %(new_car_price_ratio)s, %(ai_price_min)s, %(ai_price_max)s,
                 %(dealer_name)s, %(dealer_company)s, %(dealer_location)s,
                 %(dealer_phone)s, %(dealer_description)s,
                 %(now)s, %(now)s
@@ -84,29 +86,35 @@ class LotRepository:
                 transmission=COALESCE(VALUES(transmission), transmission),
                 fuel=COALESCE(VALUES(fuel), fuel),
                 drive_type=COALESCE(VALUES(drive_type), drive_type),
+                cylinders=COALESCE(VALUES(cylinders), cylinders),
                 engine_volume=COALESCE(VALUES(engine_volume), engine_volume),
+                fuel_economy=COALESCE(VALUES(fuel_economy), fuel_economy),
                 color=COALESCE(VALUES(color), color),
                 seat_color=COALESCE(VALUES(seat_color), seat_color),
                 location=VALUES(location), `trim`=COALESCE(VALUES(`trim`), `trim`),
                 `options`=COALESCE(VALUES(`options`), `options`),
+                paid_options=COALESCE(VALUES(paid_options), paid_options),
+                warranty_text=COALESCE(VALUES(warranty_text), warranty_text),
                 image_url=COALESCE(VALUES(image_url), image_url),
                 lot_url=VALUES(lot_url),
                 raw_data=VALUES(raw_data),
                 price_krw=VALUES(price_krw), is_active=1,
-                plate_number=COALESCE(VALUES(plate_number), plate_number),
-                registration_date=COALESCE(VALUES(registration_date), registration_date),
                 lien_status=COALESCE(VALUES(lien_status), lien_status),
                 seizure_status=COALESCE(VALUES(seizure_status), seizure_status),
                 tax_paid=COALESCE(VALUES(tax_paid), tax_paid),
-                accident_status=COALESCE(VALUES(accident_status), accident_status),
-                total_loss_history=COALESCE(VALUES(total_loss_history), total_loss_history),
+                has_accident=COALESCE(VALUES(has_accident), has_accident),
                 flood_history=COALESCE(VALUES(flood_history), flood_history),
+                total_loss_history=COALESCE(VALUES(total_loss_history), total_loss_history),
                 owners_count=COALESCE(VALUES(owners_count), owners_count),
                 insurance_count=COALESCE(VALUES(insurance_count), insurance_count),
                 mileage_grade=COALESCE(VALUES(mileage_grade), mileage_grade),
+                retail_value=COALESCE(VALUES(retail_value), retail_value),
+                repair_cost=COALESCE(VALUES(repair_cost), repair_cost),
                 new_car_price_ratio=COALESCE(VALUES(new_car_price_ratio), new_car_price_ratio),
                 ai_price_min=COALESCE(VALUES(ai_price_min), ai_price_min),
                 ai_price_max=COALESCE(VALUES(ai_price_max), ai_price_max),
+                plate_number=COALESCE(VALUES(plate_number), plate_number),
+                registration_date=COALESCE(VALUES(registration_date), registration_date),
                 dealer_name=COALESCE(VALUES(dealer_name), dealer_name),
                 dealer_company=COALESCE(VALUES(dealer_company), dealer_company),
                 dealer_location=COALESCE(VALUES(dealer_location), dealer_location),
@@ -194,6 +202,56 @@ class LotRepository:
         except Exception as e:
             logger.error(f"[DB] count_by_source failed: {e}")
             return {"active": 0, "inactive": 0}
+
+    def upsert_inspection(self, record: InspectionRecord) -> None:
+        row = record.to_db_row()
+        conn = self._get_conn()
+        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        sql = """
+            INSERT INTO lot_inspections (
+                lot_id, source, cert_no, inspection_date,
+                valid_from, valid_until, report_url,
+                first_registration, inspection_mileage, insurance_fee,
+                has_accident, has_outer_damage, has_flood, has_fire, has_tuning,
+                accident_detail, outer_detail, details,
+                created_at, updated_at
+            ) VALUES (
+                %(lot_id)s, %(source)s, %(cert_no)s, %(inspection_date)s,
+                %(valid_from)s, %(valid_until)s, %(report_url)s,
+                %(first_registration)s, %(inspection_mileage)s, %(insurance_fee)s,
+                %(has_accident)s, %(has_outer_damage)s, %(has_flood)s, %(has_fire)s, %(has_tuning)s,
+                %(accident_detail)s, %(outer_detail)s, %(details)s,
+                %(now)s, %(now)s
+            ) ON DUPLICATE KEY UPDATE
+                source=VALUES(source),
+                cert_no=COALESCE(VALUES(cert_no), cert_no),
+                inspection_date=COALESCE(VALUES(inspection_date), inspection_date),
+                valid_from=COALESCE(VALUES(valid_from), valid_from),
+                valid_until=COALESCE(VALUES(valid_until), valid_until),
+                report_url=COALESCE(VALUES(report_url), report_url),
+                first_registration=COALESCE(VALUES(first_registration), first_registration),
+                inspection_mileage=COALESCE(VALUES(inspection_mileage), inspection_mileage),
+                insurance_fee=COALESCE(VALUES(insurance_fee), insurance_fee),
+                has_accident=COALESCE(VALUES(has_accident), has_accident),
+                has_outer_damage=COALESCE(VALUES(has_outer_damage), has_outer_damage),
+                has_flood=COALESCE(VALUES(has_flood), has_flood),
+                has_fire=COALESCE(VALUES(has_fire), has_fire),
+                has_tuning=COALESCE(VALUES(has_tuning), has_tuning),
+                accident_detail=COALESCE(VALUES(accident_detail), accident_detail),
+                outer_detail=COALESCE(VALUES(outer_detail), outer_detail),
+                details=VALUES(details),
+                updated_at=%(now)s
+        """
+        row["now"] = now
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(sql, row)
+            conn.commit()
+            logger.debug(f"[DB] Upserted inspection for {record.lot_id}")
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"[DB] upsert_inspection FAILED for {record.lot_id}: {type(e).__name__}: {e}")
+            raise
 
     def close(self):
         if self._conn and self._conn.open:
