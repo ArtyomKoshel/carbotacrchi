@@ -1,18 +1,13 @@
+import json
 import logging
 import re
 import time as _time
 
 import httpx
+from bs4 import BeautifulSoup
 
 from config import Config
-from normalizer import (
-    BODY_TYPE_MAP,
-    DRIVE_MAP,
-    FUEL_MAP,
-    TRANSMISSION_MAP,
-    krw_to_usd,
-    map_value,
-)
+from normalizer import FUEL_MAP, TRANSMISSION_MAP, krw_to_usd, map_value
 from .base import AbstractParser
 
 logger = logging.getLogger(__name__)
@@ -21,30 +16,42 @@ BASE_URL = "https://www.kbchachacha.com"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
+    "Accept": "text/html, */*; q=0.01",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     "Referer": f"{BASE_URL}/public/search/main.kbc",
-    "Origin": BASE_URL,
+    "X-Requested-With": "XMLHttpRequest",
 }
 
-POPULAR_MAKERS = [
-    "015",  # Hyundai
-    "016",  # Kia
-    "017",  # Genesis
-    "018",  # Renault Korea (Samsung)
-    "019",  # SsangYong/KG Mobility
-    "044",  # BMW
-    "045",  # Mercedes-Benz
-    "046",  # Audi
-    "048",  # Volkswagen
-    "050",  # Volvo
-    "053",  # Toyota
-    "054",  # Honda
-    "055",  # Nissan
-    "058",  # Tesla
-    "060",  # Porsche
-    "047",  # Land Rover
-]
+MAKER_CODES = {
+    "101": "Hyundai",
+    "102": "Kia",
+    "189": "Genesis",
+    "103": "Renault Korea",
+    "104": "SsangYong",
+    "105": "Chevrolet",
+    "107": "BMW",
+    "108": "Mercedes-Benz",
+    "109": "Audi",
+    "112": "Volkswagen",
+    "114": "Volvo",
+    "116": "Land Rover",
+    "117": "Porsche",
+    "124": "Toyota",
+    "125": "Honda",
+    "128": "Nissan",
+    "133": "Lexus",
+    "143": "Tesla",
+    "136": "Lincoln",
+    "111": "Jaguar",
+    "120": "Maserati",
+    "115": "Jeep",
+    "130": "Dodge",
+    "110": "Ford",
+    "113": "Peugeot",
+    "126": "Mazda",
+    "127": "Mitsubishi",
+    "106": "Daewoo",
+}
 
 
 class KBChaParser(AbstractParser):
@@ -58,10 +65,7 @@ class KBChaParser(AbstractParser):
             follow_redirects=True,
             transport=transport,
         )
-        self._makers: dict[str, str] = {}
-        self._current_maker_code: str = ""
-        self._page_size = 20
-        self._stats = {"new": 0, "updated": 0, "skipped": 0, "errors": 0}
+        self._stats = {"parsed": 0, "skipped": 0, "errors": 0}
 
     def get_source_key(self) -> str:
         return "kbcha"
@@ -75,333 +79,251 @@ class KBChaParser(AbstractParser):
     def get_request_delay(self) -> float:
         return max(Config.REQUEST_DELAY, 2.0)
 
-    def fetch_makers(self) -> dict[str, str]:
-        """Fetch maker code -> name mapping."""
-        if self._makers:
-            return self._makers
-
-        logger.info("[kbcha] Fetching maker list from API...")
-        try:
-            t0 = _time.monotonic()
-            resp = self.client.get(f"{BASE_URL}/public/search/carMaker.json")
-            elapsed = _time.monotonic() - t0
-            resp.raise_for_status()
-            data = resp.json()
-
-            logger.debug(f"[kbcha] carMaker.json response type: {type(data).__name__}, "
-                         f"keys: {list(data.keys())[:10] if isinstance(data, dict) else f'list[{len(data)}]' if isinstance(data, list) else '?'}")
-
-            import json as _json
-            logger.debug(f"[kbcha] carMaker raw (first 2000 chars): {_json.dumps(data, ensure_ascii=False, default=str)[:2000]}")
-
-            maker_list = self._find_maker_list(data)
-
-            for group in maker_list:
-                if isinstance(group, dict):
-                    code = str(group.get("makerCode", group.get("code", group.get("makerCd", ""))))
-                    name = group.get("makerName", group.get("name", group.get("makerNm", "")))
-                    if code and name:
-                        self._makers[code] = name
-
-            if maker_list and not self._makers:
-                sample = maker_list[0] if maker_list else {}
-                logger.warning(f"[kbcha] Makers parsed 0 from {len(maker_list)} items. Sample keys: {list(sample.keys())[:10]}")
-
-            logger.info(f"[kbcha] Loaded {len(self._makers)} makers in {elapsed:.1f}s")
-            logger.debug(f"[kbcha] Makers: {self._makers}")
-        except Exception as e:
-            logger.warning(f"[kbcha] Failed to fetch makers ({type(e).__name__}: {e}), using defaults")
-            self._makers = {c: c for c in POPULAR_MAKERS}
-
-        return self._makers
-
     def fetch_listings(self, page: int) -> list[dict]:
-        """Fetch one page of listings. Iterates through popular makers."""
-        maker_idx = (page - 1) // 5
-        maker_page = (page - 1) % 5 + 1
-
-        makers = list(POPULAR_MAKERS)
-        if maker_idx >= len(makers):
-            return []
-
-        maker_code = makers[maker_idx]
-        return self._fetch_maker_page(maker_code, maker_page)
-
-    def _fetch_maker_page(self, maker_code: str, page: int) -> list[dict]:
-        maker_name = self._makers.get(maker_code, maker_code)
-        url = f"{BASE_URL}/public/main/car/recommend/car/model/search/list/v3.json"
-
-        logger.debug(f"[kbcha] POST {url} makerCode={maker_code} page={page}")
-
-        try:
-            t0 = _time.monotonic()
-            resp = self.client.post(
-                url,
-                data={
-                    "makerCode": maker_code,
-                    "page": page,
-                    "pageSize": self._page_size,
-                    "sort": "ModifiedDate",
-                    "order": "desc",
-                    "countryOrder": "0",
-                },
-            )
-            elapsed = _time.monotonic() - t0
-
-            logger.debug(f"[kbcha] Response: HTTP {resp.status_code} in {elapsed:.2f}s, {len(resp.content)} bytes")
-
-            resp.raise_for_status()
-            data = resp.json()
-
-            logger.debug(f"[kbcha] Response keys: {list(data.keys()) if isinstance(data, dict) else type(data).__name__}")
-
-            if isinstance(data, dict) and "list" in data and isinstance(data["list"], list) and data["list"]:
-                import json as _json
-                first_item = data["list"][0]
-                dump = _json.dumps(first_item, ensure_ascii=False, default=str)[:1000]
-                logger.debug(f"[kbcha] list[0] FULL DUMP: {dump}")
-
-            results = self._extract_listings(data)
-            if results:
-                return results
-
-            if isinstance(data, dict):
-                logger.info(f"[kbcha] No listings found for {maker_name} page {page}. "
-                            f"Top keys: {list(data.keys())[:10]}. "
-                            f"Sample values: {{{', '.join(f'{k}: {type(v).__name__}' for k, v in list(data.items())[:5])}}}")
-            return []
-        except httpx.HTTPStatusError as e:
-            status = e.response.status_code
-            body_preview = e.response.text[:200] if e.response.text else ""
-            if status == 404:
-                logger.debug(f"[kbcha] 404 for {maker_name} page {page} — no more results")
-                return []
-            logger.error(f"[kbcha] HTTP {status} for {maker_name} ({maker_code}) page {page}. Body: {body_preview}")
-            self._stats["errors"] += 1
-            return []
-        except httpx.TimeoutException:
-            logger.error(f"[kbcha] Timeout for {maker_name} ({maker_code}) page {page} (>{self.client.timeout}s)")
-            self._stats["errors"] += 1
-            return []
-        except Exception as e:
-            logger.error(f"[kbcha] Fetch error {maker_name} ({maker_code}) page {page}: {type(e).__name__}: {e}")
-            self._stats["errors"] += 1
-            return []
-
-    def _find_maker_list(self, data) -> list[dict]:
-        """Recursively find maker list in response."""
-        if isinstance(data, list):
-            return data
-        if not isinstance(data, dict):
-            return []
-        for key in ("makerList", "data", "list", "makers", "result", "params"):
-            val = data.get(key)
-            if isinstance(val, list) and val and isinstance(val[0], dict):
-                return val
-            if isinstance(val, dict):
-                nested = self._find_maker_list(val)
-                if nested:
-                    return nested
-        return []
-
-    def _extract_listings(self, data) -> list[dict]:
-        """Try multiple paths to find car listings in the response."""
-        if isinstance(data, list):
-            if data and isinstance(data[0], dict) and any(k in data[0] for k in ("carSeq", "carId", "carNo", "makerName")):
-                return data
-            return []
-
-        if not isinstance(data, dict):
-            return []
-
-        for key in ("searchList", "data", "list", "carList", "resultList", "items", "cars", "result", "records"):
-            val = data.get(key)
-            if isinstance(val, list) and val:
-                sample = val[0] if isinstance(val[0], dict) else {}
-                sample_keys = list(sample.keys())[:15]
-                logger.debug(f"[kbcha] Key '{key}' is list[{len(val)}], first item keys: {sample_keys}")
-
-                if isinstance(val[0], dict) and any(k in val[0] for k in ("carSeq", "carId", "carNo", "makerName", "price", "modelName", "carNm", "yearModel")):
-                    logger.debug(f"[kbcha] Found car listings under key '{key}': {len(val)} items")
-                    return val
-
-                for item in val:
-                    if isinstance(item, dict):
-                        for subkey, subval in item.items():
-                            if isinstance(subval, list) and subval and isinstance(subval[0], dict):
-                                sub_keys = list(subval[0].keys())[:15]
-                                if any(k in subval[0] for k in ("carSeq", "carId", "carNo", "makerName", "price", "modelName", "carNm", "yearModel")):
-                                    logger.debug(f"[kbcha] Found car listings under '{key}[].{subkey}': {len(subval)} items, keys: {sub_keys}")
-                                    return subval
-                                logger.debug(f"[kbcha] Nested list '{key}[].{subkey}': {len(subval)} items, keys: {sub_keys}")
-
-        for key, val in data.items():
-            if isinstance(val, dict):
-                nested = self._extract_listings(val)
-                if nested:
-                    logger.debug(f"[kbcha] Found listings nested under '{key}'")
-                    return nested
-
+        """Not used — run() overrides the flow."""
         return []
 
     def normalize(self, raw: dict) -> dict | None:
-        car_id = raw.get("carSeq") or raw.get("carId") or raw.get("id")
-        if not car_id:
-            logger.debug(f"[kbcha] Skipping lot without ID: keys={list(raw.keys())[:5]}")
-            self._stats["skipped"] += 1
-            return None
+        """Not used — parsing done in _parse_car_element."""
+        return raw
 
-        car_id = str(car_id)
-        make = raw.get("makerName", raw.get("maker", ""))
-        model = raw.get("modelName", raw.get("model", ""))
-        if not make:
-            logger.debug(f"[kbcha] Skipping lot {car_id}: no make")
-            self._stats["skipped"] += 1
-            return None
+    def _fetch_page(self, maker_code: str, page: int) -> str:
+        """Fetch one page of HTML from list.empty endpoint."""
+        url = f"{BASE_URL}/public/search/list.empty"
+        params = {"makerCode": maker_code, "page": str(page)}
 
-        year = self._extract_year(raw)
-        price_man = raw.get("price", raw.get("salePrice", 0))
-        price_krw = int(float(price_man) * 10000) if price_man else 0
-        price_usd = krw_to_usd(float(price_man), Config.USD_KRW_RATE) if price_man else 0
+        t0 = _time.monotonic()
+        resp = self.client.get(url, params=params)
+        elapsed = _time.monotonic() - t0
 
-        mileage = raw.get("mileage", raw.get("mile", raw.get("distance", 0)))
-        if isinstance(mileage, str):
-            mileage = int(re.sub(r"[^\d]", "", mileage) or 0)
+        resp.raise_for_status()
+        logger.debug(f"[kbcha] GET list.empty makerCode={maker_code} page={page} -> "
+                      f"{resp.status_code} in {elapsed:.2f}s, {len(resp.content)} bytes")
+        return resp.text
 
-        fuel_raw = raw.get("fuelName", raw.get("fuelType", raw.get("fuel", "")))
-        trans_raw = raw.get("missionName", raw.get("transmission", ""))
-        color = raw.get("colorName", raw.get("color", ""))
+    def _parse_page(self, html: str, maker_code: str) -> list[dict]:
+        """Parse HTML page and extract car listings."""
+        soup = BeautifulSoup(html, "lxml")
+        cars = []
 
-        photo = raw.get("photoUrl", raw.get("photo", raw.get("imgUrl", "")))
-        if photo and not photo.startswith("http"):
-            photo = f"https://ci.kbchachacha.com{photo}" if photo.startswith("/") else f"https://ci.kbchachacha.com/{photo}"
-
-        engine_cc = raw.get("engineVolume", raw.get("displacement", raw.get("engineCC")))
-        engine_vol = None
-        if engine_cc:
+        for area in soup.select("div.area[data-car-seq]"):
             try:
-                cc = float(re.sub(r"[^\d.]", "", str(engine_cc)))
-                engine_vol = round(cc / 1000, 1) if cc > 100 else round(cc, 1)
-            except (ValueError, TypeError):
+                car = self._parse_car_element(area, maker_code)
+                if car:
+                    cars.append(car)
+                    self._stats["parsed"] += 1
+                else:
+                    self._stats["skipped"] += 1
+            except Exception as e:
+                logger.warning(f"[kbcha] Parse error: {type(e).__name__}: {e}")
+                self._stats["errors"] += 1
+
+        return cars
+
+    def _parse_car_element(self, area, maker_code: str) -> dict | None:
+        car_seq = area.get("data-car-seq", "").strip()
+        if not car_seq or car_seq == "0":
+            return None
+
+        ga4_data = {}
+        ga4_el = area.select_one("a[data-ga4]")
+        if ga4_el:
+            try:
+                ga4_data = json.loads(ga4_el.get("data-ga4", "{}")).get("params", {})
+            except (json.JSONDecodeError, AttributeError):
                 pass
 
-        location = raw.get("regionName", raw.get("location", "Korea"))
+        vehicle_info = ga4_data.get("vehicle_info", "")
+        title_el = area.select_one("strong.tit")
+        title = title_el.get_text(strip=True) if title_el else vehicle_info
+
+        if not title:
+            return None
+
+        make_name = MAKER_CODES.get(maker_code, "")
+        make, model = self._parse_make_model(title, make_name)
+
+        data_spans = area.select("div.data-line span")
+        year_month = data_spans[0].get_text(strip=True) if len(data_spans) > 0 else ""
+        mileage_str = data_spans[1].get_text(strip=True) if len(data_spans) > 1 else ""
+        location = data_spans[2].get_text(strip=True) if len(data_spans) > 2 else ""
+
+        year = self._parse_year(year_month)
+        mileage = int(re.sub(r"[^\d]", "", mileage_str) or 0)
+
+        price_el = area.select_one("span.price")
+        price_man = 0
+        if price_el:
+            price_text = price_el.get_text(strip=True)
+            price_match = re.search(r"([\d,]+)", price_text)
+            if price_match:
+                price_man = int(price_match.group(1).replace(",", ""))
+
+        price_krw = price_man * 10000
+        price_usd = krw_to_usd(float(price_man), Config.USD_KRW_RATE)
+
+        img_el = area.select_one("img[src*='kbchachacha.com']")
+        image_url = img_el.get("src", "") if img_el else ""
+        if not image_url:
+            img_el = area.select_one("img[data-src*='kbchachacha.com']")
+            image_url = img_el.get("data-src", "") if img_el else ""
+
+        tags = [t.get_text(strip=True) for t in area.select("span.tag")]
+
         if location and "Korea" not in location:
             location = f"{location}, Korea"
 
         logger.debug(
-            f"[kbcha] Normalized: kbcha_{car_id} | {make} {model} {year} | "
-            f"${price_usd} ({price_krw:,} KRW) | {mileage:,} km | "
-            f"{map_value(fuel_raw, FUEL_MAP) or '?'} | {map_value(trans_raw, TRANSMISSION_MAP) or '?'}"
+            f"[kbcha] Parsed: kbcha_{car_seq} | {make} {model} {year} | "
+            f"${price_usd} ({price_man}만원) | {mileage:,} km | {location}"
         )
 
         return {
-            "id": f"kbcha_{car_id}",
+            "id": f"kbcha_{car_seq}",
             "source": "kbcha",
-            "make": make.strip(),
-            "model": model.strip(),
+            "make": make,
+            "model": model,
             "year": year,
             "price": price_usd,
             "price_krw": price_krw,
-            "mileage": int(mileage) if mileage else 0,
-            "fuel": map_value(fuel_raw, FUEL_MAP),
-            "transmission": map_value(trans_raw, TRANSMISSION_MAP),
+            "mileage": mileage,
+            "fuel": None,
+            "transmission": None,
             "body_type": None,
             "drive_type": None,
-            "engine_volume": engine_vol,
-            "color": color.strip().capitalize() if color else None,
+            "engine_volume": None,
+            "color": None,
             "location": location,
-            "lot_url": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_id}",
-            "image_url": photo or None,
+            "lot_url": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}",
+            "image_url": image_url or None,
             "vin": None,
             "damage": None,
             "secondary_damage": None,
             "title": "Clean",
             "document": None,
-            "trim": raw.get("gradeName", raw.get("trim")),
+            "trim": None,
             "cylinders": None,
             "has_keys": None,
             "retail_value": None,
             "repair_cost": None,
-            "raw_data": raw,
+            "raw_data": {
+                "carSeq": car_seq,
+                "title": title,
+                "vehicle_info": vehicle_info,
+                "year_month": year_month,
+                "mileage_str": mileage_str,
+                "price_man": price_man,
+                "tags": tags,
+                "makerCode": maker_code,
+            },
         }
 
-    def _extract_year(self, raw: dict) -> int:
-        year_val = raw.get("year", raw.get("yearModel", raw.get("regDate", "")))
-        if isinstance(year_val, (int, float)) and year_val > 1990:
-            if year_val > 190000:
-                return int(str(int(year_val))[:4])
-            return int(year_val)
-        if isinstance(year_val, str):
-            m = re.search(r"((?:19|20)\d{2})", year_val)
-            if m:
-                return int(m.group(1))
+    def _parse_make_model(self, title: str, maker_name: str) -> tuple[str, str]:
+        korean_to_english = {
+            "현대": "Hyundai", "기아": "Kia", "제네시스": "Genesis",
+            "르노코리아": "Renault Korea", "쌍용": "SsangYong", "쉐보레": "Chevrolet",
+            "BMW": "BMW", "벤츠": "Mercedes-Benz", "아우디": "Audi",
+            "폭스바겐": "Volkswagen", "볼보": "Volvo", "랜드로버": "Land Rover",
+            "포르쉐": "Porsche", "도요타": "Toyota", "혼다": "Honda",
+            "닛산": "Nissan", "렉서스": "Lexus", "테슬라": "Tesla",
+            "링컨": "Lincoln", "재규어": "Jaguar", "마세라티": "Maserati",
+            "지프": "Jeep", "닷지": "Dodge", "포드": "Ford",
+            "푸조": "Peugeot", "마쓰다": "Mazda", "미쓰비시": "Mitsubishi",
+            "대우": "Daewoo",
+        }
+
+        parts = title.split()
+        make = maker_name
+        model_start = 0
+
+        for kr, en in korean_to_english.items():
+            if title.startswith(kr):
+                make = en
+                model_start = len(kr)
+                remaining = title[model_start:].strip()
+                parts = remaining.split()
+                break
+
+        if not parts:
+            return make, ""
+
+        model = parts[0] if parts else ""
+        if len(parts) > 1 and not re.match(r"^\d", parts[1]):
+            model = f"{parts[0]} {parts[1]}"
+
+        return make, model
+
+    def _parse_year(self, text: str) -> int:
+        m = re.search(r"(\d{2})년형", text)
+        if m:
+            y = int(m.group(1))
+            return 2000 + y if y < 90 else 1900 + y
+
+        m = re.search(r"(\d{2})/\d{2}식", text)
+        if m:
+            y = int(m.group(1))
+            return 2000 + y if y < 90 else 1900 + y
+
         return 0
 
     def run(self) -> int:
-        """Override to iterate makers properly with detailed logging."""
         source = self.get_source_key()
         run_start = _time.monotonic()
-        self._stats = {"new": 0, "updated": 0, "skipped": 0, "errors": 0}
+        self._stats = {"parsed": 0, "skipped": 0, "errors": 0}
 
         logger.info(f"[{source}] ========== IMPORT STARTED ==========")
         logger.info(f"[{source}] Config: max_pages={self.get_max_pages()}, delay={self.get_request_delay()}s, "
                      f"batch_size={Config.BATCH_SIZE}, proxy={'yes' if Config.KBCHA_PROXY else 'no'}")
+        logger.info(f"[{source}] Endpoint: list.empty (HTML parsing)")
 
         total = 0
         batch: list[dict] = []
         seen_ids: set[str] = set()
         maker_stats: dict[str, int] = {}
 
-        self.fetch_makers()
-
-        for maker_code in POPULAR_MAKERS:
-            maker_name = self._makers.get(maker_code, maker_code)
+        for maker_code, maker_name in MAKER_CODES.items():
             maker_start = _time.monotonic()
             maker_count = 0
 
             logger.info(f"[{source}] --- Maker: {maker_name} ({maker_code}) ---")
 
-            for page in range(1, 6):
+            for page in range(1, self.get_max_pages() + 1):
                 try:
-                    raw_listings = self._fetch_maker_page(maker_code, page)
+                    html = self._fetch_page(maker_code, page)
+                except httpx.HTTPStatusError as e:
+                    logger.error(f"[{source}] HTTP {e.response.status_code} for {maker_name} page {page}")
+                    break
                 except Exception as e:
-                    logger.error(f"[{source}] {maker_name} page {page} FAILED: {type(e).__name__}: {e}")
+                    logger.error(f"[{source}] Fetch error {maker_name} page {page}: {type(e).__name__}: {e}")
                     self._stats["errors"] += 1
                     break
 
-                if not raw_listings:
-                    logger.debug(f"[{source}] {maker_name} page {page}: empty — done with this maker")
+                cars = self._parse_page(html, maker_code)
+                if not cars:
+                    logger.debug(f"[{source}] {maker_name} page {page}: no cars found — done")
                     break
 
-                normalized_count = 0
-                for raw in raw_listings:
-                    try:
-                        normalized = self.normalize(raw)
-                        if normalized and normalized["id"] not in seen_ids:
-                            seen_ids.add(normalized["id"])
-                            batch.append(normalized)
-                            normalized_count += 1
-                            maker_count += 1
-                    except Exception as e:
-                        logger.warning(f"[{source}] Normalize error for raw lot: {type(e).__name__}: {e}")
-                        self._stats["skipped"] += 1
+                for car in cars:
+                    if car["id"] not in seen_ids:
+                        seen_ids.add(car["id"])
+                        batch.append(car)
+                        maker_count += 1
 
                 if len(batch) >= Config.BATCH_SIZE:
                     db_start = _time.monotonic()
                     self.db.upsert_lots(batch)
                     db_elapsed = _time.monotonic() - db_start
-                    logger.info(f"[{source}] DB batch write: {len(batch)} lots in {db_elapsed:.2f}s")
+                    logger.info(f"[{source}] DB batch: {len(batch)} lots in {db_elapsed:.2f}s")
                     total += len(batch)
                     batch = []
 
-                logger.info(f"[{source}] {maker_name} p.{page}: {len(raw_listings)} fetched, "
-                             f"{normalized_count} normalized, {len(raw_listings) - normalized_count} skipped")
+                logger.info(f"[{source}] {maker_name} p.{page}: {len(cars)} cars parsed")
                 _time.sleep(self.get_request_delay())
 
             maker_elapsed = _time.monotonic() - maker_start
             maker_stats[maker_name] = maker_count
-            logger.info(f"[{source}] {maker_name}: {maker_count} lots in {maker_elapsed:.1f}s")
+            if maker_count > 0:
+                logger.info(f"[{source}] {maker_name}: {maker_count} lots in {maker_elapsed:.1f}s")
 
         if batch:
             db_start = _time.monotonic()
@@ -420,11 +342,13 @@ class KBChaParser(AbstractParser):
         logger.info(f"[{source}] Total lots:     {total}")
         logger.info(f"[{source}] Unique IDs:     {len(seen_ids)}")
         logger.info(f"[{source}] Marked stale:   {stale} (in {stale_elapsed:.2f}s)")
+        logger.info(f"[{source}] Parsed:         {self._stats['parsed']}")
         logger.info(f"[{source}] Skipped:        {self._stats['skipped']}")
         logger.info(f"[{source}] Errors:         {self._stats['errors']}")
         logger.info(f"[{source}] Total time:     {run_elapsed:.1f}s ({run_elapsed/60:.1f} min)")
         logger.info(f"[{source}] Per-maker breakdown:")
         for name, count in sorted(maker_stats.items(), key=lambda x: -x[1]):
-            logger.info(f"[{source}]   {name}: {count} lots")
+            if count > 0:
+                logger.info(f"[{source}]   {name}: {count} lots")
 
         return total
