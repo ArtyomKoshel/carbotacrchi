@@ -1,5 +1,6 @@
 import json
 import logging
+import time as _time
 from datetime import datetime
 
 import pymysql
@@ -13,9 +14,13 @@ logger = logging.getLogger(__name__)
 class DBWriter:
     def __init__(self):
         self._conn: pymysql.Connection | None = None
+        self._total_upserted = 0
+        self._total_db_time = 0.0
 
     def _get_conn(self) -> pymysql.Connection:
         if self._conn is None or not self._conn.open:
+            logger.info(f"[DB] Connecting to {Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}")
+            t0 = _time.monotonic()
             self._conn = pymysql.connect(
                 host=Config.DB_HOST,
                 port=Config.DB_PORT,
@@ -26,6 +31,8 @@ class DBWriter:
                 cursorclass=DictCursor,
                 autocommit=False,
             )
+            elapsed = _time.monotonic() - t0
+            logger.info(f"[DB] Connected in {elapsed:.2f}s")
         return self._conn
 
     def upsert_lots(self, lots: list[dict]) -> int:
@@ -109,14 +116,25 @@ class DBWriter:
             })
 
         try:
+            t0 = _time.monotonic()
             with conn.cursor() as cursor:
                 cursor.executemany(sql, rows)
             conn.commit()
-            logger.debug(f"Upserted {len(rows)} lots")
+            elapsed = _time.monotonic() - t0
+            self._total_upserted += len(rows)
+            self._total_db_time += elapsed
+
+            sources = {}
+            for r in rows:
+                m = r.get("make", "?")
+                sources[m] = sources.get(m, 0) + 1
+            breakdown = ", ".join(f"{k}:{v}" for k, v in sorted(sources.items(), key=lambda x: -x[1])[:5])
+
+            logger.info(f"[DB] Upserted {len(rows)} lots in {elapsed:.2f}s ({breakdown})")
             return len(rows)
         except Exception as e:
             conn.rollback()
-            logger.error(f"DB upsert error: {e}")
+            logger.error(f"[DB] Upsert FAILED for {len(rows)} lots: {type(e).__name__}: {e}")
             raise
 
     def mark_stale(self, source: str, active_ids: set[str]) -> int:
@@ -131,18 +149,31 @@ class DBWriter:
             WHERE source = %s AND is_active = 1 AND id NOT IN ({placeholders})
         """
         try:
+            t0 = _time.monotonic()
             with conn.cursor() as cursor:
                 cursor.execute(sql, [source] + list(active_ids))
             conn.commit()
             affected = cursor.rowcount
-            logger.debug(f"Marked {affected} lots as stale for {source}")
+            elapsed = _time.monotonic() - t0
+            logger.info(f"[DB] Marked {affected} lots as stale for '{source}' in {elapsed:.2f}s "
+                         f"(checked against {len(active_ids)} active IDs)")
             return affected
         except Exception as e:
             conn.rollback()
-            logger.error(f"DB mark_stale error: {e}")
+            logger.error(f"[DB] mark_stale FAILED for '{source}': {type(e).__name__}: {e}")
             return 0
 
+    def get_stats(self) -> dict:
+        return {
+            "total_upserted": self._total_upserted,
+            "total_db_time": round(self._total_db_time, 2),
+        }
+
     def close(self):
+        stats = self.get_stats()
+        logger.info(f"[DB] Session stats: {stats['total_upserted']} lots upserted, "
+                     f"{stats['total_db_time']}s total DB time")
         if self._conn and self._conn.open:
             self._conn.close()
             self._conn = None
+            logger.debug("[DB] Connection closed")

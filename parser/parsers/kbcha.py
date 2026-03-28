@@ -1,5 +1,6 @@
 import logging
 import re
+import time as _time
 
 import httpx
 
@@ -60,6 +61,7 @@ class KBChaParser(AbstractParser):
         self._makers: dict[str, str] = {}
         self._current_maker_code: str = ""
         self._page_size = 20
+        self._stats = {"new": 0, "updated": 0, "skipped": 0, "errors": 0}
 
     def get_source_key(self) -> str:
         return "kbcha"
@@ -78,8 +80,11 @@ class KBChaParser(AbstractParser):
         if self._makers:
             return self._makers
 
+        logger.info("[kbcha] Fetching maker list from API...")
         try:
+            t0 = _time.monotonic()
             resp = self.client.get(f"{BASE_URL}/public/search/carMaker.json")
+            elapsed = _time.monotonic() - t0
             resp.raise_for_status()
             data = resp.json()
 
@@ -89,8 +94,11 @@ class KBChaParser(AbstractParser):
                     name = group.get("makerName", group.get("name", ""))
                     if code and name:
                         self._makers[code] = name
+
+            logger.info(f"[kbcha] Loaded {len(self._makers)} makers in {elapsed:.1f}s")
+            logger.debug(f"[kbcha] Makers: {self._makers}")
         except Exception as e:
-            logger.warning(f"[kbcha] Failed to fetch makers: {e}, using defaults")
+            logger.warning(f"[kbcha] Failed to fetch makers ({type(e).__name__}: {e}), using defaults")
             self._makers = {c: c for c in POPULAR_MAKERS}
 
         return self._makers
@@ -108,9 +116,15 @@ class KBChaParser(AbstractParser):
         return self._fetch_maker_page(maker_code, maker_page)
 
     def _fetch_maker_page(self, maker_code: str, page: int) -> list[dict]:
+        maker_name = self._makers.get(maker_code, maker_code)
+        url = f"{BASE_URL}/public/main/car/recommend/car/model/search/list/v3.json"
+
+        logger.debug(f"[kbcha] POST {url} makerCode={maker_code} page={page}")
+
         try:
+            t0 = _time.monotonic()
             resp = self.client.post(
-                f"{BASE_URL}/public/main/car/recommend/car/model/search/list/v3.json",
+                url,
                 data={
                     "makerCode": maker_code,
                     "page": page,
@@ -120,31 +134,50 @@ class KBChaParser(AbstractParser):
                     "countryOrder": "0",
                 },
             )
+            elapsed = _time.monotonic() - t0
+
+            logger.debug(f"[kbcha] Response: HTTP {resp.status_code} in {elapsed:.2f}s, {len(resp.content)} bytes")
+
             resp.raise_for_status()
             data = resp.json()
 
             results = data.get("searchList", data.get("data", data.get("list", [])))
             if isinstance(results, list):
                 return results
+
+            logger.warning(f"[kbcha] Unexpected response structure for {maker_name} page {page}: keys={list(data.keys())}")
             return []
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+            status = e.response.status_code
+            body_preview = e.response.text[:200] if e.response.text else ""
+            if status == 404:
+                logger.debug(f"[kbcha] 404 for {maker_name} page {page} — no more results")
                 return []
-            logger.error(f"[kbcha] HTTP {e.response.status_code} for maker {maker_code} page {page}")
+            logger.error(f"[kbcha] HTTP {status} for {maker_name} ({maker_code}) page {page}. Body: {body_preview}")
+            self._stats["errors"] += 1
+            return []
+        except httpx.TimeoutException:
+            logger.error(f"[kbcha] Timeout for {maker_name} ({maker_code}) page {page} (>{self.client.timeout}s)")
+            self._stats["errors"] += 1
             return []
         except Exception as e:
-            logger.error(f"[kbcha] Fetch error maker={maker_code} page={page}: {e}")
+            logger.error(f"[kbcha] Fetch error {maker_name} ({maker_code}) page {page}: {type(e).__name__}: {e}")
+            self._stats["errors"] += 1
             return []
 
     def normalize(self, raw: dict) -> dict | None:
         car_id = raw.get("carSeq") or raw.get("carId") or raw.get("id")
         if not car_id:
+            logger.debug(f"[kbcha] Skipping lot without ID: keys={list(raw.keys())[:5]}")
+            self._stats["skipped"] += 1
             return None
 
         car_id = str(car_id)
         make = raw.get("makerName", raw.get("maker", ""))
         model = raw.get("modelName", raw.get("model", ""))
         if not make:
+            logger.debug(f"[kbcha] Skipping lot {car_id}: no make")
+            self._stats["skipped"] += 1
             return None
 
         year = self._extract_year(raw)
@@ -176,6 +209,12 @@ class KBChaParser(AbstractParser):
         location = raw.get("regionName", raw.get("location", "Korea"))
         if location and "Korea" not in location:
             location = f"{location}, Korea"
+
+        logger.debug(
+            f"[kbcha] Normalized: kbcha_{car_id} | {make} {model} {year} | "
+            f"${price_usd} ({price_krw:,} KRW) | {mileage:,} km | "
+            f"{map_value(fuel_raw, FUEL_MAP) or '?'} | {map_value(trans_raw, TRANSMISSION_MAP) or '?'}"
+        )
 
         return {
             "id": f"kbcha_{car_id}",
@@ -221,52 +260,92 @@ class KBChaParser(AbstractParser):
         return 0
 
     def run(self) -> int:
-        """Override to iterate makers properly."""
+        """Override to iterate makers properly with detailed logging."""
         source = self.get_source_key()
-        logger.info(f"[{source}] Starting import...")
+        run_start = _time.monotonic()
+        self._stats = {"new": 0, "updated": 0, "skipped": 0, "errors": 0}
+
+        logger.info(f"[{source}] ========== IMPORT STARTED ==========")
+        logger.info(f"[{source}] Config: max_pages={self.get_max_pages()}, delay={self.get_request_delay()}s, "
+                     f"batch_size={Config.BATCH_SIZE}, proxy={'yes' if Config.KBCHA_PROXY else 'no'}")
 
         total = 0
         batch: list[dict] = []
         seen_ids: set[str] = set()
+        maker_stats: dict[str, int] = {}
 
         self.fetch_makers()
 
-        import time
         for maker_code in POPULAR_MAKERS:
             maker_name = self._makers.get(maker_code, maker_code)
-            logger.info(f"[{source}] Fetching maker: {maker_name} ({maker_code})")
+            maker_start = _time.monotonic()
+            maker_count = 0
+
+            logger.info(f"[{source}] --- Maker: {maker_name} ({maker_code}) ---")
 
             for page in range(1, 6):
                 try:
                     raw_listings = self._fetch_maker_page(maker_code, page)
                 except Exception as e:
-                    logger.error(f"[{source}] Maker {maker_code} page {page} error: {e}")
+                    logger.error(f"[{source}] {maker_name} page {page} FAILED: {type(e).__name__}: {e}")
+                    self._stats["errors"] += 1
                     break
 
                 if not raw_listings:
+                    logger.debug(f"[{source}] {maker_name} page {page}: empty — done with this maker")
                     break
 
+                normalized_count = 0
                 for raw in raw_listings:
                     try:
                         normalized = self.normalize(raw)
                         if normalized and normalized["id"] not in seen_ids:
                             seen_ids.add(normalized["id"])
                             batch.append(normalized)
+                            normalized_count += 1
+                            maker_count += 1
                     except Exception as e:
-                        logger.warning(f"[{source}] Normalize error: {e}")
+                        logger.warning(f"[{source}] Normalize error for raw lot: {type(e).__name__}: {e}")
+                        self._stats["skipped"] += 1
 
                 if len(batch) >= Config.BATCH_SIZE:
+                    db_start = _time.monotonic()
                     self.db.upsert_lots(batch)
+                    db_elapsed = _time.monotonic() - db_start
+                    logger.info(f"[{source}] DB batch write: {len(batch)} lots in {db_elapsed:.2f}s")
                     total += len(batch)
                     batch = []
 
-                logger.info(f"[{source}] {maker_name} page {page}: {len(raw_listings)} listings")
-                time.sleep(self.get_request_delay())
+                logger.info(f"[{source}] {maker_name} p.{page}: {len(raw_listings)} fetched, "
+                             f"{normalized_count} normalized, {len(raw_listings) - normalized_count} skipped")
+                _time.sleep(self.get_request_delay())
+
+            maker_elapsed = _time.monotonic() - maker_start
+            maker_stats[maker_name] = maker_count
+            logger.info(f"[{source}] {maker_name}: {maker_count} lots in {maker_elapsed:.1f}s")
 
         if batch:
+            db_start = _time.monotonic()
             self.db.upsert_lots(batch)
+            db_elapsed = _time.monotonic() - db_start
+            logger.info(f"[{source}] DB final batch: {len(batch)} lots in {db_elapsed:.2f}s")
             total += len(batch)
 
+        stale_start = _time.monotonic()
         stale = self.db.mark_stale(source, seen_ids)
-        logger.info(f"[{source}] Import complete: {total} lots, {stale} marked stale")
+        stale_elapsed = _time.monotonic() - stale_start
+
+        run_elapsed = _time.monotonic() - run_start
+
+        logger.info(f"[{source}] ========== IMPORT COMPLETE ==========")
+        logger.info(f"[{source}] Total lots:     {total}")
+        logger.info(f"[{source}] Unique IDs:     {len(seen_ids)}")
+        logger.info(f"[{source}] Marked stale:   {stale} (in {stale_elapsed:.2f}s)")
+        logger.info(f"[{source}] Skipped:        {self._stats['skipped']}")
+        logger.info(f"[{source}] Errors:         {self._stats['errors']}")
+        logger.info(f"[{source}] Total time:     {run_elapsed:.1f}s ({run_elapsed/60:.1f} min)")
+        logger.info(f"[{source}] Per-maker breakdown:")
+        for name, count in sorted(maker_stats.items(), key=lambda x: -x[1]):
+            logger.info(f"[{source}]   {name}: {count} lots")
+
         return total
