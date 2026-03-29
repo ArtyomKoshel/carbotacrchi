@@ -49,9 +49,14 @@ until nc -z "${DB_HOST:-mysql}" "${DB_PORT:-3306}" 2>/dev/null; do
 done
 echo "[entrypoint] MySQL is ready."
 
-# ── 6. Run migrations ────────────────────────────────────────────────────────
-echo "[entrypoint] Running migrations..."
-php "$APP_DIR/artisan" migrate --force --no-interaction
+# ── 6. Run migrations (set RUN_MIGRATIONS=false to skip) ─────────────────────
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+    echo "[entrypoint] Running migrations..."
+    php "$APP_DIR/artisan" migrate --force --no-interaction || \
+        echo "[entrypoint] WARNING: migrate failed, continuing anyway"
+else
+    echo "[entrypoint] Skipping migrations (RUN_MIGRATIONS=false)"
+fi
 
 # ── 7. Clear config cache ─────────────────────────────────────────────────────
 php "$APP_DIR/artisan" config:clear 2>/dev/null || true

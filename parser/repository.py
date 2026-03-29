@@ -253,6 +253,79 @@ class LotRepository:
             logger.error(f"[DB] upsert_inspection FAILED for {record.lot_id}: {type(e).__name__}: {e}")
             raise
 
+    def get_lots_by_source(self, source: str, limit: int | None = None) -> list[CarLot]:
+        conn = self._get_conn()
+        sql = "SELECT * FROM lots WHERE source = %s AND is_active = 1 ORDER BY updated_at ASC"
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(sql, (source,))
+                rows = cursor.fetchall()
+            lots = []
+            for row in rows:
+                try:
+                    raw = json.loads(row["raw_data"]) if row["raw_data"] else {}
+                    opts = json.loads(row["options"]) if row.get("options") else None
+                    paid = json.loads(row["paid_options"]) if row.get("paid_options") else None
+                    lot = CarLot(
+                        id=row["id"], source=row["source"],
+                        make=row["make"] or "", model=row["model"] or "",
+                        year=row["year"] or 0, price=row["price"] or 0,
+                        price_krw=row.get("price_krw") or 0,
+                        mileage=row["mileage"] or 0,
+                        location=row.get("location"),
+                        lot_url=row.get("lot_url") or "",
+                        image_url=row.get("image_url"),
+                        options=opts, paid_options=paid,
+                        raw_data=raw,
+                        vin=row.get("vin"),
+                        fuel=row.get("fuel"),
+                        body_type=row.get("body_type"),
+                        transmission=row.get("transmission"),
+                        color=row.get("color"),
+                        seat_color=row.get("seat_color"),
+                        trim=row.get("trim"),
+                        engine_volume=row.get("engine_volume"),
+                        fuel_economy=row.get("fuel_economy"),
+                        cylinders=row.get("cylinders"),
+                        drive_type=row.get("drive_type"),
+                        plate_number=row.get("plate_number"),
+                        registration_date=row.get("registration_date"),
+                        lien_status=row.get("lien_status"),
+                        seizure_status=row.get("seizure_status"),
+                        has_accident=row.get("has_accident"),
+                        flood_history=row.get("flood_history"),
+                        total_loss_history=row.get("total_loss_history"),
+                        owners_count=row.get("owners_count"),
+                        insurance_count=row.get("insurance_count"),
+                        mileage_grade=row.get("mileage_grade"),
+                        tax_paid=row.get("tax_paid"),
+                        damage=row.get("damage"),
+                        secondary_damage=row.get("secondary_damage"),
+                        title=row.get("title") or "Clean",
+                        has_keys=row.get("has_keys"),
+                        retail_value=row.get("retail_value"),
+                        repair_cost=row.get("repair_cost"),
+                        warranty_text=row.get("warranty_text"),
+                        dealer_name=row.get("dealer_name"),
+                        dealer_company=row.get("dealer_company"),
+                        dealer_location=row.get("dealer_location"),
+                        dealer_phone=row.get("dealer_phone"),
+                        dealer_description=row.get("dealer_description"),
+                        new_car_price_ratio=row.get("new_car_price_ratio"),
+                        ai_price_min=row.get("ai_price_min"),
+                        ai_price_max=row.get("ai_price_max"),
+                    )
+                    lots.append(lot)
+                except Exception as e:
+                    logger.warning(f"[DB] Skipping lot {row.get('id')}: {e}")
+            logger.info(f"[DB] Loaded {len(lots)} lots for source='{source}'")
+            return lots
+        except Exception as e:
+            logger.error(f"[DB] get_lots_by_source failed: {e}")
+            return []
+
     def close(self):
         if self._conn and self._conn.open:
             self._conn.close()

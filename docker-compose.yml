@@ -69,6 +69,8 @@ services:
   parser:
     build: ./parser
     container_name: carbot_parser
+    volumes:
+      - ./parser:/app
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -79,8 +81,10 @@ services:
       KBCHA_INTERVAL_MINUTES: ${KBCHA_INTERVAL_MINUTES:-60}
       KBCHA_MAX_PAGES: ${KBCHA_MAX_PAGES:-1}
       KBCHA_PROXY: ${KBCHA_PROXY:-}
+      KBCHA_PROXY_LIST: ${KBCHA_PROXY_LIST:-}
       USD_KRW_RATE: ${USD_KRW_RATE:-1350}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    command: sleep infinity
     depends_on:
       mysql:
         condition: service_healthy

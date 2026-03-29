@@ -23,14 +23,59 @@ HEADERS = {
 
 class KBChaClient:
     def __init__(self):
-        proxy = Config.KBCHA_PROXY or None
+        # Build proxy list: KBCHA_PROXY_LIST takes precedence over single KBCHA_PROXY
+        proxy_list = Config.KBCHA_PROXY_LIST or ([Config.KBCHA_PROXY] if Config.KBCHA_PROXY else [])
+        self._proxies: list[str | None] = proxy_list if proxy_list else [None]
+        self._proxy_idx: int = 0
+        self._last_list_url: str = f"{BASE_URL}/public/search/main.kbc"
+        self._client = self._build_client(self._proxies[0])
+
+    def _build_client(self, proxy: str | None) -> httpx.Client:
         transport = httpx.HTTPTransport(proxy=proxy) if proxy else None
-        self._client = httpx.Client(
+        return httpx.Client(
             headers=HEADERS,
             timeout=30.0,
             follow_redirects=True,
             transport=transport,
         )
+
+    def rotate_proxy(self) -> bool:
+        """Switch to the next proxy in the list and reset the session. Returns True if rotated."""
+        if len(self._proxies) <= 1:
+            return False
+        old_idx = self._proxy_idx
+        self._proxy_idx = (self._proxy_idx + 1) % len(self._proxies)
+        self._client.close()
+        self._client = self._build_client(self._proxies[self._proxy_idx])
+        logger.info(f"[kbcha:proxy] Rotated proxy {old_idx} -> {self._proxy_idx} "
+                    f"({self._proxies[self._proxy_idx]})")
+        return True
+
+    def warmup(self) -> None:
+        """Visit homepage + search page to establish a proper browser session before detail fetches."""
+        try:
+            resp = self._client.get(
+                f"{BASE_URL}/",
+                headers={
+                    "User-Agent": HEADERS["User-Agent"],
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": HEADERS["Accept-Language"],
+                },
+            )
+            logger.debug(f"[kbcha:warmup] homepage -> {resp.status_code} ({len(resp.content)} bytes)")
+            _time.sleep(1.0)
+            resp = self._client.get(
+                f"{BASE_URL}/public/search/main.kbc",
+                headers={
+                    "User-Agent": HEADERS["User-Agent"],
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": HEADERS["Accept-Language"],
+                    "Referer": f"{BASE_URL}/",
+                },
+            )
+            logger.debug(f"[kbcha:warmup] search/main.kbc -> {resp.status_code} ({len(resp.content)} bytes)")
+        except Exception as e:
+            logger.warning(f"[kbcha:warmup] failed: {e}")
 
     def fetch_list_page(self, maker_code: str, page: int) -> str:
         url = f"{BASE_URL}/public/search/list.empty"
@@ -41,6 +86,8 @@ class KBChaClient:
         elapsed = _time.monotonic() - t0
 
         resp.raise_for_status()
+        # Store the effective URL so detail page can use it as Referer
+        self._last_list_url = str(resp.url)
         logger.debug(f"[kbcha:http] list.empty maker={maker_code} p={page} "
                       f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
@@ -48,9 +95,14 @@ class KBChaClient:
     def fetch_detail_page(self, car_seq: str) -> str:
         url = f"{BASE_URL}/public/car/detail.kbc"
         params = {"carSeq": car_seq}
-
+        headers = {
+            "User-Agent": HEADERS["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": HEADERS["Accept-Language"],
+            "Referer": self._last_list_url,
+        }
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params)
+        resp = self._client.get(url, params=params, headers=headers)
         elapsed = _time.monotonic() - t0
 
         resp.raise_for_status()
@@ -73,6 +125,53 @@ class KBChaClient:
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] carmodoo checkNum={check_num} "
                       f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
+        return resp.text
+
+    def fetch_km_analysis(self, car_seq: str) -> str:
+        url = f"{BASE_URL}/public/layer/car/km/analysis/info.kbc"
+        params = {"carSeq": car_seq}
+        headers = {"Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}"}
+        t0 = _time.monotonic()
+        resp = self._client.get(url, params=params, headers=headers)
+        elapsed = _time.monotonic() - t0
+        resp.raise_for_status()
+        logger.debug(f"[kbcha:http] km_analysis carSeq={car_seq} "
+                     f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
+        return resp.text
+
+    def fetch_basic_info(self, car_seq: str) -> str:
+        url = f"{BASE_URL}/public/layer/car/detail/basic/info/view.kbc"
+        params = {"carSeq": car_seq}
+        headers = {"Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}"}
+        t0 = _time.monotonic()
+        resp = self._client.get(url, params=params, headers=headers)
+        elapsed = _time.monotonic() - t0
+        resp.raise_for_status()
+        logger.debug(f"[kbcha:http] basic_info carSeq={car_seq} "
+                     f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
+        return resp.text
+
+    def fetch_kb_inspection(self, car_seq: str) -> str:
+        url = f"{BASE_URL}/public/layer/car/check/info.kbc"
+        params = {
+            "layerId": "layerCarCheckInfo",
+            "carSeq": car_seq,
+            "diagCarYn": "N",
+            "diagCarSeq": "",
+            "premiumCarYn": "N",
+        }
+        headers = {
+            "User-Agent": HEADERS["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "ko-KR,ko;q=0.9",
+            "Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}",
+        }
+        t0 = _time.monotonic()
+        resp = self._client.get(url, params=params, headers=headers)
+        elapsed = _time.monotonic() - t0
+        resp.raise_for_status()
+        logger.debug(f"[kbcha:http] kb_inspection carSeq={car_seq} "
+                     f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def close(self):

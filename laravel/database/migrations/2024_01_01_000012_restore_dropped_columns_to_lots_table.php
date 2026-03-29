@@ -9,18 +9,27 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('lots', function (Blueprint $table) {
-            $table->tinyInteger('cylinders')->unsigned()->nullable()->after('engine_volume');
+            if (!Schema::hasColumn('lots', 'cylinders'))
+                $table->tinyInteger('cylinders')->unsigned()->nullable()->after('engine_volume');
 
-            $table->string('lien_status', 30)->nullable()->after('registration_date');
-            $table->string('seizure_status', 30)->nullable()->after('lien_status');
-            $table->boolean('tax_paid')->nullable()->after('seizure_status');
+            if (!Schema::hasColumn('lots', 'lien_status'))
+                $table->string('lien_status', 30)->nullable()->after('registration_date');
+            if (!Schema::hasColumn('lots', 'seizure_status'))
+                $table->string('seizure_status', 30)->nullable()->after('lien_status');
+            if (!Schema::hasColumn('lots', 'tax_paid'))
+                $table->boolean('tax_paid')->nullable()->after('seizure_status');
 
-            $table->boolean('total_loss_history')->nullable()->after('flood_history');
-            $table->string('mileage_grade', 20)->nullable()->after('insurance_count');
+            if (!Schema::hasColumn('lots', 'total_loss_history'))
+                $table->boolean('total_loss_history')->nullable()->after('flood_history');
+            if (!Schema::hasColumn('lots', 'mileage_grade'))
+                $table->string('mileage_grade', 20)->nullable()->after('insurance_count');
 
-            $table->smallInteger('new_car_price_ratio')->unsigned()->nullable()->after('repair_cost');
-            $table->integer('ai_price_min')->unsigned()->nullable()->after('new_car_price_ratio');
-            $table->integer('ai_price_max')->unsigned()->nullable()->after('ai_price_min');
+            if (!Schema::hasColumn('lots', 'new_car_price_ratio'))
+                $table->smallInteger('new_car_price_ratio')->unsigned()->nullable()->after('repair_cost');
+            if (!Schema::hasColumn('lots', 'ai_price_min'))
+                $table->integer('ai_price_min')->unsigned()->nullable()->after('new_car_price_ratio');
+            if (!Schema::hasColumn('lots', 'ai_price_max'))
+                $table->integer('ai_price_max')->unsigned()->nullable()->after('ai_price_min');
         });
     }
 

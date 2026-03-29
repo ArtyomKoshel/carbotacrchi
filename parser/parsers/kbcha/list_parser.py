@@ -47,7 +47,20 @@ class KBChaListParser:
 
         maker_name_kr = MAKER_CODES.get(maker_code, "")
         make = self._norm.normalize_make(title.split()[0] if title else "", maker_code)
-        model = self._norm.normalize_model(title, title.split()[0] if title else "")
+        parsed = self._norm.parse_title(title)
+        model = parsed["model"]
+
+        if parsed.get("unknown_tokens"):
+            if parsed["trim"] is None:
+                logger.warning(
+                    f"[kbcha:list] unknown title tokens (potential new trim?): "
+                    f"{parsed['unknown_tokens']} | title={title!r}"
+                )
+            else:
+                logger.debug(
+                    f"[kbcha:list] unclassified tokens: {parsed['unknown_tokens']} "
+                    f"| title={title!r}"
+                )
 
         spans = area.select("div.data-line span")
         year_text = spans[0].get_text(strip=True) if len(spans) > 0 else ""
@@ -78,12 +91,14 @@ class KBChaListParser:
             make=make,
             model=model,
             year=year,
-            price=self._norm.krw_to_usd(float(price_man)),
+            price=price_man * 10000,
             price_krw=price_man * 10000,
             mileage=mileage,
             location=location,
             lot_url=f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}",
             image_url=image_url,
+            trim=parsed["trim"],
+            drive_type=parsed["drive"],
             raw_data={
                 "carSeq": car_seq,
                 "title": title,
@@ -92,6 +107,8 @@ class KBChaListParser:
                 "price_man": price_man,
                 "tags": tags,
                 "makerCode": maker_code,
+                "generation": parsed["generation"],
+                "engine_str": parsed["engine_str"],
             },
         )
 

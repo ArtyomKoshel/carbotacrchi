@@ -5,6 +5,50 @@ panel codes and inspection constants used across all kbcha parsers.
 """
 from __future__ import annotations
 
+# ── Model name generation prefixes (stripped before extracting model) ──────────
+
+GEN_PREFIXES: tuple[tuple[str, ...], ...] = (
+    ("디", "올", "뉴"),
+    ("더", "뉴"),
+    ("올", "뉴"),
+    ("디", "올"),
+    ("뉴",),
+)
+
+MODEL_FUEL_STOP: frozenset[str] = frozenset({
+    "디젤", "가솔린", "LPG", "LPi", "휘발유",
+    "전기", "일렉트릭", "수소",
+})
+
+MODEL_TRIM_STOP: frozenset[str] = frozenset({
+    "프레스티지", "모던", "럭셔리", "스마트", "인스퍼레이션",
+    "노블레스", "시그니처", "시그니쳐", "트렌디", "컴포트", "스타일",
+    "프리미엄", "익스클루시브", "스탠다드", "밸류플러스",
+    "캘리그래피", "그래비티", "GL", "GLS", "GLX",
+    "고급형", "일반형", "기본형",
+})
+
+MODEL_DRIVE_STOP: frozenset[str] = frozenset({
+    "AWD", "2WD", "4WD", "FWD", "RWD",
+})
+
+# Engine/powertrain descriptor tokens that legitimately appear between engine volume
+# and trim — NOT trim names, NOT fuel stops, but known non-classifiable tokens
+ENGINE_DESC_TOKENS: frozenset[str] = frozenset({
+    "터보", "GDi", "T-GDi", "GDI", "MPI", "VGT", "CRDI", "CRDi",
+    "HEV", "PHEV", "EV", "FCEV", "e-VGT",
+    "4기통", "6기통", "8기통", "V6", "V8", "V12",
+    "9인승", "11인승", "15인승",
+    "Sport", "SPORT", "스포츠",
+    "하이브리드",
+})
+
+# Tokens that look like trims on the site but are actually fuel/type descriptors
+TRIM_BLOCKLIST: frozenset[str] = frozenset({
+    "전기차", "전기", "하이브리드", "하이브리드(가솔린)", "하이브리드(디젤)",
+    "플러그인", "수소", "LPG", "디젤", "가솔린",
+})
+
 # ── Vehicle attribute value maps ─────────────────────────────────────────────
 
 FUEL: dict[str, str] = {
@@ -16,7 +60,9 @@ FUEL: dict[str, str] = {
     "가솔린 하이브리드": "Hybrid", "디젤 하이브리드": "Hybrid",
     "플러그인 하이브리드": "Hybrid", "PHEV": "Hybrid", "HEV": "Hybrid",
     "LPG": "LPG", "lpg": "LPG",
-    "수소": "Hydrogen", "hydrogen": "Hydrogen",
+    "수소": "Hydrogen", "수소전기": "Hydrogen", "수소전기차": "Hydrogen",
+    "FCEV": "Hydrogen", "fcev": "Hydrogen", "연료전지": "Hydrogen",
+    "hydrogen": "Hydrogen",
 }
 
 TRANSMISSION: dict[str, str] = {
@@ -55,6 +101,17 @@ COLOR: dict[str, str] = {
     "보라색": "Purple", "퍼플": "Purple",
     "베이지": "Beige", "아이보리": "Beige",
     "쥐색": "Gray", "진주색": "White", "진주": "White",
+    "스파클링 실버": "Silver", "문라이트 실버": "Silver", "실버리 실버": "Silver",
+    "크리스탈 화이트": "White", "퍼플리쉬 화이트": "White", "어반 화이트": "White",
+    "오로라 블랙": "Black", "팬텀 블랙": "Black", "카본 블랙": "Black",
+    "쉬머링 실버": "Silver", "그라파이트 그레이": "Gray",
+    "어비스 블랙": "Black", "인텐스 블루": "Blue", "딥 포레스트 그린": "Green",
+    "빌트인 그레이": "Gray", "메탈릭 그레이": "Gray",
+    "투톤": "Two-tone", "듀얼톤": "Two-tone",
+    "에머랄드 그린": "Green", "올리브 그린": "Green", "카키": "Green",
+    "버건디": "Red", "마룬": "Red", "와인": "Red",
+    "네이비": "Blue", "코발트 블루": "Blue", "미드나잇 블루": "Blue",
+    "티타늄": "Gray", "샴페인": "Gold", "브론즈": "Gold",
 }
 
 DRIVE: dict[str, str] = {
@@ -112,11 +169,12 @@ INFO_FIELDS: dict[str, tuple[str, str | None]] = {
     "주행거리": ("mileage",       "_parse_mileage"),
     "소유자변경": ("owners_count", "_parse_owners"),       # e.g. '2회' → 2
     # Raw string fields
-    "차량정보": ("plate_number",  None),
+    "차량정보": ("plate_number",  None),   # main detail page label
+    "차량번호": ("plate_number",  None),   # basic-info popup label
     "차대번호": ("vin",           None),
     "차시번호": ("vin",           None),
-    "제시번호": ("inspection_no", None),
-    "시트색상": ("seat_color",    None),
+    "제시번호": ("_inspection_no", None),   # stored in raw_data only
+    "시트색상": ("seat_color",    "normalize_color"),
     "저당":   ("lien_status",   None),
     "압류":   ("seizure_status", None),
 }
@@ -129,7 +187,7 @@ HISTORY_BOOL_LABELS: dict[str, str] = {
 }
 
 # ── Mileage grade values ──────────────────────────────────────────────────────
-MILEAGE_GRADE_PATTERN = r"주행거리.*?대비\s*\[\s*(짧음|보통|많음|매우많음)\s*\]"
+MILEAGE_GRADE_PATTERN = r"주행거리.*?대비\s*(많이짧음|짧음|보통|긴|많이긴)"
 
 # ── Warranty remaining pattern ────────────────────────────────────────────────
 # Matches e.g. '42,990km / 1개월 남음' near '제조사 보증'
