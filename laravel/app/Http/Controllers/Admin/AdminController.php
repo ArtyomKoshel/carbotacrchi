@@ -135,7 +135,8 @@ class AdminController extends Controller
     {
         $exists = DB::table('lots')->where('id', $lotId)->exists();
         if (!$exists) {
-            return back()->withErrors(['lot_id' => "Lot {$lotId} not found"]);
+            return redirect()->route('admin.lots', ['token' => request()->query('token')])
+                ->withErrors(['lot_id' => "Lot {$lotId} not found"]);
         }
 
         $pending = ReparseRequest::where('lot_id', $lotId)
@@ -190,7 +191,8 @@ class AdminController extends Controller
     {
         ParseJob::where('id', $id)->where('status', 'pending')
             ->update(['status' => 'cancelled', 'updated_at' => now()]);
-        return back()->with('success', "Job #{$id} cancelled");
+        return redirect()->route('admin.jobs', ['token' => request()->query('token')])
+            ->with('success', "Job #{$id} cancelled");
     }
 
     public function jobProgress(int $id)
@@ -243,7 +245,9 @@ class AdminController extends Controller
             'maker_filter'     => $request->input('maker_filter') ?: null,
         ]);
 
-        return back()->with('success', "Schedule for {$source} updated. Restart parser to apply.");
+        return redirect()
+            ->route('admin.schedules', ['token' => $request->query('token')])
+            ->with('success', "Schedule for {$source} updated.");
     }
 
     private function fetchProxyBalance(): ?array
