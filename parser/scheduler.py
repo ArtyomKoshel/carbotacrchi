@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 import pymysql
 import pymysql.cursors
@@ -153,8 +154,9 @@ def _apply_schedules(scheduler: BlockingScheduler, registry: dict, db_schedules:
                 id=job_id,
                 name=f"{source_key} Import",
                 max_instances=1,
+                next_run_time=datetime.now() + timedelta(seconds=60),
             )
-            logger.info(f"[{source_key}] added: {trigger} max_pages={max_pages}")
+            logger.info(f"[{source_key}] added: {trigger} max_pages={max_pages} (first run in 60s)")
         else:
             # Reschedule only if trigger changed (compare string representation)
             if str(existing.trigger) != str(trigger):
