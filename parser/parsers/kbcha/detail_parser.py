@@ -48,6 +48,7 @@ class KBChaDetailParser:
         self._parse_dealer(soup, result)
         self._parse_trim_from_title(soup, result)
         self._parse_inspection_button(soup, result)
+        self._parse_photos(soup, result)
 
         logger.debug(f"[kbcha:detail] Parsed {len(result)} fields from detail page: {sorted(result.keys())}")
         if not result:
@@ -518,6 +519,36 @@ class KBChaDetailParser:
         if m:
             result["warranty_text"] = m.group(1).strip()
             logger.debug(f"[kbcha:detail] warranty_text (text): '{result['warranty_text']}'")
+
+    # ── Photo gallery ──────────────────────────────────────────────────────
+
+    def _parse_photos(self, soup: BeautifulSoup, result: dict) -> None:
+        """Collect gallery image URLs from the bxslider into result['photos'].
+
+        Structure: ul#btnCarPhotoView > li:not(.bx-clone) > div.slide-img > a.slide-img__link[href]
+        The href contains the full-size URL with no ?width= suffix.
+        bx-clone items are duplicated slides for the infinite-scroll loop — skip them.
+        """
+        slider = soup.select_one("ul#btnCarPhotoView")
+        if not slider:
+            return
+
+        seen: set[str] = set()
+        photos: list[str] = []
+        for li in slider.find_all("li", recursive=False):
+            if "bx-clone" in li.get("class", []):
+                continue
+            a = li.select_one("a.slide-img__link")
+            if not a:
+                continue
+            url = (a.get("href") or "").strip()
+            if url and url not in seen:
+                seen.add(url)
+                photos.append(url)
+
+        if photos:
+            result["photos"] = photos
+            logger.debug(f"[kbcha:detail] photos: {len(photos)} images")
 
     # ── Trim from title ────────────────────────────────────────────────────
 

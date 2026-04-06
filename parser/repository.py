@@ -35,12 +35,64 @@ class LotRepository:
             logger.info(f"[DB] Connected in {_time.monotonic() - t0:.2f}s")
         return self._conn
 
+    # Fields compared on every upsert to detect meaningful changes.
+    _TRACKED_FIELDS: tuple[str, ...] = (
+        "price", "price_krw", "mileage",
+        "has_accident", "flood_history", "total_loss_history",
+        "lien_status", "seizure_status",
+        "owners_count", "insurance_count",
+        "trim", "color", "options",
+        "is_active",
+    )
+
+    def _fetch_tracked(self, lot_ids: list[str]) -> dict[str, dict]:
+        """Return {lot_id: {field: value}} for all _TRACKED_FIELDS of existing lots."""
+        if not lot_ids:
+            return {}
+        conn = self._get_conn()
+        fields = ", ".join(f"`{f}`" for f in self._TRACKED_FIELDS)
+        placeholders = ", ".join(["%s"] * len(lot_ids))
+        sql = f"SELECT id, {fields} FROM lots WHERE id IN ({placeholders})"
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(sql, lot_ids)
+                return {row["id"]: dict(row) for row in cursor.fetchall()}
+        except Exception as e:
+            logger.warning(f"[DB] _fetch_tracked failed: {e}")
+            return {}
+
+    def _insert_lot_changes(self, changes_rows: list[dict]) -> None:
+        """Bulk-insert rows into lot_changes. Each row: lot_id, source, event, changes (dict)."""
+        if not changes_rows:
+            return
+        conn = self._get_conn()
+        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        sql = """
+            INSERT INTO lot_changes (lot_id, source, event, changes, recorded_at)
+            VALUES (%(lot_id)s, %(source)s, %(event)s, %(changes)s, %(now)s)
+        """
+        rows = [
+            {**r, "changes": json.dumps(r["changes"], ensure_ascii=False, default=str), "now": now}
+            for r in changes_rows
+        ]
+        try:
+            with conn.cursor() as cursor:
+                cursor.executemany(sql, rows)
+            conn.commit()
+            logger.info(f"[DB] Recorded {len(rows)} lot_changes entries")
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"[DB] _insert_lot_changes failed: {type(e).__name__}: {e}")
+
     def upsert_batch(self, lots: list[CarLot]) -> int:
         if not lots:
             return 0
 
         conn = self._get_conn()
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Read current tracked field values BEFORE overwriting them
+        old_states = self._fetch_tracked([lot.id for lot in lots])
 
         sql = """
             INSERT INTO lots (
@@ -136,11 +188,42 @@ class LotRepository:
             conn.commit()
             elapsed = _time.monotonic() - t0
             logger.info(f"[DB] Upserted {len(rows)} lots in {elapsed:.2f}s")
-            return len(rows)
         except Exception as e:
             conn.rollback()
             logger.error(f"[DB] Upsert FAILED for {len(rows)} lots: {type(e).__name__}: {e}")
             raise
+
+        # Detect field changes for existing lots and persist to lot_changes
+        changes_to_insert = []
+        for lot in lots:
+            old = old_states.get(lot.id)
+            if old is None:
+                continue  # new lot — no history yet
+            new_row = lot.to_db_row()
+            diff = {}
+            for field in self._TRACKED_FIELDS:
+                old_val = old.get(field)
+                new_val = new_row.get(field)
+                # Normalise options JSON string for comparison
+                if field == "options":
+                    try:
+                        old_val = json.loads(old_val) if isinstance(old_val, str) else old_val
+                        new_val = json.loads(new_val) if isinstance(new_val, str) else new_val
+                    except Exception:
+                        pass
+                if old_val != new_val and new_val is not None:
+                    diff[field] = {"old": old_val, "new": new_val}
+            if diff:
+                changes_to_insert.append({
+                    "lot_id": lot.id,
+                    "source": lot.source,
+                    "event": "update",
+                    "changes": diff,
+                })
+        if changes_to_insert:
+            self._insert_lot_changes(changes_to_insert)
+
+        return len(rows)
 
     def get_existing_ids(self, source: str) -> set[str]:
         conn = self._get_conn()
@@ -161,7 +244,16 @@ class LotRepository:
 
         conn = self._get_conn()
         placeholders = ",".join(["%s"] * len(active_ids))
-        sql = f"""
+
+        # Find which lots will be delisted BEFORE updating them
+        select_sql = f"""
+            SELECT id FROM lots
+            WHERE source = %s
+              AND is_active = 1
+              AND id NOT IN ({placeholders})
+              AND parsed_at < DATE_SUB(NOW(), INTERVAL %s HOUR)
+        """
+        update_sql = f"""
             UPDATE lots SET is_active = 0, updated_at = NOW()
             WHERE source = %s
               AND is_active = 1
@@ -171,13 +263,22 @@ class LotRepository:
 
         try:
             t0 = _time.monotonic()
+            params = [source] + list(active_ids) + [grace_hours]
             with conn.cursor() as cursor:
-                cursor.execute(sql, [source] + list(active_ids) + [grace_hours])
+                cursor.execute(select_sql, params)
+                delisted_ids = [row["id"] for row in cursor.fetchall()]
+                cursor.execute(update_sql, params)
             conn.commit()
-            affected = cursor.rowcount
+            affected = len(delisted_ids)
             elapsed = _time.monotonic() - t0
             logger.info(f"[DB] Marked {affected} lots inactive for '{source}' "
                          f"(grace={grace_hours}h) in {elapsed:.2f}s")
+            if delisted_ids:
+                self._insert_lot_changes([
+                    {"lot_id": lid, "source": source, "event": "delisted",
+                     "changes": {"is_active": {"old": True, "new": False}}}
+                    for lid in delisted_ids
+                ])
             return affected
         except Exception as e:
             conn.rollback()
@@ -253,14 +354,24 @@ class LotRepository:
             logger.error(f"[DB] upsert_inspection FAILED for {record.lot_id}: {type(e).__name__}: {e}")
             raise
 
-    def get_lots_by_source(self, source: str, limit: int | None = None) -> list[CarLot]:
+    def get_lots_by_source(
+        self, source: str, limit: int | None = None, ids: list[str] | None = None
+    ) -> list[CarLot]:
         conn = self._get_conn()
-        sql = "SELECT * FROM lots WHERE source = %s AND is_active = 1 ORDER BY updated_at ASC"
+        params: list = [source]
+        sql = "SELECT * FROM lots WHERE source = %s"
+        if ids:
+            placeholders = ",".join(["%s"] * len(ids))
+            sql += f" AND id IN ({placeholders})"
+            params.extend(ids)
+        else:
+            sql += " AND is_active = 1"
+        sql += " ORDER BY updated_at ASC"
         if limit:
             sql += f" LIMIT {int(limit)}"
         try:
             with conn.cursor() as cursor:
-                cursor.execute(sql, (source,))
+                cursor.execute(sql, params)
                 rows = cursor.fetchall()
             lots = []
             for row in rows:

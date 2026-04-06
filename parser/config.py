@@ -10,6 +10,9 @@ class Config:
 
     KBCHA_ENABLED = os.getenv("KBCHA_ENABLED", "true").lower() == "true"
     KBCHA_INTERVAL_MINUTES = int(os.getenv("KBCHA_INTERVAL_MINUTES", "60"))
+    # KBCHA_SCHEDULE overrides KBCHA_INTERVAL_MINUTES when set.
+    # Format: "interval:60" (minutes) or "cron:0 * * * *" (cron expression min h dom mon dow)
+    KBCHA_SCHEDULE = os.getenv("KBCHA_SCHEDULE", "")
     KBCHA_PROXY = os.getenv("KBCHA_PROXY", "")
     KBCHA_PROXY_LIST: list[str] = [
         p.strip() for p in os.getenv("KBCHA_PROXY_LIST", "").split(",") if p.strip()
@@ -17,6 +20,10 @@ class Config:
     KBCHA_MAX_PAGES = int(os.getenv("KBCHA_MAX_PAGES", "1"))
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
+
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
 
     ENCAR_ENABLED = os.getenv("ENCAR_ENABLED", "false").lower() == "true"
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "30"))

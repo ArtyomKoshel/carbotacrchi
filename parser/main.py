@@ -11,7 +11,8 @@ load_dotenv()
 
 from config import Config
 from repository import LotRepository
-from parsers.kbcha import KBChaParser
+import parsers  # noqa: F401 — triggers parser registration
+from parsers.registry import get_enabled
 from scheduler import start_scheduler
 
 logger = logging.getLogger("parser")
@@ -79,10 +80,10 @@ def wait_for_db(max_retries: int = 30, delay: float = 2.0) -> None:
 def run_once(pages: int | None = None, maker: str | None = None) -> None:
     repo = LotRepository()
     try:
-        if Config.KBCHA_ENABLED:
-            parser = KBChaParser(repo)
+        for key, reg in get_enabled().items():
+            parser = reg.cls(repo)
             count = parser.run(max_pages=pages, maker_filter=maker)
-            logger.info(f"KBChacha: {count} lots imported")
+            logger.info(f"{parser.get_source_name()}: {count} lots imported")
     finally:
         repo.close()
 
@@ -90,10 +91,13 @@ def run_once(pages: int | None = None, maker: str | None = None) -> None:
 def run_reenrich(limit: int | None = None) -> None:
     repo = LotRepository()
     try:
-        if Config.KBCHA_ENABLED:
-            parser = KBChaParser(repo)
-            count = parser.run_reenrich(limit=limit)
-            logger.info(f"KBChacha re-enrich: {count} lots updated")
+        for key, reg in get_enabled().items():
+            parser = reg.cls(repo)
+            try:
+                count = parser.run_reenrich(limit=limit)
+                logger.info(f"{parser.get_source_name()} re-enrich: {count} lots updated")
+            except NotImplementedError:
+                logger.info(f"{parser.get_source_name()}: re-enrich not supported, skipping")
     finally:
         repo.close()
 
@@ -103,7 +107,8 @@ def main() -> None:
     _setup_logging(debug=args.debug)
 
     logger.info("Parser service starting...")
-    logger.info(f"  KBChacha: {'enabled' if Config.KBCHA_ENABLED else 'disabled'}")
+    for key, reg in get_enabled().items():
+        logger.info(f"  {key}: enabled  schedule={reg.schedule or f'interval:{reg.interval_minutes}m'}")
     logger.info(f"  DB: {Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}")
     if args.pages:
         logger.info(f"  Pages override: {args.pages}")

@@ -16,6 +16,13 @@ services:
       - carbot
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: carbot_redis
+    restart: unless-stopped
+    networks:
+      - carbot
+
   php:
     build:
       context: ./docker/php
@@ -24,6 +31,7 @@ services:
     volumes:
       - ./laravel:/var/www/html
       - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - parser_logs:/app/logs:ro
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
@@ -35,11 +43,18 @@ services:
       DB_USERNAME: ${DB_USERNAME:-carbot}
       DB_PASSWORD: ${DB_PASSWORD:-carbot_pass}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      CACHE_STORE: file
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-change_me_secret}
+      PARSER_LOG_FILE: /app/logs/parser.log
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
       LOG_CHANNEL: stderr
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - carbot
     restart: unless-stopped
@@ -71,6 +86,7 @@ services:
     container_name: carbot_parser
     volumes:
       - ./parser:/app
+      - parser_logs:/app/logs
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -84,6 +100,8 @@ services:
       KBCHA_PROXY_LIST: ${KBCHA_PROXY_LIST:-}
       USD_KRW_RATE: ${USD_KRW_RATE:-1350}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     command: sleep infinity
     depends_on:
       mysql:
@@ -98,3 +116,4 @@ networks:
 
 volumes:
   mysql_data:
+  parser_logs:

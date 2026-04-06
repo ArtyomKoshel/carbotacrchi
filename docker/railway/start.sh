@@ -32,6 +32,31 @@ fi
 if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
     sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}|" "$APP_DIR/.env"
 fi
+if [ -n "$ADMIN_TOKEN" ]; then
+    grep -q "^ADMIN_TOKEN=" "$APP_DIR/.env" \
+        && sed -i "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${ADMIN_TOKEN}|" "$APP_DIR/.env" \
+        || echo "ADMIN_TOKEN=${ADMIN_TOKEN}" >> "$APP_DIR/.env"
+fi
+if [ -n "$PARSER_LOG_FILE" ]; then
+    grep -q "^PARSER_LOG_FILE=" "$APP_DIR/.env" \
+        && sed -i "s|^PARSER_LOG_FILE=.*|PARSER_LOG_FILE=${PARSER_LOG_FILE}|" "$APP_DIR/.env" \
+        || echo "PARSER_LOG_FILE=${PARSER_LOG_FILE}" >> "$APP_DIR/.env"
+fi
+if [ -n "$REDIS_HOST" ]; then
+    grep -q "^REDIS_HOST=" "$APP_DIR/.env" \
+        && sed -i "s|^REDIS_HOST=.*|REDIS_HOST=${REDIS_HOST}|" "$APP_DIR/.env" \
+        || echo "REDIS_HOST=${REDIS_HOST}" >> "$APP_DIR/.env"
+fi
+if [ -n "$REDIS_PORT" ]; then
+    grep -q "^REDIS_PORT=" "$APP_DIR/.env" \
+        && sed -i "s|^REDIS_PORT=.*|REDIS_PORT=${REDIS_PORT}|" "$APP_DIR/.env" \
+        || echo "REDIS_PORT=${REDIS_PORT}" >> "$APP_DIR/.env"
+fi
+if [ -n "$REDIS_PASSWORD" ]; then
+    grep -q "^REDIS_PASSWORD=" "$APP_DIR/.env" \
+        && sed -i "s|^REDIS_PASSWORD=.*|REDIS_PASSWORD=${REDIS_PASSWORD}|" "$APP_DIR/.env" \
+        || echo "REDIS_PASSWORD=${REDIS_PASSWORD}" >> "$APP_DIR/.env"
+fi
 if [ -n "$DB_HOST" ]; then
     sed -i "s|^DB_HOST=.*|DB_HOST=${DB_HOST}|" "$APP_DIR/.env"
     sed -i "s|^DB_PORT=.*|DB_PORT=${DB_PORT:-3306}|" "$APP_DIR/.env"
