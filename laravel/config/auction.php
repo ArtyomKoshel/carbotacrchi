@@ -6,4 +6,5 @@ return [
     'data_dir'       => storage_path('app/data'),
     'lot_repository' => env('LOT_REPOSITORY', 'mock'),
     'sources'        => array_filter(explode(',', env('PARSER_SOURCES', 'kbcha'))),
+    'floppydata_api_key' => env('FLOPPYDATA_API_KEY', ''),
 ];

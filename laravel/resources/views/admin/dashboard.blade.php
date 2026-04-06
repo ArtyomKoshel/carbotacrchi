@@ -30,6 +30,34 @@
   @endforeach
 </div>
 
+{{-- Proxy balance --}}
+@if($proxyBalance)
+@php
+  $res = $proxyBalance['residential'] ?? null;
+  $gb  = ($res['nonExpiring']['gb'] ?? 0) + ($res['subscription']['gb'] ?? 0);
+  $pct = min(100, round($gb / 9 * 100));
+  $color = $pct > 50 ? 'bg-green-500' : ($pct > 20 ? 'bg-yellow-500' : 'bg-red-500');
+@endphp
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-xs font-bold uppercase tracking-widest text-gray-500">Proxy Traffic (Floppydata)</span>
+    <span class="text-xs text-gray-500">Residential</span>
+  </div>
+  <div class="flex items-end gap-3 mb-3">
+    <span class="text-3xl font-bold text-white">{{ number_format($gb, 2) }} GB</span>
+    <span class="text-sm text-gray-500 mb-1">remaining</span>
+  </div>
+  <div class="w-full bg-gray-800 rounded-full h-2">
+    <div class="{{ $color }} h-2 rounded-full transition-all" style="width: {{ $pct }}%"></div>
+  </div>
+  @if(isset($res['subscription']['expiresOn']))
+  <div class="text-xs text-gray-600 mt-2">
+    Subscription expires: {{ \Carbon\Carbon::parse($res['subscription']['expiresOn'])->diffForHumans() }}
+  </div>
+  @endif
+</div>
+@endif
+
 {{-- Recent changes --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">

@@ -10,6 +10,7 @@ use App\Models\ParserSchedule;
 use App\Models\ReparseRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 
 class AdminController extends Controller
@@ -36,8 +37,10 @@ class AdminController extends Controller
             ->groupBy('source')
             ->pluck('last_parsed', 'source');
 
+        $proxyBalance = $this->fetchProxyBalance();
+
         return view('admin.dashboard', compact(
-            'sources', 'recentChanges', 'changeSummary', 'lastParsed'
+            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'proxyBalance'
         ));
     }
 
@@ -241,6 +244,23 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', "Schedule for {$source} updated. Restart parser to apply.");
+    }
+
+    private function fetchProxyBalance(): ?array
+    {
+        $key = config('auction.floppydata_api_key');
+        if (!$key) {
+            return null;
+        }
+        try {
+            $resp = Http::timeout(5)
+                ->withHeader('X-Api-Key', $key)
+                ->get('https://client-api.floppy.host/v1/rotating/balance');
+            if ($resp->successful()) {
+                return $resp->json();
+            }
+        } catch (\Throwable) {}
+        return null;
     }
 
     private function tailFile(string $path, int $lines): array

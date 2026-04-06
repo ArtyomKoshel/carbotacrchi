@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import random
+import re
+import string
 import time as _time
 
 import httpx
@@ -39,17 +42,39 @@ class KBChaClient:
             transport=transport,
         )
 
+    @staticmethod
+    def _new_session_id() -> str:
+        return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+
+    @staticmethod
+    def _bump_session(proxy_url: str) -> str | None:
+        """Replace -session-XXX with a new random session ID (Floppydata / rotating proxy)."""
+        new_id = KBChaClient._new_session_id()
+        result, n = re.subn(r'(-session-)([^:@]+)', rf'\g<1>{new_id}', proxy_url)
+        return result if n else None
+
     def rotate_proxy(self) -> bool:
-        """Switch to the next proxy in the list and reset the session. Returns True if rotated."""
-        if len(self._proxies) <= 1:
-            return False
-        old_idx = self._proxy_idx
-        self._proxy_idx = (self._proxy_idx + 1) % len(self._proxies)
-        self._client.close()
-        self._client = self._build_client(self._proxies[self._proxy_idx])
-        logger.info(f"[kbcha:proxy] Rotated proxy {old_idx} -> {self._proxy_idx} "
-                    f"({self._proxies[self._proxy_idx]})")
-        return True
+        """Switch to the next proxy in the list and reset the session. Returns True if rotated.
+        For single-proxy Floppydata URLs with -session- pattern, bumps the session ID instead."""
+        if len(self._proxies) > 1:
+            old_idx = self._proxy_idx
+            self._proxy_idx = (self._proxy_idx + 1) % len(self._proxies)
+            self._client.close()
+            self._client = self._build_client(self._proxies[self._proxy_idx])
+            logger.info(f"[kbcha:proxy] Rotated proxy {old_idx} -> {self._proxy_idx} "
+                        f"({self._proxies[self._proxy_idx]})")
+            return True
+
+        # Single rotating proxy (Floppydata) — bump session ID to force new IP
+        bumped = self._bump_session(self._proxies[0])
+        if bumped:
+            self._proxies[0] = bumped
+            self._client.close()
+            self._client = self._build_client(bumped)
+            logger.info(f"[kbcha:proxy] Bumped session on rotating proxy -> new IP requested")
+            return True
+
+        return False
 
     def warmup(self) -> None:
         """Visit homepage + search page to establish a proper browser session before detail fetches."""
