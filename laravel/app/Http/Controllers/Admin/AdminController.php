@@ -163,7 +163,7 @@ class AdminController extends Controller
     public function jobs(Request $request)
     {
         $jobs = ParseJob::orderByDesc('created_at')->paginate(30);
-        $sources = array_keys(config('auction.sources', ['kbcha' => true]));
+        $sources = array_values(config('auction.sources', ['kbcha']));
         return view('admin.jobs', compact('jobs', 'sources'));
     }
 
@@ -229,7 +229,7 @@ class AdminController extends Controller
     public function schedules()
     {
         $schedules = ParserSchedule::orderBy('source')->get()->keyBy('source');
-        $sources   = array_keys(config('auction.sources', ['kbcha' => true]));
+        $sources   = array_values(config('auction.sources', ['kbcha']));
         return view('admin.schedules', compact('schedules', 'sources'));
     }
 
