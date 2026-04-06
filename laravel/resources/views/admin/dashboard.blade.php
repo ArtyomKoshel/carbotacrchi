@@ -9,7 +9,17 @@
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
     <div class="flex items-center justify-between mb-3">
       <span class="text-xs font-bold uppercase tracking-widest text-gray-500">{{ $src->source }}</span>
-      <span class="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-400">active</span>
+      <div class="flex items-center gap-2">
+        <span class="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-400">active</span>
+        <form method="POST" action="{{ route('admin.jobs.launch') }}">
+          @csrf
+          <input type="hidden" name="source" value="{{ $src->source }}">
+          <input type="hidden" name="max_pages" value="0">
+          <button type="submit"
+                  class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-blue-900/50 hover:text-blue-300 transition"
+                  title="Run parser now">▶ Run</button>
+        </form>
+      </div>
     </div>
     <div class="text-3xl font-bold text-white">{{ number_format($src->active) }}</div>
     <div class="text-sm text-gray-500 mt-1">{{ number_format($src->total) }} total &nbsp;·&nbsp; {{ number_format($src->total - $src->active) }} inactive</div>

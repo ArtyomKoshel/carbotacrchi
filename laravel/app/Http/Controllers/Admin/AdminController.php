@@ -276,7 +276,7 @@ class AdminController extends Controller
         try {
             ParserSchedule::updateOrCreate(['source' => $source], [
                 'enabled'          => (bool) $request->input('enabled'),
-                'schedule'         => $request->input('schedule', ''),
+                'schedule'         => $request->input('schedule') ?? '',
                 'interval_minutes' => (int) $request->input('interval_minutes', 60),
                 'max_pages'        => (int) $request->input('max_pages', 0),
                 'maker_filter'     => $request->input('maker_filter') ?: null,
