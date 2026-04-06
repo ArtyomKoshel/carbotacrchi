@@ -101,33 +101,59 @@ def _make_job_fn(source_key: str, parser_cls, max_pages: int | None = None):
     return _run
 
 
-def start_scheduler():
-    scheduler = BlockingScheduler()
-    registry = get_all()
-
-    db_schedules = _load_db_schedules()
-    _seed_schedules(db_schedules)
-
+def _apply_schedules(scheduler: BlockingScheduler, registry: dict, db_schedules: dict) -> None:
+    """Add, reschedule, or remove parser import jobs based on current DB config."""
     for source_key, reg in registry.items():
         db = db_schedules.get(source_key, {})
         enabled = bool(db.get("enabled", reg.enabled))
+        job_id = f"{source_key}_import"
+
         if not enabled:
-            logger.info(f"[{source_key}] disabled in DB schedule config, skipping")
+            if scheduler.get_job(job_id):
+                scheduler.remove_job(job_id)
+                logger.info(f"[{source_key}] disabled — removed from scheduler")
             continue
 
         schedule_str = db.get("schedule") or reg.schedule
         interval_min = int(db.get("interval_minutes") or reg.interval_minutes)
-        max_pages = int(db.get("max_pages") or 0) or None
+        max_pages    = int(db.get("max_pages") or 0) or None
+        trigger      = _build_trigger_from_str(schedule_str, interval_min)
 
-        trigger = _build_trigger_from_str(schedule_str, interval_min)
-        scheduler.add_job(
-            _make_job_fn(source_key, reg.cls, max_pages),
-            trigger,
-            id=f"{source_key}_import",
-            name=f"{source_key} Import",
-            max_instances=1,
-        )
-        logger.info(f"[{source_key}] scheduled: {trigger} max_pages={max_pages}")
+        existing = scheduler.get_job(job_id)
+        if existing is None:
+            scheduler.add_job(
+                _make_job_fn(source_key, reg.cls, max_pages),
+                trigger,
+                id=job_id,
+                name=f"{source_key} Import",
+                max_instances=1,
+            )
+            logger.info(f"[{source_key}] added: {trigger} max_pages={max_pages}")
+        else:
+            # Reschedule only if trigger changed (compare string representation)
+            if str(existing.trigger) != str(trigger):
+                scheduler.reschedule_job(job_id, trigger=trigger)
+                logger.info(f"[{source_key}] rescheduled: {trigger} max_pages={max_pages}")
+
+
+def _make_reload_fn(scheduler: BlockingScheduler, registry: dict, _state: dict):
+    def _reload():
+        fresh = _load_db_schedules()
+        if fresh == _state.get("last"):
+            return
+        _state["last"] = fresh
+        logger.info("[scheduler] DB schedules changed — applying hot-reload")
+        _apply_schedules(scheduler, registry, fresh)
+    return _reload
+
+
+def start_scheduler():
+    scheduler = BlockingScheduler()
+    registry  = get_all()
+
+    db_schedules = _load_db_schedules()
+    _seed_schedules(db_schedules)
+    _apply_schedules(scheduler, registry, db_schedules)
 
     scheduler.add_job(
         process_pending_job,
@@ -145,7 +171,17 @@ def start_scheduler():
         max_instances=1,
         coalesce=True,
     )
-    logger.info("[job_worker] polling every 15s | [reparse_worker] polling every 30s")
 
+    _state = {"last": db_schedules}
+    scheduler.add_job(
+        _make_reload_fn(scheduler, registry, _state),
+        IntervalTrigger(minutes=1),
+        id="schedule_reload",
+        name="Schedule Hot-Reload",
+        coalesce=True,
+    )
+
+    logger.info("[job_worker] polling every 15s | [reparse_worker] polling every 30s")
+    logger.info("[schedule_reload] checking DB every 1 min for schedule changes")
     logger.info(f"Scheduler started with {len(scheduler.get_jobs())} job(s)")
     scheduler.start()
