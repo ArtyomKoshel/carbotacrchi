@@ -99,9 +99,11 @@ class AdminController extends Controller
 
     public function logs(Request $request)
     {
-        $logFile = config('admin.log_file');
+        $logFile  = config('admin.log_file');
         $maxLines = config('admin.log_lines', 300);
-        $level = $request->query('level', '');
+        $level    = $request->query('level', '');
+        $search   = trim($request->query('search', ''));
+        $source   = trim($request->query('source', ''));
 
         $lines = [];
         $error = null;
@@ -109,20 +111,18 @@ class AdminController extends Controller
         if (!file_exists($logFile)) {
             $error = "Log file not found: {$logFile}";
         } else {
-            $all = $this->tailFile($logFile, $maxLines * 3);
+            $all = $this->tailFile($logFile, $maxLines * 10);
             foreach ($all as $line) {
-                if ($level && !str_contains($line, "[{$level}]")) {
-                    continue;
-                }
+                if ($level  && !str_contains($line, "[{$level}]"))   continue;
+                if ($search && !str_contains($line, $search))         continue;
+                if ($source && !str_contains($line, $source))         continue;
                 $lines[] = $line;
-                if (count($lines) >= $maxLines) {
-                    break;
-                }
+                if (count($lines) >= $maxLines) break;
             }
             $lines = array_reverse($lines);
         }
 
-        return view('admin.logs', compact('lines', 'error', 'level'));
+        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source'));
     }
 
     public function stats()
@@ -223,7 +223,7 @@ class AdminController extends Controller
 
     public function cancelJob(Request $request, int $id)
     {
-        ParseJob::where('id', $id)->where('status', 'pending')
+        ParseJob::where('id', $id)->whereIn('status', ['pending', 'running'])
             ->update(['status' => 'cancelled', 'updated_at' => now()]);
         return redirect()->route('admin.jobs')
             ->with('success', "Job #{$id} cancelled");
@@ -232,36 +232,84 @@ class AdminController extends Controller
     public function jobProgress(int $id)
     {
         $job = ParseJob::findOrFail($id);
-
         session()->save();
 
-        return response()->stream(function () use ($job) {
-            $channel = "parse_progress:{$job->source}";
-            $redis   = Redis::connection('default');
-
+        return response()->stream(function () use ($id, $job) {
             set_time_limit(0);
-            $deadline = time() + 120;
 
-            $redis->subscribe([$channel], function ($message) use ($job, &$deadline) {
-                $data = json_decode($message, true);
-                if (($data['job_id'] ?? null) == $job->id) {
-                    echo "data: " . $message . "\n\n";
-                    ob_flush();
-                    flush();
-                    if (in_array($data['status'] ?? '', ['done', 'error'])) {
-                        $deadline = 0;
+            $send = function (array $payload) {
+                echo 'data: ' . json_encode($payload) . "\n\n";
+                ob_flush();
+                flush();
+            };
+
+            // Phase 1: DB-poll until job starts running (or finishes)
+            $waitDeadline = time() + 120;
+            while (time() < $waitDeadline) {
+                $job = ParseJob::find($id);
+                if (!$job) return;
+                $send(['job_id' => $id, 'status' => $job->status]);
+                if ($job->status !== 'pending') break;
+                sleep(1);
+            }
+
+            if (!$job || in_array($job->status, ['done', 'error', 'cancelled'])) return;
+
+            // Phase 2: Redis subscribe for live progress
+            $channel  = "parse_progress:{$job->source}";
+            $redis    = Redis::connection('default')->client();
+            $redis->setOption(\Redis::OPT_READ_TIMEOUT, 3);
+            $deadline = time() + 1800;
+
+            try {
+                $redis->subscribe([$channel], function ($r, $chan, $message)
+                        use ($id, $send, &$deadline) {
+                    $data = json_decode($message, true);
+                    if (($data['job_id'] ?? null) != $id) {
+                        return time() < $deadline ? null : false;
+                    }
+                    $send($data);
+                    if (in_array($data['status'] ?? '', ['done', 'error', 'cancelled'])) {
                         return false;
                     }
-                }
-                if (time() > $deadline) {
-                    return false;
-                }
-            });
+                    return time() < $deadline ? null : false;
+                });
+            } catch (\RedisException $e) {
+                // Read timeout expired — stream ended cleanly
+            }
         }, 200, [
             'Content-Type'      => 'text/event-stream',
             'Cache-Control'     => 'no-cache',
             'X-Accel-Buffering' => 'no',
         ]);
+    }
+
+    public function jobEvents(int $id)
+    {
+        $job = ParseJob::findOrFail($id);
+        $since = $job->updated_at ?? $job->created_at;
+
+        $events = DB::table('lot_changes')
+            ->where('source', $job->source)
+            ->where('recorded_at', '>=', $since->subSeconds(5))
+            ->orderByDesc('recorded_at')
+            ->limit(100)
+            ->get(['lot_id', 'event', 'changes', 'recorded_at']);
+
+        return response()->json([
+            'job_id' => $id,
+            'status' => $job->status,
+            'events' => $events,
+        ]);
+    }
+
+    public function logsDownload(Request $request)
+    {
+        $logFile = config('admin.log_file');
+        if (!file_exists($logFile)) {
+            abort(404, 'Log file not found');
+        }
+        return response()->download($logFile, 'parser-' . now()->format('Ymd-His') . '.log');
     }
 
     public function schedules()

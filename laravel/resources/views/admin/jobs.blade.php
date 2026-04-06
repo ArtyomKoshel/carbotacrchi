@@ -111,7 +111,7 @@
               Watch
             </button>
           @endif
-          @if($job->status === 'pending')
+          @if(in_array($job->status, ['pending', 'running']))
             <form method="POST"
                   action="{{ route('admin.jobs.cancel', ['id' => $job->id]) }}">
               @csrf
@@ -132,70 +132,117 @@
 <div class="mt-4">{{ $jobs->withQueryString()->links() }}</div>
 
 {{-- Live progress panel --}}
-<div id="progress-panel" class="hidden fixed bottom-4 right-4 w-96 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
+<div id="progress-panel" class="hidden fixed bottom-4 right-4 w-[480px] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
   <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
     <span class="text-sm font-semibold text-white" id="progress-title">Job progress</span>
     <button onclick="closeProgress()" class="text-gray-500 hover:text-white text-lg leading-none">×</button>
   </div>
-  <div class="p-4 space-y-2 text-xs font-mono" id="progress-log" style="max-height:260px;overflow-y:auto"></div>
+  {{-- Tabs --}}
+  <div class="flex border-b border-gray-800 text-xs">
+    <button id="tab-progress" onclick="switchTab('progress')"
+            class="px-4 py-2 text-blue-400 border-b-2 border-blue-500 font-semibold">Progress</button>
+    <button id="tab-lots" onclick="switchTab('lots')"
+            class="px-4 py-2 text-gray-500 hover:text-white">Lots <span id="lots-count" class="ml-1 text-gray-600"></span></button>
+  </div>
+  <div id="pane-progress" class="p-3 text-xs font-mono space-y-0.5" style="max-height:300px;overflow-y:auto"></div>
+  <div id="pane-lots"     class="hidden p-3 text-xs space-y-1"      style="max-height:300px;overflow-y:auto"></div>
 </div>
 
 <script>
-let es = null;
+let es = null, lotsTimer = null, watchId = null;
+
+function switchTab(tab) {
+  const tabs = ['progress','lots'];
+  tabs.forEach(t => {
+    document.getElementById(`tab-${t}`).className =
+      t === tab ? 'px-4 py-2 text-blue-400 border-b-2 border-blue-500 font-semibold text-xs'
+                : 'px-4 py-2 text-gray-500 hover:text-white text-xs';
+    document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== tab);
+  });
+}
 
 function watchJob(id, source) {
-  if (es) es.close();
-  const panel = document.getElementById('progress-panel');
-  const log   = document.getElementById('progress-log');
-  const title = document.getElementById('progress-title');
-  log.innerHTML = '';
-  title.textContent = `Job #${id} — ${source}`;
-  panel.classList.remove('hidden');
+  if (es) { es.close(); es = null; }
+  if (lotsTimer) { clearInterval(lotsTimer); lotsTimer = null; }
+  watchId = id;
 
+  const panel = document.getElementById('progress-panel');
+  document.getElementById('pane-progress').innerHTML = '';
+  document.getElementById('pane-lots').innerHTML = '';
+  document.getElementById('lots-count').textContent = '';
+  document.getElementById('progress-title').textContent = `Job #${id} — ${source}`;
+  panel.classList.remove('hidden');
+  switchTab('progress');
+
+  // SSE progress stream
   es = new EventSource(`/admin/jobs/${id}/progress`);
   es.onmessage = (e) => {
     const d = JSON.parse(e.data);
+    const pane = document.getElementById('pane-progress');
     const line = document.createElement('div');
     const color = d.status === 'error' ? 'text-red-400'
-                : d.status === 'done'  ? 'text-green-400'
+                : d.status === 'done' || d.status === 'cancelled' ? 'text-green-400'
+                : d.status === 'pending' ? 'text-gray-600'
                 : 'text-gray-300';
     line.className = color;
-    line.textContent = JSON.stringify(d);
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
+    if (d.page !== undefined) {
+      line.textContent = `p.${d.page} · ${d.found_total ?? 0} found`;
+    } else {
+      line.textContent = d.status + (d.error ? ': ' + d.error : d.total !== undefined ? ` — ${d.total} lots` : '');
+    }
+    pane.appendChild(line);
+    pane.scrollTop = pane.scrollHeight;
 
     const row = document.querySelector(`tr[data-id="${id}"]`);
     if (row) {
       row.dataset.status = d.status;
       const badge = row.querySelector('.status-badge');
       const colors = { done:'bg-green-900 text-green-400', error:'bg-red-900 text-red-400',
-                       running:'bg-yellow-900 text-yellow-400', pending:'bg-blue-900/50 text-blue-400' };
+        running:'bg-yellow-900 text-yellow-400', pending:'bg-blue-900/50 text-blue-400',
+        cancelled:'bg-gray-800 text-gray-500' };
       badge.className = `status-badge text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
       badge.textContent = d.status;
-      if (d.found_total !== undefined) {
-        row.querySelector('.progress-cell').textContent = `p.${d.page} · ${d.found_total} found`;
-      }
-      if (d.total !== undefined) {
-        row.querySelector('.result-cell').textContent = `${d.total} lots · ${d.pages} pages`;
-      }
+      if (d.found_total !== undefined) row.querySelector('.progress-cell').textContent = `p.${d.page} · ${d.found_total} found`;
+      if (d.total !== undefined) row.querySelector('.result-cell').textContent = `${d.total} lots · ${d.pages} pages`;
     }
-    if (['done','error'].includes(d.status)) { es.close(); es = null; }
+    if (['done','error','cancelled'].includes(d.status)) { es.close(); es = null; }
   };
-  es.onerror = () => {
-    const errLine = document.createElement('div');
-    errLine.className = 'text-red-400';
-    errLine.textContent = 'Connection error or stream ended.';
-    log.appendChild(errLine);
-    es.close(); es = null;
+  es.onerror = () => { es.close(); es = null; };
+
+  // Poll lot-level events every 3s
+  const pollLots = () => {
+    fetch(`/admin/jobs/${id}/events`)
+      .then(r => r.json())
+      .then(data => {
+        const pane = document.getElementById('pane-lots');
+        const evColors = { update: 'text-blue-400', delisted: 'text-red-400', relisted: 'text-green-400' };
+        pane.innerHTML = '';
+        (data.events || []).forEach(ev => {
+          const div = document.createElement('div');
+          div.className = 'flex items-start gap-2 border-b border-gray-800/50 pb-1';
+          const changes = typeof ev.changes === 'string' ? JSON.parse(ev.changes) : (ev.changes || {});
+          const fields = Object.keys(changes).slice(0, 3).join(', ');
+          div.innerHTML = `<span class="${evColors[ev.event] ?? 'text-gray-400'} font-mono shrink-0">${ev.event}</span>
+            <span class="text-gray-300 font-mono">${ev.lot_id}</span>
+            <span class="text-gray-600 truncate">${fields}</span>`;
+          pane.appendChild(div);
+        });
+        document.getElementById('lots-count').textContent = data.events?.length ? `(${data.events.length})` : '';
+        if (['done','error','cancelled'].includes(data.status)) {
+          clearInterval(lotsTimer); lotsTimer = null;
+        }
+      }).catch(() => {});
   };
+  pollLots();
+  lotsTimer = setInterval(pollLots, 3000);
 }
 
 function closeProgress() {
   if (es) { es.close(); es = null; }
+  if (lotsTimer) { clearInterval(lotsTimer); lotsTimer = null; }
   document.getElementById('progress-panel').classList.add('hidden');
 }
 
-// auto-watch if any job is currently running on page load
 document.querySelectorAll('tr[data-status="running"]').forEach(row => {
   watchJob(parseInt(row.dataset.id), row.dataset.source);
 });

@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 _CHANNEL_PREFIX = "parse_progress:"
 
 
+class JobCancelledError(Exception):
+    pass
+
+
 def _redis() -> redis.Redis:
     return redis.Redis(
         host=getattr(Config, "REDIS_HOST", "localhost"),
@@ -87,7 +91,19 @@ def process_pending_job() -> None:
         source = job["source"]
         filters = json.loads(job["filters"]) if job["filters"] else {}
 
-        _set_job(conn, job_id, "running", progress={"status": "starting", "page": 0})
+        # Atomic claim — bail if job was cancelled between SELECT and UPDATE
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE parse_jobs SET status='running', updated_at=NOW(), progress=%s "
+                "WHERE id=%s AND status='pending'",
+                (json.dumps({"status": "starting", "page": 0}), job_id),
+            )
+            claimed = cur.rowcount
+        conn.commit()
+        if not claimed:
+            logger.info(f"[job_worker] Job #{job_id} no longer pending (cancelled?), skipping")
+            return
+
         logger.info(f"[job_worker] Job #{job_id} starting: source={source} filters={filters}")
 
         r = _redis()
@@ -105,6 +121,10 @@ def process_pending_job() -> None:
             _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
             _publish(r, source, {"job_id": job_id, "status": "done", **result})
             logger.info(f"[job_worker] Job #{job_id} done: {result}")
+        except JobCancelledError:
+            logger.info(f"[job_worker] Job #{job_id} cancelled mid-run")
+            _set_job(conn, job_id, "cancelled", progress={"status": "cancelled"})
+            _publish(r, source, {"job_id": job_id, "status": "cancelled"})
         except Exception as e:
             msg = f"{type(e).__name__}: {e}"
             _set_job(conn, job_id, "error", progress={"status": "error"},
@@ -147,6 +167,12 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
             }
             _set_job(conn, job_id, "running", progress=progress)
             _publish(r, source, {"job_id": job_id, **progress})
+            # Check if cancelled via admin UI
+            with conn.cursor() as _cur:
+                _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
+                row = _cur.fetchone()
+            if row and row["status"] == "cancelled":
+                raise JobCancelledError(f"Job #{job_id} cancelled by user")
 
         total = parser.run(
             max_pages=max_pages,

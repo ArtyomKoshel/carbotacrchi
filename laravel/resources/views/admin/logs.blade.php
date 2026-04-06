@@ -4,23 +4,40 @@
 @section('content')
 
 {{-- Filter bar --}}
-<div class="flex items-center gap-3 mb-4">
-  @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info'] as $lv => $label)
-  <a href="{{ route('admin.logs', array_filter(['level' => $lv])) }}"
-     class="px-3 py-1.5 rounded-lg text-sm transition
-            {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-    {{ $label }}
-  </a>
-  @endforeach
+<form method="GET" class="mb-4 space-y-3">
+  <div class="flex items-center gap-2 flex-wrap">
+    @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info', 'DEBUG' => 'Debug'] as $lv => $label)
+    <button type="submit" name="level" value="{{ $lv }}"
+            class="px-3 py-1.5 rounded-lg text-sm transition
+                   {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+      {{ $label }}
+    </button>
+    @endforeach
 
-  <form method="GET" class="ml-auto">
-    <input type="hidden" name="level" value="{{ $level }}">
+    <input type="hidden" name="search" value="{{ $search }}">
+    <input type="hidden" name="source" value="{{ $source }}">
+
+    <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search])) }}"
+       class="ml-auto px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
+      ↓ Download
+    </a>
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">
       ↻ Refresh
     </button>
-  </form>
-</div>
+  </div>
+
+  <div class="flex gap-2">
+    <input type="text" name="search" value="{{ $search }}" placeholder="Search text..."
+           class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
+    <input type="text" name="source" value="{{ $source }}" placeholder="Source (e.g. kbcha)"
+           class="w-40 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
+    @if($search || $source)
+    <a href="{{ route('admin.logs', array_filter(['level' => $level])) }}"
+       class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Clear</a>
+    @endif
+  </div>
+</form>
 
 @if($error)
   <div class="bg-red-900/30 border border-red-800 rounded-xl px-5 py-4 text-red-400 text-sm">

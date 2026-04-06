@@ -45,22 +45,16 @@
             $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'yes' : 'no') : (is_array($v) ? json_encode($v) : $v));
           @endphp
           @foreach($ch->changes as $field => $diff)
-            @if($field === 'is_active' && count($ch->changes) === 1)
-              @continue
-            @endif
             <div>
               <span class="text-gray-500">{{ $field }}:</span>
               @if(isset($diff['old']))
                 <span class="line-through text-gray-600 ml-1">{{ $fv($diff['old']) }}</span>
-                <span class="text-blue-400 ml-1">→ {{ $fv($diff['new']) }}</span>
+                <span class="{{ $ch->event === 'delisted' ? 'text-red-400' : ($ch->event === 'relisted' ? 'text-green-400' : 'text-blue-400') }} ml-1">→ {{ $fv($diff['new']) }}</span>
               @elseif(isset($diff['new']))
                 <span class="text-green-400 ml-1">{{ $fv($diff['new']) }}</span>
               @endif
             </div>
           @endforeach
-          @if(in_array($ch->event, ['delisted','relisted']) && count($ch->changes) <= 1)
-            <span class="text-gray-500 italic">status changed</span>
-          @endif
         </td>
         <td class="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
           {{ \Carbon\Carbon::parse($ch->recorded_at)->format('d M H:i') }}
