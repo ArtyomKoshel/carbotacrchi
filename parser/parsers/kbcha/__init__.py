@@ -10,6 +10,7 @@ from ..base import AbstractParser
 from .client import KBChaClient
 from .detail_parser import KBChaDetailParser
 from .enricher import KBChaEnricher
+from .inspection_parser import CarmodooInspectionParser
 from .list_parser import KBChaListParser
 from .normalizer import KBChaNormalizer, MAKER_CODES
 
