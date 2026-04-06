@@ -16,20 +16,14 @@ class AdminAuth
             abort(503, 'ADMIN_TOKEN is not configured');
         }
 
-        $provided = $request->bearerToken()
-            ?? $request->query('token')
-            ?? $request->input('token');
-
-        if (!hash_equals($token, (string) $provided)) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-            return response(
-                view('admin.login'),
-                401
-            );
+        if ($request->session()->get('admin_authenticated') === true) {
+            return $next($request);
         }
 
-        return $next($request);
+        if ($request->expectsJson()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        return redirect()->route('admin.login');
     }
 }

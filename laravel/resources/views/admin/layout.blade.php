@@ -20,8 +20,6 @@
   <nav class="w-52 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col py-6 px-4 gap-1">
     <span class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 px-2">Carbot Admin</span>
 
-    @php $token = request()->query('token', '') @endphp
-
     @foreach([
       ['route' => 'admin.dashboard', 'icon' => '▦', 'label' => 'Dashboard'],
       ['route' => 'admin.changes',   'icon' => '↻', 'label' => 'Changes'],
@@ -32,13 +30,24 @@
       ['route' => 'admin.lots',      'icon' => '⟳', 'label' => 'Re-parse'],
     ] as $item)
       @php $active = request()->routeIs($item['route']) @endphp
-      <a href="{{ route($item['route'], ['token' => $token]) }}"
+      <a href="{{ route($item['route']) }}"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition
                 {{ $active ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
         <span class="text-base w-4 text-center">{{ $item['icon'] }}</span>
         {{ $item['label'] }}
       </a>
     @endforeach
+
+    <div class="mt-auto pt-4 border-t border-gray-800">
+      <form method="POST" action="{{ route('admin.logout') }}">
+        @csrf
+        <button type="submit"
+                class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-800 hover:text-white transition">
+          <span class="text-base w-4 text-center">⏻</span>
+          Выйти
+        </button>
+      </form>
+    </div>
   </nav>
 
   {{-- Main --}}

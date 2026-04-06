@@ -7,6 +7,7 @@ import string
 import time as _time
 
 import httpx
+from httpx import Timeout as _Timeout
 
 from config import Config
 
@@ -37,7 +38,7 @@ class KBChaClient:
         transport = httpx.HTTPTransport(proxy=proxy) if proxy else None
         return httpx.Client(
             headers=HEADERS,
-            timeout=30.0,
+            timeout=_Timeout(connect=30.0, read=90.0, write=15.0, pool=10.0),
             follow_redirects=True,
             transport=transport,
         )
@@ -76,6 +77,17 @@ class KBChaClient:
 
         return False
 
+    def _get(self, url: str, params: dict | None = None,
+             headers: dict | None = None) -> httpx.Response:
+        """Wrapper around client.get that auto-rotates proxy on ProxyError and retries once."""
+        try:
+            return self._client.get(url, params=params, headers=headers)
+        except httpx.ProxyError as e:
+            logger.warning(f"[kbcha:proxy] ProxyError ({e}) — rotating and retrying...")
+            self.rotate_proxy()
+            _time.sleep(2)
+            return self._client.get(url, params=params, headers=headers)
+
     def warmup(self) -> None:
         """Visit homepage + search page to establish a proper browser session before detail fetches."""
         try:
@@ -107,7 +119,7 @@ class KBChaClient:
         params = {"makerCode": maker_code, "page": str(page)}
 
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params)
+        resp = self._get(url, params=params)
         elapsed = _time.monotonic() - t0
 
         resp.raise_for_status()
@@ -127,7 +139,7 @@ class KBChaClient:
             "Referer": self._last_list_url,
         }
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params, headers=headers)
+        resp = self._get(url, params=params, headers=headers)
         elapsed = _time.monotonic() - t0
 
         resp.raise_for_status()
@@ -145,7 +157,7 @@ class KBChaClient:
             "Referer": "https://www.kbchachacha.com/",
         }
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params, headers=headers)
+        resp = self._get(url, params=params, headers=headers)
         elapsed = _time.monotonic() - t0
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] carmodoo checkNum={check_num} "
@@ -157,7 +169,7 @@ class KBChaClient:
         params = {"carSeq": car_seq}
         headers = {"Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}"}
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params, headers=headers)
+        resp = self._get(url, params=params, headers=headers)
         elapsed = _time.monotonic() - t0
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] km_analysis carSeq={car_seq} "
@@ -169,7 +181,7 @@ class KBChaClient:
         params = {"carSeq": car_seq}
         headers = {"Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}"}
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params, headers=headers)
+        resp = self._get(url, params=params, headers=headers)
         elapsed = _time.monotonic() - t0
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] basic_info carSeq={car_seq} "
@@ -192,7 +204,7 @@ class KBChaClient:
             "Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}",
         }
         t0 = _time.monotonic()
-        resp = self._client.get(url, params=params, headers=headers)
+        resp = self._get(url, params=params, headers=headers)
         elapsed = _time.monotonic() - t0
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] kb_inspection carSeq={car_seq} "

@@ -10,9 +10,8 @@
 @endif
 
 {{-- Search form --}}
-<form method="GET" action="{{ route('admin.lots', ['token' => request()->query('token')]) }}"
+<form method="GET" action="{{ route('admin.lots') }}"
       class="flex gap-3 mb-6">
-  <input type="hidden" name="token" value="{{ request()->query('token') }}">
   <input type="text" name="q" value="{{ $q }}" placeholder="Lot ID / plate / VIN..."
          class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
   <button type="submit"
@@ -56,7 +55,7 @@
         </td>
         <td class="px-5 py-3 text-right">
           <form method="POST"
-                action="{{ route('admin.lots.reparse', ['lotId' => $lot->id, 'token' => request()->query('token')]) }}">
+                action="{{ route('admin.lots.reparse', ['lotId' => $lot->id]) }}">
             @csrf
             <button type="submit"
                     class="px-3 py-1 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-xs transition">
@@ -115,7 +114,6 @@
 </div>
 
 <script>
-const token = {{ json_encode(request()->query('token')) }};
 const statusColors = {
   done:    'bg-green-900 text-green-400',
   error:   'bg-red-900 text-red-400',
@@ -127,7 +125,7 @@ function pollPending() {
   const rows = document.querySelectorAll('#reparse-table tr[data-status="pending"], #reparse-table tr[data-status="running"]');
   rows.forEach(row => {
     const id = row.dataset.id;
-    fetch(`/admin/reparse/${id}/status?token=${token}`)
+    fetch(`/admin/reparse/${id}/status`)
       .then(r => r.json())
       .then(data => {
         row.dataset.status = data.status;

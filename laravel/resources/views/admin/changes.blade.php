@@ -6,7 +6,7 @@
 {{-- Filter bar --}}
 <div class="flex gap-2 mb-6">
   @foreach(['', 'update', 'delisted', 'relisted'] as $ev)
-  <a href="{{ route('admin.changes', array_filter(['token' => request()->query('token'), 'event' => $ev])) }}"
+  <a href="{{ route('admin.changes', array_filter(['event' => $ev])) }}"
      class="px-3 py-1.5 rounded-lg text-sm transition
             {{ $event === $ev ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
     {{ $ev ?: 'All' }}
@@ -41,15 +41,26 @@
           <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ch->event }}</span>
         </td>
         <td class="px-5 py-3 text-xs space-y-0.5">
+          @php
+            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'yes' : 'no') : (is_array($v) ? json_encode($v) : $v));
+          @endphp
           @foreach($ch->changes as $field => $diff)
-          <div>
-            <span class="text-gray-500">{{ $field }}:</span>
-            @if(isset($diff['old']))
-              <span class="line-through text-gray-600 ml-1">{{ is_array($diff['old']) ? json_encode($diff['old']) : $diff['old'] }}</span>
-              <span class="text-green-400 ml-1">→ {{ is_array($diff['new']) ? json_encode($diff['new']) : $diff['new'] }}</span>
+            @if($field === 'is_active' && count($ch->changes) === 1)
+              @continue
             @endif
-          </div>
+            <div>
+              <span class="text-gray-500">{{ $field }}:</span>
+              @if(isset($diff['old']))
+                <span class="line-through text-gray-600 ml-1">{{ $fv($diff['old']) }}</span>
+                <span class="text-blue-400 ml-1">→ {{ $fv($diff['new']) }}</span>
+              @elseif(isset($diff['new']))
+                <span class="text-green-400 ml-1">{{ $fv($diff['new']) }}</span>
+              @endif
+            </div>
           @endforeach
+          @if(in_array($ch->event, ['delisted','relisted']) && count($ch->changes) <= 1)
+            <span class="text-gray-500 italic">status changed</span>
+          @endif
         </td>
         <td class="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
           {{ \Carbon\Carbon::parse($ch->recorded_at)->format('d M H:i') }}

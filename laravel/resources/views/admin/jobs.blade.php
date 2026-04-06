@@ -12,7 +12,7 @@
 {{-- Launch form --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
   <div class="text-sm font-semibold text-white mb-4">Launch Parser</div>
-  <form method="POST" action="{{ route('admin.jobs.launch', ['token' => request()->query('token')]) }}"
+  <form method="POST" action="{{ route('admin.jobs.launch') }}"
         class="flex flex-wrap gap-3 items-end">
     @csrf
     <div class="flex flex-col gap-1">
@@ -62,7 +62,14 @@
       @forelse($jobs as $job)
       <tr data-id="{{ $job->id }}" data-status="{{ $job->status }}" data-source="{{ $job->source }}">
         <td class="px-5 py-3 text-gray-600 text-xs">{{ $job->id }}</td>
-        <td class="px-5 py-3 text-white">{{ $job->source }}</td>
+        <td class="px-5 py-3 text-white">
+          {{ $job->source }}
+          @if(($job->filters['triggered_by'] ?? 'manual') === 'scheduler')
+            <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ auto</span>
+          @else
+            <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">manual</span>
+          @endif
+        </td>
         <td class="px-5 py-3">
           @php
             $badge = match($job->status) {
@@ -106,7 +113,7 @@
           @endif
           @if($job->status === 'pending')
             <form method="POST"
-                  action="{{ route('admin.jobs.cancel', ['id' => $job->id, 'token' => request()->query('token')]) }}">
+                  action="{{ route('admin.jobs.cancel', ['id' => $job->id]) }}">
               @csrf
               <button type="submit" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-red-400 transition">
                 Cancel
@@ -134,7 +141,6 @@
 </div>
 
 <script>
-const token = {{ json_encode(request()->query('token')) }};
 let es = null;
 
 function watchJob(id, source) {
@@ -146,7 +152,7 @@ function watchJob(id, source) {
   title.textContent = `Job #${id} — ${source}`;
   panel.classList.remove('hidden');
 
-  es = new EventSource(`/admin/jobs/${id}/progress?token=${token}`);
+  es = new EventSource(`/admin/jobs/${id}/progress`);
   es.onmessage = (e) => {
     const d = JSON.parse(e.data);
     const line = document.createElement('div');
@@ -175,7 +181,13 @@ function watchJob(id, source) {
     }
     if (['done','error'].includes(d.status)) { es.close(); es = null; }
   };
-  es.onerror = () => { es.close(); es = null; };
+  es.onerror = () => {
+    const errLine = document.createElement('div');
+    errLine.className = 'text-red-400';
+    errLine.textContent = 'Connection error or stream ended.';
+    log.appendChild(errLine);
+    es.close(); es = null;
+  };
 }
 
 function closeProgress() {

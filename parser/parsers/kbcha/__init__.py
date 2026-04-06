@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import time as _time
 
+import httpx
+
 from config import Config
 from models import CarLot
 from repository import LotRepository
@@ -138,6 +140,9 @@ class KBChaParser(AbstractParser):
         if maker_filter:
             logger.info(f"[{source}] Maker filter: '{maker_filter}' -> {list(makers.values())}")
 
+        logger.info(f"[{source}] Warming up session...")
+        self._client.warmup()
+
         existing_ids = self.repo.get_existing_ids(source)
         logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
 
@@ -212,6 +217,14 @@ class KBChaParser(AbstractParser):
         for page in range(1, pages + 1):
             try:
                 html = self._client.fetch_list_page(maker_code, page)
+            except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+                logger.warning(f"[{source}] {maker_name} p.{page} timeout ({type(e).__name__}), retrying in 5s...")
+                _time.sleep(5)
+                try:
+                    html = self._client.fetch_list_page(maker_code, page)
+                except Exception as e2:
+                    logger.error(f"[{source}] {maker_name} p.{page} fetch error after retry: {type(e2).__name__}: {e2}")
+                    break
             except Exception as e:
                 logger.error(f"[{source}] {maker_name} p.{page} fetch error: {type(e).__name__}: {e}")
                 break

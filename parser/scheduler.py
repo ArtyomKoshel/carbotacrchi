@@ -7,7 +7,6 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from config import Config
-from repository import LotRepository
 from reparse_worker import process_pending
 from job_worker import process_pending_job
 import parsers  # noqa: F401 — triggers parser registration
@@ -86,17 +85,44 @@ def _seed_schedules(db_schedules: dict) -> None:
         logger.warning(f"[scheduler] Could not seed parser_schedules: {e}")
 
 
+def _enqueue_scheduled_job(source_key: str, max_pages: int | None = None) -> None:
+    """Insert a parse_job row for the scheduler trigger; skip if one is already pending/running."""
+    import json
+    try:
+        conn = pymysql.connect(
+            host=Config.DB_HOST, port=Config.DB_PORT,
+            user=Config.DB_USERNAME, password=Config.DB_PASSWORD,
+            database=Config.DB_DATABASE, charset="utf8mb4",
+            cursorclass=pymysql.cursors.DictCursor,
+            connect_timeout=5,
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM parse_jobs WHERE source=%s AND status IN ('pending','running') LIMIT 1",
+                (source_key,),
+            )
+            if cur.fetchone():
+                logger.info(f"[{source_key}] Scheduled trigger skipped — job already pending/running")
+                conn.close()
+                return
+            filters = {"triggered_by": "scheduler"}
+            if max_pages:
+                filters["max_pages"] = max_pages
+            cur.execute(
+                "INSERT INTO parse_jobs (source, status, filters, created_at, updated_at) "
+                "VALUES (%s, 'pending', %s, NOW(), NOW())",
+                (source_key, json.dumps(filters)),
+            )
+        conn.commit()
+        logger.info(f"[{source_key}] Scheduled parse_job enqueued (max_pages={max_pages})")
+        conn.close()
+    except Exception as e:
+        logger.error(f"[{source_key}] Failed to enqueue scheduled job: {e}")
+
+
 def _make_job_fn(source_key: str, parser_cls, max_pages: int | None = None):
     def _run():
-        logger.info(f"[{source_key}] Scheduled import starting...")
-        repo = LotRepository()
-        try:
-            count = parser_cls(repo).run(max_pages=max_pages or None)
-            logger.info(f"[{source_key}] Import finished: {count} lots")
-        except Exception as e:
-            logger.error(f"[{source_key}] Import failed: {e}")
-        finally:
-            repo.close()
+        _enqueue_scheduled_job(source_key, max_pages)
     _run.__name__ = f"run_{source_key}"
     return _run
 

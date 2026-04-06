@@ -27,6 +27,18 @@ def _redis() -> redis.Redis:
     )
 
 
+PARSE_LOCK_TTL = 4 * 3600  # 4 hours max
+
+
+def acquire_parse_lock(r: redis.Redis, source: str, owner: str) -> bool:
+    """Returns True if lock acquired (SET NX)."""
+    return bool(r.set(f"parse_lock:{source}", owner, nx=True, ex=PARSE_LOCK_TTL))
+
+
+def release_parse_lock(r: redis.Redis, source: str) -> None:
+    r.delete(f"parse_lock:{source}")
+
+
 def _get_conn():
     return pymysql.connect(
         host=Config.DB_HOST, port=Config.DB_PORT,
@@ -79,6 +91,13 @@ def process_pending_job() -> None:
         logger.info(f"[job_worker] Job #{job_id} starting: source={source} filters={filters}")
 
         r = _redis()
+
+        if not acquire_parse_lock(r, source, f"job:{job_id}"):
+            holder = r.get(f"parse_lock:{source}") or "unknown"
+            logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
+            _set_job(conn, job_id, "pending")
+            return
+
         _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
 
         try:
@@ -92,6 +111,8 @@ def process_pending_job() -> None:
                      result={"error": msg})
             _publish(r, source, {"job_id": job_id, "status": "error", "error": msg})
             logger.error(f"[job_worker] Job #{job_id} failed: {msg}")
+        finally:
+            release_parse_lock(r, source)
     finally:
         conn.close()
 

@@ -15,6 +15,33 @@ use Illuminate\Support\Facades\Redis;
 
 class AdminController extends Controller
 {
+    public function showLogin()
+    {
+        if (session('admin_authenticated')) {
+            return redirect()->route('admin.dashboard');
+        }
+        return view('admin.login');
+    }
+
+    public function processLogin(Request $request)
+    {
+        $token    = config('admin.token');
+        $password = $request->input('password', '');
+
+        if ($token && hash_equals($token, $password)) {
+            $request->session()->put('admin_authenticated', true);
+            return redirect()->route('admin.dashboard');
+        }
+
+        return redirect()->route('admin.login')->withErrors(['password' => 'Неверный пароль']);
+    }
+
+    public function logout(Request $request)
+    {
+        $request->session()->forget('admin_authenticated');
+        return redirect()->route('admin.login');
+    }
+
     public function dashboard()
     {
         $sources = DB::table('lots')
@@ -37,10 +64,17 @@ class AdminController extends Controller
             ->groupBy('source')
             ->pluck('last_parsed', 'source');
 
+        $lastScheduled = DB::table('parse_jobs')
+            ->select('source', DB::raw('MAX(created_at) as last_run'), DB::raw('MAX(status) as last_status'))
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(filters, '$.triggered_by')) = 'scheduler'")
+            ->groupBy('source')
+            ->get()
+            ->keyBy('source');
+
         $proxyBalance = $this->fetchProxyBalance();
 
         return view('admin.dashboard', compact(
-            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'proxyBalance'
+            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'lastScheduled', 'proxyBalance'
         ));
     }
 
@@ -135,7 +169,7 @@ class AdminController extends Controller
     {
         $exists = DB::table('lots')->where('id', $lotId)->exists();
         if (!$exists) {
-            return redirect()->route('admin.lots', ['token' => request()->query('token')])
+            return redirect()->route('admin.lots')
                 ->withErrors(['lot_id' => "Lot {$lotId} not found"]);
         }
 
@@ -147,7 +181,7 @@ class AdminController extends Controller
             ReparseRequest::create(['lot_id' => $lotId, 'status' => 'pending']);
         }
 
-        return redirect()->route('admin.lots', ['token' => $request->query('token'), 'q' => $lotId])
+        return redirect()->route('admin.lots', ['q' => $lotId])
             ->with('success', "Re-parse queued for {$lotId}");
     }
 
@@ -183,7 +217,7 @@ class AdminController extends Controller
             'triggered_by' => 'admin',
         ]);
 
-        return redirect()->route('admin.jobs', ['token' => $request->query('token')])
+        return redirect()->route('admin.jobs')
             ->with('success', "Job #{$job->id} queued for {$source}");
     }
 
@@ -191,13 +225,15 @@ class AdminController extends Controller
     {
         ParseJob::where('id', $id)->where('status', 'pending')
             ->update(['status' => 'cancelled', 'updated_at' => now()]);
-        return redirect()->route('admin.jobs', ['token' => request()->query('token')])
+        return redirect()->route('admin.jobs')
             ->with('success', "Job #{$id} cancelled");
     }
 
     public function jobProgress(int $id)
     {
         $job = ParseJob::findOrFail($id);
+
+        session()->save();
 
         return response()->stream(function () use ($job) {
             $channel = "parse_progress:{$job->source}";
@@ -237,16 +273,20 @@ class AdminController extends Controller
 
     public function updateSchedule(Request $request, string $source)
     {
-        ParserSchedule::updateOrCreate(['source' => $source], [
-            'enabled'          => (bool) $request->input('enabled'),
-            'schedule'         => $request->input('schedule', ''),
-            'interval_minutes' => (int) $request->input('interval_minutes', 60),
-            'max_pages'        => (int) $request->input('max_pages', 0),
-            'maker_filter'     => $request->input('maker_filter') ?: null,
-        ]);
+        try {
+            ParserSchedule::updateOrCreate(['source' => $source], [
+                'enabled'          => (bool) $request->input('enabled'),
+                'schedule'         => $request->input('schedule', ''),
+                'interval_minutes' => (int) $request->input('interval_minutes', 60),
+                'max_pages'        => (int) $request->input('max_pages', 0),
+                'maker_filter'     => $request->input('maker_filter') ?: null,
+            ]);
+        } catch (\Throwable $e) {
+            return response("DB error in updateSchedule: " . $e->getMessage() . "\n" . $e->getTraceAsString(), 500)
+                ->header('Content-Type', 'text/plain');
+        }
 
-        return redirect()
-            ->route('admin.schedules', ['token' => $request->query('token')])
+        return redirect()->route('admin.schedules')
             ->with('success', "Schedule for {$source} updated.");
     }
 

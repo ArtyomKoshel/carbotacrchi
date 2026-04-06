@@ -6,7 +6,7 @@
 {{-- Filter bar --}}
 <div class="flex items-center gap-3 mb-4">
   @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info'] as $lv => $label)
-  <a href="{{ route('admin.logs', array_filter(['token' => request()->query('token'), 'level' => $lv])) }}"
+  <a href="{{ route('admin.logs', array_filter(['level' => $lv])) }}"
      class="px-3 py-1.5 rounded-lg text-sm transition
             {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
     {{ $label }}
@@ -14,7 +14,6 @@
   @endforeach
 
   <form method="GET" class="ml-auto">
-    <input type="hidden" name="token" value="{{ request()->query('token') }}">
     <input type="hidden" name="level" value="{{ $level }}">
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">

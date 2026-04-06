@@ -42,6 +42,21 @@ if [ -n "$PARSER_LOG_FILE" ]; then
         && sed -i "s|^PARSER_LOG_FILE=.*|PARSER_LOG_FILE=${PARSER_LOG_FILE}|" "$APP_DIR/.env" \
         || echo "PARSER_LOG_FILE=${PARSER_LOG_FILE}" >> "$APP_DIR/.env"
 fi
+if [ -n "$PARSER_SOURCES" ]; then
+    grep -q "^PARSER_SOURCES=" "$APP_DIR/.env" \
+        && sed -i "s|^PARSER_SOURCES=.*|PARSER_SOURCES=${PARSER_SOURCES}|" "$APP_DIR/.env" \
+        || echo "PARSER_SOURCES=${PARSER_SOURCES}" >> "$APP_DIR/.env"
+fi
+if [ -n "$SESSION_DRIVER" ]; then
+    grep -q "^SESSION_DRIVER=" "$APP_DIR/.env" \
+        && sed -i "s|^SESSION_DRIVER=.*|SESSION_DRIVER=${SESSION_DRIVER}|" "$APP_DIR/.env" \
+        || echo "SESSION_DRIVER=${SESSION_DRIVER}" >> "$APP_DIR/.env"
+fi
+if [ -n "$FLOPPYDATA_API_KEY" ]; then
+    grep -q "^FLOPPYDATA_API_KEY=" "$APP_DIR/.env" \
+        && sed -i "s|^FLOPPYDATA_API_KEY=.*|FLOPPYDATA_API_KEY=${FLOPPYDATA_API_KEY}|" "$APP_DIR/.env" \
+        || echo "FLOPPYDATA_API_KEY=${FLOPPYDATA_API_KEY}" >> "$APP_DIR/.env"
+fi
 if [ -n "$REDIS_HOST" ]; then
     grep -q "^REDIS_HOST=" "$APP_DIR/.env" \
         && sed -i "s|^REDIS_HOST=.*|REDIS_HOST=${REDIS_HOST}|" "$APP_DIR/.env" \

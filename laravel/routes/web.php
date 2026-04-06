@@ -6,6 +6,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/bot/webhook', [WebhookController::class, 'handle']);
 
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/login',  [AdminController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AdminController::class, 'processLogin'])->name('login.submit');
+    Route::post('/logout',[AdminController::class, 'logout'])->name('logout');
+});
+
 Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/',                              [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/changes',                       [AdminController::class, 'changes'])->name('changes');
@@ -21,3 +27,5 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::get('/schedules',                     [AdminController::class, 'schedules'])->name('schedules');
     Route::post('/schedules/{source}',           [AdminController::class, 'updateSchedule'])->name('schedules.update');
 });
+
+Route::get('/up', fn() => response('OK'));

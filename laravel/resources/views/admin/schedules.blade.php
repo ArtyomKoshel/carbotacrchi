@@ -24,7 +24,7 @@
       </span>
     </div>
     <form method="POST"
-          action="{{ route('admin.schedules.update', ['source' => $source, 'token' => request()->query('token')]) }}"
+          action="{{ route('admin.schedules.update', ['source' => $source]) }}"
           class="px-5 py-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
       @csrf
 
