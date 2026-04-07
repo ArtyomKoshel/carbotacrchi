@@ -1,4 +1,5 @@
 .env
+*.log
 laravel/vendor/
 laravel/bootstrap/cache/*.php
 laravel/storage/logs/*.log
