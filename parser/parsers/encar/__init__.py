@@ -60,14 +60,15 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",
         raw_data={
-            "manufacturer_kr": make_kr,
-            "model_kr":        model,
-            "model_group_kr":  item.get("ModelGroup"),
-            "badge_kr":        badge,
-            "badge_detail_kr": badge_detail,
-            "year_month":      item.get("Year"),
-            "sell_type":       item.get("SellType"),
-            "ad_type":         item.get("AdType"),
+            "manufacturer_kr":   make_kr,
+            "model_kr":          model,
+            "model_group_kr":    item.get("ModelGroup"),
+            "badge_kr":          badge,
+            "badge_detail_kr":   badge_detail,
+            "year_month":        item.get("Year"),
+            "sell_type":         item.get("SellType"),
+            "ad_type":           item.get("AdType"),
+            "photo_path":        photo_path or None,
         },
     )
 
@@ -744,16 +745,6 @@ class EncarParser(AbstractParser):
         ids = [lot.id for lot in lots]
         id_map = {lot.id: lot for lot in lots}
 
-        # Batch API returns inner vehicle IDs (from photo paths), not listing IDs.
-        # Pre-build inner_id → lot mapping from image_url (e.g. /pic4149/41495702_001.jpg).
-        inner_id_map: dict[str, CarLot] = {}
-        for lot in lots:
-            m = _re.search(r"/(\d+)_\d+\.", lot.image_url or "")
-            if m and m.group(1) != lot.id:
-                inner_id = m.group(1)
-                inner_id_map[inner_id] = lot
-                lot.raw_data["inspect_vehicle_id"] = inner_id
-
         for i in range(0, len(ids), _BATCH_SIZE):
             chunk = ids[i: i + _BATCH_SIZE]
             try:
@@ -761,13 +752,23 @@ class EncarParser(AbstractParser):
                 logger.debug(f"[encar] batch_details: API returned {len(details)} items for {len(chunk)} requested")
                 enriched = 0
                 for detail in details:
-                    vid = str(detail.get("vehicleId", ""))
-                    lot = id_map.get(vid) or inner_id_map.get(vid)
+                    manage = detail.get("manage") or {}
+                    # dummy=True: inner vehicleId differs from listing Id;
+                    # dummyVehicleId holds the actual listing Id we requested.
+                    if manage.get("dummy") and manage.get("dummyVehicleId"):
+                        listing_id = str(manage["dummyVehicleId"])
+                    else:
+                        listing_id = str(detail.get("vehicleId", ""))
+                    # Also store inner vehicleId for inspection API calls
+                    inner_id = str(detail.get("vehicleId", ""))
+                    lot = id_map.get(listing_id)
                     if lot:
+                        if inner_id and inner_id != listing_id:
+                            lot.raw_data["inspect_vehicle_id"] = inner_id
                         _enrich_from_detail(lot, detail, self._norm)
                         enriched += 1
                     else:
-                        logger.debug(f"[encar] batch_details: vehicleId={vid!r} unmatched")
+                        logger.debug(f"[encar] batch_details: listing_id={listing_id!r} unmatched")
                 logger.info(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots (API returned {len(details)})")
             except Exception as e:
                 logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
