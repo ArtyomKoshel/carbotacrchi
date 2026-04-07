@@ -59,11 +59,10 @@ def _load_db_schedules() -> dict[str, dict]:
 
 
 def _seed_schedules(db_schedules: dict) -> None:
-    """Insert default rows for any registered parsers missing from parser_schedules."""
+    """Insert default rows for any registered parsers missing from parser_schedules.
+    Also syncs the enabled flag when the env var (config_flag) is explicitly set."""
     registry = get_all()
     missing = [k for k in registry if k not in db_schedules]
-    if not missing:
-        return
     try:
         conn = pymysql.connect(
             host=Config.DB_HOST, port=Config.DB_PORT,
@@ -82,7 +81,8 @@ def _seed_schedules(db_schedules: dict) -> None:
                 )
         conn.commit()
         conn.close()
-        logger.info(f"[scheduler] Seeded parser_schedules for: {missing}")
+        if missing:
+            logger.info(f"[scheduler] Seeded parser_schedules for: {missing}")
     except Exception as e:
         logger.warning(f"[scheduler] Could not seed parser_schedules: {e}")
 
@@ -139,7 +139,7 @@ def _apply_schedules(scheduler: BlockingScheduler, registry: dict, db_schedules:
     """Add, reschedule, or remove parser import jobs based on current DB config."""
     for source_key, reg in registry.items():
         db = db_schedules.get(source_key, {})
-        # Config flag (e.g. KBCHA_ENABLED) is a hard override — if False, ignore DB
+        # DB is the source of truth; env var (config_flag=False) can hard-disable, but True defers to DB
         config_flag = getattr(Config, f"{source_key.upper()}_ENABLED", None)
         if config_flag is False:
             enabled = False
