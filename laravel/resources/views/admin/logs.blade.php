@@ -50,46 +50,43 @@
 </div>
 @endif
 
-{{-- Filter form (GET) --}}
-<form method="GET" class="mb-4 space-y-2">
-  {{-- Level filter --}}
+{{-- Filters --}}
+<div class="mb-4 space-y-2">
+  {{-- Level filter (links, not form buttons) --}}
   <div class="flex items-center gap-2 flex-wrap">
-    @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info', 'DEBUG' => 'Debug'] as $lv => $label)
-    <button type="submit" name="level" value="{{ $lv }}"
-            class="px-3 py-1.5 rounded-lg text-sm transition
-                   {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-      {{ $label }}
-    </button>
+    @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info', 'DEBUG' => 'Debug'] as $lv => $lbl)
+    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+       class="px-3 py-1.5 rounded-lg text-sm transition
+              {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+      {{ $lbl }}
+    </a>
     @endforeach
-    <a href="{{ route('admin.logs', array_merge(array_filter(['level' => $level, 'source' => $source]), ['search' => '[STAT]'])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
       📊 Stats
     </a>
-    <input type="hidden" name="search" value="{{ $search }}">
-    <input type="hidden" name="source" value="{{ $source }}">
   </div>
 
-  {{-- Source quick-filter buttons --}}
+  {{-- Source quick-filter (links) --}}
   <div class="flex items-center gap-2 flex-wrap">
     <span class="text-xs text-gray-600">Parser:</span>
-    @foreach(['' => 'All', 'kbcha' => 'KBCha', 'encar' => 'Encar'] as $src => $label)
-    <button type="submit" name="source" value="{{ $src }}"
-            class="px-3 py-1.5 rounded-lg text-sm transition
-                   {{ $source === $src ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-      {{ $label }}
-    </button>
+    @foreach(['' => 'All', 'kbcha' => 'KBCha', 'encar' => 'Encar'] as $src => $lbl)
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $src, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+       class="px-3 py-1.5 rounded-lg text-sm transition
+              {{ $source === $src ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+      {{ $lbl }}
+    </a>
     @endforeach
-    <input type="hidden" name="level" value="{{ $level }}">
-    <input type="hidden" name="search" value="{{ $search }}">
   </div>
 
-  {{-- Search text + manual source --}}
-  <div class="flex gap-2">
+  {{-- Search text --}}
+  <form method="GET" class="flex gap-2">
+    <input type="hidden" name="level"  value="{{ $level }}">
+    <input type="hidden" name="source" value="{{ $source }}">
+    @if($maxLines != 1000)<input type="hidden" name="limit" value="{{ $maxLines }}">@endif
     <input type="text" name="search" value="{{ $search }}" placeholder="Search text..."
            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
-    <input type="hidden" name="level" value="{{ $level }}">
-    <input type="hidden" name="source" value="{{ $source }}">
     <button type="submit"
             class="px-4 py-1.5 rounded-lg text-sm bg-blue-700 hover:bg-blue-600 text-white transition">
       Search
@@ -98,8 +95,8 @@
     <a href="{{ route('admin.logs') }}"
        class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Reset</a>
     @endif
-  </div>
-</form>
+  </form>
+</div>
 
 @if(session('success'))
   <div class="bg-green-900/30 border border-green-800 rounded-xl px-5 py-3 text-green-400 text-sm mb-3">

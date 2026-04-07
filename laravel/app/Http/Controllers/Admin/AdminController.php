@@ -335,11 +335,11 @@ class AdminController extends Controller
                 file_put_contents($logFile, '');
                 $cleared++;
             }
-            // Delete all rotation backups (.1, .2, ...)
+            // Truncate all rotation backups (.1, .2, ...)
             for ($i = 1; $i <= 10; $i++) {
                 $rotated = $logFile . '.' . $i;
                 if (file_exists($rotated)) {
-                    unlink($rotated);
+                    file_put_contents($rotated, '');
                     $cleared++;
                 } else {
                     break;

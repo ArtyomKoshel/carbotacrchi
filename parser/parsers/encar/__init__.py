@@ -128,10 +128,9 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if manage.get("registDateTime"):
         lot.registration_date = manage["registDateTime"][:10]
 
-    seizing = cond.get("seizing", {})
-    if seizing:
-        lot.lien_status    = "lien"   if (seizing.get("pledgeCount")  or 0) > 0 else "clean"
-        lot.seizure_status = "seized" if (seizing.get("seizingCount") or 0) > 0 else "clean"
+    # NOTE: lien_status/seizure_status are set from the Record API in _enrich_from_record
+    # (rec["loan"] / rec["robberCnt"]) which is the authoritative source.
+    # The batch detail API's seizing.pledgeCount is unreliable and must not overwrite it.
 
     outer = [p["path"] for p in photos if p.get("type") == "OUTER"]
     if outer and not lot.image_url:
