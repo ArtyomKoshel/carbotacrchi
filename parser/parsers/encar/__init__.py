@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 _SOURCE = "encar"
 _PAGE_SIZE = 100
-_BATCH_SIZE = 100
+_BATCH_SIZE = 20   # batch_details API hard-caps at 20 items
 
 
 def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
