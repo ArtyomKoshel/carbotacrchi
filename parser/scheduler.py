@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timedelta
 
@@ -187,9 +188,45 @@ def _make_reload_fn(scheduler: BlockingScheduler, registry: dict, _state: dict):
     return _reload
 
 
+def _cleanup_stale_jobs() -> None:
+    """On startup: mark orphaned 'running' jobs as error and release their Redis locks."""
+    try:
+        from job_worker import _redis, release_parse_lock
+        r = _redis()
+        conn = pymysql.connect(
+            host=Config.DB_HOST, port=Config.DB_PORT,
+            user=Config.DB_USERNAME, password=Config.DB_PASSWORD,
+            database=Config.DB_DATABASE, charset="utf8mb4",
+            cursorclass=pymysql.cursors.DictCursor,
+        )
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, source FROM parse_jobs WHERE status = 'running'")
+            stale = cur.fetchall()
+        if stale:
+            ids = [r["id"] for r in stale]
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE parse_jobs SET status='error', progress=%s, updated_at=NOW() "
+                    f"WHERE id IN ({','.join(['%s']*len(ids))})",
+                    [json.dumps({"status": "error", "error": "service restarted"})]+ids,
+                )
+            conn.commit()
+            for row in stale:
+                try:
+                    release_parse_lock(r, row["source"])
+                except Exception:
+                    pass
+            logger.info(f"[scheduler] Cleaned up {len(stale)} stale running job(s): {ids}")
+        conn.close()
+    except Exception as e:
+        logger.warning(f"[scheduler] Stale job cleanup failed (non-fatal): {e}")
+
+
 def start_scheduler():
     scheduler = BlockingScheduler()
     registry  = get_all()
+
+    _cleanup_stale_jobs()
 
     db_schedules = _load_db_schedules()
     _seed_schedules(db_schedules)
