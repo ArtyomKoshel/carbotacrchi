@@ -28,6 +28,7 @@
       ['route' => 'admin.jobs',      'icon' => '▶', 'label' => 'Jobs'],
       ['route' => 'admin.schedules', 'icon' => '⏱', 'label' => 'Schedules'],
       ['route' => 'admin.lots',      'icon' => '⟳', 'label' => 'Re-parse'],
+      ['route' => 'admin.accuracy',  'icon' => '◎', 'label' => 'Accuracy'],
     ] as $item)
       @php $active = request()->routeIs($item['route']) @endphp
       <a href="{{ route($item['route']) }}"

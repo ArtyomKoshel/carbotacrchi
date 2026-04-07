@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 _CHANNEL_PREFIX = "parse_progress:"
 
 
-class JobCancelledError(Exception):
+class JobCancelledError(BaseException):
     pass
 
 

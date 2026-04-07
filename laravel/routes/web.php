@@ -25,7 +25,8 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::post('/jobs/{id}/cancel',             [AdminController::class, 'cancelJob'])->name('jobs.cancel');
     Route::get('/jobs/{id}/progress',            [AdminController::class, 'jobProgress'])->name('jobs.progress');
     Route::get('/jobs/{id}/events',             [AdminController::class, 'jobEvents'])->name('jobs.events');
-    Route::get('/schedules',                     [AdminController::class, 'schedules'])->name('schedules');
+    Route::get('/schedules',                       [AdminController::class, 'schedules'])->name('schedules');
+    Route::get('/accuracy',                          [AdminController::class, 'fieldStats'])->name('accuracy');
     Route::post('/schedules/{source}',           [AdminController::class, 'updateSchedule'])->name('schedules.update');
 });
 

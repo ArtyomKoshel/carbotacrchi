@@ -3,3 +3,4 @@ __pycache__/
 .env
 *.html
 *.log
+tests/audit_*.json

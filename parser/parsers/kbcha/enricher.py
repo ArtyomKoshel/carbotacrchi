@@ -66,6 +66,9 @@ class KBChaEnricher:
                 combined = self._fetch_combined(car_seq, lot, stats, delay)
                 self._apply_combined(lot, combined, enriched_fields)
                 self._repo.upsert_batch([lot])
+                photos = lot.raw_data.get("photos") or []
+                if photos:
+                    self._repo.upsert_photos(lot.id, photos)
                 stats["detail_fetched"] += 1
                 self._log_lot_dump(lot)
 

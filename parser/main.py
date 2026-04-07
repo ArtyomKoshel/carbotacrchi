@@ -129,8 +129,7 @@ def main() -> None:
         run_once(pages=args.pages, maker=args.maker)
         return
 
-    run_once(pages=args.pages, maker=args.maker)
-    logger.info("Starting scheduler...")
+    logger.info("Starting scheduler (first run in ~60s via job queue)...")
     start_scheduler()
 
 

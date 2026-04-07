@@ -26,7 +26,9 @@ class Config:
     REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
 
     ENCAR_ENABLED = os.getenv("ENCAR_ENABLED", "false").lower() == "true"
-    ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "30"))
+    ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "60"))
+    ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
+    ENCAR_MAX_PAGES = int(os.getenv("ENCAR_MAX_PAGES", "1"))
     ENCAR_PROXY = os.getenv("ENCAR_PROXY", "")
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))

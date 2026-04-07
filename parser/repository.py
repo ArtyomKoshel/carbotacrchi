@@ -304,6 +304,26 @@ class LotRepository:
             logger.error(f"[DB] count_by_source failed: {e}")
             return {"active": 0, "inactive": 0}
 
+    def upsert_photos(self, lot_id: str, photos: list[str]) -> int:
+        """Insert photos into lot_photos. Skips duplicates by (lot_id, position)."""
+        if not photos:
+            return 0
+        conn = self._get_conn()
+        sql = """
+            INSERT IGNORE INTO lot_photos (lot_id, url, position)
+            VALUES (%s, %s, %s)
+        """
+        rows = [(lot_id, url, pos) for pos, url in enumerate(photos)]
+        try:
+            with conn.cursor() as cursor:
+                cursor.executemany(sql, rows)
+            conn.commit()
+            return len(rows)
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"[DB] upsert_photos failed for {lot_id}: {type(e).__name__}: {e}")
+            return 0
+
     def upsert_inspection(self, record: InspectionRecord) -> None:
         row = record.to_db_row()
         conn = self._get_conn()
