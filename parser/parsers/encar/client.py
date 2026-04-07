@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 
 import httpx
+
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ _VERIFY_CDN   = "https://imgcar.encar.com"
 _DETAIL_INCLUDE = (
     "ADVERTISEMENT,CATEGORY,CONDITION,CONTACT,MANAGE,OPTIONS,PHOTOS,SPEC,VIEW"
 )
-_BATCH_INCLUDE = "SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,VIEW"
+_BATCH_INCLUDE = "SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,CONDITION,OPTIONS,VIEW"
 
 _HEADERS = {
     "User-Agent": (
@@ -39,10 +42,42 @@ _HEADERS = {
 
 class EncarClient:
     def __init__(self, proxy: str | None = None):
+        # Build proxy list: ENCAR_PROXY_LIST takes precedence over single ENCAR_PROXY / arg
+        proxy_list = Config.ENCAR_PROXY_LIST or ([proxy or Config.ENCAR_PROXY] if (proxy or Config.ENCAR_PROXY) else [])
+        self._proxies: list[str | None] = proxy_list if proxy_list else [None]
+        self._proxy_idx: int = 0
+        self._s = self._build_client(self._proxies[0])
+
+    def _build_client(self, proxy: str | None) -> httpx.Client:
         kwargs: dict = {"headers": _HEADERS, "timeout": 30, "follow_redirects": True}
         if proxy:
             kwargs["transport"] = httpx.HTTPTransport(proxy=proxy)
-        self._s = httpx.Client(**kwargs)
+        return httpx.Client(**kwargs)
+
+    @staticmethod
+    def _bump_session(proxy_url: str) -> str | None:
+        """Replace -session-XXX with new random session ID (rotating proxy support)."""
+        import random, string
+        new_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        result, n = re.subn(r'(-session-)([^-:@]+)', rf'\g<1>{new_id}', proxy_url)
+        return result if n else None
+
+    def rotate_proxy(self) -> bool:
+        """Rotate to next proxy or bump session ID on rotating proxy."""
+        if len(self._proxies) > 1:
+            self._proxy_idx = (self._proxy_idx + 1) % len(self._proxies)
+            self._s.close()
+            self._s = self._build_client(self._proxies[self._proxy_idx])
+            logger.info(f"[encar:proxy] Rotated to proxy {self._proxy_idx}")
+            return True
+        bumped = self._bump_session(self._proxies[0]) if self._proxies[0] else None
+        if bumped:
+            self._proxies[0] = bumped
+            self._s.close()
+            self._s = self._build_client(bumped)
+            logger.info("[encar:proxy] Bumped session on rotating proxy")
+            return True
+        return False
 
     # ------------------------------------------------------------------
     def search(

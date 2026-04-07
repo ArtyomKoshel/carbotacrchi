@@ -51,7 +51,7 @@ class KBChaClient:
     def _bump_session(proxy_url: str) -> str | None:
         """Replace -session-XXX with a new random session ID (Floppydata / rotating proxy)."""
         new_id = KBChaClient._new_session_id()
-        result, n = re.subn(r'(-session-)([^:@]+)', rf'\g<1>{new_id}', proxy_url)
+        result, n = re.subn(r'(-session-)([^-:@]+)', rf'\g<1>{new_id}', proxy_url)
         return result if n else None
 
     def rotate_proxy(self) -> bool:

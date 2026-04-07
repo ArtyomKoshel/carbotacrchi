@@ -37,6 +37,9 @@ class Config:
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "60"))
     ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
     ENCAR_PROXY = os.getenv("ENCAR_PROXY", "")
+    ENCAR_PROXY_LIST: list[str] = [
+        p.strip() for p in os.getenv("ENCAR_PROXY_LIST", "").split(",") if p.strip()
+    ]
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 

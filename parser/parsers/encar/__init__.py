@@ -471,7 +471,7 @@ def _enrich_from_sellingpoint(lot: CarLot, sp: dict, norm: EncarNormalizer) -> N
 class EncarParser(AbstractParser):
     def __init__(self, repo: LotRepository):
         super().__init__(repo)
-        self._client = EncarClient(proxy=Config.ENCAR_PROXY or None)
+        self._client = EncarClient()
         self._norm = EncarNormalizer()
 
     def get_source_key(self) -> str:
@@ -591,21 +591,27 @@ class EncarParser(AbstractParser):
             chunk = ids[i: i + _BATCH_SIZE]
             try:
                 details = self._client.batch_details(chunk)
+                enriched = 0
                 for detail in details:
                     vid = str(detail.get("vehicleId", ""))
                     if vid in id_map:
                         _enrich_from_detail(id_map[vid], detail, self._norm)
+                        enriched += 1
+                logger.info(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots")
             except Exception as e:
-                logger.warning(f"[encar] batch_details error: {e}, falling back to single fetch")
+                logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
+                ok = 0
                 for vid in chunk:
                     try:
                         detail = self._client.detail(vid)
                         if vid in id_map:
                             _enrich_from_detail(id_map[vid], detail, self._norm)
+                            ok += 1
                     except Exception as e2:
-                        logger.error(f"[encar] detail {vid} error: {e2}")
+                        logger.error(f"[encar] detail {vid} error: {type(e2).__name__}: {e2}")
                         stats["errors"] += 1
                     _time.sleep(0.5)
+                logger.info(f"[encar] single fallback: enriched {ok}/{len(chunk)} lots")
 
     def _enrich_accident_data(self, lots: list[CarLot], stats: dict) -> None:
         """Fetch record + inspection + diagnosis for new lots and upsert to lot_inspections."""
