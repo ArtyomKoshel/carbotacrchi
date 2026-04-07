@@ -668,6 +668,19 @@ class EncarParser(AbstractParser):
             offset = page * _PAGE_SIZE
             try:
                 data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (403, 407, 429, 503):
+                    logger.warning(f"[{source}] Search p.{page+1}: {e.response.status_code}, rotating proxy and retrying")
+                    self._client.rotate_proxy()
+                    _time.sleep(1)
+                    try:
+                        data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
+                    except Exception as e2:
+                        logger.error(f"[{source}] Search p.{page+1} retry failed: {e2}")
+                        break
+                else:
+                    logger.error(f"[{source}] Search p.{page+1} error: {e}")
+                    break
             except Exception as e:
                 logger.error(f"[{source}] Search p.{page+1} error: {e}")
                 break
@@ -730,7 +743,7 @@ class EncarParser(AbstractParser):
             # For new lots only: fetch accident record + inspection, then update each
             new_lots = [l for l in page_lots if l.id not in existing_ids]
             if new_lots:
-                self._enrich_accident_data(new_lots, stats, on_page_callback=on_page_callback)
+                self._enrich_accident_data(new_lots, stats)
 
             _t_total = _time.monotonic() - _t_page
             _t_enrich = _time.monotonic() - _t_after_upsert
@@ -901,7 +914,7 @@ class EncarParser(AbstractParser):
 
         return lot, insp_record, errors
 
-    def _enrich_accident_data(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
+    def _enrich_accident_data(self, lots: list[CarLot], stats: dict) -> None:
         """Fetch record + inspection + diagnosis in parallel; DB writes on main thread."""
         source = _SOURCE
         workers = min(Config.ENCAR_WORKERS, len(lots))
@@ -928,12 +941,6 @@ class EncarParser(AbstractParser):
                     lot, insp_record = orig_lot, None
                 stats["errors"] += errors
                 results.append((lot, insp_record))
-
-                if on_page_callback:
-                    try:
-                        on_page_callback(page=i + 1, found=0, total_pages=len(lots))
-                    except Exception:
-                        pass
 
         # DB writes — main thread only
         for lot, insp_record in results:
