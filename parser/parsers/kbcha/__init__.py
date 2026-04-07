@@ -164,10 +164,10 @@ class KBChaParser(AbstractParser):
             if maker_lots:
                 logger.info(f"[{source}] {maker_name}: enriching {len(maker_lots)} lots with details "
                             f"({len(new_lots)} new, {len(updated_lots)} existing)...")
-                self._enricher.enrich_details(maker_lots, stats)
+                self._enricher.enrich_details(maker_lots, stats, on_page_callback=on_page_callback)
 
             if new_lots:
-                self._enricher.enrich_inspections(new_lots, stats)
+                self._enricher.enrich_inspections(new_lots, stats, on_page_callback=on_page_callback)
 
             if maker_lots:
                 stats["total"] += len(maker_lots)

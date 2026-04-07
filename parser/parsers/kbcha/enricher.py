@@ -52,7 +52,7 @@ class KBChaEnricher:
 
     # ── Detail enrichment ──────────────────────────────────────────────────
 
-    def enrich_details(self, lots: list[CarLot], stats: dict) -> None:
+    def enrich_details(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
         delay = max(Config.REQUEST_DELAY, 1.5)
         enriched_fields: dict[str, int] = {}
 
@@ -81,6 +81,9 @@ class KBChaEnricher:
             except Exception as e:
                 logger.warning(f"[{self._source}] Detail fetch failed for {lot.id}: {type(e).__name__}: {e}")
                 stats["errors"] += 1
+
+            if on_page_callback:
+                on_page_callback(page=i + 1, found=1, total_pages=len(lots))
 
             _time.sleep(delay)
 
@@ -161,14 +164,14 @@ class KBChaEnricher:
 
     # ── Inspection enrichment ──────────────────────────────────────────────
 
-    def enrich_inspections(self, lots: list[CarLot], stats: dict) -> None:
+    def enrich_inspections(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
         delay = max(Config.REQUEST_DELAY, 1.5)
         insp_stats: dict[str, int] = {
             "parsed": 0, "photo_only": 0, "no_button": 0,
             "url_saved": 0, "other": 0, "errors": 0,
         }
 
-        for lot in lots:
+        for i, lot in enumerate(lots):
             insp_type = lot.raw_data.get("inspection_type")
             car_seq = lot.id.replace("kbcha_", "")
 
@@ -198,6 +201,9 @@ class KBChaEnricher:
             except Exception as e:
                 insp_stats["errors"] += 1
                 logger.warning(f"[{self._source}] Inspection fetch failed for {lot.id}: {type(e).__name__}: {e}")
+
+            if on_page_callback:
+                on_page_callback(page=i + 1, found=1, total_pages=len(lots))
 
         logger.info(
             f"[{self._source}] Inspection summary ({len(lots)} lots): "

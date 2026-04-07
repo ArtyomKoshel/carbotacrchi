@@ -72,7 +72,7 @@ def _publish(r: redis.Redis, source: str, payload: dict):
     try:
         r.publish(f"{_CHANNEL_PREFIX}{source}", json.dumps(payload))
     except Exception as e:
-        logger.warning(f"[job_worker] Redis publish failed: {e}")
+        logger.warning(f"[job_worker] Redis publish failed ({type(e).__name__}): {e} — progress will not be live but job continues")
 
 
 def process_pending_job() -> None:
@@ -109,7 +109,13 @@ def process_pending_job() -> None:
 
         r = _redis()
 
-        if not acquire_parse_lock(r, source, f"job:{job_id}"):
+        try:
+            locked = acquire_parse_lock(r, source, f"job:{job_id}")
+        except Exception as e:
+            logger.error(f"[job_worker] Job #{job_id}: Redis lock failed ({type(e).__name__}): {e} — marking as error")
+            _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": f"Redis: {e}"})
+            return
+        if not locked:
             holder = r.get(f"parse_lock:{source}") or "unknown"
             logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
             _set_job(conn, job_id, "pending")
@@ -123,7 +129,7 @@ def process_pending_job() -> None:
             _publish(r, source, {"job_id": job_id, "status": "done", **result})
             logger.info(f"[job_worker] Job #{job_id} done: {result}")
         except JobCancelledError:
-            logger.info(f"[job_worker] Job #{job_id} cancelled mid-run")
+            logger.info(f"[job_worker] Job #{job_id} CANCELLED — parser stopped cleanly")
             _set_job(conn, job_id, "cancelled", progress={"status": "cancelled"})
             _publish(r, source, {"job_id": job_id, "status": "cancelled"})
         except Exception as e:
@@ -173,6 +179,7 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
                 _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
                 row = _cur.fetchone()
             if row and row["status"] == "cancelled":
+                logger.info(f"[job_worker] Job #{job_id} cancel detected at detail #{page} of {total_pages}")
                 raise JobCancelledError(f"Job #{job_id} cancelled by user")
 
         total = parser.run(

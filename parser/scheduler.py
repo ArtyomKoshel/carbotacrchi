@@ -138,7 +138,12 @@ def _apply_schedules(scheduler: BlockingScheduler, registry: dict, db_schedules:
     """Add, reschedule, or remove parser import jobs based on current DB config."""
     for source_key, reg in registry.items():
         db = db_schedules.get(source_key, {})
-        enabled = bool(db.get("enabled", reg.enabled))
+        # Config flag (e.g. KBCHA_ENABLED) is a hard override — if False, ignore DB
+        config_flag = getattr(Config, f"{source_key.upper()}_ENABLED", None)
+        if config_flag is False:
+            enabled = False
+        else:
+            enabled = bool(db.get("enabled", reg.enabled))
         job_id = f"{source_key}_import"
 
         if not enabled:
