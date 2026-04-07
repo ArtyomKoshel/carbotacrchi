@@ -238,6 +238,19 @@ class LotRepository:
             logger.error(f"[DB] get_existing_ids failed: {e}")
             return set()
 
+    def count_active(self, source: str) -> int:
+        conn = self._get_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT COUNT(*) AS cnt FROM lots WHERE source = %s AND is_active = 1",
+                    (source,),
+                )
+                return cursor.fetchone()["cnt"]
+        except Exception as e:
+            logger.error(f"[DB] count_active failed: {e}")
+            return -1
+
     def mark_inactive(self, source: str, active_ids: set[str], grace_hours: int = 24) -> int:
         if not active_ids:
             return 0

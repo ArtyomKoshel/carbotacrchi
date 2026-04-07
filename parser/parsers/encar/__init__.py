@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 _SOURCE = "encar"
 _PAGE_SIZE = 100
 _BATCH_SIZE = 20   # batch_details API hard-caps at 20 items
+_MAX_SAFE_OFFSET = 9900  # Encar search API (Elasticsearch) caps at ~10k results per query
 
 
 def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
@@ -642,61 +643,54 @@ class EncarParser(AbstractParser):
     def get_source_name(self) -> str:
         return "Encar"
 
-    def run(
+    def _paginate_query(
         self,
-        max_pages: int | None = None,
-        maker_filter: str | None = None,
-        on_page_callback: Callable | None = None,
+        query: str,
+        max_pages: int,
+        seen_ids: set[str],
+        existing_ids: set[str],
+        stats: dict,
+        on_page_callback: Callable | None,
+        label: str = "",
+        collect_makers: set[str] | None = None,
     ) -> int:
+        """Paginate one Encar search query. Returns API total count.
+        Stops early when API cycles (all results already in seen_ids)."""
         source = _SOURCE
-        run_start = _time.monotonic()
-        stats = {"total": 0, "new": 0, "updated": 0, "errors": 0}
-
-        pages = max_pages or 9999  # 0 / None = all pages
-
-        query = "(And.Hidden.N._.CarType.A.)"
-        if maker_filter:
-            query = f"(And.Hidden.N._.Manufacturer.{maker_filter}.)"
-            logger.info(f"[{source}] Maker filter: {maker_filter}")
-
-        logger.info(f"[{source}] ========== IMPORT STARTED ==========")
-        logger.info(f"[{source}] Pages: {pages}, page_size: {_PAGE_SIZE}")
-
-        existing_ids = self.repo.get_existing_ids(source)
-        logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
-
-        seen_ids: set[str] = set()
         total_count: int | None = None
 
-        for page in range(pages):
+        for page in range(max_pages):
             _t_page = _time.monotonic()
             offset = page * _PAGE_SIZE
+            if offset > _MAX_SAFE_OFFSET:
+                logger.info(f"[{source}]{label} offset {offset} reached API cap, stopping segment")
+                break
             try:
                 data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
             except httpx.HTTPStatusError as e:
                 if e.response.status_code in (403, 407, 429, 503):
-                    logger.warning(f"[{source}] Search p.{page+1}: {e.response.status_code}, rotating proxy and retrying")
+                    logger.warning(f"[{source}]{label} p.{page+1}: {e.response.status_code}, rotating proxy and retrying")
                     self._client.rotate_proxy()
                     _time.sleep(1)
                     try:
                         data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
                     except Exception as e2:
-                        logger.error(f"[{source}] Search p.{page+1} retry failed: {e2}")
+                        logger.error(f"[{source}]{label} p.{page+1} retry failed: {e2}")
                         break
                 else:
-                    logger.error(f"[{source}] Search p.{page+1} error: {e}")
+                    logger.error(f"[{source}]{label} p.{page+1} error: {e}")
                     break
             except Exception as e:
-                logger.error(f"[{source}] Search p.{page+1} error: {e}")
+                logger.error(f"[{source}]{label} p.{page+1} error: {e}")
                 break
 
             if total_count is None:
                 total_count = data.get("Count", 0)
-                logger.info(f"[{source}] Total available: {total_count}")
+                logger.info(f"[{source}]{label} total: {total_count}")
 
             items = data.get("SearchResults", [])
             if not items:
-                logger.info(f"[{source}] p.{page+1}: empty, stopping")
+                logger.info(f"[{source}]{label} p.{page+1}: empty, stopping")
                 break
 
             page_lots: list[CarLot] = []
@@ -707,13 +701,19 @@ class EncarParser(AbstractParser):
                 seen_ids.add(vid)
                 lot = _lot_from_search(item, self._norm)
                 page_lots.append(lot)
+                if collect_makers is not None:
+                    mk = item.get("Manufacturer", "")
+                    if mk:
+                        collect_makers.add(mk)
 
-            logger.info(f"[{source}] p.{page+1}: {len(page_lots)} lots from search")
+            if not page_lots and items:
+                logger.info(f"[{source}]{label} p.{page+1}: all {len(items)} results already seen — API cycling, stopping")
+                break
 
-            # Batch-enrich with detail API (VIN, plate, engine, etc.)
+            logger.info(f"[{source}]{label} p.{page+1}: {len(page_lots)} lots from search")
+
             self._enrich_batch(page_lots, stats)
 
-            # Upsert to DB immediately — lots visible in DB with basic data
             self.repo.upsert_batch(page_lots)
             for lot in page_lots:
                 photos = lot.raw_data.get("photos") or []
@@ -729,23 +729,17 @@ class EncarParser(AbstractParser):
                     )
                 else:
                     stats["updated"] += 1
-                    logger.debug(
-                        f"[{source}] UPD {lot.id} | "
-                        f"{lot.make} {lot.model} {lot.year}"
-                    )
+                    logger.debug(f"[{source}] UPD {lot.id} | {lot.make} {lot.model} {lot.year}")
                 stats["total"] += 1
 
-            # Notify jobs progress right after page upsert
             if on_page_callback:
                 on_page_callback(
-                    page=page + 1,
+                    page=stats["total"] // _PAGE_SIZE,
                     found=len(page_lots),
-                    total_pages=pages,
+                    total_pages=None,
                 )
 
             _t_after_upsert = _time.monotonic()
-
-            # For new lots only: fetch accident record + inspection, then update each
             new_lots = [l for l in page_lots if l.id not in existing_ids]
             if new_lots:
                 self._enrich_accident_data(new_lots, stats)
@@ -754,20 +748,101 @@ class EncarParser(AbstractParser):
             _t_enrich = _time.monotonic() - _t_after_upsert
             _t_batch = _t_after_upsert - _t_page
             logger.info(
-                f"[{source}] p.{page+1} done in {_t_total:.1f}s "
+                f"[{source}]{label} p.{page+1} done in {_t_total:.1f}s "
                 f"(batch+upsert={_t_batch:.1f}s, enrich={_t_enrich:.1f}s, "
                 f"new={len(new_lots)}/{len(page_lots)})"
             )
 
             if offset + _PAGE_SIZE >= (total_count or 0):
-                logger.info(f"[{source}] Reached end of results")
+                logger.info(f"[{source}]{label} reached end ({total_count} total)")
                 break
+
+        return total_count or 0
+
+    def run(
+        self,
+        max_pages: int | None = None,
+        maker_filter: str | None = None,
+        on_page_callback: Callable | None = None,
+    ) -> int:
+        source = _SOURCE
+        run_start = _time.monotonic()
+        stats = {"total": 0, "new": 0, "updated": 0, "errors": 0}
+
+        pages = max_pages or 9999  # 0 / None = all pages
+
+        logger.info(f"[{source}] ========== IMPORT STARTED ==========")
+        logger.info(f"[{source}] Pages: {pages}, page_size: {_PAGE_SIZE}")
+
+        existing_ids = self.repo.get_existing_ids(source)
+        logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
+
+        seen_ids: set[str] = set()
+
+        api_total: int = 0  # total listings reported by Encar API
+
+        if maker_filter or max_pages:
+            query = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker_filter}.)" if maker_filter else "(And.Hidden.N._.CarType.A.)"
+            if maker_filter:
+                logger.info(f"[{source}] Maker filter: {maker_filter}")
+            api_total = self._paginate_query(query, pages, seen_ids, existing_ids, stats, on_page_callback)
+        else:
+            # Phase 1: global scan to discover all manufacturers (capped at 10k)
+            base_query = "(And.Hidden.N._.CarType.A.)"
+            discovered_makers: set[str] = set()
+            logger.info(f"[{source}] Phase 1: global scan to discover manufacturers")
+            api_total = self._paginate_query(
+                base_query, 100, seen_ids, existing_ids, stats,
+                on_page_callback, label=" [global]", collect_makers=discovered_makers,
+            )
+            logger.info(f"[{source}] Phase 1 done. Manufacturers found: {sorted(discovered_makers)}")
+
+            # Phase 2: per-manufacturer queries to bypass 10k pagination cap
+            logger.info(f"[{source}] Phase 2: per-manufacturer pagination")
+            for maker in sorted(discovered_makers):
+                mq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}.)"
+                try:
+                    count_data = self._client.search(query=mq, offset=0, count=1)
+                    maker_total = count_data.get("Count", 0)
+                except Exception as e:
+                    logger.warning(f"[{source}] [{maker}] count query failed: {e}")
+                    continue
+
+                logger.info(f"[{source}] [{maker}]: {maker_total} total")
+                if maker_total == 0:
+                    continue
+
+                if maker_total <= _MAX_SAFE_OFFSET:
+                    self._paginate_query(
+                        mq, 100, seen_ids, existing_ids, stats,
+                        on_page_callback, label=f" [{maker}]",
+                    )
+                else:
+                    logger.info(f"[{source}] [{maker}] {maker_total} > {_MAX_SAFE_OFFSET}, splitting by year")
+                    current_year = _time.localtime().tm_year
+                    for year in range(1990, current_year + 2):
+                        yq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}._.FormYear.{year}.)"
+                        try:
+                            ydata = self._client.search(query=yq, offset=0, count=1)
+                            year_total = ydata.get("Count", 0)
+                        except Exception:
+                            continue
+                        if year_total > 0:
+                            self._paginate_query(
+                                yq, 100, seen_ids, existing_ids, stats,
+                                on_page_callback, label=f" [{maker}/{year}]",
+                            )
 
         stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
         elapsed = _time.monotonic() - run_start
 
+        db_count = self.repo.count_active(source)
+        coverage_pct = stats["total"] / api_total * 100 if api_total else 0.0
+
         logger.info(f"[{source}] ========== IMPORT COMPLETE ==========")
-        logger.info(f"[{source}] Total:   {stats['total']}")
+        logger.info(f"[{source}] API reported: {api_total:,}")
+        logger.info(f"[{source}] Processed:   {stats['total']:,} ({coverage_pct:.1f}% coverage)")
+        logger.info(f"[{source}] In DB now:   {db_count:,}")
         logger.info(f"[{source}] New:     {stats['new']}")
         logger.info(f"[{source}] Updated: {stats['updated']}")
         logger.info(f"[{source}] Stale:   {stale}")
