@@ -21,9 +21,18 @@ class Config:
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
 
-    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
+    # Redis — supports both REDIS_URL (Railway standard) and individual vars
+    _redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
+    if _redis_url:
+        import urllib.parse as _up
+        _r = _up.urlparse(_redis_url)
+        REDIS_HOST     = _r.hostname or "localhost"
+        REDIS_PORT     = _r.port or 6379
+        REDIS_PASSWORD = _r.password or None
+    else:
+        REDIS_HOST     = os.getenv("REDIS_HOST", "localhost")
+        REDIS_PORT     = int(os.getenv("REDIS_PORT", "6379"))
+        REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
 
     ENCAR_ENABLED = os.getenv("ENCAR_ENABLED", "false").lower() == "true"
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "60"))
