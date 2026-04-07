@@ -50,6 +50,10 @@ def _setup_logging(debug: bool = False) -> None:
         )
         fh.setFormatter(fmt)
         root.addHandler(fh)
+        try:
+            os.chmod(Config.LOG_FILE, 0o666)
+        except OSError:
+            pass
 
 
 def _parse_args() -> argparse.Namespace:

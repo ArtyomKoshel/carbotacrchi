@@ -306,8 +306,18 @@ class AdminController extends Controller
     public function logsClear(Request $request)
     {
         $logFile = config('admin.log_file');
-        if (file_exists($logFile)) {
-            file_put_contents($logFile, '');
+        if (!$logFile) {
+            return redirect()->route('admin.logs')->with('error', 'Log file path not configured');
+        }
+        try {
+            if (file_exists($logFile)) {
+                $result = file_put_contents($logFile, '');
+                if ($result === false) {
+                    return redirect()->route('admin.logs')->with('error', "Cannot write to log file: {$logFile}");
+                }
+            }
+        } catch (\Throwable $e) {
+            return redirect()->route('admin.logs')->with('error', 'Clear failed: ' . $e->getMessage());
         }
         return redirect()->route('admin.logs')->with('success', 'Log file cleared');
     }

@@ -75,6 +75,11 @@
     {{ session('success') }}
   </div>
 @endif
+@if(session('error'))
+  <div class="bg-red-900/30 border border-red-800 rounded-xl px-5 py-3 text-red-400 text-sm mb-3">
+    {{ session('error') }}
+  </div>
+@endif
 
 @if($error)
   <div class="bg-red-900/30 border border-red-800 rounded-xl px-5 py-4 text-red-400 text-sm">
