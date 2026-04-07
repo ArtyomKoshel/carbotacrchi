@@ -18,8 +18,8 @@ from .normalizer import EncarNormalizer
 logger = logging.getLogger(__name__)
 
 _SOURCE = "encar"
-_PAGE_SIZE = 20
-_BATCH_SIZE = 20
+_PAGE_SIZE = 100
+_BATCH_SIZE = 100
 
 
 def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
@@ -129,8 +129,8 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
 
     seizing = cond.get("seizing", {})
     if seizing:
-        lot.lien_status    = "lien"   if seizing.get("pledgeCount", 0) > 0  else "clean"
-        lot.seizure_status = "seized" if seizing.get("seizingCount", 0) > 0 else "clean"
+        lot.lien_status    = "lien"   if (seizing.get("pledgeCount")  or 0) > 0 else "clean"
+        lot.seizure_status = "seized" if (seizing.get("seizingCount") or 0) > 0 else "clean"
 
     outer = [p["path"] for p in photos if p.get("type") == "OUTER"]
     if outer and not lot.image_url:
@@ -270,7 +270,12 @@ def _enrich_from_inspection(
     )
 
     def _parse_date8(s: str | None) -> str | None:
-        return f"{s[:4]}-{s[4:6]}-{s[6:8]}" if s and len(s) == 8 else None
+        if not s or len(s) != 8 or not s.isdigit():
+            return None
+        m, d = int(s[4:6]), int(s[6:8])
+        if not (1 <= m <= 12 and 1 <= d <= 31):
+            return None
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
 
     if vs := _parse_date8(detail.get("validityStartDate")):
         record.valid_from = vs
@@ -753,8 +758,6 @@ class EncarParser(AbstractParser):
                 f"(batch+upsert={_t_batch:.1f}s, enrich={_t_enrich:.1f}s, "
                 f"new={len(new_lots)}/{len(page_lots)})"
             )
-
-            _time.sleep(Config.REQUEST_DELAY)
 
             if offset + _PAGE_SIZE >= (total_count or 0):
                 logger.info(f"[{source}] Reached end of results")
