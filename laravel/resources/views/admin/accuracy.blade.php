@@ -19,6 +19,16 @@ function badge($p) {
 
 @section('content')
 
+{{-- SQL errors (shown only when a query fails) --}}
+@if(!empty($errors))
+  <div class="mb-6 bg-red-900/50 border border-red-700 rounded-xl p-4 space-y-1">
+    <div class="text-sm font-semibold text-red-300 mb-2">Query errors — some sections may be empty:</div>
+    @foreach($errors as $err)
+      <div class="font-mono text-xs text-red-400">{{ $err }}</div>
+    @endforeach
+  </div>
+@endif
+
 {{-- Index by source --}}
 @php
   $lotsBySource  = collect($lotsStats)->keyBy('source');

@@ -11,3 +11,4 @@ laravel/storage/framework/views/*
 .cursor/
 agent-transcripts/
 terminals/
+*.har

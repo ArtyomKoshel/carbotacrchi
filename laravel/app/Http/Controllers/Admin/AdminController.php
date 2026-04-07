@@ -314,116 +314,139 @@ class AdminController extends Controller
 
     public function fieldStats()
     {
+        $errors = [];
+
         // ── 1. lots columns ───────────────────────────────────────────────
-        $lotsStats = DB::select("
-            SELECT
-                source,
-                COUNT(*) AS total,
-                SUM(is_active)                                                      AS active,
-                SUM(trim        IS NOT NULL AND trim != '')                         AS trim,
-                SUM(vin         IS NOT NULL AND vin != '')                          AS vin,
-                SUM(plate_number IS NOT NULL AND plate_number != '')                AS plate_number,
-                SUM(body_type   IS NOT NULL AND body_type != '')                    AS body_type,
-                SUM(fuel        IS NOT NULL AND fuel != '')                         AS fuel,
-                SUM(transmission IS NOT NULL AND transmission != '')                AS transmission,
-                SUM(drive_type  IS NOT NULL AND drive_type != '')                   AS drive_type,
-                SUM(engine_volume IS NOT NULL)                                      AS engine_volume,
-                SUM(mileage     IS NOT NULL)                                        AS mileage,
-                SUM(color       IS NOT NULL AND color != '')                        AS color,
-                SUM(seat_color  IS NOT NULL AND seat_color != '')                   AS seat_color,
-                SUM(has_accident IS NOT NULL)                                       AS has_accident,
-                SUM(insurance_count IS NOT NULL)                                    AS insurance_count,
-                SUM(owners_count IS NOT NULL)                                       AS owners_count,
-                SUM(flood_history IS NOT NULL)                                      AS flood_history,
-                SUM(total_loss_history IS NOT NULL)                                 AS total_loss_history,
-                SUM(registration_date IS NOT NULL)                                  AS registration_date,
-                SUM(price       IS NOT NULL)                                        AS price,
-                SUM(lien_status IS NOT NULL AND lien_status != 'clean')             AS lien_not_clean,
-                SUM(seizure_status IS NOT NULL AND seizure_status != 'clean')       AS seizure_not_clean,
-                SUM(repair_cost IS NOT NULL AND repair_cost > 0)                    AS repair_cost,
-                SUM(dealer_name IS NOT NULL AND dealer_name != '')                  AS dealer_name,
-                SUM(dealer_phone IS NOT NULL AND dealer_phone != '')                AS dealer_phone,
-                SUM(dealer_company IS NOT NULL AND dealer_company != '')            AS dealer_company,
-                SUM(location    IS NOT NULL AND location != '')                     AS location,
-                SUM(options     IS NOT NULL AND JSON_LENGTH(options) > 0)           AS has_options,
-                SUM(image_url   IS NOT NULL AND image_url != '')                    AS image_url
-            FROM lots
-            GROUP BY source
-        ");
+        try {
+            $lotsStats = DB::select("
+                SELECT
+                    source,
+                    COUNT(*) AS total,
+                    SUM(is_active)                                          AS active,
+                    SUM(trim         IS NOT NULL AND trim != '')            AS trim,
+                    SUM(vin          IS NOT NULL AND vin != '')             AS vin,
+                    SUM(plate_number IS NOT NULL AND plate_number != '')    AS plate_number,
+                    SUM(body_type    IS NOT NULL AND body_type != '')       AS body_type,
+                    SUM(fuel         IS NOT NULL AND fuel != '')            AS fuel,
+                    SUM(transmission IS NOT NULL AND transmission != '')    AS transmission,
+                    SUM(drive_type   IS NOT NULL AND drive_type != '')      AS drive_type,
+                    SUM(engine_volume IS NOT NULL)                          AS engine_volume,
+                    SUM(mileage      IS NOT NULL)                           AS mileage,
+                    SUM(color        IS NOT NULL AND color != '')           AS color,
+                    SUM(seat_color   IS NOT NULL AND seat_color != '')      AS seat_color,
+                    SUM(has_accident IS NOT NULL)                           AS has_accident,
+                    SUM(insurance_count IS NOT NULL)                        AS insurance_count,
+                    SUM(owners_count IS NOT NULL)                           AS owners_count,
+                    SUM(flood_history IS NOT NULL)                          AS flood_history,
+                    SUM(total_loss_history IS NOT NULL)                     AS total_loss_history,
+                    SUM(registration_date IS NOT NULL)                      AS registration_date,
+                    SUM(price        IS NOT NULL)                           AS price,
+                    SUM(lien_status  IS NOT NULL AND lien_status <> 'clean') AS lien_not_clean,
+                    SUM(seizure_status IS NOT NULL AND seizure_status <> 'clean') AS seizure_not_clean,
+                    SUM(repair_cost  IS NOT NULL AND repair_cost > 0)       AS repair_cost,
+                    SUM(dealer_name  IS NOT NULL AND dealer_name != '')     AS dealer_name,
+                    SUM(dealer_phone IS NOT NULL AND dealer_phone != '')    AS dealer_phone,
+                    SUM(dealer_company IS NOT NULL AND dealer_company != '') AS dealer_company,
+                    SUM(location     IS NOT NULL AND location != '')        AS location,
+                    SUM(options      IS NOT NULL AND JSON_LENGTH(options) > 0) AS has_options,
+                    SUM(image_url    IS NOT NULL AND image_url != '')       AS image_url
+                FROM lots
+                GROUP BY source
+            ");
+        } catch (\Exception $e) {
+            $lotsStats = [];
+            $errors[] = 'lots: ' . $e->getMessage();
+        }
 
         // ── 2. raw_data JSON keys ─────────────────────────────────────────
-        $rawStats = DB::select("
-            SELECT
-                source,
-                COUNT(*) AS total,
-                SUM(JSON_EXTRACT(raw_data, '$.photos')             IS NOT NULL)  AS photos,
-                SUM(JSON_EXTRACT(raw_data, '$.engine_code')        IS NOT NULL)  AS engine_code,
-                SUM(JSON_EXTRACT(raw_data, '$.warranty_type')      IS NOT NULL)  AS warranty_type,
-                SUM(JSON_EXTRACT(raw_data, '$.recall')             IS NOT NULL)  AS recall,
-                SUM(JSON_EXTRACT(raw_data, '$.recall_status')      IS NOT NULL)  AS recall_status,
-                SUM(JSON_EXTRACT(raw_data, '$.car_state')          IS NOT NULL)  AS car_state,
-                SUM(JSON_EXTRACT(raw_data, '$.mechanical_issues')  IS NOT NULL)  AS mechanical_issues,
-                SUM(JSON_EXTRACT(raw_data, '$.diagnosis_center')   IS NOT NULL)  AS diagnosis_center,
-                SUM(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id') IS NOT NULL)  AS inspect_vehicle_id,
-                SUM(JSON_EXTRACT(raw_data, '$.drive_type')         IS NOT NULL)  AS drive_type_raw,
-                SUM(JSON_EXTRACT(raw_data, '$.photo_count')        IS NOT NULL)  AS photo_count
-            FROM lots
-            GROUP BY source
-        ");
+        try {
+            $rawStats = DB::select("
+                SELECT
+                    source,
+                    COUNT(*) AS total,
+                    SUM(JSON_EXTRACT(raw_data, '$.photos')             IS NOT NULL) AS photos,
+                    SUM(JSON_EXTRACT(raw_data, '$.engine_code')        IS NOT NULL) AS engine_code,
+                    SUM(JSON_EXTRACT(raw_data, '$.warranty_type')      IS NOT NULL) AS warranty_type,
+                    SUM(JSON_EXTRACT(raw_data, '$.recall')             IS NOT NULL) AS recall,
+                    SUM(JSON_EXTRACT(raw_data, '$.recall_status')      IS NOT NULL) AS recall_status,
+                    SUM(JSON_EXTRACT(raw_data, '$.car_state')          IS NOT NULL) AS car_state,
+                    SUM(JSON_EXTRACT(raw_data, '$.mechanical_issues')  IS NOT NULL) AS mechanical_issues,
+                    SUM(JSON_EXTRACT(raw_data, '$.diagnosis_center')   IS NOT NULL) AS diagnosis_center,
+                    SUM(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id') IS NOT NULL) AS inspect_vehicle_id,
+                    SUM(JSON_EXTRACT(raw_data, '$.drive_type')         IS NOT NULL) AS drive_type_raw,
+                    SUM(JSON_EXTRACT(raw_data, '$.photo_count')        IS NOT NULL) AS photo_count
+                FROM lots
+                GROUP BY source
+            ");
+        } catch (\Exception $e) {
+            $rawStats = [];
+            $errors[] = 'raw_data: ' . $e->getMessage();
+        }
 
         // ── 3. lot_inspections per source ─────────────────────────────────
-        $inspStats = DB::select("
-            SELECT
-                l.source,
-                COUNT(DISTINCT l.id)                                        AS total_lots,
-                COUNT(DISTINCT li.lot_id)                                   AS lots_with_insp,
-                SUM(li.cert_no          IS NOT NULL)                        AS cert_no,
-                SUM(li.inspection_date  IS NOT NULL)                        AS inspection_date,
-                SUM(li.valid_from       IS NOT NULL)                        AS valid_from,
-                SUM(li.valid_until      IS NOT NULL)                        AS valid_until,
-                SUM(li.inspection_mileage IS NOT NULL)                      AS inspection_mileage,
-                SUM(li.has_accident     IS NOT NULL)                        AS has_accident,
-                SUM(li.has_accident     = 1)                                AS accident_true,
-                SUM(li.has_outer_damage IS NOT NULL)                        AS has_outer_damage,
-                SUM(li.has_outer_damage = 1)                                AS outer_damage_true,
-                SUM(li.outer_detail     IS NOT NULL AND li.outer_detail!='') AS outer_detail,
-                SUM(li.has_flood        IS NOT NULL)                        AS has_flood,
-                SUM(li.has_tuning       IS NOT NULL)                        AS has_tuning,
-                SUM(li.accident_detail  IS NOT NULL AND li.accident_detail!='') AS accident_detail,
-                SUM(li.report_url       IS NOT NULL)                        AS report_url
-            FROM lots l
-            LEFT JOIN lot_inspections li ON li.lot_id = l.id
-            GROUP BY l.source
-        ");
+        try {
+            $inspStats = DB::select("
+                SELECT
+                    l.source,
+                    COUNT(DISTINCT l.id)          AS total_lots,
+                    COUNT(DISTINCT li.lot_id)     AS lots_with_insp,
+                    SUM(li.cert_no        IS NOT NULL) AS cert_no,
+                    SUM(li.inspection_date IS NOT NULL) AS inspection_date,
+                    SUM(li.valid_from     IS NOT NULL) AS valid_from,
+                    SUM(li.valid_until    IS NOT NULL) AS valid_until,
+                    SUM(li.inspection_mileage IS NOT NULL) AS inspection_mileage,
+                    SUM(li.has_accident   IS NOT NULL) AS has_accident,
+                    SUM(CASE WHEN li.has_accident = 1 THEN 1 ELSE 0 END) AS accident_true,
+                    SUM(li.has_outer_damage IS NOT NULL) AS has_outer_damage,
+                    SUM(CASE WHEN li.has_outer_damage = 1 THEN 1 ELSE 0 END) AS outer_damage_true,
+                    SUM(CASE WHEN li.outer_detail IS NOT NULL AND li.outer_detail <> '' THEN 1 ELSE 0 END) AS outer_detail,
+                    SUM(li.has_flood  IS NOT NULL) AS has_flood,
+                    SUM(li.has_tuning IS NOT NULL) AS has_tuning,
+                    SUM(CASE WHEN li.accident_detail IS NOT NULL AND li.accident_detail <> '' THEN 1 ELSE 0 END) AS accident_detail,
+                    SUM(li.report_url IS NOT NULL) AS report_url
+                FROM lots l
+                LEFT JOIN lot_inspections li ON li.lot_id = l.id
+                GROUP BY l.source
+            ");
+        } catch (\Exception $e) {
+            $inspStats = [];
+            $errors[] = 'lot_inspections: ' . $e->getMessage();
+        }
 
         // ── 4. lot_photos per source ──────────────────────────────────────
-        $photoStats = DB::select("
-            SELECT
-                l.source,
-                COUNT(DISTINCT l.id)        AS total_lots,
-                COUNT(DISTINCT lp.lot_id)   AS lots_with_photos,
-                COUNT(lp.id)                AS total_photos,
-                ROUND(AVG(pc.cnt), 1)       AS avg_photos_per_lot
-            FROM lots l
-            LEFT JOIN lot_photos lp ON lp.lot_id = l.id
-            LEFT JOIN (
-                SELECT lot_id, COUNT(*) AS cnt FROM lot_photos GROUP BY lot_id
-            ) pc ON pc.lot_id = l.id
-            GROUP BY l.source
-        ");
+        try {
+            $photoStats = DB::select("
+                SELECT
+                    l.source,
+                    COUNT(DISTINCT l.id)      AS total_lots,
+                    COUNT(DISTINCT lp.lot_id) AS lots_with_photos,
+                    COUNT(lp.id)              AS total_photos
+                FROM lots l
+                LEFT JOIN lot_photos lp ON lp.lot_id = l.id
+                GROUP BY l.source
+            ");
+        } catch (\Exception $e) {
+            $photoStats = [];
+            $errors[] = 'lot_photos: ' . $e->getMessage();
+        }
 
-        // ── 5. Fields never seen (always NULL across ALL lots) ────────────
-        $neverSeen = DB::select("
-            SELECT source,
-                SUM(drive_type IS NULL OR drive_type = '')        AS no_drive_type,
-                SUM(dealer_company IS NULL OR dealer_company = '') AS no_dealer_company,
-                SUM(repair_cost IS NULL OR repair_cost = 0)       AS no_repair_cost,
-                COUNT(*) AS total
-            FROM lots GROUP BY source
-        ");
+        // ── 5. Fields never/rarely filled ────────────────────────────────
+        try {
+            $neverSeen = DB::select("
+                SELECT source,
+                    SUM(drive_type    IS NULL OR drive_type = '')     AS no_drive_type,
+                    SUM(dealer_company IS NULL OR dealer_company = '') AS no_dealer_company,
+                    SUM(repair_cost   IS NULL OR repair_cost = 0)     AS no_repair_cost,
+                    COUNT(*) AS total
+                FROM lots GROUP BY source
+            ");
+        } catch (\Exception $e) {
+            $neverSeen = [];
+            $errors[] = 'neverSeen: ' . $e->getMessage();
+        }
 
         return view('admin.accuracy', compact(
-            'lotsStats', 'rawStats', 'inspStats', 'photoStats', 'neverSeen'
+            'lotsStats', 'rawStats', 'inspStats', 'photoStats', 'neverSeen', 'errors'
         ));
     }
 
