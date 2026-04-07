@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re as _re
 import time as _time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable
 
 import httpx
@@ -77,6 +78,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
             "sell_type":         item.get("SellType"),
             "ad_type":           item.get("AdType"),
             "photo_path":        photo_path or None,
+            "condition":         item.get("Condition") or [],
         },
     )
 
@@ -662,6 +664,7 @@ class EncarParser(AbstractParser):
         total_count: int | None = None
 
         for page in range(pages):
+            _t_page = _time.monotonic()
             offset = page * _PAGE_SIZE
             try:
                 data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
@@ -722,10 +725,21 @@ class EncarParser(AbstractParser):
                     total_pages=pages,
                 )
 
+            _t_after_upsert = _time.monotonic()
+
             # For new lots only: fetch accident record + inspection, then update each
             new_lots = [l for l in page_lots if l.id not in existing_ids]
             if new_lots:
                 self._enrich_accident_data(new_lots, stats, on_page_callback=on_page_callback)
+
+            _t_total = _time.monotonic() - _t_page
+            _t_enrich = _time.monotonic() - _t_after_upsert
+            _t_batch = _t_after_upsert - _t_page
+            logger.info(
+                f"[{source}] p.{page+1} done in {_t_total:.1f}s "
+                f"(batch+upsert={_t_batch:.1f}s, enrich={_t_enrich:.1f}s, "
+                f"new={len(new_lots)}/{len(page_lots)})"
+            )
 
             _time.sleep(Config.REQUEST_DELAY)
 
@@ -799,31 +813,51 @@ class EncarParser(AbstractParser):
                     _time.sleep(0.5)
                 logger.info(f"[encar] single fallback: enriched {ok}/{len(chunk)} lots")
 
-    def _enrich_accident_data(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
-        """Fetch record + inspection + diagnosis for new lots and upsert to lot_inspections."""
+    @staticmethod
+    def _fetch_lot_enrichment(
+        lot: CarLot, client: EncarClient, norm: EncarNormalizer
+    ) -> tuple[CarLot, InspectionRecord | None, int]:
+        """HTTP-only enrichment for one lot. Safe to run in a thread — no DB access."""
         source = _SOURCE
-        for i, lot in enumerate(lots):
-            insp_record: InspectionRecord | None = None
-            is_certified = False
+        insp_record: InspectionRecord | None = None
+        is_certified = False
+        errors = 0
 
-            # Record API — use inner vehicle ID (from photo paths), not listing ID
-            _inner_id = lot.raw_data.get("inspect_vehicle_id") or lot.id
+        _inner_id = lot.raw_data.get("inspect_vehicle_id") or lot.id
+        condition = set(lot.raw_data.get("condition") or [])
+        has_record     = "Record"     in condition
+        has_inspection = "Inspection" in condition
+
+        def _call(fn, *args):
+            """Call fn(*args), retry once with fresh proxy on rate-limit/block."""
             try:
-                rec = self._client.record(_inner_id, lot.plate_number or None)
+                return fn(*args)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (403, 429, 503):
+                    logger.debug(f"[{source}] {e.response.status_code} on {lot.id} — rotating proxy, retrying")
+                    client.rotate_proxy()
+                    return fn(*args)
+                raise
+            except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout):
+                client.rotate_proxy()
+                return fn(*args)
+
+        # Record API — only if car has record data
+        if has_record:
+            try:
+                rec = _call(client.record, _inner_id, lot.plate_number or None)
                 if rec and rec.get("openData"):
                     is_certified = True
                     insp_record = _enrich_from_record(lot, rec)
             except Exception as e:
                 logger.warning(f"[{source}] record {lot.id}: {e}")
-                stats["errors"] += 1
-            _time.sleep(0.3)
+                errors += 1
 
-            # Inspection (performance check form)
-            # Use inner vehicle ID from photo paths — may differ from listing ID
-            _insp_id = lot.raw_data.get("inspect_vehicle_id") or lot.id
-            insp_api_ok = False
+        # Inspection JSON API — only if car has inspection data
+        insp_api_ok = False
+        if has_inspection:
             try:
-                insp = self._client.inspection(_insp_id)
+                insp = _call(client.inspection, _inner_id)
                 if insp:
                     if insp_record is None:
                         insp_record = InspectionRecord(lot_id=lot.id, source="encar")
@@ -832,40 +866,77 @@ class EncarParser(AbstractParser):
                     insp_api_ok = True
             except Exception as e:
                 logger.warning(f"[{source}] inspection {lot.id}: {e}")
-            _time.sleep(0.3)
 
-            # HTML inspection fallback (www.encar.com) — used when API returns nothing
-            if not insp_api_ok:
-                html = self._client.inspection_html(_insp_id)
+        # HTML inspection fallback — only if JSON API returned nothing
+        if has_inspection and not insp_api_ok:
+            try:
+                html = _call(client.inspection_html, _inner_id)
                 if html:
                     if insp_record is None:
                         insp_record = InspectionRecord(lot_id=lot.id, source="encar")
                     _enrich_from_inspection_html(lot, html, insp_record)
                     logger.debug(f"[{source}] inspection_html {lot.id}: ok (fallback)")
-                    _time.sleep(0.3)
+            except Exception as e:
+                logger.warning(f"[{source}] inspection_html {lot.id}: {e}")
 
-            # Encar internal diagnosis (body panel check) — certified cars only
-            if is_certified:
-                try:
-                    diag = self._client.diagnosis(lot.id)
-                    if diag:
-                        if insp_record is None:
-                            insp_record = InspectionRecord(lot_id=lot.id, source="encar")
-                        _enrich_from_diagnosis(lot, diag, insp_record)
-                except Exception as e:
-                    logger.warning(f"[{source}] diagnosis {lot.id}: {e}")
-                _time.sleep(0.3)
-
-            # Selling point (drive_type for certified cars)
+        # Diagnosis — certified cars only
+        if is_certified:
             try:
-                sp = self._client.sellingpoint(lot.id)
+                diag = _call(client.diagnosis, lot.id)
+                if diag:
+                    if insp_record is None:
+                        insp_record = InspectionRecord(lot_id=lot.id, source="encar")
+                    _enrich_from_diagnosis(lot, diag, insp_record)
+            except Exception as e:
+                logger.warning(f"[{source}] diagnosis {lot.id}: {e}")
+
+        # Selling point — skip if drive_type already known from title
+        if not lot.drive_type:
+            try:
+                sp = _call(client.sellingpoint, lot.id)
                 if sp:
-                    _enrich_from_sellingpoint(lot, sp, self._norm)
+                    _enrich_from_sellingpoint(lot, sp, norm)
             except Exception as e:
                 logger.warning(f"[{source}] sellingpoint {lot.id}: {e}")
-            _time.sleep(0.3)
 
-            # Update lot with accident/inspection-enriched data
+        return lot, insp_record, errors
+
+    def _enrich_accident_data(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
+        """Fetch record + inspection + diagnosis in parallel; DB writes on main thread."""
+        source = _SOURCE
+        workers = min(Config.ENCAR_WORKERS, len(lots))
+
+        def _task(lot: CarLot) -> tuple[CarLot, InspectionRecord | None, int]:
+            # Bump session per thread so each worker gets its own proxy IP
+            proxy = EncarClient._bump_session(Config.ENCAR_PROXY) if Config.ENCAR_PROXY else None
+            client = EncarClient(proxy=proxy)
+            try:
+                return self._fetch_lot_enrichment(lot, client, self._norm)
+            finally:
+                client.close()
+
+        results: list[tuple[CarLot, InspectionRecord | None, int]] = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            future_map = {pool.submit(_task, lot): lot for lot in lots}
+            for i, future in enumerate(as_completed(future_map)):
+                try:
+                    lot, insp_record, errors = future.result()
+                except Exception as e:
+                    orig_lot = future_map[future]
+                    logger.error(f"[{source}] worker failed for {orig_lot.id}: {e}")
+                    errors = 1
+                    lot, insp_record = orig_lot, None
+                stats["errors"] += errors
+                results.append((lot, insp_record))
+
+                if on_page_callback:
+                    try:
+                        on_page_callback(page=i + 1, found=0, total_pages=len(lots))
+                    except Exception:
+                        pass
+
+        # DB writes — main thread only
+        for lot, insp_record in results:
             try:
                 self.repo.upsert_batch([lot])
                 logger.info(
@@ -875,15 +946,8 @@ class EncarParser(AbstractParser):
                 )
             except Exception as e:
                 logger.warning(f"[{source}] upsert lot {lot.id} after accident enrich: {e}")
-
             if insp_record is not None:
                 try:
                     self.repo.upsert_inspection(insp_record)
                 except Exception as e:
                     logger.warning(f"[{source}] upsert_inspection {lot.id}: {e}")
-
-            if on_page_callback:
-                try:
-                    on_page_callback(page=i + 1, found=0, total_pages=len(lots))
-                except Exception:
-                    pass
