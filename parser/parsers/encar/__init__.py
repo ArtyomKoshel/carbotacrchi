@@ -35,6 +35,13 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
     price_krw = norm.price_krw(price_man)
     mileage   = int(item.get("Mileage") or 0)
 
+    # Drive type: scan badge + model tokens for known keywords (e.g. "4WD", "AWD", "2WD")
+    _drive_tokens = f"{model} {badge}".split()
+    drive_type = next(
+        (norm.drive(t) for t in _drive_tokens if norm.drive(t)),
+        None,
+    )
+
     # Main photo: first Photos entry or Photo prefix
     photos = item.get("Photos") or []
     photo_path = photos[0]["location"] if photos else ""
@@ -56,6 +63,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         transmission=norm.transmission(item.get("Transmission")),
         color=item.get("Color") or None,
         seat_color=item.get("SeatColor") or None,
+        drive_type=drive_type,
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",

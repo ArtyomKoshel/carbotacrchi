@@ -27,7 +27,10 @@ DRIVE_MAP: dict[str, str] = {
     "전륜":  "fwd",
     "후륜":  "rwd",
     "4WD":  "4wd",
+    "2WD":  "2wd",
     "AWD":  "awd",
+    "FWD":  "fwd",
+    "RWD":  "rwd",
     "사륜":  "4wd",
     "4륜":  "4wd",
 }
@@ -104,7 +107,7 @@ class EncarNormalizer:
         return BODY_MAP.get(v, v) if v else None
 
     def drive(self, v: str | None) -> str | None:
-        return DRIVE_MAP.get(v, v) if v else None
+        return DRIVE_MAP.get(v) if v else None
 
     def price_krw(self, price_man_won: int | None) -> int:
         """Convert 만원 (10,000 KRW units) to KRW."""
