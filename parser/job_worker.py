@@ -27,6 +27,7 @@ def _redis() -> redis.Redis:
     return redis.Redis(
         host=getattr(Config, "REDIS_HOST", "localhost"),
         port=int(getattr(Config, "REDIS_PORT", 6379)),
+        password=getattr(Config, "REDIS_PASSWORD", None),
         decode_responses=True,
     )
 
