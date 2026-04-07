@@ -490,11 +490,7 @@ class EncarParser(AbstractParser):
         run_start = _time.monotonic()
         stats = {"total": 0, "new": 0, "updated": 0, "errors": 0}
 
-        _env_mp = Config.ENCAR_MAX_PAGES
-        if _env_mp is not None:
-            pages = 9999 if _env_mp == 0 else _env_mp
-        else:
-            pages = max_pages or 9999  # None = all pages
+        pages = max_pages or 9999  # 0 / None = all pages
 
         query = "(And.Hidden.N._.CarType.A.)"
         if maker_filter:
