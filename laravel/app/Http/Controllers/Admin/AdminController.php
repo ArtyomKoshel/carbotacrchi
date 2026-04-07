@@ -328,7 +328,33 @@ class AdminController extends Controller
         if (!file_exists($logFile)) {
             abort(404, 'Log file not found');
         }
-        return response()->download($logFile, 'parser-' . now()->format('Ymd-His') . '.log');
+
+        $level  = $request->query('level', '');
+        $search = trim($request->query('search', ''));
+        $source = trim($request->query('source', ''));
+
+        // No filters — stream the raw file directly
+        if (!$level && !$search && !$source) {
+            return response()->download($logFile, 'parser-' . now()->format('Ymd-His') . '.log');
+        }
+
+        // Apply filters and return only matching lines
+        $all   = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $lines = [];
+        foreach ($all as $line) {
+            if ($level  && !str_contains($line, "[{$level}]"))  continue;
+            if ($search && !str_contains($line, $search))        continue;
+            if ($source && !str_contains($line, $source))        continue;
+            $lines[] = $line;
+        }
+
+        $suffix = implode('-', array_filter([$level, $source, $search ? 'filtered' : '']));
+        $filename = 'parser-' . now()->format('Ymd-His') . ($suffix ? "-{$suffix}" : '') . '.log';
+
+        return response(implode("\n", $lines), 200, [
+            'Content-Type'        => 'text/plain; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
     }
 
     public function fieldStats()

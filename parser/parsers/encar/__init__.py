@@ -49,7 +49,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         model=f"{model} {badge}".strip() if badge else model,
         trim=badge_detail or None,
         year=year,
-        price=price_man,
+        price=price_krw,
         price_krw=price_krw,
         mileage=mileage,
         fuel=norm.fuel(item.get("FuelType")),
@@ -695,7 +695,7 @@ class EncarParser(AbstractParser):
                     logger.info(
                         f"[{source}] NEW {lot.id} | "
                         f"{lot.make} {lot.model} {lot.year} | "
-                        f"{lot.price:,}만 | {lot.mileage:,}km | {lot.fuel or '-'}"
+                        f"{lot.price // 10000:,}만원 | {lot.mileage:,}km | {lot.fuel or '-'}"
                     )
                 else:
                     stats["updated"] += 1
@@ -744,6 +744,16 @@ class EncarParser(AbstractParser):
         ids = [lot.id for lot in lots]
         id_map = {lot.id: lot for lot in lots}
 
+        # Batch API returns inner vehicle IDs (from photo paths), not listing IDs.
+        # Pre-build inner_id → lot mapping from image_url (e.g. /pic4149/41495702_001.jpg).
+        inner_id_map: dict[str, CarLot] = {}
+        for lot in lots:
+            m = _re.search(r"/(\d+)_\d+\.", lot.image_url or "")
+            if m and m.group(1) != lot.id:
+                inner_id = m.group(1)
+                inner_id_map[inner_id] = lot
+                lot.raw_data["inspect_vehicle_id"] = inner_id
+
         for i in range(0, len(ids), _BATCH_SIZE):
             chunk = ids[i: i + _BATCH_SIZE]
             try:
@@ -752,11 +762,12 @@ class EncarParser(AbstractParser):
                 enriched = 0
                 for detail in details:
                     vid = str(detail.get("vehicleId", ""))
-                    if vid in id_map:
-                        _enrich_from_detail(id_map[vid], detail, self._norm)
+                    lot = id_map.get(vid) or inner_id_map.get(vid)
+                    if lot:
+                        _enrich_from_detail(lot, detail, self._norm)
                         enriched += 1
                     else:
-                        logger.debug(f"[encar] batch_details: vehicleId={vid!r} not in id_map (sample keys: {list(id_map.keys())[:3]})")
+                        logger.debug(f"[encar] batch_details: vehicleId={vid!r} unmatched")
                 logger.info(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots (API returned {len(details)})")
             except Exception as e:
                 logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
@@ -864,6 +875,6 @@ class EncarParser(AbstractParser):
 
             if on_page_callback:
                 try:
-                    on_page_callback(page=i + 1, found=1, total_pages=len(lots))
+                    on_page_callback(page=i + 1, found=0, total_pages=len(lots))
                 except Exception:
                     pass
