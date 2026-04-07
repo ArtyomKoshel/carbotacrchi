@@ -170,6 +170,13 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
 
         def _on_page(page: int, found: int, total_pages: int | None = None):
             page_counts.append(found)
+            # Check cancel BEFORE overwriting status — otherwise SET running overwrites 'cancelled'
+            with conn.cursor() as _cur:
+                _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
+                row = _cur.fetchone()
+            if row and row["status"] == "cancelled":
+                logger.info(f"[job_worker] Job #{job_id} cancel detected at page #{page} of {total_pages}")
+                raise JobCancelledError(f"Job #{job_id} cancelled by user")
             progress = {
                 "status": "running",
                 "page": page,
@@ -179,13 +186,6 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
             }
             _set_job(conn, job_id, "running", progress=progress)
             _publish(r, source, {"job_id": job_id, **progress})
-            # Check if cancelled via admin UI
-            with conn.cursor() as _cur:
-                _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
-                row = _cur.fetchone()
-            if row and row["status"] == "cancelled":
-                logger.info(f"[job_worker] Job #{job_id} cancel detected at detail #{page} of {total_pages}")
-                raise JobCancelledError(f"Job #{job_id} cancelled by user")
 
         total = parser.run(
             max_pages=max_pages,
