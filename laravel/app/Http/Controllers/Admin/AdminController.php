@@ -258,7 +258,7 @@ class AdminController extends Controller
             // Phase 2: Redis subscribe for live progress
             $channel  = "parse_progress:{$job->source}";
             $redis    = Redis::connection('default')->client();
-            $redis->setOption(\Redis::OPT_READ_TIMEOUT, 3);
+            $redis->setOption(\Redis::OPT_READ_TIMEOUT, 30);
             $deadline = time() + 1800;
 
             try {

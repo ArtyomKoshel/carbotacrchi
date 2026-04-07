@@ -9,6 +9,10 @@
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">
     ↻ Refresh
   </a>
+  <button id="auto-refresh-btn" onclick="toggleAutoRefresh()"
+          class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
+    ⏱ Auto-refresh: <span id="ar-state">OFF</span>
+  </button>
   <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search, 'source' => $source])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
     ↓ Download
@@ -106,5 +110,39 @@
 @endforeach</pre>
   </div>
 @endif
+
+<script>
+let _arTimer = null;
+function toggleAutoRefresh() {
+    const btn = document.getElementById('ar-state');
+    if (_arTimer) {
+        clearInterval(_arTimer);
+        _arTimer = null;
+        btn.textContent = 'OFF';
+        btn.parentElement.classList.remove('text-green-400');
+        btn.parentElement.classList.add('text-gray-400');
+    } else {
+        btn.textContent = 'ON';
+        btn.parentElement.classList.remove('text-gray-400');
+        btn.parentElement.classList.add('text-green-400');
+        _arTimer = setInterval(refreshLogs, 5000);
+    }
+}
+function refreshLogs() {
+    fetch(window.location.href)
+        .then(r => r.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newPre = doc.getElementById('log-pre');
+            const curPre = document.getElementById('log-pre');
+            if (newPre && curPre) {
+                const atBottom = curPre.scrollHeight - curPre.scrollTop <= curPre.clientHeight + 40;
+                curPre.innerHTML = newPre.innerHTML;
+                if (atBottom) curPre.scrollTop = curPre.scrollHeight;
+            }
+        })
+        .catch(() => {});
+}
+</script>
 
 @endsection

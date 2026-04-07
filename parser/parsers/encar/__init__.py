@@ -919,9 +919,17 @@ class EncarParser(AbstractParser):
         source = _SOURCE
         workers = min(Config.ENCAR_WORKERS, len(lots))
 
-        def _task(lot: CarLot) -> tuple[CarLot, InspectionRecord | None, int]:
-            # Bump session per thread so each worker gets its own proxy IP
-            proxy = EncarClient._bump_session(Config.ENCAR_PROXY) if Config.ENCAR_PROXY else None
+        proxy_list = Config.ENCAR_PROXY_LIST
+
+        def _task(lot: CarLot, idx: int) -> tuple[CarLot, InspectionRecord | None, int]:
+            if proxy_list:
+                # Each worker gets its own proxy URL from the list by index
+                proxy = proxy_list[idx % len(proxy_list)]
+            elif Config.ENCAR_PROXY:
+                # Single rotating proxy — bump session to get a new IP
+                proxy = EncarClient._bump_session(Config.ENCAR_PROXY)
+            else:
+                proxy = None
             client = EncarClient(proxy=proxy)
             try:
                 return self._fetch_lot_enrichment(lot, client, self._norm)
@@ -930,7 +938,7 @@ class EncarParser(AbstractParser):
 
         results: list[tuple[CarLot, InspectionRecord | None, int]] = []
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            future_map = {pool.submit(_task, lot): lot for lot in lots}
+            future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(lots)}
             for i, future in enumerate(as_completed(future_map)):
                 try:
                     lot, insp_record, errors = future.result()

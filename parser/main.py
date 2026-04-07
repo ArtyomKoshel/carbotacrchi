@@ -43,6 +43,10 @@ def _setup_logging(debug: bool = False) -> None:
     ch.setFormatter(fmt)
     root.addHandler(ch)
 
+    # Suppress httpcore low-level debug noise; keep httpx INFO (shows request summary)
+    for _noisy in ("httpcore", "httpcore.http11", "httpcore.connection", "httpcore.proxy"):
+        logging.getLogger(_noisy).setLevel(logging.WARNING)
+
     if Config.LOG_FILE:
         os.makedirs(os.path.dirname(Config.LOG_FILE), exist_ok=True)
         fh = RotatingFileHandler(

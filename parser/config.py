@@ -40,7 +40,7 @@ class Config:
     ENCAR_PROXY_LIST: list[str] = [
         p.strip() for p in os.getenv("ENCAR_PROXY_LIST", "").split(",") if p.strip()
     ]
-    ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "10"))
+    ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "5"))
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 
