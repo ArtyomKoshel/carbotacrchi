@@ -124,7 +124,11 @@ class KBChaParser(AbstractParser):
         run_start = _time.monotonic()
         stats = {"total": 0, "new": 0, "updated": 0, "detail_fetched": 0, "errors": 0}
 
-        effective_pages = max_pages or Config.KBCHA_MAX_PAGES
+        _env_mp = Config.KBCHA_MAX_PAGES
+        if _env_mp is not None:
+            effective_pages = 9999 if _env_mp == 0 else _env_mp
+        else:
+            effective_pages = max_pages or 9999  # None = all pages
         makers = {
             code: name for code, name in MAKER_CODES.items()
             if maker_filter is None or maker_filter.lower() in name.lower()
@@ -210,7 +214,11 @@ class KBChaParser(AbstractParser):
     ) -> list[CarLot]:
         source = self.get_source_key()
         lots: list[CarLot] = []
-        pages = max_pages or Config.KBCHA_MAX_PAGES
+        _env_mp = Config.KBCHA_MAX_PAGES
+        if _env_mp is not None:
+            pages = 9999 if _env_mp == 0 else _env_mp
+        else:
+            pages = max_pages or 9999  # None = all pages
 
         logger.info(f"[{source}] --- {maker_name} ({maker_code}) ---")
 

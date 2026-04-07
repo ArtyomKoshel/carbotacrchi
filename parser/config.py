@@ -17,7 +17,8 @@ class Config:
     KBCHA_PROXY_LIST: list[str] = [
         p.strip() for p in os.getenv("KBCHA_PROXY_LIST", "").split(",") if p.strip()
     ]
-    KBCHA_MAX_PAGES = int(os.getenv("KBCHA_MAX_PAGES", "1"))
+    _kbcha_mp = os.getenv("KBCHA_MAX_PAGES")
+    KBCHA_MAX_PAGES: int | None = int(_kbcha_mp) if _kbcha_mp is not None else None
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
 
@@ -37,7 +38,8 @@ class Config:
     ENCAR_ENABLED = os.getenv("ENCAR_ENABLED", "false").lower() == "true"
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "60"))
     ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
-    ENCAR_MAX_PAGES = int(os.getenv("ENCAR_MAX_PAGES", "1"))
+    _encar_mp = os.getenv("ENCAR_MAX_PAGES")
+    ENCAR_MAX_PAGES: int | None = int(_encar_mp) if _encar_mp is not None else None
     ENCAR_PROXY = os.getenv("ENCAR_PROXY", "")
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
