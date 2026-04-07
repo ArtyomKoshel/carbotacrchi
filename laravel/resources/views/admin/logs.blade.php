@@ -25,8 +25,30 @@
       🗑 Clear log
     </button>
   </form>
-  <span class="ml-auto text-xs text-gray-600">{{ config('admin.log_file') }}</span>
+  <span class="text-xs text-gray-600 ml-auto mr-1">Lines:</span>
+  @foreach([500, 1000, 3000, 10000] as $lim)
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'limit' => $lim])) }}"
+     class="px-2 py-1 rounded text-xs transition
+            {{ $maxLines == $lim ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-500 hover:text-white' }}">
+    {{ number_format($lim) }}
+  </a>
+  @endforeach
+  <span class="text-xs text-gray-600 ml-2">{{ basename(config('admin.log_file')) }}{{ $fileIdx > 0 ? '.'.$fileIdx : '' }}</span>
 </div>
+
+{{-- Rotation file selector (only shown when backup files exist) --}}
+@if(count($rotationFiles) > 1)
+<div class="flex items-center gap-2 flex-wrap mb-3">
+  <span class="text-xs text-gray-600">File:</span>
+  @foreach($rotationFiles as $rf)
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $rf['idx'] ?: null])) }}"
+     class="px-3 py-1.5 rounded-lg text-xs font-mono transition
+            {{ $fileIdx === $rf['idx'] ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+    {{ $rf['label'] }}{{ $rf['idx'] === 0 ? ' (current)' : '' }}
+  </a>
+  @endforeach
+</div>
+@endif
 
 {{-- Filter form (GET) --}}
 <form method="GET" class="mb-4 space-y-2">
@@ -97,7 +119,7 @@
 @else
   <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
     <div class="px-4 py-2 border-b border-gray-800 text-xs text-gray-600">
-      Showing {{ count($lines) }} lines
+      Showing {{ count($lines) }} / {{ number_format($maxLines) }} lines
       @if($level) · level: <span class="text-gray-400">{{ $level }}</span>@endif
       @if($source) · parser: <span class="text-gray-400">{{ $source }}</span>@endif
       @if($search) · search: <span class="text-gray-400">"{{ $search }}"</span>@endif

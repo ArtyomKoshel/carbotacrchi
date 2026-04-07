@@ -262,7 +262,7 @@ def _enrich_from_inspection(
         record.outer_detail = outer_text
 
     if master.get("supplyNum"):
-        record.cert_no = master["supplyNum"]
+        record.cert_no = str(master["supplyNum"])[:100]
     if master.get("registrationDate"):
         record.inspection_date = master["registrationDate"][:10]
     record.report_url = (
@@ -722,7 +722,7 @@ class EncarParser(AbstractParser):
                 is_new = lot.id not in existing_ids
                 if is_new:
                     stats["new"] += 1
-                    logger.info(
+                    logger.debug(
                         f"[{source}] NEW {lot.id} | "
                         f"{lot.make} {lot.model} {lot.year} | "
                         f"{lot.price // 10000:,}만원 | {lot.mileage:,}km | {lot.fuel or '-'}"
@@ -771,8 +771,8 @@ class EncarParser(AbstractParser):
 
         pages = max_pages or 9999  # 0 / None = all pages
 
-        logger.info(f"[{source}] ========== IMPORT STARTED ==========")
-        logger.info(f"[{source}] Pages: {pages}, page_size: {_PAGE_SIZE}")
+        logger.info(f"[STAT] [{source}] ========== IMPORT STARTED ==========")
+        logger.info(f"[STAT] [{source}] Pages: {pages}, page_size: {_PAGE_SIZE}")
 
         existing_ids = self.repo.get_existing_ids(source)
         logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
@@ -882,7 +882,7 @@ class EncarParser(AbstractParser):
                         enriched += 1
                     else:
                         logger.debug(f"[encar] batch_details: listing_id={listing_id!r} unmatched")
-                logger.info(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots (API returned {len(details)})")
+                logger.debug(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots (API returned {len(details)})")
             except Exception as e:
                 logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
                 ok = 0
@@ -1029,18 +1029,26 @@ class EncarParser(AbstractParser):
                 results.append((lot, insp_record))
 
         # DB writes — main thread only
+        n_accident = n_flood = n_insp = 0
         for lot, insp_record in results:
             try:
                 self.repo.upsert_batch([lot])
-                logger.info(
+                logger.debug(
                     f"[{source}] ENRICHED {lot.id} | "
                     f"vin={lot.vin or '-'} | accident={lot.has_accident} | "
                     f"flood={lot.flood_history} | insp={'ok' if insp_record else 'none'}"
                 )
+                if lot.has_accident:    n_accident += 1
+                if lot.flood_history:   n_flood    += 1
             except Exception as e:
                 logger.warning(f"[{source}] upsert lot {lot.id} after accident enrich: {e}")
             if insp_record is not None:
+                n_insp += 1
                 try:
                     self.repo.upsert_inspection(insp_record)
                 except Exception as e:
                     logger.warning(f"[{source}] upsert_inspection {lot.id}: {e}")
+        logger.info(
+            f"[STAT] [{source}] enriched {len(results)} lots: "
+            f"accident={n_accident}, flood={n_flood}, insp={n_insp}"
+        )

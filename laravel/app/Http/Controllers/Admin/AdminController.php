@@ -99,19 +99,38 @@ class AdminController extends Controller
 
     public function logs(Request $request)
     {
-        $logFile  = config('admin.log_file');
-        $maxLines = config('admin.log_lines', 300);
+        $baseFile = config('admin.log_file');
+        $defaultLines = config('admin.log_lines', 1000);
+        $maxLines = min((int) $request->query('limit', $defaultLines), 20000);
         $level    = $request->query('level', '');
         $search   = trim($request->query('search', ''));
         $source   = trim($request->query('source', ''));
+        $fileIdx  = (int) $request->query('file', 0);
+
+        // Collect available rotation files: parser.log, parser.log.1, ..., parser.log.N
+        $rotationFiles = [];
+        if ($baseFile) {
+            if (file_exists($baseFile)) $rotationFiles[] = ['idx' => 0, 'path' => $baseFile, 'label' => basename($baseFile)];
+            for ($i = 1; $i <= 10; $i++) {
+                $path = $baseFile . '.' . $i;
+                if (file_exists($path)) $rotationFiles[] = ['idx' => $i, 'path' => $path, 'label' => basename($baseFile) . '.' . $i];
+                else break;
+            }
+        }
+
+        $logFile = $baseFile;
+        if ($fileIdx > 0) {
+            $found = array_filter($rotationFiles, fn($f) => $f['idx'] === $fileIdx);
+            if ($found) $logFile = reset($found)['path'];
+        }
 
         $lines = [];
         $error = null;
 
-        if (!file_exists($logFile)) {
+        if (!$logFile || !file_exists($logFile)) {
             $error = "Log file not found: {$logFile}";
         } else {
-            $all = $this->tailFile($logFile, $maxLines * 10);
+            $all = $this->tailFile($logFile, $maxLines * 5);
             foreach ($all as $line) {
                 if ($level  && !str_contains($line, "[{$level}]"))   continue;
                 if ($search && !str_contains($line, $search))         continue;
@@ -122,7 +141,7 @@ class AdminController extends Controller
             $lines = array_reverse($lines);
         }
 
-        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source'));
+        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines'));
     }
 
     public function stats()
@@ -310,16 +329,26 @@ class AdminController extends Controller
             return redirect()->route('admin.logs')->with('error', 'Log file path not configured');
         }
         try {
+            $cleared = 0;
+            // Clear base file
             if (file_exists($logFile)) {
-                $result = file_put_contents($logFile, '');
-                if ($result === false) {
-                    return redirect()->route('admin.logs')->with('error', "Cannot write to log file: {$logFile}");
+                file_put_contents($logFile, '');
+                $cleared++;
+            }
+            // Delete all rotation backups (.1, .2, ...)
+            for ($i = 1; $i <= 10; $i++) {
+                $rotated = $logFile . '.' . $i;
+                if (file_exists($rotated)) {
+                    unlink($rotated);
+                    $cleared++;
+                } else {
+                    break;
                 }
             }
         } catch (\Throwable $e) {
             return redirect()->route('admin.logs')->with('error', 'Clear failed: ' . $e->getMessage());
         }
-        return redirect()->route('admin.logs')->with('success', 'Log file cleared');
+        return redirect()->route('admin.logs')->with('success', "Log cleared ({$cleared} file(s) removed)");
     }
 
     public function logsDownload(Request $request)
