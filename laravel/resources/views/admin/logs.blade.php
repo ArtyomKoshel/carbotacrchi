@@ -21,6 +21,13 @@
        class="ml-auto px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
       ↓ Download
     </a>
+    <form method="POST" action="{{ route('admin.logs.clear') }}" onsubmit="return confirm('Clear the entire log file?')">
+      @csrf
+      <button type="submit"
+              class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-red-400 transition">
+        🗑 Clear
+      </button>
+    </form>
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">
       ↻ Refresh

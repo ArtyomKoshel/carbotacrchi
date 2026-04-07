@@ -303,6 +303,15 @@ class AdminController extends Controller
         ]);
     }
 
+    public function logsClear(Request $request)
+    {
+        $logFile = config('admin.log_file');
+        if (file_exists($logFile)) {
+            file_put_contents($logFile, '');
+        }
+        return redirect()->route('admin.logs')->with('success', 'Log file cleared');
+    }
+
     public function logsDownload(Request $request)
     {
         $logFile = config('admin.log_file');

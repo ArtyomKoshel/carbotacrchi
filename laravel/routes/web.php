@@ -32,6 +32,7 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
 
 Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/logs/download', [AdminController::class, 'logsDownload'])->name('logs.download');
+    Route::post('/logs/clear',   [AdminController::class, 'logsClear'])->name('logs.clear');
 });
 
 Route::get('/up', fn() => response('OK'));

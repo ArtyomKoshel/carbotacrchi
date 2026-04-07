@@ -1,13 +1,12 @@
 @extends('admin.layout')
 @section('title', 'Field Accuracy')
 
+@section('content')
 @php
 $pct = fn($count, $total) => $total > 0 ? round($count / $total * 100) : 0;
 $barColor = fn($p) => $p >= 80 ? 'bg-emerald-500' : ($p >= 40 ? 'bg-amber-400' : 'bg-red-500');
 $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-400' : 'text-red-400');
 @endphp
-
-@section('content')
 
 {{-- SQL errors (shown only when a query fails) --}}
 @if(!empty($errors))
@@ -66,7 +65,7 @@ $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-40
     @foreach($cards as [$label, $val, $sub])
       <div class="bg-gray-800 rounded-xl p-4">
         <div class="text-xs text-gray-500 mb-1">{{ $label }}</div>
-        <div class="text-2xl font-bold text-white">{{ number_format($val) }}</div>
+        <div class="text-2xl font-bold text-white">{{ is_numeric($val) ? number_format($val) : $val }}</div>
         @if($sub)<div class="text-xs text-gray-400 mt-0.5">{{ $sub }}</div>@endif
       </div>
     @endforeach

@@ -118,7 +118,12 @@ def process_pending_job() -> None:
         if not locked:
             holder = r.get(f"parse_lock:{source}") or "unknown"
             logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
-            _set_job(conn, job_id, "pending")
+            with conn.cursor() as _cur:
+                _cur.execute(
+                    "UPDATE parse_jobs SET status='pending', updated_at=NOW() WHERE id=%s AND status='running'",
+                    (job_id,)
+                )
+            conn.commit()
             return
 
         _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
