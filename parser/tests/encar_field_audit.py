@@ -21,6 +21,7 @@ from parsers.encar import (
     _enrich_from_detail,
     _enrich_from_record,
     _enrich_from_inspection,
+    _enrich_from_inspection_html,
     _enrich_from_diagnosis,
     _enrich_from_sellingpoint,
     _enrich_from_verification,
@@ -115,19 +116,33 @@ def run_audit(n_cars: int = 5) -> list[dict]:
             entry["steps"]["record"] = "SKIP — no plate_number"
 
         # Step 4: inspection (use inner vehicle ID from photo paths if available)
+        _insp_id = lot.raw_data.get("inspect_vehicle_id") or vid
+        insp_api_ok = False
         try:
-            _insp_id = lot.raw_data.get("inspect_vehicle_id") or vid
             insp = client.inspection(_insp_id)
             if insp:
                 if insp_record is None:
                     insp_record = InspectionRecord(lot_id=vid, source="encar")
                 _enrich_from_inspection(lot, insp, insp_record)
                 entry["steps"]["inspection"] = "ok"
+                insp_api_ok = True
             else:
                 entry["steps"]["inspection"] = "empty response"
         except Exception as e:
             entry["steps"]["inspection"] = f"ERROR: {e}"
         time.sleep(0.3)
+
+        # Step 4b: HTML inspection fallback
+        if not insp_api_ok:
+            html = client.inspection_html(_insp_id)
+            if html:
+                if insp_record is None:
+                    insp_record = InspectionRecord(lot_id=vid, source="encar")
+                _enrich_from_inspection_html(lot, html, insp_record)
+                entry["steps"]["inspection_html"] = "ok (fallback)"
+            else:
+                entry["steps"]["inspection_html"] = "empty"
+            time.sleep(0.3)
 
         # Step 5: diagnosis
         try:

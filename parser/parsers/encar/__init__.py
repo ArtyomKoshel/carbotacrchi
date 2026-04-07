@@ -323,6 +323,150 @@ def _enrich_from_inspection(
     })
 
 
+def _enrich_from_inspection_html(
+    lot: CarLot, html: str, record: InspectionRecord
+) -> None:
+    """Parse the human-readable inspection report (www.encar.com/md/sl/mdsl_regcar.do).
+
+    Used as a fallback when the JSON inspection API is unavailable.
+    Extracts: VIN, plate, first-registration date, engine code, mileage,
+    accident/simple-repair flags, recall status, tuning, and flood history.
+    """
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "lxml")
+
+    # ── Helper: find <td> immediately after a <th> whose text contains `label` ─
+    def _td_after(label: str) -> str | None:
+        for th in soup.find_all("th", scope="row"):
+            if label in th.get_text():
+                td = th.find_next_sibling("td")
+                return td.get_text(strip=True) if td else None
+        return None
+
+    # ── Helper: for a status row, return the text of the selected span (on/active) ─
+    def _selected_state(row_label: str) -> str | None:
+        for th in soup.find_all("th", scope="row"):
+            if th.get_text(strip=True).startswith(row_label):
+                td = th.find_next_sibling("td")
+                if td:
+                    sel = td.find("span", class_=lambda c: c and ("active" in c or " on" in c or c.endswith("on")))
+                    return sel.get_text(strip=True) if sel else None
+        return None
+
+    # ── Basic info table ──────────────────────────────────────────────────────
+    vin = _td_after("차대번호")
+    if vin and not lot.vin:
+        lot.vin = vin
+
+    plate = _td_after("차량번호")
+    if plate and not lot.plate_number:
+        lot.plate_number = plate
+
+    reg_raw = _td_after("최초등록일")
+    if reg_raw:
+        m = _re.search(r"(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일", reg_raw)
+        if m:
+            reg_date = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+            if not lot.registration_date:
+                lot.registration_date = reg_date
+            if not record.first_registration:
+                record.first_registration = reg_date
+
+    engine_code = _td_after("원동기형식")
+    if engine_code and not lot.raw_data.get("engine_code"):
+        lot.raw_data["engine_code"] = engine_code
+
+    warranty = _td_after("보증유형")
+    if warranty and not lot.raw_data.get("warranty_type"):
+        lot.raw_data["warranty_type"] = warranty
+
+    # ── Cert / performance number from .ckdate span ───────────────────────────
+    ckdate = soup.find("span", class_="ckdate")
+    if ckdate and not record.cert_no:
+        m2 = _re.search(r"성능번호\s*제\s*([\d]+)\s*호", ckdate.get_text())
+        if m2:
+            record.cert_no = m2.group(1)
+
+    # ── Mileage at inspection ─────────────────────────────────────────────────
+    for th in soup.find_all("th", scope="row"):
+        if "주행거리" in th.get_text() and "계기" not in th.get_text():
+            # mileage value is in 2nd <td> sibling (first has 많음/보통/적음 spans)
+            for td in th.find_next_siblings("td"):
+                detail = td.find("span", class_="txt_detail")
+                if detail:
+                    km_m = _re.search(r"([\d,]+)\s*km", detail.get_text())
+                    if km_m and not record.inspection_mileage:
+                        record.inspection_mileage = int(km_m.group(1).replace(",", ""))
+                    break
+            break
+
+    # ── Status flags ──────────────────────────────────────────────────────────
+    def _is_selected(row_label: str, value: str) -> bool:
+        for th in soup.find_all("th", scope="row"):
+            if th.get_text(strip=True).startswith(row_label):
+                td = th.find_next_sibling("td")
+                if not td:
+                    continue
+                for span in td.find_all("span", class_="txt_state"):
+                    if value in span.get_text(strip=True):
+                        classes = span.get("class", [])
+                        return "on" in classes or "active" in classes
+        return False
+
+    # Accident history (사고이력): 있음 selected → has structural accident
+    if lot.has_accident is None:
+        if _is_selected("사고이력", "있음"):
+            lot.has_accident = True
+            record.has_accident = True
+        elif _is_selected("사고이력", "없음"):
+            lot.has_accident = False
+            record.has_accident = False
+
+    # Simple repair (단순수리): store in record.details
+    simple_repair = _is_selected("단순수리", "있음")
+    record.details = record.details or {}
+    record.details["simple_repair"] = simple_repair
+
+    # Flood (침수): 있음 = True
+    if _is_selected("침수", "있음"):
+        lot.flood_history = True
+        record.has_flood = True
+    elif _is_selected("침수", "없음"):
+        lot.flood_history = False
+        record.has_flood = False
+
+    # Tuning (튜닝): 있음 = True
+    if not record.details.get("tuning_set"):
+        if _is_selected("튜닝", "있음"):
+            record.has_tuning = True
+        elif _is_selected("튜닝", "없음"):
+            record.has_tuning = False
+        record.details["tuning_set"] = True
+
+    # Recall (리콜대상): 해당 = True (exact match — avoid matching inside 해당없음)
+    def _is_selected_exact(row_label: str, value: str) -> bool:
+        for th in soup.find_all("th", scope="row"):
+            if th.get_text(strip=True).startswith(row_label):
+                td = th.find_next_sibling("td")
+                if not td:
+                    continue
+                for span in td.find_all("span", class_="txt_state"):
+                    if span.get_text(strip=True) == value:
+                        classes = span.get("class", [])
+                        return "on" in classes or "active" in classes
+        return False
+
+    if _is_selected_exact("리콜대상", "해당"):
+        lot.raw_data["recall"] = True
+
+    # Report URL
+    if not record.report_url:
+        record.report_url = (
+            f"https://www.encar.com/md/sl/mdsl_regcar.do"
+            f"?method=inspectionViewNew&carid={lot.id}"
+        )
+
+
 _DIAG_RESULT_MAP = {
     "NORMAL":      "정상",
     "REPLACEMENT": "교환",
@@ -642,17 +786,29 @@ class EncarParser(AbstractParser):
 
             # Inspection (performance check form)
             # Use inner vehicle ID from photo paths — may differ from listing ID
+            _insp_id = lot.raw_data.get("inspect_vehicle_id") or lot.id
+            insp_api_ok = False
             try:
-                _insp_id = lot.raw_data.get("inspect_vehicle_id") or lot.id
                 insp = self._client.inspection(_insp_id)
                 if insp:
                     if insp_record is None:
                         insp_record = InspectionRecord(lot_id=lot.id, source="encar")
                     _enrich_from_inspection(lot, insp, insp_record)
                     is_certified = True
+                    insp_api_ok = True
             except Exception as e:
                 logger.warning(f"[{source}] inspection {lot.id}: {e}")
             _time.sleep(0.3)
+
+            # HTML inspection fallback (www.encar.com) — used when API returns nothing
+            if not insp_api_ok:
+                html = self._client.inspection_html(_insp_id)
+                if html:
+                    if insp_record is None:
+                        insp_record = InspectionRecord(lot_id=lot.id, source="encar")
+                    _enrich_from_inspection_html(lot, html, insp_record)
+                    logger.debug(f"[{source}] inspection_html {lot.id}: ok (fallback)")
+                    _time.sleep(0.3)
 
             # Encar internal diagnosis (body panel check) — certified cars only
             if is_certified:

@@ -20,6 +20,7 @@ _SELLING_URL  = "https://api.encar.com/v1/readside/diagnosis/vehicle/{id}/sellin
 _VERIFY_URL   = "https://api.encar.com/verification/{id}/simple"
 _VERIFY_OPTS  = "10,16,327,328,329,330,1,85,332"   # keys, tinting, tire x4, photos
 _DIAG_URL     = "https://api.encar.com/v1/readside/diagnosis/vehicle/{id}"
+_INSPECT_HTML_URL = "https://www.encar.com/md/sl/mdsl_regcar.do"
 _PHOTO_CDN    = "https://ci.encar.com"
 _VERIFY_CDN   = "https://imgcar.encar.com"
 
@@ -173,6 +174,19 @@ class EncarClient:
     @staticmethod
     def photo_url(path: str) -> str:
         return f"{_PHOTO_CDN}{path}?impolicy=heightRate&rh=480&cw=640&ch=480&cg=Center"
+
+    def inspection_html(self, carid: int | str) -> str | None:
+        """Fetch the human-readable inspection report HTML page (www.encar.com)."""
+        try:
+            r = self._s.get(
+                _INSPECT_HTML_URL,
+                params={"method": "inspectionViewNew", "carid": str(carid)},
+            )
+            r.raise_for_status()
+            return r.text
+        except Exception as e:
+            logger.debug(f"[encar] inspection_html {carid}: {e}")
+            return None
 
     def close(self) -> None:
         self._s.close()
