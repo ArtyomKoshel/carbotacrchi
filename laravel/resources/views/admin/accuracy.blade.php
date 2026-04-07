@@ -2,19 +2,9 @@
 @section('title', 'Field Accuracy')
 
 @php
-function pct($count, $total) {
-    return $total > 0 ? round($count / $total * 100) : 0;
-}
-function barColor($p) {
-    if ($p >= 80) return 'bg-emerald-500';
-    if ($p >= 40) return 'bg-amber-400';
-    return 'bg-red-500';
-}
-function badge($p) {
-    if ($p >= 80) return 'text-emerald-400';
-    if ($p >= 40) return 'text-amber-400';
-    return 'text-red-400';
-}
+$pct = fn($count, $total) => $total > 0 ? round($count / $total * 100) : 0;
+$barColor = fn($p) => $p >= 80 ? 'bg-emerald-500' : ($p >= 40 ? 'bg-amber-400' : 'bg-red-500');
+$badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-400' : 'text-red-400');
 @endphp
 
 @section('content')
@@ -69,8 +59,8 @@ function badge($p) {
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     @php $cards = [
       ['Total lots',        $tot,                              ''],
-      ['With inspection',   $ins?->lots_with_insp ?? 0,        $itot ? pct($ins->lots_with_insp, $itot).'%' : '—'],
-      ['With photos (DB)',  $ph?->lots_with_photos ?? 0,       $itot ? pct($ph->lots_with_photos ?? 0, $tot).'%' : '—'],
+      ['With inspection',   $ins?->lots_with_insp ?? 0,        $itot ? $pct($ins->lots_with_insp, $itot).'%' : '—'],
+      ['With photos (DB)',  $ph?->lots_with_photos ?? 0,       $itot ? $pct($ph->lots_with_photos ?? 0, $tot).'%' : '—'],
       ['Avg photos/lot',    ($ph?->avg_photos_per_lot ?? '—'), ''],
     ] @endphp
     @foreach($cards as [$label, $val, $sub])
@@ -121,7 +111,7 @@ function badge($p) {
       ] @endphp
 
       @foreach($lotsFields as [$field, $cnt, $desc])
-        @php $p = pct($cnt, $tot) @endphp
+        @php $p = $pct($cnt, $tot) @endphp
         <div class="flex items-center px-5 py-2.5 gap-4 hover:bg-gray-800/40 transition">
           <div class="w-40 shrink-0">
             <span class="font-mono text-xs text-gray-300">{{ $field }}</span>
@@ -129,11 +119,11 @@ function badge($p) {
           <div class="flex-1 min-w-0">
             <div class="text-xs text-gray-500 truncate">{{ $desc }}</div>
             <div class="mt-1 h-1.5 rounded-full bg-gray-700 overflow-hidden">
-              <div class="{{ barColor($p) }} h-full rounded-full" style="width:{{ $p }}%"></div>
+              <div class="{{ $barColor($p) }} h-full rounded-full" style="width:{{ $p }}%"></div>
             </div>
           </div>
           <div class="w-20 text-right shrink-0">
-            <span class="text-sm font-bold {{ badge($p) }}">{{ $p }}%</span>
+            <span class="text-sm font-bold {{ $badge($p) }}">{{ $p }}%</span>
             <div class="text-xs text-gray-600">{{ number_format($cnt) }}/{{ number_format($tot) }}</div>
           </div>
         </div>
@@ -163,7 +153,7 @@ function badge($p) {
       ] @endphp
 
       @foreach($rawFields as [$field, $cnt, $desc])
-        @php $p = pct($cnt, $raw->total) @endphp
+        @php $p = $pct($cnt, $raw->total) @endphp
         <div class="flex items-center px-5 py-2.5 gap-4 hover:bg-gray-800/40 transition">
           <div class="w-44 shrink-0">
             <span class="font-mono text-xs text-blue-300">raw_data.{{ $field }}</span>
@@ -171,11 +161,11 @@ function badge($p) {
           <div class="flex-1 min-w-0">
             <div class="text-xs text-gray-500 truncate">{{ $desc }}</div>
             <div class="mt-1 h-1.5 rounded-full bg-gray-700 overflow-hidden">
-              <div class="{{ barColor($p) }} h-full rounded-full" style="width:{{ $p }}%"></div>
+              <div class="{{ $barColor($p) }} h-full rounded-full" style="width:{{ $p }}%"></div>
             </div>
           </div>
           <div class="w-20 text-right shrink-0">
-            <span class="text-sm font-bold {{ badge($p) }}">{{ $p }}%</span>
+            <span class="text-sm font-bold {{ $badge($p) }}">{{ $p }}%</span>
             <div class="text-xs text-gray-600">{{ number_format($cnt) }}/{{ number_format($raw->total) }}</div>
           </div>
         </div>
@@ -192,7 +182,7 @@ function badge($p) {
       <span class="text-sm font-semibold text-white">lot_inspections</span>
       <span class="text-xs text-gray-500">
         {{ number_format($iwith) }} / {{ number_format($itot) }} лотов имеют запись
-        ({{ pct($iwith, $itot) }}%)
+        ({{ $pct($iwith, $itot) }}%)
       </span>
     </div>
     <div class="divide-y divide-gray-800">
@@ -216,7 +206,7 @@ function badge($p) {
       @foreach($inspFields as [$field, $cnt, $desc])
         @php
           $isIndent = str_starts_with($field, '  →');
-          $p = pct($cnt, $itot);
+          $p = $pct($cnt, $itot);
         @endphp
         <div class="flex items-center px-5 py-2.5 gap-4 hover:bg-gray-800/40 transition
                     {{ $isIndent ? 'bg-gray-800/20' : '' }}">
@@ -226,11 +216,11 @@ function badge($p) {
           <div class="flex-1 min-w-0">
             <div class="text-xs text-gray-500 truncate">{{ $desc }}</div>
             <div class="mt-1 h-1.5 rounded-full bg-gray-700 overflow-hidden">
-              <div class="{{ barColor($p) }} h-full rounded-full" style="width:{{ $p }}%"></div>
+              <div class="{{ $barColor($p) }} h-full rounded-full" style="width:{{ $p }}%"></div>
             </div>
           </div>
           <div class="w-20 text-right shrink-0">
-            <span class="text-sm font-bold {{ badge($p) }}">{{ $p }}%</span>
+            <span class="text-sm font-bold {{ $badge($p) }}">{{ $p }}%</span>
             <div class="text-xs text-gray-600">{{ number_format($cnt) }}/{{ number_format($itot) }}</div>
           </div>
         </div>
@@ -261,7 +251,7 @@ function badge($p) {
         ];
       @endphp
       @foreach($empties as [$field, $empty, $reason])
-        @php $emptyPct = pct($empty, $tot) @endphp
+        @php $emptyPct = $pct($empty, $tot) @endphp
         <div class="bg-gray-800 rounded-lg p-3">
           <div class="font-mono text-xs text-red-400 mb-1">{{ $field }}</div>
           <div class="text-xs text-gray-400 mb-2">{{ $reason }}</div>
