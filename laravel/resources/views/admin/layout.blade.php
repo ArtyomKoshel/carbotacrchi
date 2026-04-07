@@ -11,6 +11,7 @@
     .log-warning { color: #fbbf24; }
     .log-info    { color: #94a3b8; }
     .log-debug   { color: #475569; }
+    .log-stat    { color: #22d3ee; font-weight: 600; }
   </style>
 </head>
 <body class="h-full text-gray-100">

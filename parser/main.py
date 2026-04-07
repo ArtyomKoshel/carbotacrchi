@@ -50,7 +50,7 @@ def _setup_logging(debug: bool = False) -> None:
     if Config.LOG_FILE:
         os.makedirs(os.path.dirname(Config.LOG_FILE), exist_ok=True)
         fh = RotatingFileHandler(
-            Config.LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+            Config.LOG_FILE, maxBytes=20 * 1024 * 1024, backupCount=10, encoding="utf-8"
         )
         fh.setFormatter(fmt)
         root.addHandler(fh)

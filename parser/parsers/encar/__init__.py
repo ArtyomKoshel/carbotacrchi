@@ -748,7 +748,7 @@ class EncarParser(AbstractParser):
             _t_enrich = _time.monotonic() - _t_after_upsert
             _t_batch = _t_after_upsert - _t_page
             logger.info(
-                f"[{source}]{label} p.{page+1} done in {_t_total:.1f}s "
+                f"[STAT] [{source}]{label} p.{page+1} done in {_t_total:.1f}s "
                 f"(batch+upsert={_t_batch:.1f}s, enrich={_t_enrich:.1f}s, "
                 f"new={len(new_lots)}/{len(page_lots)})"
             )
@@ -839,15 +839,15 @@ class EncarParser(AbstractParser):
         db_count = self.repo.count_active(source)
         coverage_pct = stats["total"] / api_total * 100 if api_total else 0.0
 
-        logger.info(f"[{source}] ========== IMPORT COMPLETE ==========")
-        logger.info(f"[{source}] API reported: {api_total:,}")
-        logger.info(f"[{source}] Processed:   {stats['total']:,} ({coverage_pct:.1f}% coverage)")
-        logger.info(f"[{source}] In DB now:   {db_count:,}")
-        logger.info(f"[{source}] New:     {stats['new']}")
-        logger.info(f"[{source}] Updated: {stats['updated']}")
-        logger.info(f"[{source}] Stale:   {stale}")
-        logger.info(f"[{source}] Errors:  {stats['errors']}")
-        logger.info(f"[{source}] Time:    {elapsed:.1f}s")
+        logger.info(f"[STAT] [{source}] ========== IMPORT COMPLETE ==========")
+        logger.info(f"[STAT] [{source}] API reported: {api_total:,}")
+        logger.info(f"[STAT] [{source}] Processed:   {stats['total']:,} ({coverage_pct:.1f}% coverage)")
+        logger.info(f"[STAT] [{source}] In DB now:   {db_count:,}")
+        logger.info(f"[STAT] [{source}] New:     {stats['new']}")
+        logger.info(f"[STAT] [{source}] Updated: {stats['updated']}")
+        logger.info(f"[STAT] [{source}] Stale:   {stale}")
+        logger.info(f"[STAT] [{source}] Errors:  {stats['errors']}")
+        logger.info(f"[STAT] [{source}] Time:    {elapsed:.1f}s")
 
         self._client.close()
         return stats["total"]

@@ -39,6 +39,11 @@
       {{ $label }}
     </button>
     @endforeach
+    <a href="{{ route('admin.logs', array_merge(array_filter(['level' => $level, 'source' => $source]), ['search' => '[STAT]'])) }}"
+       class="px-3 py-1.5 rounded-lg text-sm transition
+              {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
+      📊 Stats
+    </a>
     <input type="hidden" name="search" value="{{ $search }}">
     <input type="hidden" name="source" value="{{ $source }}">
   </div>
@@ -105,6 +110,7 @@
   if (str_contains($line, '[ERROR]'))      $cls = 'log-error';
   elseif (str_contains($line, '[WARNING]')) $cls = 'log-warning';
   elseif (str_contains($line, '[DEBUG]'))  $cls = 'log-debug';
+  elseif (str_contains($line, '[STAT]'))   $cls = 'log-stat';
 @endphp
 <span class="{{ $cls }}">{{ $line }}</span>
 @endforeach</pre>
