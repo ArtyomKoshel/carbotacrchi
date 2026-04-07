@@ -18,9 +18,19 @@ from scheduler import start_scheduler
 logger = logging.getLogger("parser")
 
 
+class _UTC3Formatter(logging.Formatter):
+    """Logging formatter that stamps times in UTC+3 (Moscow/Railway default offset)."""
+    _tz = __import__("datetime").timezone(__import__("datetime").timedelta(hours=3))
+
+    def formatTime(self, record, datefmt=None):
+        import datetime
+        dt = datetime.datetime.fromtimestamp(record.created, tz=self._tz)
+        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
+
+
 def _setup_logging(debug: bool = False) -> None:
     level = logging.DEBUG if debug else getattr(logging, Config.LOG_LEVEL, logging.INFO)
-    fmt = logging.Formatter(
+    fmt = _UTC3Formatter(
         "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )

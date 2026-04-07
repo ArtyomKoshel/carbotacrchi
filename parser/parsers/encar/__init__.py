@@ -543,8 +543,8 @@ class EncarParser(AbstractParser):
                 self._enrich_accident_data(new_lots, stats)
 
             # Upsert to DB + save photos
+            self.repo.upsert_batch(page_lots)
             for lot in page_lots:
-                self.repo.upsert(lot)
                 photos = lot.raw_data.get("photos") or []
                 if photos:
                     self.repo.upsert_photos(lot.id, photos)
@@ -555,14 +555,11 @@ class EncarParser(AbstractParser):
                 stats["total"] += 1
 
             if on_page_callback:
-                try:
-                    on_page_callback(
-                        page=page + 1,
-                        found=len(page_lots),
-                        total_pages=pages,
-                    )
-                except Exception:
-                    pass
+                on_page_callback(
+                    page=page + 1,
+                    found=len(page_lots),
+                    total_pages=pages,
+                )
 
             _time.sleep(Config.REQUEST_DELAY)
 
