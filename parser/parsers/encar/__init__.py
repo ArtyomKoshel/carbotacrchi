@@ -5,6 +5,8 @@ import re as _re
 import time as _time
 from typing import Callable
 
+import httpx
+
 from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
@@ -610,6 +612,12 @@ class EncarParser(AbstractParser):
                     except Exception as e2:
                         logger.error(f"[encar] detail {vid} error: {type(e2).__name__}: {e2}")
                         stats["errors"] += 1
+                        # rotate proxy on block/rate-limit
+                        if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code in (403, 429, 503):
+                            if self._client.rotate_proxy():
+                                logger.info(f"[encar] rotated proxy after {e2.response.status_code}")
+                        elif isinstance(e2, (httpx.ProxyError, httpx.ConnectError)):
+                            self._client.rotate_proxy()
                     _time.sleep(0.5)
                 logger.info(f"[encar] single fallback: enriched {ok}/{len(chunk)} lots")
 
