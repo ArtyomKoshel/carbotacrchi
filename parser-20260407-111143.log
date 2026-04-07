@@ -1,0 +1,431 @@
+2026-04-07 14:09:19 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:09:19 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:09:19 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:09:19 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:09:34.714493+00:00 (in 14.999169 seconds)
+2026-04-07 14:09:19 [INFO] apscheduler.executors.default: Running job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:09:49 UTC)" (scheduled at 2026-04-07 11:09:19.714789+00:00)
+2026-04-07 14:09:19 [INFO] apscheduler.executors.default: Job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:09:49 UTC)" executed successfully
+2026-04-07 14:09:20 [DEBUG] httpcore.http11: receive_response_headers.failed exception=ReadTimeout(TimeoutError('The read operation timed out'))
+2026-04-07 14:09:20 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:09:20 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:09:20 [ERROR] parsers.encar: [encar] Search p.1 error: The read operation timed out
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] ========== IMPORT COMPLETE ==========
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] Total:   0
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] New:     0
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] Updated: 0
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] Stale:   0
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] Errors:  0
+2026-04-07 14:09:20 [INFO] parsers.encar: [encar] Time:    30.5s
+2026-04-07 14:09:20 [DEBUG] repository: [DB] Connection closed
+2026-04-07 14:09:20 [INFO] job_worker: [job_worker] Job #15 done: {'total': 0, 'pages': 0}
+2026-04-07 14:09:20 [INFO] apscheduler.executors.default: Job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:09:34 UTC)" executed successfully
+2026-04-07 14:09:34 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:09:34 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:09:49.714493+00:00 (in 14.999061 seconds)
+2026-04-07 14:09:34 [INFO] apscheduler.executors.default: Running job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:09:49 UTC)" (scheduled at 2026-04-07 11:09:34.714493+00:00)
+2026-04-07 14:09:34 [INFO] apscheduler.executors.default: Job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:09:49 UTC)" executed successfully
+2026-04-07 14:09:49 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:09:49 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:10:04.714493+00:00 (in 14.999253 seconds)
+2026-04-07 14:09:49 [INFO] apscheduler.executors.default: Running job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:10:04 UTC)" (scheduled at 2026-04-07 11:09:49.714493+00:00)
+2026-04-07 14:09:49 [INFO] apscheduler.executors.default: Running job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:10:19 UTC)" (scheduled at 2026-04-07 11:09:49.714789+00:00)
+2026-04-07 14:09:49 [INFO] apscheduler.executors.default: Running job "Schedule Hot-Reload (trigger: interval[0:01:00], next run at: 2026-04-07 11:10:49 UTC)" (scheduled at 2026-04-07 11:09:49.714912+00:00)
+2026-04-07 14:09:49 [INFO] apscheduler.executors.default: Job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:10:19 UTC)" executed successfully
+2026-04-07 14:09:49 [INFO] apscheduler.executors.default: Job "Schedule Hot-Reload (trigger: interval[0:01:00], next run at: 2026-04-07 11:10:49 UTC)" executed successfully
+2026-04-07 14:09:49 [INFO] job_worker: [job_worker] Job #16 starting: source=encar filters={'max_pages': 5}
+2026-04-07 14:09:50 [INFO] parsers.encar: [encar] ========== IMPORT STARTED ==========
+2026-04-07 14:09:50 [INFO] parsers.encar: [encar] Pages: 5, page_size: 20
+2026-04-07 14:09:50 [INFO] repository: [DB] Connecting to mysql-6oym.railway.internal:3306/railway
+2026-04-07 14:09:50 [INFO] repository: [DB] Connected in 0.00s
+2026-04-07 14:09:50 [INFO] parsers.encar: [encar] Existing active lots in DB: 0
+2026-04-07 14:09:50 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:09:50 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e89a5b20>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:09:50 GMT')])
+2026-04-07 14:09:50 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='api.encar.com' timeout=30
+2026-04-07 14:09:50 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e897db20>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Origin', b'*'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:09:50 GMT'), (b'Content-Encoding', b'gzip'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Vary', b'origin,access-control-request-method,access-control-request-headers,accept-encoding'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'IfWoF4ksmu8cq0Pi1yv9iBuaK3P2qnT5_XhTvw5nblZmXD_V5vY4UA==')])
+2026-04-07 14:09:50 [INFO] httpx: HTTP Request: GET https://api.encar.com/search/car/list/mobile?count=true&q=%28And.Hidden.N._.CarType.A.%29&sr=%7CModifiedDate%7C0%7C20 "HTTP/1.1 200 OK"
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:09:50 [INFO] parsers.encar: [encar] Total available: 224232
+2026-04-07 14:09:50 [INFO] parsers.encar: [encar] p.1: 20 lots from search
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:50 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:51 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json;charset=UTF-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Origin', b'*'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:09:51 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'sZVMrK4O_HWeufGqJuz-9AugYsYA3lMylLTbpaZ1pIIqlqVdOwFh8g==')])
+2026-04-07 14:09:51 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/vehicles?vehicleIds=41463542%2C41777212%2C41437979%2C41815018%2C39443763%2C41517342%2C40287741%2C40788925%2C41648987%2C40278319%2C41732310%2C41792019%2C40365985%2C41527106%2C41586359%2C41531121%2C38560075%2C40999282%2C40253445%2C41801897&include=SPEC%2CADVERTISEMENT%2CPHOTOS%2CCATEGORY%2CMANAGE%2CCONTACT%2CCONDITION%2COPTIONS%2CVIEW "HTTP/1.1 200 OK"
+2026-04-07 14:09:51 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:09:52 [INFO] parsers.encar: [encar] batch_details: enriched 0/20 lots
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:09:52 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'VGqJ0vhTsxPUKMyfZKrUmqLRe6KAY0hPBI8NOfLynuajdKFnaoxrzg==')])
+2026-04-07 14:09:52 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/record/vehicle/41463542/open "HTTP/1.1 404 Not Found"
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:09:52 [DEBUG] parsers.encar.client: [encar] record 41463542: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/record/vehicle/41463542/open'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:52 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:09:53 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'BAXmv6z4KqAAtPRVsM67voEvE8QcJ3tzB1DJHIVKDgG1k2ZaCda4Lg==')])
+2026-04-07 14:09:53 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/inspection/vehicle/41463542 "HTTP/1.1 404 Not Found"
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:09:53 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:09:53 [DEBUG] parsers.encar.client: [encar] inspection 41463542: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/inspection/vehicle/41463542'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:09:54 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:09:54 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e924fcb0>
+2026-04-07 14:09:54 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:09:54 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:54 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:09:54 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:54 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:09:54 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:09:54 GMT')])
+2026-04-07 14:09:54 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='www.encar.com' timeout=30
+2026-04-07 14:09:55 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e925f5f0>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 302, b'', [(b'Date', b'Tue, 07 Apr 2026 11:09:55 GMT'), (b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Server', b''), (b'Set-Cookie', b'JSESSIONID=32D972DC23791B9AB80E627F5D0E87BC.mono-web-prod_201.65; Path=/'), (b'Set-Cookie', b'WMONID=N9ewLNv6NOq; Expires=Wed, 07-Apr-2027 20:09:55 GMT; Path=/'), (b'Location', b'/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41463542'), (b'Content-Language', b'ko-KR'), (b'X-Encar-Request-Handler', b'T'), (b'P3P', b"CP='CAO PSA CONi OTR OUR DEM ONL'"), (b'X-UA-Compatible', b'IE=Edge')])
+2026-04-07 14:09:55 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionViewNew&carid=41463542 "HTTP/1.1 302 "
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:09:55 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:04 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:10:04 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:10:04 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:10:04 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:10:19.714493+00:00 (in 14.998915 seconds)
+2026-04-07 14:10:19 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:10:19 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:10:19 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:10:19 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:10:34.714493+00:00 (in 14.999144 seconds)
+2026-04-07 14:10:19 [INFO] apscheduler.executors.default: Running job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:10:49 UTC)" (scheduled at 2026-04-07 11:10:19.714789+00:00)
+2026-04-07 14:10:19 [INFO] apscheduler.executors.default: Job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:10:49 UTC)" executed successfully
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_headers.failed exception=ReadTimeout(TimeoutError('The read operation timed out'))
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:26 [DEBUG] parsers.encar.client: [encar] inspection_html 41463542: The read operation timed out
+2026-04-07 14:10:26 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:10:26 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e89bf2f0>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:10:26 GMT')])
+2026-04-07 14:10:26 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='api.encar.com' timeout=30
+2026-04-07 14:10:26 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e89bf5f0>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json;charset=UTF-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Origin', b'*'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:10:26 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 495a6ea9a073f54a4cfe961944b955c2.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'3QO8GR7ZnYBAw3hLEuuojZ9w0rhc3Mtg_tEKGbv4P5-vGOoYA2wR0Q==')])
+2026-04-07 14:10:26 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/diagnosis/vehicle/41463542/sellingpoint "HTTP/1.1 200 OK"
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:26 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:10:27 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 495a6ea9a073f54a4cfe961944b955c2.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'L6eY1pDp1uEU-WhzEe3KhPJSWiwKJAKf5kZT2qKsccxMLEIvVUhE_A==')])
+2026-04-07 14:10:27 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/record/vehicle/41777212/open "HTTP/1.1 404 Not Found"
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:27 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:27 [DEBUG] parsers.encar.client: [encar] record 41777212: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/record/vehicle/41777212/open'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:10:28 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 495a6ea9a073f54a4cfe961944b955c2.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'hpcpTuE9ujEauzv8eap_uq5u8rlZ7rQE9r7B55aLP8Di-nHeW_Z0Dw==')])
+2026-04-07 14:10:28 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/inspection/vehicle/41777212 "HTTP/1.1 404 Not Found"
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:28 [DEBUG] parsers.encar.client: [encar] inspection 41777212: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/inspection/vehicle/41777212'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:10:28 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:10:28 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e89bf9e0>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:28 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:10:28 GMT')])
+2026-04-07 14:10:28 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='www.encar.com' timeout=30
+2026-04-07 14:10:29 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e8a15bb0>
+2026-04-07 14:10:29 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:29 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:29 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:29 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:29 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 302, b'', [(b'Date', b'Tue, 07 Apr 2026 11:10:30 GMT'), (b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Server', b''), (b'Location', b'/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41777212'), (b'Content-Language', b'ko-KR'), (b'X-Encar-Request-Handler', b'T'), (b'P3P', b"CP='CAO PSA CONi OTR OUR DEM ONL'"), (b'X-UA-Compatible', b'IE=Edge')])
+2026-04-07 14:10:30 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionViewNew&carid=41777212 "HTTP/1.1 302 "
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:30 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:34 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:10:34 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:10:34 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:10:34 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:10:49.714493+00:00 (in 14.999196 seconds)
+2026-04-07 14:10:49 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:10:49 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:10:49 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:10:49 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:11:04.714493+00:00 (in 14.999151 seconds)
+2026-04-07 14:10:49 [INFO] apscheduler.executors.default: Running job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:11:19 UTC)" (scheduled at 2026-04-07 11:10:49.714789+00:00)
+2026-04-07 14:10:49 [INFO] apscheduler.executors.default: Running job "Schedule Hot-Reload (trigger: interval[0:01:00], next run at: 2026-04-07 11:11:49 UTC)" (scheduled at 2026-04-07 11:10:49.714912+00:00)
+2026-04-07 14:10:49 [INFO] apscheduler.executors.default: Job "Schedule Hot-Reload (trigger: interval[0:01:00], next run at: 2026-04-07 11:11:49 UTC)" executed successfully
+2026-04-07 14:10:49 [INFO] apscheduler.executors.default: Job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:11:19 UTC)" executed successfully
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Server', b''), (b'Date', b'Tue, 07 Apr 2026 11:10:51 GMT'), (b'Content-Type', b'text/html'), (b'Content-Length', b'524'), (b'Connection', b'keep-alive')])
+2026-04-07 14:10:51 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41777212 "HTTP/1.1 502 Bad Gateway"
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:51 [DEBUG] parsers.encar.client: [encar] inspection_html 41777212: Server error '502 Bad Gateway' for url 'https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41777212'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-04-07 14:10:51 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:10:51 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e8a149b0>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:10:51 GMT')])
+2026-04-07 14:10:51 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='api.encar.com' timeout=30
+2026-04-07 14:10:51 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e8a14680>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:51 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json;charset=UTF-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Origin', b'*'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:10:52 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'_cQ5-UKB0djOiifIriZ6jV0IGn70fatdxRMHuTxYXaXd5DgE6drDPA==')])
+2026-04-07 14:10:52 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/diagnosis/vehicle/41777212/sellingpoint "HTTP/1.1 200 OK"
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:10:52 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'1HSIQet6_SnsApDsHeoAZggWgPzA4cNvyvljDiRAFsTGcgVay_mwlg==')])
+2026-04-07 14:10:52 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/record/vehicle/41437979/open "HTTP/1.1 404 Not Found"
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:52 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:52 [DEBUG] parsers.encar.client: [encar] record 41437979: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/record/vehicle/41437979/open'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:10:53 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 39c8f49389b943e96c07c190a1225d32.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'clvEHu1dbZdojZ1A5ye-HcDhwMXqK0pF8cB7esOGk2fSsaoGGudC8w==')])
+2026-04-07 14:10:53 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/inspection/vehicle/41437979 "HTTP/1.1 404 Not Found"
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:53 [DEBUG] parsers.encar.client: [encar] inspection 41437979: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/inspection/vehicle/41437979'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:53 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 302, b'', [(b'Date', b'Tue, 07 Apr 2026 11:10:54 GMT'), (b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Server', b''), (b'Location', b'/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41437979'), (b'Content-Language', b'ko-KR'), (b'X-Encar-Request-Handler', b'T'), (b'P3P', b"CP='CAO PSA CONi OTR OUR DEM ONL'"), (b'X-UA-Compatible', b'IE=Edge')])
+2026-04-07 14:10:54 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionViewNew&carid=41437979 "HTTP/1.1 302 "
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:10:54 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:04 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:11:04 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:11:04 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:11:04 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:11:19.714493+00:00 (in 14.999288 seconds)
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Server', b''), (b'Date', b'Tue, 07 Apr 2026 11:11:15 GMT'), (b'Content-Type', b'text/html'), (b'Content-Length', b'524'), (b'Connection', b'keep-alive')])
+2026-04-07 14:11:15 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41437979 "HTTP/1.1 502 Bad Gateway"
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:15 [DEBUG] parsers.encar.client: [encar] inspection_html 41437979: Server error '502 Bad Gateway' for url 'https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41437979'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-04-07 14:11:15 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:11:15 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e9289760>
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:15 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:11:16 GMT')])
+2026-04-07 14:11:16 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='api.encar.com' timeout=30
+2026-04-07 14:11:16 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e9288da0>
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json;charset=UTF-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Origin', b'*'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:11:16 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 dc7aeefd8f9f1132c56cbdea9095671e.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'm4mrYf6GrnBnIv8mwSVQ5c6OeqDNrY46kGvq5QsevafSudyhiuOEDA==')])
+2026-04-07 14:11:16 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/diagnosis/vehicle/41437979/sellingpoint "HTTP/1.1 200 OK"
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:16 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:17 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:17 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:17 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:17 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:17 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:11:17 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 dc7aeefd8f9f1132c56cbdea9095671e.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'wEUjhwXApKCM22WUMQqFwkrPhSRYi2KB7-_ISUkv9PmKrHZuODa-ww==')])
+2026-04-07 14:11:18 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/record/vehicle/41815018/open "HTTP/1.1 404 Not Found"
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:18 [DEBUG] parsers.encar.client: [encar] record 41815018: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/record/vehicle/41815018/open'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:11:18 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 dc7aeefd8f9f1132c56cbdea9095671e.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'1jnlx4vOOZ2AEOIm4jcniBhar6UUJneuMM1rRA13kQEC-0IGw8GCHA==')])
+2026-04-07 14:11:18 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/inspection/vehicle/41815018 "HTTP/1.1 404 Not Found"
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:18 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:18 [DEBUG] parsers.encar.client: [encar] inspection 41815018: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/inspection/vehicle/41815018'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 302, b'', [(b'Date', b'Tue, 07 Apr 2026 11:11:19 GMT'), (b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Server', b''), (b'Location', b'/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41815018'), (b'Content-Language', b'ko-KR'), (b'X-Encar-Request-Handler', b'T'), (b'P3P', b"CP='CAO PSA CONi OTR OUR DEM ONL'"), (b'X-UA-Compatible', b'IE=Edge')])
+2026-04-07 14:11:19 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionViewNew&carid=41815018 "HTTP/1.1 302 "
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:19 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:19 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:11:19 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:11:19 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:11:19 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:11:34.714493+00:00 (in 14.999219 seconds)
+2026-04-07 14:11:19 [INFO] apscheduler.executors.default: Running job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:11:49 UTC)" (scheduled at 2026-04-07 11:11:19.714789+00:00)
+2026-04-07 14:11:19 [INFO] apscheduler.executors.default: Job "Reparse Worker (trigger: interval[0:00:30], next run at: 2026-04-07 11:11:49 UTC)" executed successfully
+2026-04-07 14:11:34 [DEBUG] apscheduler.scheduler: Looking for jobs to run
+2026-04-07 14:11:34 [WARNING] apscheduler.scheduler: Execution of job "Parse Job Worker (trigger: interval[0:00:15], next run at: 2026-04-07 11:11:34 UTC)" skipped: maximum number of running instances reached (1)
+2026-04-07 14:11:34 [DEBUG] apscheduler.scheduler: Next wakeup is due at 2026-04-07 11:11:49.714493+00:00 (in 14.998937 seconds)
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Server', b''), (b'Date', b'Tue, 07 Apr 2026 11:11:40 GMT'), (b'Content-Type', b'text/html'), (b'Content-Length', b'524'), (b'Connection', b'keep-alive')])
+2026-04-07 14:11:40 [INFO] httpx: HTTP Request: GET https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41815018 "HTTP/1.1 502 Bad Gateway"
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:40 [DEBUG] parsers.encar.client: [encar] inspection_html 41815018: Server error '502 Bad Gateway' for url 'https://www.encar.com/md/sl/mdsl_regcar.do?method=inspectionImgView&ver=v202006&carid=41815018'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-04-07 14:11:40 [DEBUG] httpcore.connection: connect_tcp.started host='geo.g-w.info' port=10080 local_address=None timeout=30 socket_options=None
+2026-04-07 14:11:40 [DEBUG] httpcore.connection: connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e8a17b90>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'CONNECT']>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'CONNECT']>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'date', b'Tue, 07 Apr 2026 11:11:40 GMT')])
+2026-04-07 14:11:40 [DEBUG] httpcore.proxy: start_tls.started ssl_context=<ssl.SSLContext object at 0x7f74e894ee50> server_hostname='api.encar.com' timeout=30
+2026-04-07 14:11:40 [DEBUG] httpcore.proxy: start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f74e925ffe0>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:40 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Content-Type', b'application/json;charset=UTF-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Origin', b'*'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:11:41 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'X-Cache', b'Miss from cloudfront'), (b'Via', b'1.1 6d8f8a48861f9176d68d3d73c65e0db4.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'QJlIo6kCIsztIHoHvU2yOGHh4n4A9ronunJs9m0ajlVewJTV35G_QQ==')])
+2026-04-07 14:11:41 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/diagnosis/vehicle/41815018/sellingpoint "HTTP/1.1 200 OK"
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:41 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:11:42 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 6d8f8a48861f9176d68d3d73c65e0db4.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'5MTXPTx3pN6QNd7WFgWVS-g3qLS9V7E9EeqPFF49DM5xbtXP0VHp1A==')])
+2026-04-07 14:11:42 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/record/vehicle/39443763/open "HTTP/1.1 404 Not Found"
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:42 [DEBUG] parsers.encar.client: [encar] record 39443763: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/record/vehicle/39443763/open'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_headers.complete return_value=(b'HTTP/1.1', 404, b'Not Found', [(b'Content-Length', b'0'), (b'Connection', b'keep-alive'), (b'Access-Control-Allow-Credentials', b'true'), (b'Date', b'Tue, 07 Apr 2026 11:11:42 GMT'), (b'Server', b'nginx/1.22.1'), (b'Vary', b'Origin'), (b'Vary', b'Access-Control-Request-Method'), (b'Vary', b'Access-Control-Request-Headers'), (b'Access-Control-Allow-Origin', b'*'), (b'X-Cache', b'Error from cloudfront'), (b'Via', b'1.1 6d8f8a48861f9176d68d3d73c65e0db4.cloudfront.net (CloudFront)'), (b'X-Amz-Cf-Pop', b'JFK50-P9'), (b'X-Amz-Cf-Id', b'qVqF-zRV3OeLc2KiB3MqbZvxEVonqUq8E_ecMIf-prYaki7QI1t9yQ==')])
+2026-04-07 14:11:42 [INFO] httpx: HTTP Request: GET https://api.encar.com/v1/readside/inspection/vehicle/39443763 "HTTP/1.1 404 Not Found"
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_body.started request=<Request [b'GET']>
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: receive_response_body.complete
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: response_closed.started
+2026-04-07 14:11:42 [DEBUG] httpcore.http11: response_closed.complete
+2026-04-07 14:11:42 [DEBUG] parsers.encar.client: [encar] inspection 39443763: Client error '404 Not Found' for url 'https://api.encar.com/v1/readside/inspection/vehicle/39443763'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+2026-04-07 14:11:43 [DEBUG] httpcore.http11: send_request_headers.started request=<Request [b'GET']>
+2026-04-07 14:11:43 [DEBUG] httpcore.http11: send_request_headers.complete
+2026-04-07 14:11:43 [DEBUG] httpcore.http11: send_request_body.started request=<Request [b'GET']>
+2026-04-07 14:11:43 [DEBUG] httpcore.http11: send_request_body.complete
+2026-04-07 14:11:43 [DEBUG] httpcore.http11: receive_response_headers.started request=<Request [b'GET']>

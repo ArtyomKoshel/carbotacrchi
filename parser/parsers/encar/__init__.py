@@ -683,12 +683,7 @@ class EncarParser(AbstractParser):
             # Batch-enrich with detail API (VIN, plate, engine, etc.)
             self._enrich_batch(page_lots, stats)
 
-            # For new lots only: fetch accident record + inspection
-            new_lots = [l for l in page_lots if l.id not in existing_ids]
-            if new_lots:
-                self._enrich_accident_data(new_lots, stats)
-
-            # Upsert to DB + save photos
+            # Upsert to DB immediately — lots visible in DB with basic data
             self.repo.upsert_batch(page_lots)
             for lot in page_lots:
                 photos = lot.raw_data.get("photos") or []
@@ -699,6 +694,11 @@ class EncarParser(AbstractParser):
                 else:
                     stats["new"] += 1
                 stats["total"] += 1
+
+            # For new lots only: fetch accident record + inspection, then update each
+            new_lots = [l for l in page_lots if l.id not in existing_ids]
+            if new_lots:
+                self._enrich_accident_data(new_lots, stats)
 
             if on_page_callback:
                 on_page_callback(
@@ -737,13 +737,16 @@ class EncarParser(AbstractParser):
             chunk = ids[i: i + _BATCH_SIZE]
             try:
                 details = self._client.batch_details(chunk)
+                logger.debug(f"[encar] batch_details: API returned {len(details)} items for {len(chunk)} requested")
                 enriched = 0
                 for detail in details:
                     vid = str(detail.get("vehicleId", ""))
                     if vid in id_map:
                         _enrich_from_detail(id_map[vid], detail, self._norm)
                         enriched += 1
-                logger.info(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots")
+                    else:
+                        logger.debug(f"[encar] batch_details: vehicleId={vid!r} not in id_map (sample keys: {list(id_map.keys())[:3]})")
+                logger.info(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots (API returned {len(details)})")
             except Exception as e:
                 logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
                 ok = 0
@@ -830,6 +833,12 @@ class EncarParser(AbstractParser):
             except Exception as e:
                 logger.warning(f"[{source}] sellingpoint {lot.id}: {e}")
             _time.sleep(0.3)
+
+            # Update lot with accident/inspection-enriched data
+            try:
+                self.repo.upsert_batch([lot])
+            except Exception as e:
+                logger.warning(f"[{source}] upsert lot {lot.id} after accident enrich: {e}")
 
             if insp_record is not None:
                 try:
