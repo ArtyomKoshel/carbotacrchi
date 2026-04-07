@@ -12,3 +12,4 @@ laravel/storage/framework/views/*
 agent-transcripts/
 terminals/
 *.har
+logs.*.json
