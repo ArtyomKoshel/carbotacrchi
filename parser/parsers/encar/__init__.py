@@ -689,23 +689,34 @@ class EncarParser(AbstractParser):
                 photos = lot.raw_data.get("photos") or []
                 if photos:
                     self.repo.upsert_photos(lot.id, photos)
-                if lot.id in existing_ids:
-                    stats["updated"] += 1
-                else:
+                is_new = lot.id not in existing_ids
+                if is_new:
                     stats["new"] += 1
+                    logger.info(
+                        f"[{source}] NEW {lot.id} | "
+                        f"{lot.make} {lot.model} {lot.year} | "
+                        f"{lot.price:,}만 | {lot.mileage:,}km | {lot.fuel or '-'}"
+                    )
+                else:
+                    stats["updated"] += 1
+                    logger.debug(
+                        f"[{source}] UPD {lot.id} | "
+                        f"{lot.make} {lot.model} {lot.year}"
+                    )
                 stats["total"] += 1
 
-            # For new lots only: fetch accident record + inspection, then update each
-            new_lots = [l for l in page_lots if l.id not in existing_ids]
-            if new_lots:
-                self._enrich_accident_data(new_lots, stats)
-
+            # Notify jobs progress right after page upsert
             if on_page_callback:
                 on_page_callback(
                     page=page + 1,
                     found=len(page_lots),
                     total_pages=pages,
                 )
+
+            # For new lots only: fetch accident record + inspection, then update each
+            new_lots = [l for l in page_lots if l.id not in existing_ids]
+            if new_lots:
+                self._enrich_accident_data(new_lots, stats, on_page_callback=on_page_callback)
 
             _time.sleep(Config.REQUEST_DELAY)
 
@@ -768,10 +779,10 @@ class EncarParser(AbstractParser):
                     _time.sleep(0.5)
                 logger.info(f"[encar] single fallback: enriched {ok}/{len(chunk)} lots")
 
-    def _enrich_accident_data(self, lots: list[CarLot], stats: dict) -> None:
+    def _enrich_accident_data(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
         """Fetch record + inspection + diagnosis for new lots and upsert to lot_inspections."""
         source = _SOURCE
-        for lot in lots:
+        for i, lot in enumerate(lots):
             insp_record: InspectionRecord | None = None
             is_certified = False
 
@@ -837,6 +848,11 @@ class EncarParser(AbstractParser):
             # Update lot with accident/inspection-enriched data
             try:
                 self.repo.upsert_batch([lot])
+                logger.info(
+                    f"[{source}] ENRICHED {lot.id} | "
+                    f"vin={lot.vin or '-'} | accident={lot.has_accident} | "
+                    f"flood={lot.flood_history} | insp={'ok' if insp_record else 'none'}"
+                )
             except Exception as e:
                 logger.warning(f"[{source}] upsert lot {lot.id} after accident enrich: {e}")
 
@@ -845,3 +861,9 @@ class EncarParser(AbstractParser):
                     self.repo.upsert_inspection(insp_record)
                 except Exception as e:
                     logger.warning(f"[{source}] upsert_inspection {lot.id}: {e}")
+
+            if on_page_callback:
+                try:
+                    on_page_callback(page=i + 1, found=1, total_pages=len(lots))
+                except Exception:
+                    pass
