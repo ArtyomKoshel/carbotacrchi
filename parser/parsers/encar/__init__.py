@@ -660,6 +660,7 @@ class EncarParser(AbstractParser):
         Stops early when API cycles (all results already in seen_ids)."""
         source = _SOURCE
         total_count: int | None = None
+        call_seen: set[str] = set()  # IDs first encountered in THIS call — for cycling detection only
 
         for page in range(max_pages):
             _t_page = _time.monotonic()
@@ -696,11 +697,16 @@ class EncarParser(AbstractParser):
                 break
 
             page_lots: list[CarLot] = []
+            phase1_skip = 0
             for item in items:
                 vid = str(item.get("Id", ""))
-                if not vid or vid in seen_ids:
+                if not vid:
+                    continue
+                if vid in seen_ids:
+                    phase1_skip += 1
                     continue
                 seen_ids.add(vid)
+                call_seen.add(vid)
                 lot = _lot_from_search(item, self._norm)
                 page_lots.append(lot)
                 if collect_makers is not None:
@@ -709,8 +715,16 @@ class EncarParser(AbstractParser):
                         collect_makers.add(mk)
 
             if not page_lots and items:
-                logger.info(f"[{source}]{label} p.{page+1}: all {len(items)} results already seen — API cycling, stopping")
-                break
+                # True cycling: API returned IDs we already saw in THIS call
+                truly_cycling = all(str(i.get("Id", "")) in call_seen for i in items)
+                if truly_cycling:
+                    logger.info(f"[{source}]{label} p.{page+1}: all {len(items)} results already seen in this run — API cycling, stopping")
+                    break
+                # Phase overlap: IDs seen in a prior phase — advance to next page
+                logger.info(f"[STAT] [{source}]{label} p.{page+1}: {phase1_skip} seen in prior phase, skipping → next page")
+                if offset + _PAGE_SIZE >= (total_count or 0):
+                    break
+                continue
 
             logger.info(f"[{source}]{label} p.{page+1}: {len(page_lots)} lots from search")
 
