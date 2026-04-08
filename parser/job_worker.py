@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time as _time
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 import pymysql
 import redis
@@ -15,6 +17,11 @@ import redis
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+_LOG_FMT = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 _CHANNEL_PREFIX = "parse_progress:"
 
@@ -128,6 +135,24 @@ def process_pending_job() -> None:
 
         _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
 
+        # Per-job log file: /app/logs/jobs/job-{id}.log
+        job_handler: RotatingFileHandler | None = None
+        if Config.LOG_FILE:
+            job_log_dir = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs")
+            os.makedirs(job_log_dir, exist_ok=True)
+            job_log_path = os.path.join(job_log_dir, f"job-{job_id}.log")
+            try:
+                job_handler = RotatingFileHandler(
+                    job_log_path, maxBytes=50 * 1024 * 1024, backupCount=1, encoding="utf-8"
+                )
+                job_handler.setFormatter(_LOG_FMT)
+                job_handler.setLevel(logging.DEBUG)
+                logging.getLogger().addHandler(job_handler)
+                logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
+            except Exception as lh_err:
+                logger.warning(f"[job_worker] Could not create job log file: {lh_err}")
+                job_handler = None
+
         try:
             result = _run_parse(source, filters, job_id, conn, r)
             _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
@@ -145,6 +170,9 @@ def process_pending_job() -> None:
             logger.error(f"[job_worker] Job #{job_id} failed: {msg}")
         finally:
             release_parse_lock(r, source)
+            if job_handler:
+                logging.getLogger().removeHandler(job_handler)
+                job_handler.close()
     finally:
         conn.close()
 

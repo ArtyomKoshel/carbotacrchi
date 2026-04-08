@@ -21,7 +21,7 @@ class LotRepository:
 
     def _get_conn(self) -> pymysql.Connection:
         if self._conn is None or not self._conn.open:
-            logger.info(f"[DB] Connecting to {Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}")
+            logger.debug(f"[DB] Connecting to {Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_DATABASE}")
             t0 = _time.monotonic()
             self._conn = pymysql.connect(
                 host=Config.DB_HOST,
@@ -33,7 +33,7 @@ class LotRepository:
                 cursorclass=DictCursor,
                 autocommit=False,
             )
-            logger.info(f"[DB] Connected in {_time.monotonic() - t0:.2f}s")
+            logger.debug(f"[DB] Connected in {_time.monotonic() - t0:.2f}s")
         return self._conn
 
     # Fields compared on every upsert to detect meaningful changes.
@@ -80,7 +80,7 @@ class LotRepository:
             with conn.cursor() as cursor:
                 cursor.executemany(sql, rows)
             conn.commit()
-            logger.info(f"[DB] Recorded {len(rows)} lot_changes entries")
+            logger.debug(f"[DB] Recorded {len(rows)} lot_changes entries")
         except Exception as e:
             conn.rollback()
             logger.warning(f"[DB] _insert_lot_changes failed: {type(e).__name__}: {e}")
@@ -188,15 +188,14 @@ class LotRepository:
                 cursor.executemany(sql, rows)
             conn.commit()
             elapsed = _time.monotonic() - t0
-            logger.info(f"[DB] Upserted {len(rows)} lots in {elapsed:.2f}s")
+            logger.debug(f"[DB] Upserted {len(rows)} lots in {elapsed:.2f}s")
         except Exception as e:
             conn.rollback()
-            logger.error(f"[DB] Upsert FAILED for {len(rows)} lots: {type(e).__name__}: {e}")
-            # Try to identify the offending row from MySQL error "... at row N"
+            logger.error(f"[DB] Batch upsert FAILED ({len(rows)} lots): {type(e).__name__}: {e}")
             m = re.search(r"at row (\d+)", str(e))
             col_m = re.search(r"column '([^']+)'", str(e))
             if m:
-                row_idx = int(m.group(1)) - 1  # MySQL row numbers are 1-based
+                row_idx = int(m.group(1)) - 1
                 if 0 <= row_idx < len(rows):
                     bad = rows[row_idx]
                     col = col_m.group(1) if col_m else "?"
@@ -206,7 +205,29 @@ class LotRepository:
                         f"make={bad.get('make')} model={bad.get('model')} year={bad.get('year')} "
                         f"bad_column={col} bad_value={bad.get(col, '<not in row>')!r}"
                     )
-            raise
+            # Fallback: retry one-by-one so one bad lot doesn't lose the whole page
+            logger.warning(f"[DB] Retrying {len(rows)} lots one-by-one...")
+            saved = 0
+            for i, row in enumerate(rows):
+                try:
+                    with conn.cursor() as cursor:
+                        cursor.execute(sql, row)
+                    conn.commit()
+                    saved += 1
+                except Exception as e2:
+                    conn.rollback()
+                    col2 = re.search(r"column '([^']+)'", str(e2))
+                    col_name = col2.group(1) if col2 else "?"
+                    logger.error(
+                        f"[DB] Lot {i+1}/{len(rows)} SKIPPED: "
+                        f"id={row.get('id')} {row.get('make')} {row.get('model')} {row.get('year')} "
+                        f"— {col_name}={row.get(col_name, '?')!r} — {e2}"
+                    )
+                    lots[i].raw_data["_db_skip"] = True
+            logger.warning(f"[DB] One-by-one retry: {saved}/{len(rows)} saved, {len(rows)-saved} skipped")
+            # Remove skipped lots from change-detection below
+            lots = [l for l in lots if not l.raw_data.get("_db_skip")]
+            rows = [_lot_to_row(l) for l in lots]
 
         # Detect field changes for existing lots and persist to lot_changes
         changes_to_insert = []

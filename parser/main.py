@@ -43,8 +43,13 @@ def _setup_logging(debug: bool = False) -> None:
     ch.setFormatter(fmt)
     root.addHandler(ch)
 
-    # Suppress httpcore low-level debug noise; keep httpx INFO (shows request summary)
-    for _noisy in ("httpcore", "httpcore.http11", "httpcore.connection", "httpcore.proxy"):
+    # Suppress noisy low-level loggers
+    for _noisy in (
+        "httpcore", "httpcore.http11", "httpcore.connection", "httpcore.proxy",
+        "httpx",  # per-request URL lines
+        "apscheduler.scheduler", "apscheduler.executors", "apscheduler.executors.default",
+        "apscheduler.jobstores", "apscheduler.jobstores.default",
+    ):
         logging.getLogger(_noisy).setLevel(logging.WARNING)
 
     if Config.LOG_FILE:

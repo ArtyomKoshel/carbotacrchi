@@ -43,8 +43,26 @@
   @foreach($rotationFiles as $rf)
   <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $rf['idx'] ?: null])) }}"
      class="px-3 py-1.5 rounded-lg text-xs font-mono transition
-            {{ $fileIdx === $rf['idx'] ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+            {{ !$jobFile && $fileIdx === $rf['idx'] ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
     {{ $rf['label'] }}{{ $rf['idx'] === 0 ? ' (current)' : '' }}
+  </a>
+  @endforeach
+</div>
+@endif
+
+{{-- Per-job log files --}}
+@if(count($jobFiles) > 0)
+<div class="flex items-center gap-2 flex-wrap mb-3">
+  <span class="text-xs text-gray-600">Job logs:</span>
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source])) }}"
+     class="px-3 py-1 rounded text-xs font-mono transition {{ !$jobFile ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+    main
+  </a>
+  @foreach($jobFiles as $jf)
+  @php $jlabel = $jf['label']; $jsize = round($jf['size']/1024).'k'; @endphp
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jlabel])) }}"
+     class="px-3 py-1 rounded text-xs font-mono transition {{ $jobFile === $jlabel ? 'bg-indigo-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+    {{ $jlabel }} <span class="text-gray-600">({{ $jsize }})</span>
   </a>
   @endforeach
 </div>
@@ -70,14 +88,24 @@
 
   {{-- Source quick-filter (links) --}}
   <div class="flex items-center gap-2 flex-wrap">
-    <span class="text-xs text-gray-600">Parser:</span>
-    @foreach(['' => 'All', 'kbcha' => 'KBCha', 'encar' => 'Encar'] as $src => $lbl)
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $src, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <span class="text-xs text-gray-600">Flow:</span>
+    @foreach(['' => 'All', 'kbcha' => 'KBCha', 'encar' => 'Encar', 'job_worker' => 'Jobs', 'scheduler' => 'Scheduler'] as $src => $lbl)
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $src, 'limit' => $maxLines != 1000 ? $maxLines : null, 'job' => $jobFile ?: null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $source === $src ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
       {{ $lbl }}
     </a>
     @endforeach
+    {{-- Phase quick filters --}}
+    <span class="text-xs text-gray-600 ml-2">Phase:</span>
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[global]', 'limit' => $maxLines != 1000 ? $maxLines : null, 'job' => $jobFile ?: null])) }}"
+       class="px-3 py-1.5 rounded-lg text-sm transition {{ $search === '[global]' ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-emerald-500 hover:bg-emerald-900/40' }}">
+      Phase 1
+    </a>
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => 'Phase 2', 'limit' => $maxLines != 1000 ? $maxLines : null, 'job' => $jobFile ?: null])) }}"
+       class="px-3 py-1.5 rounded-lg text-sm transition {{ $search === 'Phase 2' ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-emerald-500 hover:bg-emerald-900/40' }}">
+      Phase 2
+    </a>
   </div>
 
   {{-- Search text --}}
@@ -115,11 +143,39 @@
   </div>
 @else
   <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
-    <div class="px-4 py-2 border-b border-gray-800 text-xs text-gray-600">
-      Showing {{ count($lines) }} / {{ number_format($maxLines) }} lines
-      @if($level) · level: <span class="text-gray-400">{{ $level }}</span>@endif
-      @if($source) · parser: <span class="text-gray-400">{{ $source }}</span>@endif
-      @if($search) · search: <span class="text-gray-400">"{{ $search }}"</span>@endif
+    <div class="px-4 py-2 border-b border-gray-800 flex items-center gap-3 flex-wrap">
+      <span class="text-xs text-gray-600">
+        {{ number_format($totalLines) }} lines · page {{ $page + 1 }} / {{ $totalPages }}
+        @if($level) · level: <span class="text-gray-400">{{ $level }}</span>@endif
+        @if($source) · parser: <span class="text-gray-400">{{ $source }}</span>@endif
+        @if($search) · search: <span class="text-gray-400">"{{ $search }}"</span>@endif
+      </span>
+      @if($totalPages > 1)
+      @php
+        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'limit'=>$maxLines!=1000?$maxLines:null]);
+      @endphp
+      <div class="ml-auto flex items-center gap-1">
+        @if($page > 0)
+        <a href="{{ route('admin.logs', array_merge($pq, ['page' => 0])) }}"
+           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">«</a>
+        <a href="{{ route('admin.logs', array_merge($pq, ['page' => $page - 1])) }}"
+           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">‹ Prev</a>
+        @endif
+        @php $start = max(0, $page - 2); $end = min($totalPages - 1, $page + 2); @endphp
+        @for($p = $start; $p <= $end; $p++)
+        <a href="{{ route('admin.logs', array_merge($pq, ['page' => $p])) }}"
+           class="px-2 py-0.5 rounded text-xs {{ $p === $page ? 'bg-blue-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
+          {{ $p + 1 }}
+        </a>
+        @endfor
+        @if($page < $totalPages - 1)
+        <a href="{{ route('admin.logs', array_merge($pq, ['page' => $page + 1])) }}"
+           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">Next ›</a>
+        <a href="{{ route('admin.logs', array_merge($pq, ['page' => $totalPages - 1])) }}"
+           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">»</a>
+        @endif
+      </div>
+      @endif
     </div>
     <pre class="p-4 text-xs leading-5 overflow-x-auto max-h-[72vh] overflow-y-auto font-mono"
          id="log-pre"

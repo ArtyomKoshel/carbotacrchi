@@ -106,6 +106,7 @@ class AdminController extends Controller
         $search   = trim($request->query('search', ''));
         $source   = trim($request->query('source', ''));
         $fileIdx  = (int) $request->query('file', 0);
+        $page     = max(0, (int) $request->query('page', 0));
 
         // Collect available rotation files: parser.log, parser.log.1, ..., parser.log.N
         $rotationFiles = [];
@@ -118,30 +119,56 @@ class AdminController extends Controller
             }
         }
 
+        // Collect per-job log files from /logs/jobs/ directory
+        $jobFiles = [];
+        $jobFile  = trim($request->query('job', ''));
+        if ($baseFile) {
+            $jobDir = dirname($baseFile) . '/jobs';
+            if (is_dir($jobDir)) {
+                $found = glob($jobDir . '/job-*.log');
+                if ($found) {
+                    usort($found, fn($a, $b) => filemtime($b) - filemtime($a)); // newest first
+                    foreach ($found as $jf) {
+                        $jobFiles[] = ['path' => $jf, 'label' => basename($jf), 'size' => filesize($jf)];
+                    }
+                }
+            }
+        }
+
         $logFile = $baseFile;
-        if ($fileIdx > 0) {
+        if ($jobFile) {
+            // Job file takes priority over rotation file index
+            $logFile = dirname($baseFile) . '/jobs/' . basename($jobFile);
+            if (!file_exists($logFile)) $logFile = $baseFile;
+        } elseif ($fileIdx > 0) {
             $found = array_filter($rotationFiles, fn($f) => $f['idx'] === $fileIdx);
             if ($found) $logFile = reset($found)['path'];
         }
 
-        $lines = [];
-        $error = null;
+        $lines      = [];
+        $error      = null;
+        $totalLines = 0;
+        $totalPages = 1;
 
         if (!$logFile || !file_exists($logFile)) {
             $error = "Log file not found: {$logFile}";
         } else {
-            $all = $this->tailFile($logFile, $maxLines * 5);
+            $all      = $this->tailFile($logFile, 300000);
+            $filtered = [];
             foreach ($all as $line) {
-                if ($level  && !str_contains($line, "[{$level}]"))   continue;
-                if ($search && !str_contains($line, $search))         continue;
-                if ($source && !str_contains($line, $source))         continue;
-                $lines[] = $line;
-                if (count($lines) >= $maxLines) break;
+                if ($level  && !str_contains($line, "[{$level}]")) continue;
+                if ($search && !str_contains($line, $search))       continue;
+                if ($source && !str_contains($line, $source))       continue;
+                $filtered[] = $line;
             }
-            $lines = array_reverse($lines);
+            $filtered   = array_reverse($filtered); // newest first
+            $totalLines = count($filtered);
+            $totalPages = max(1, (int) ceil($totalLines / $maxLines));
+            $page       = min($page, $totalPages - 1);
+            $lines      = array_slice($filtered, $page * $maxLines, $maxLines);
         }
 
-        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines'));
+        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile'));
     }
 
     public function stats()

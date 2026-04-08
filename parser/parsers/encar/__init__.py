@@ -654,7 +654,7 @@ class EncarParser(AbstractParser):
         stats: dict,
         on_page_callback: Callable | None,
         label: str = "",
-        collect_makers: set[str] | None = None,
+        collect_models: dict[str, set[str]] | None = None,
     ) -> int:
         """Paginate one Encar search query. Returns API total count.
         Stops early when API cycles (all results already in seen_ids)."""
@@ -689,11 +689,11 @@ class EncarParser(AbstractParser):
 
             if total_count is None:
                 total_count = data.get("Count", 0)
-                logger.info(f"[{source}]{label} total: {total_count}")
+                logger.debug(f"[{source}]{label} total: {total_count}")
 
             items = data.get("SearchResults", [])
             if not items:
-                logger.info(f"[{source}]{label} p.{page+1}: empty, stopping")
+                logger.debug(f"[{source}]{label} p.{page+1}: empty, stopping")
                 break
 
             page_lots: list[CarLot] = []
@@ -709,10 +709,13 @@ class EncarParser(AbstractParser):
                 call_seen.add(vid)
                 lot = _lot_from_search(item, self._norm)
                 page_lots.append(lot)
-                if collect_makers is not None:
+                if collect_models is not None:
                     mk = item.get("Manufacturer", "")
+                    mo = item.get("Model", "")
                     if mk:
-                        collect_makers.add(mk)
+                        collect_models.setdefault(mk, set())
+                        if mo:
+                            collect_models[mk].add(mo)
 
             if not page_lots and items:
                 # True cycling: API returned IDs we already saw in THIS call
@@ -726,7 +729,7 @@ class EncarParser(AbstractParser):
                     break
                 continue
 
-            logger.info(f"[{source}]{label} p.{page+1}: {len(page_lots)} lots from search")
+            logger.debug(f"[{source}]{label} p.{page+1}: {len(page_lots)} lots from search")
 
             self._enrich_batch(page_lots, stats)
 
@@ -770,7 +773,7 @@ class EncarParser(AbstractParser):
             )
 
             if offset + _PAGE_SIZE >= (total_count or 0):
-                logger.info(f"[{source}]{label} reached end ({total_count} total)")
+                logger.debug(f"[{source}]{label} reached end ({total_count} total)")
                 break
 
         return total_count or 0
@@ -805,17 +808,19 @@ class EncarParser(AbstractParser):
         else:
             # Phase 1: global scan to discover all manufacturers (capped at 10k)
             base_query = "(And.Hidden.N._.CarType.A.)"
-            discovered_makers: set[str] = set()
-            logger.info(f"[{source}] Phase 1: global scan to discover manufacturers")
+            discovered_models: dict[str, set[str]] = {}
+            logger.info(f"[{source}] Phase 1: global scan to discover manufacturers and models")
             api_total = self._paginate_query(
                 base_query, 100, seen_ids, existing_ids, stats,
-                on_page_callback, label=" [global]", collect_makers=discovered_makers,
+                on_page_callback, label=" [global]", collect_models=discovered_models,
             )
-            logger.info(f"[{source}] Phase 1 done. Manufacturers found: {sorted(discovered_makers)}")
+            discovered_makers = sorted(discovered_models.keys())
+            logger.info(f"[{source}] Phase 1 done. Manufacturers found: {discovered_makers}")
+            logger.info(f"[{source}] Phase 1 done. Models per maker: { {k: len(v) for k, v in discovered_models.items()} }")
 
             # Phase 2: per-manufacturer queries to bypass 10k pagination cap
             logger.info(f"[{source}] Phase 2: per-manufacturer pagination")
-            for maker in sorted(discovered_makers):
+            for maker in discovered_makers:
                 mq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}.)"
                 try:
                     count_data = self._client.search(query=mq, offset=0, count=1)
@@ -824,7 +829,7 @@ class EncarParser(AbstractParser):
                     logger.warning(f"[{source}] [{maker}] count query failed: {e}")
                     continue
 
-                logger.info(f"[{source}] [{maker}]: {maker_total} total")
+                logger.debug(f"[{source}] [{maker}]: {maker_total} total")
                 if maker_total == 0:
                     continue
 
@@ -834,19 +839,24 @@ class EncarParser(AbstractParser):
                         on_page_callback, label=f" [{maker}]",
                     )
                 else:
-                    logger.info(f"[{source}] [{maker}] {maker_total} > {_MAX_SAFE_OFFSET}, splitting by year")
-                    current_year = _time.localtime().tm_year
-                    for year in range(1990, current_year + 2):
-                        yq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}._.FormYear.{year}.)"
+                    maker_models = sorted(discovered_models.get(maker, []))
+                    logger.info(f"[{source}] [{maker}] {maker_total} > {_MAX_SAFE_OFFSET}, splitting by model ({len(maker_models)} models discovered)")
+                    if not maker_models:
+                        logger.warning(f"[{source}] [{maker}] no models from Phase 1, paginating up to cap")
+                        self._paginate_query(mq, 100, seen_ids, existing_ids, stats, on_page_callback, label=f" [{maker}]")
+                        continue
+                    for model in maker_models:
+                        model_q = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}._.Model.{model}.)"
                         try:
-                            ydata = self._client.search(query=yq, offset=0, count=1)
-                            year_total = ydata.get("Count", 0)
-                        except Exception:
+                            mdata = self._client.search(query=model_q, offset=0, count=1)
+                            model_total = mdata.get("Count", 0)
+                        except Exception as e:
+                            logger.warning(f"[{source}] [{maker}/{model}] count query failed: {e}")
                             continue
-                        if year_total > 0:
+                        if model_total > 0:
                             self._paginate_query(
-                                yq, 100, seen_ids, existing_ids, stats,
-                                on_page_callback, label=f" [{maker}/{year}]",
+                                model_q, 100, seen_ids, existing_ids, stats,
+                                on_page_callback, label=f" [{maker}/{model}]",
                             )
 
         stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
