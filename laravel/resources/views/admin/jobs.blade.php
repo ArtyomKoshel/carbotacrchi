@@ -134,7 +134,10 @@
 {{-- Live progress panel --}}
 <div id="progress-panel" class="hidden fixed bottom-4 right-4 w-[480px] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
   <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-    <span class="text-sm font-semibold text-white" id="progress-title">Job progress</span>
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-semibold text-white" id="progress-title">Job progress</span>
+      <span class="text-xs text-gray-500 font-mono" id="progress-lifetime"></span>
+    </div>
     <button onclick="closeProgress()" class="text-gray-500 hover:text-white text-lg leading-none">×</button>
   </div>
   {{-- Tabs --}}
@@ -149,7 +152,7 @@
 </div>
 
 <script>
-let es = null, lotsTimer = null, watchId = null;
+let es = null, lotsTimer = null, watchId = null, lifetimeTimer = null, lifetimeStart = null;
 
 function switchTab(tab) {
   const tabs = ['progress','lots'];
@@ -161,9 +164,15 @@ function switchTab(tab) {
   });
 }
 
+function fmtElapsed(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? `${h}h ${m}m ${sec}s` : m ? `${m}m ${sec}s` : `${sec}s`;
+}
+
 function watchJob(id, source) {
   if (es) { es.close(); es = null; }
   if (lotsTimer) { clearInterval(lotsTimer); lotsTimer = null; }
+  if (lifetimeTimer) { clearInterval(lifetimeTimer); lifetimeTimer = null; }
   watchId = id;
 
   const panel = document.getElementById('progress-panel');
@@ -173,6 +182,14 @@ function watchJob(id, source) {
   document.getElementById('progress-title').textContent = `Job #${id} — ${source}`;
   panel.classList.remove('hidden');
   switchTab('progress');
+
+  // Lifetime timer
+  lifetimeStart = Math.floor(Date.now() / 1000);
+  const ltEl = document.getElementById('progress-lifetime');
+  ltEl.textContent = '0s';
+  lifetimeTimer = setInterval(() => {
+    ltEl.textContent = fmtElapsed(Math.floor(Date.now() / 1000) - lifetimeStart);
+  }, 1000);
 
   // SSE progress stream
   es = new EventSource(`/admin/jobs/${id}/progress`);
@@ -205,29 +222,37 @@ function watchJob(id, source) {
       if (d.found_total !== undefined) row.querySelector('.progress-cell').textContent = `p.${d.page} · ${d.found_total} found`;
       if (d.total !== undefined) row.querySelector('.result-cell').textContent = `${d.total} lots · ${d.pages} pages`;
     }
-    if (['done','error','cancelled'].includes(d.status)) { es.close(); es = null; }
+    if (['done','error','cancelled'].includes(d.status)) {
+      es.close(); es = null;
+      if (lifetimeTimer) { clearInterval(lifetimeTimer); lifetimeTimer = null; }
+    }
   };
   es.onerror = () => { es.close(); es = null; };
 
-  // Poll lot-level events every 3s
+  // Poll all processed lots every 5s
   const pollLots = () => {
     fetch(`/admin/jobs/${id}/events`)
       .then(r => r.json())
       .then(data => {
         const pane = document.getElementById('pane-lots');
-        const evColors = { update: 'text-blue-400', delisted: 'text-red-400', relisted: 'text-green-400' };
         pane.innerHTML = '';
-        (data.events || []).forEach(ev => {
+        const fmtPrice = (p) => p ? `$${Number(p).toLocaleString()}` : '';
+        const fmtMi = (m) => m ? `${Number(m).toLocaleString()} km` : '';
+        (data.lots || []).forEach(lot => {
           const div = document.createElement('div');
-          div.className = 'flex items-start gap-2 border-b border-gray-800/50 pb-1';
-          const changes = typeof ev.changes === 'string' ? JSON.parse(ev.changes) : (ev.changes || {});
-          const fields = Object.keys(changes).slice(0, 3).join(', ');
-          div.innerHTML = `<span class="${evColors[ev.event] ?? 'text-gray-400'} font-mono shrink-0">${ev.event}</span>
-            <span class="text-gray-300 font-mono">${ev.lot_id}</span>
-            <span class="text-gray-600 truncate">${fields}</span>`;
+          div.className = 'flex items-center gap-2 border-b border-gray-800/50 pb-1';
+          const badge = lot.changed
+            ? '<span class="text-[10px] px-1 rounded bg-yellow-900/60 text-yellow-400">upd</span>'
+            : '<span class="text-[10px] px-1 rounded bg-gray-800 text-gray-600">ok</span>';
+          div.innerHTML = `${badge}
+            <span class="text-gray-300 font-mono shrink-0">${lot.id}</span>
+            <span class="text-gray-400 truncate flex-1">${lot.title}</span>
+            <span class="text-gray-500 shrink-0">${fmtPrice(lot.price)}</span>
+            <span class="text-gray-600 shrink-0">${fmtMi(lot.mileage)}</span>`;
           pane.appendChild(div);
         });
-        document.getElementById('lots-count').textContent = data.events?.length ? `(${data.events.length})` : '';
+        const chTxt = data.changed ? `, ${data.changed} changed` : '';
+        document.getElementById('lots-count').textContent = data.total ? `(${data.total}${chTxt})` : '';
         if (['done','error','cancelled'].includes(data.status)) {
           clearInterval(lotsTimer); lotsTimer = null;
         }
@@ -240,6 +265,7 @@ function watchJob(id, source) {
 function closeProgress() {
   if (es) { es.close(); es = null; }
   if (lotsTimer) { clearInterval(lotsTimer); lotsTimer = null; }
+  if (lifetimeTimer) { clearInterval(lifetimeTimer); lifetimeTimer = null; }
   document.getElementById('progress-panel').classList.add('hidden');
 }
 

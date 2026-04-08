@@ -332,19 +332,36 @@ class AdminController extends Controller
     public function jobEvents(int $id)
     {
         $job = ParseJob::findOrFail($id);
-        $since = $job->updated_at ?? $job->created_at;
+        $since = ($job->created_at ?? now())->copy()->subSeconds(5);
 
-        $events = DB::table('lot_changes')
+        // All lots touched during this job (upserted)
+        $lots = DB::table('lots')
             ->where('source', $job->source)
-            ->where('recorded_at', '>=', $since->subSeconds(5))
-            ->orderByDesc('recorded_at')
-            ->limit(100)
-            ->get(['lot_id', 'event', 'changes', 'recorded_at']);
+            ->where('updated_at', '>=', $since)
+            ->orderByDesc('updated_at')
+            ->limit(200)
+            ->get(['id', 'make', 'model', 'year', 'price', 'price_krw', 'mileage', 'updated_at']);
+
+        // Lots that had actual field changes
+        $changedIds = DB::table('lot_changes')
+            ->where('source', $job->source)
+            ->where('recorded_at', '>=', $since)
+            ->pluck('lot_id')
+            ->unique()
+            ->toArray();
 
         return response()->json([
-            'job_id' => $id,
-            'status' => $job->status,
-            'events' => $events,
+            'job_id'     => $id,
+            'status'     => $job->status,
+            'total'      => $lots->count(),
+            'changed'    => count($changedIds),
+            'lots'       => $lots->map(fn ($l) => [
+                'id'      => $l->id,
+                'title'   => trim(($l->make ?? '') . ' ' . ($l->model ?? '') . ' ' . ($l->year ?? '')),
+                'price'   => $l->price,
+                'mileage' => $l->mileage,
+                'changed' => in_array($l->id, $changedIds),
+            ]),
         ]);
     }
 
