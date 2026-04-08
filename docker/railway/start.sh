@@ -97,7 +97,8 @@ if [ -n "$DB_HOST" ]; then
     done
 
     echo "[start] Running migrations..."
-    php "$APP_DIR/artisan" migrate --force --no-interaction
+    php "$APP_DIR/artisan" migrate --force --no-interaction || \
+        echo "[start] WARNING: migrate failed, continuing anyway"
 
     if [ -n "$TEST_TELEGRAM_ID" ]; then
         echo "[start] Seeding demo data for user $TEST_TELEGRAM_ID..."

@@ -2,21 +2,18 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('lot_inspections', function (Blueprint $table) {
-            $table->string('cert_no', 100)->nullable()->change();
-        });
+        DB::statement('ALTER TABLE lot_inspections MODIFY COLUMN cert_no VARCHAR(100) NULL');
     }
 
     public function down(): void
     {
-        Schema::table('lot_inspections', function (Blueprint $table) {
-            $table->string('cert_no', 20)->nullable()->change();
-        });
+        DB::statement('ALTER TABLE lot_inspections MODIFY COLUMN cert_no VARCHAR(20) NULL');
     }
 };
