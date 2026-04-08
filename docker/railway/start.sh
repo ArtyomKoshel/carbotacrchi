@@ -111,5 +111,9 @@ if [ -n "$DB_HOST" ]; then
     fi
 fi
 
+echo "[start] Preparing log directory..."
+mkdir -p /app/logs
+chown -R www-data:www-data /app/logs
+
 echo "[start] Starting nginx + php-fpm via supervisord..."
 exec /usr/bin/supervisord -c /etc/supervisord.conf

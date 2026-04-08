@@ -20,7 +20,8 @@ RUN composer install --no-interaction --no-plugins --prefer-dist --no-dev --opti
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 COPY parser/ /app/parser/
-RUN pip3 install --no-cache-dir --break-system-packages -r /app/parser/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /app/parser/requirements.txt \
+    && chown -R www-data:www-data /app
 
 COPY docker/nginx/railway.conf /etc/nginx/http.d/default.conf
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
