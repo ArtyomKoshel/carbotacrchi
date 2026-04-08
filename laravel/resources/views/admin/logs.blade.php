@@ -145,7 +145,7 @@
   <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
     <div class="px-4 py-2 border-b border-gray-800 flex items-center gap-3 flex-wrap">
       <span class="text-xs text-gray-600">
-        {{ number_format($totalLines) }} lines · page {{ $page + 1 }} / {{ $totalPages }}
+        ~{{ number_format($totalLines) }} lines · page {{ $page + 1 }} / {{ $totalPages }}
         @if($level) · level: <span class="text-gray-400">{{ $level }}</span>@endif
         @if($source) · parser: <span class="text-gray-400">{{ $source }}</span>@endif
         @if($search) · search: <span class="text-gray-400">"{{ $search }}"</span>@endif

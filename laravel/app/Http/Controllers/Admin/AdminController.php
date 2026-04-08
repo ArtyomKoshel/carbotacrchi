@@ -153,18 +153,17 @@ class AdminController extends Controller
         if (!$logFile || !file_exists($logFile)) {
             $error = "Log file not found: {$logFile}";
         } else {
-            $all      = $this->tailFile($logFile, 300000);
-            $filtered = [];
-            foreach ($all as $line) {
-                if ($level  && !str_contains($line, "[{$level}]")) continue;
-                if ($search && !str_contains($line, $search))       continue;
-                if ($source && !str_contains($line, $source))       continue;
-                $filtered[] = $line;
+            $needed = ($page + 1) * $maxLines;
+            [$filtered, $scannedBytes, $fileSize] = $this->readFilteredTail($logFile, $needed, $level, $search, $source);
+
+            $matchedCount = count($filtered);
+            if ($scannedBytes >= $fileSize) {
+                $totalLines = $matchedCount;
+            } else {
+                $totalLines = max($matchedCount, (int) ($matchedCount * ($fileSize / max(1, $scannedBytes))));
             }
-            $filtered   = array_reverse($filtered); // newest first
-            $totalLines = count($filtered);
             $totalPages = max(1, (int) ceil($totalLines / $maxLines));
-            $page       = min($page, $totalPages - 1);
+            $page       = min($page, max(0, (int) ceil($matchedCount / $maxLines) - 1));
             $lines      = array_slice($filtered, $page * $maxLines, $maxLines);
         }
 
@@ -594,33 +593,58 @@ class AdminController extends Controller
         return null;
     }
 
-    private function tailFile(string $path, int $lines): array
+    /**
+     * Read from end of file in chunks, filtering on the fly.
+     * Returns [$matchedLines (newest-first), $bytesScanned, $fileSize].
+     */
+    private function readFilteredTail(string $path, int $needed, string $level, string $search, string $source): array
     {
-        $fp = fopen($path, 'r');
-        if (!$fp) {
-            return [];
-        }
+        $fp = @fopen($path, 'r');
+        if (!$fp) return [[], 0, 0];
 
-        $buffer = '';
-        $count  = 0;
-
+        $fileSize = filesize($path);
         fseek($fp, 0, SEEK_END);
         $pos = ftell($fp);
+        $scanned = 0;
+        $results = [];
+        $remainder = '';
+        $chunkSize = 65536; // 64 KB
 
-        while ($pos > 0 && $count < $lines) {
-            $read = min(4096, $pos);
+        while ($pos > 0 && count($results) < $needed) {
+            $read = min($chunkSize, $pos);
             $pos -= $read;
             fseek($fp, $pos);
-            $chunk  = fread($fp, $read);
-            $buffer = $chunk . $buffer;
-            $count  = substr_count($buffer, "\n");
+            $chunk = fread($fp, $read);
+            $scanned += $read;
+
+            $block = $chunk . $remainder;
+            $lines = explode("\n", $block);
+            $remainder = array_shift($lines); // first element is potentially incomplete
+
+            // iterate newest→oldest (end of chunk is most recent)
+            for ($i = count($lines) - 1; $i >= 0; $i--) {
+                $line = $lines[$i];
+                if ($line === '') continue;
+                if ($level  && !str_contains($line, "[{$level}]")) continue;
+                if ($search && !str_contains($line, $search))      continue;
+                if ($source && !str_contains($line, $source))      continue;
+                $results[] = $line;
+                if (count($results) >= $needed) break;
+            }
+        }
+
+        // handle the very first line of the file
+        if ($remainder !== '' && count($results) < $needed) {
+            $line = $remainder;
+            $pass = true;
+            if ($level  && !str_contains($line, "[{$level}]")) $pass = false;
+            if ($search && !str_contains($line, $search))      $pass = false;
+            if ($source && !str_contains($line, $source))      $pass = false;
+            if ($pass) $results[] = $line;
+            $scanned = $fileSize;
         }
 
         fclose($fp);
-
-        $result = explode("\n", $buffer);
-        $result = array_filter($result, fn($l) => $l !== '');
-
-        return array_slice(array_values($result), -$lines);
+        return [$results, $scanned, $fileSize];
     }
 }
