@@ -902,11 +902,21 @@ class EncarParser(AbstractParser):
                                 on_page_callback, label=f" [{maker}/{year}/fallback]",
                             )
 
-        stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
         elapsed = _time.monotonic() - run_start
 
         db_count = self.repo.count_active(source)
         coverage_pct = stats["total"] / api_total * 100 if api_total else 0.0
+
+        _MIN_DELIST_COVERAGE = 95.0
+        if coverage_pct >= _MIN_DELIST_COVERAGE:
+            stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
+        else:
+            stale = 0
+            logger.warning(
+                f"[{source}] Skipping delist: coverage {coverage_pct:.1f}% < {_MIN_DELIST_COVERAGE}% "
+                f"(seen {stats['total']:,} / API {api_total:,}). "
+                f"Lots not seen may just be beyond pagination cap, not truly delisted."
+            )
 
         logger.info(f"[STAT] [{source}] ========== IMPORT COMPLETE ==========")
         logger.info(f"[STAT] [{source}] API reported: {api_total:,}")
