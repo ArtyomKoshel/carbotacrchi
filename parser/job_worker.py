@@ -30,6 +30,18 @@ class JobCancelledError(BaseException):
     pass
 
 
+class _ImportantOnly(logging.Filter):
+    """During a job, only pass WARNING+, [STAT], and job_worker messages to the main log."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.WARNING:
+            return True
+        msg = record.getMessage()
+        if "[STAT]" in msg or "[job_worker]" in msg:
+            return True
+        return False
+
+
 def _redis() -> redis.Redis:
     return redis.Redis(
         host=getattr(Config, "REDIS_HOST", "localhost"),
@@ -136,7 +148,11 @@ def process_pending_job() -> None:
         _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
 
         # Per-job log file: /app/logs/jobs/job-{id}.log
+        # During a job: verbose logs → job file only, important (WARNING+ / STAT) → both.
         job_handler: RotatingFileHandler | None = None
+        main_filter: _ImportantOnly | None = None
+        main_handler: logging.Handler | None = None
+        root = logging.getLogger()
         if Config.LOG_FILE:
             job_log_dir = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs")
             os.makedirs(job_log_dir, exist_ok=True)
@@ -147,7 +163,15 @@ def process_pending_job() -> None:
                 )
                 job_handler.setFormatter(_LOG_FMT)
                 job_handler.setLevel(logging.DEBUG)
-                logging.getLogger().addHandler(job_handler)
+                # Throttle main handler: only WARNING+ and [STAT] during the job
+                for h in root.handlers:
+                    if isinstance(h, RotatingFileHandler) and h is not job_handler:
+                        main_handler = h
+                        break
+                if main_handler:
+                    main_filter = _ImportantOnly()
+                    main_handler.addFilter(main_filter)
+                root.addHandler(job_handler)
                 logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
             except Exception as lh_err:
                 logger.warning(f"[job_worker] Could not create job log file: {lh_err}")
@@ -171,8 +195,10 @@ def process_pending_job() -> None:
         finally:
             release_parse_lock(r, source)
             if job_handler:
-                logging.getLogger().removeHandler(job_handler)
+                root.removeHandler(job_handler)
                 job_handler.close()
+            if main_handler and main_filter:
+                main_handler.removeFilter(main_filter)
     finally:
         conn.close()
 

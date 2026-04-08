@@ -27,13 +27,13 @@
   </form>
   <span class="text-xs text-gray-600 ml-auto mr-1">Lines:</span>
   @foreach([500, 1000, 3000, 10000] as $lim)
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'limit' => $lim])) }}"
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'limit' => $lim])) }}"
      class="px-2 py-1 rounded text-xs transition
             {{ $maxLines == $lim ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-500 hover:text-white' }}">
     {{ number_format($lim) }}
   </a>
   @endforeach
-  <span class="text-xs text-gray-600 ml-2">{{ basename(config('admin.log_file')) }}{{ $fileIdx > 0 ? '.'.$fileIdx : '' }}</span>
+  <span class="text-xs text-gray-600 ml-2">{{ $jobFile ?: basename(config('admin.log_file')) . ($fileIdx > 0 ? '.'.$fileIdx : '') }}</span>
 </div>
 
 {{-- Rotation file selector (only shown when backup files exist) --}}
@@ -73,13 +73,13 @@
   {{-- Level filter (links, not form buttons) --}}
   <div class="flex items-center gap-2 flex-wrap">
     @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info', 'DEBUG' => 'Debug'] as $lv => $lbl)
-    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
       {{ $lbl }}
     </a>
     @endforeach
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'job' => $jobFile ?: null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
       📊 Stats
@@ -112,6 +112,7 @@
   <form method="GET" class="flex gap-2">
     <input type="hidden" name="level"  value="{{ $level }}">
     <input type="hidden" name="source" value="{{ $source }}">
+    @if($jobFile)<input type="hidden" name="job" value="{{ $jobFile }}">@endif
     @if($maxLines != 1000)<input type="hidden" name="limit" value="{{ $maxLines }}">@endif
     <input type="text" name="search" value="{{ $search }}" placeholder="Search text..."
            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
@@ -120,7 +121,7 @@
       Search
     </button>
     @if($search || $source || $level)
-    <a href="{{ route('admin.logs') }}"
+    <a href="{{ route('admin.logs', array_filter(['job' => $jobFile ?: null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Reset</a>
     @endif
   </form>
@@ -152,7 +153,7 @@
       </span>
       @if($totalPages > 1)
       @php
-        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'limit'=>$maxLines!=1000?$maxLines:null]);
+        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'job'=>$jobFile?:null,'limit'=>$maxLines!=1000?$maxLines:null]);
       @endphp
       <div class="ml-auto flex items-center gap-1">
         @if($page > 0)
