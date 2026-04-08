@@ -34,6 +34,9 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
     year = int(str(year_raw)[:4]) if year_raw and len(str(year_raw)) >= 4 else 0
 
     price_man = int(item.get("Price") or 0)
+    if price_man > 1_000_000_000:  # > 10 trillion KRW — clearly garbage data
+        logger.warning(f"[encar] lot {item.get('Id')}: absurd price {price_man}만원, zeroing")
+        price_man = 0
     price_krw = norm.price_krw(price_man)
     mileage   = int(item.get("Mileage") or 0)
 
