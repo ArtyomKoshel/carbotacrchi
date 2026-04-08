@@ -1000,19 +1000,27 @@ class EncarParser(AbstractParser):
         has_record     = "Record"     in condition
         has_inspection = "Inspection" in condition
 
-        def _call(fn, *args):
-            """Call fn(*args), retry once with fresh proxy on rate-limit/block."""
-            try:
-                return fn(*args)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code in (403, 429, 503):
-                    logger.debug(f"[{source}] {e.response.status_code} on {lot.id} — rotating proxy, retrying")
-                    client.rotate_proxy()
+        def _call(fn, *args, _max_retries=3):
+            """Call fn(*args), retry up to _max_retries with backoff on rate-limit/block."""
+            for attempt in range(_max_retries + 1):
+                try:
                     return fn(*args)
-                raise
-            except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout):
-                client.rotate_proxy()
-                return fn(*args)
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code in (403, 429, 503) and attempt < _max_retries:
+                        wait = 1 * (2 ** attempt)  # 1s, 2s, 4s
+                        logger.debug(f"[{source}] {e.response.status_code} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
+                        _time.sleep(wait)
+                        client.rotate_proxy()
+                        continue
+                    raise
+                except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout) as e:
+                    if attempt < _max_retries:
+                        wait = 1 * (2 ** attempt)
+                        logger.debug(f"[{source}] {type(e).__name__} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
+                        _time.sleep(wait)
+                        client.rotate_proxy()
+                        continue
+                    raise
 
         # Record API — only if car has record data
         if has_record:
