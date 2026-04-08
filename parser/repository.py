@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time as _time
 from datetime import datetime
 
@@ -191,6 +192,20 @@ class LotRepository:
         except Exception as e:
             conn.rollback()
             logger.error(f"[DB] Upsert FAILED for {len(rows)} lots: {type(e).__name__}: {e}")
+            # Try to identify the offending row from MySQL error "... at row N"
+            m = re.search(r"at row (\d+)", str(e))
+            col_m = re.search(r"column '([^']+)'", str(e))
+            if m:
+                row_idx = int(m.group(1)) - 1  # MySQL row numbers are 1-based
+                if 0 <= row_idx < len(rows):
+                    bad = rows[row_idx]
+                    col = col_m.group(1) if col_m else "?"
+                    logger.error(
+                        f"[DB] Offending row {row_idx + 1}: "
+                        f"id={bad.get('id')} source={bad.get('source')} "
+                        f"make={bad.get('make')} model={bad.get('model')} year={bad.get('year')} "
+                        f"bad_column={col} bad_value={bad.get(col, '<not in row>')!r}"
+                    )
             raise
 
         # Detect field changes for existing lots and persist to lot_changes
