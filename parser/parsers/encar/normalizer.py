@@ -24,15 +24,20 @@ TRANSMISSION_MAP: dict[str, str] = {
 }
 
 DRIVE_MAP: dict[str, str] = {
-    "전륜":  "fwd",
-    "후륜":  "rwd",
-    "4WD":  "4wd",
-    "2WD":  "2wd",
-    "AWD":  "awd",
-    "FWD":  "fwd",
-    "RWD":  "rwd",
-    "사륜":  "4wd",
-    "4륜":  "4wd",
+    "전륜":    "fwd",
+    "후륜":    "rwd",
+    "4WD":    "4wd",
+    "2WD":    "2wd",
+    "AWD":    "awd",
+    "FWD":    "fwd",
+    "RWD":    "rwd",
+    "사륜":    "4wd",
+    "4륜":    "4wd",
+    # Full names from spec.drivingMethodName
+    "전륜구동":  "fwd",
+    "후륜구동":  "rwd",
+    "4륜구동":  "4wd",
+    "사륜구동":  "4wd",
 }
 
 BODY_MAP: dict[str, str] = {
@@ -48,6 +53,12 @@ BODY_MAP: dict[str, str] = {
     "왜건":   "wagon",
     "카고":   "cargo",
     "트럭":   "truck",
+    # Korean size-class names returned by batch_details bodyName
+    "대형차":  "sedan",
+    "중형차":  "sedan",
+    "준중형차": "sedan",
+    "소형차":  "sedan",
+    "경차":   "kei",
 }
 
 # Encar manufacturer names → clean English names

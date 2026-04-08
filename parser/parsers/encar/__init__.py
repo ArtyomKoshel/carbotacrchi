@@ -109,6 +109,8 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
         lot.body_type = norm.body(spec["bodyName"])
     if spec.get("displacement"):
         lot.engine_volume = round(spec["displacement"] / 1000, 1)
+    if spec.get("drivingMethodName") and not lot.drive_type:
+        lot.drive_type = norm.drive(spec["drivingMethodName"])
     if spec.get("seatCount"):
         lot.raw_data["seat_count"] = spec["seatCount"]
 
@@ -1037,18 +1039,6 @@ class EncarParser(AbstractParser):
             except Exception as e:
                 logger.warning(f"[{source}] inspection {lot.id}: {e}")
 
-        # HTML inspection fallback — only if JSON API returned nothing
-        if has_inspection and not insp_api_ok:
-            try:
-                html = _call(client.inspection_html, _inner_id)
-                if html:
-                    if insp_record is None:
-                        insp_record = InspectionRecord(lot_id=lot.id, source="encar")
-                    _enrich_from_inspection_html(lot, html, insp_record)
-                    logger.debug(f"[{source}] inspection_html {lot.id}: ok (fallback)")
-            except Exception as e:
-                logger.warning(f"[{source}] inspection_html {lot.id}: {e}")
-
         # Diagnosis — certified cars only
         if is_certified:
             try:
@@ -1060,7 +1050,9 @@ class EncarParser(AbstractParser):
             except Exception as e:
                 logger.warning(f"[{source}] diagnosis {lot.id}: {e}")
 
-        # Selling point — skip if drive_type already known from title
+        # NOTE: inspection_html removed after field-source audit (called 0/40, 0 unique fields).
+        # sellingpoint kept — provides drive_type for ~2.5% of lots not covered by search.
+
         if not lot.drive_type:
             try:
                 sp = _call(client.sellingpoint, lot.id)

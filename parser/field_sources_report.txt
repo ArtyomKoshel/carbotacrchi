@@ -1,0 +1,1419 @@
+
+==========================================================================================
+LOT 1/40: 41791851  |  Hyundai 더 뉴 싼타페 디젤 2.2 2WD 2021
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,448B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,619B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,111B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,686B — set 20 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMHS281HGMU341122'
+    ✓            lot.plate_number               src=batch_details      '255저3598'
+    ✓            lot.registration_date          src=batch_details      '2026-04-02'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.2
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'jsi1293'
+    ✓            lot.dealer_phone               src=batch_details      '05062059698'
+    ✓            lot.options                    src=batch_details      ['001', '004', '006', '007', '008', '014', '015', '017', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4178/41788209_001.jpg?
+    ✓            lot.repair_cost                src=record             1882349
+
+==========================================================================================
+LOT 2/40: 41351932  |  BMW X7 (G07) xDrive 40i 디자인 퓨어 엑셀런스 6인승 2023
+==========================================================================================
+  Condition: ['Inspection', 'InspectionDirect', 'Record', 'Resume']
+  [search] ✓ 1,421B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,233B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 927B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,252B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'WBA21EM04P9N95774'
+    ✓            lot.plate_number               src=batch_details      '178두6300'
+    ✓            lot.registration_date          src=batch_details      '2026-01-14'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062423949'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4133/41339098_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 3/40: 41644171  |  BMW X5 (G05) xDrive 40i M 스포츠 2023
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,351B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,166B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 926B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,369B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'WBACR6101P9R09565'
+    ✓            lot.plate_number               src=batch_details      '234우9531'
+    ✓            lot.registration_date          src=batch_details      '2026-03-10'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062179874'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4163/41631949_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 4/40: 41607845  |  Audi Q5 (FY) 45 TFSI 콰트로 프리미엄 2023
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,385B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,178B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,076B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,402B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'WAUZZZFY000000000'
+    ✓            lot.plate_number               src=batch_details      '363주1776'
+    ✓            lot.registration_date          src=batch_details      '2026-03-04'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062124970'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture09/pic4159/41596210_027.jpg?
+    ✓            lot.repair_cost                src=record             1614550
+
+==========================================================================================
+LOT 5/40: 41438506  |  Maserati 르반떼 3.0 AWD 모데나 2022
+==========================================================================================
+  Condition: ['Inspection', 'InspectionDirect', 'Record', 'Resume']
+  [search] ✓ 1,425B — set 26 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,798B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,149B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 14,107B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'ZN661XUG000000000'
+    ✓            lot.plate_number               src=batch_details      '306우2096'
+    ✓            lot.registration_date          src=batch_details      '2026-01-29'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062277327'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4143/41433345_001.jpg?
+    ✓            lot.repair_cost                src=record             6199526
+
+==========================================================================================
+LOT 6/40: 41652753  |  Volvo XC90 2세대 T8 얼티메이트 브라이트 하이브리드 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,455B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,294B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,037B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 16,458B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'YV1LFH600R1234870'
+    ✓            lot.plate_number               src=batch_details      '397보7225'
+    ✓            lot.registration_date          src=batch_details      '2026-03-11'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             2
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062224541'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4163/41638828_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 7/40: 41652938  |  Volvo XC90 2세대 T8 얼티메이트 브라이트 하이브리드 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,455B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,281B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,037B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 16,475B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'YV1LFH608R1229724'
+    ✓            lot.plate_number               src=batch_details      '397보7226'
+    ✓            lot.registration_date          src=batch_details      '2026-03-11'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             2
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062414167'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4163/41638809_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 8/40: 41653575  |  Genesis G80 (RG3) 가솔린 2.5 터보 AWD 2025
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,470B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,270B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 960B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,364B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTGB41CDSU268286'
+    ✓            lot.plate_number               src=batch_details      '167구8895'
+    ✓            lot.registration_date          src=batch_details      '2026-03-12'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062421716'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture04/pic4164/41649642_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 9/40: 41656726  |  Mercedes-Benz S-클래스 W223 S450 4MATIC 2026
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,392B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 6,986B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 926B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,365B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1K6F6BB7TA360235'
+    ✓            lot.plate_number               src=batch_details      '284가3339'
+    ✓            lot.registration_date          src=batch_details      '2026-03-12'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062409911'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture04/pic4164/41649794_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 10/40: 41667079  |  Genesis G80 (RG3) 가솔린 2.5 터보 2WD 2025
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,469B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,282B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 983B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,364B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTGB41CBSU270299'
+    ✓            lot.plate_number               src=batch_details      '112주9138'
+    ✓            lot.registration_date          src=batch_details      '2026-03-13'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062286711'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture05/pic4165/41659858_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 11/40: 41687703  |  Volvo XC90 2세대 T8 얼티메이트 브라이트 하이브리드 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,443B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,263B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,048B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 16,441B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'YV1LFH601R1234859'
+    ✓            lot.plate_number               src=batch_details      '339두2626'
+    ✓            lot.registration_date          src=batch_details      '2026-03-18'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             2
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062147514'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4168/41683934_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 12/40: 41697436  |  Mercedes-Benz S-클래스 W222 S350 블루텍 4MATIC 2015
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,343B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,872B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,990B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 17,742B — set 22 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'WDDUF3DB6FA179652'
+    ✓            lot.plate_number               src=batch_details      '38도3987'
+    ✓            lot.registration_date          src=batch_details      '2026-03-18'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             2
+    ✓            lot.insurance_count            src=record             8
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062120463'
+    ✓            lot.options                    src=batch_details      ['001', '002', '003', '004', '005', '006', '007', '008', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4168/41688682_001.jpg?
+    ✓            lot.repair_cost                src=record             41084622
+
+==========================================================================================
+LOT 13/40: 41755946  |  Kia EV6 롱레인지 4WD 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,434B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,240B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 949B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,928B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.outer_parts...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KNAC381CPNA076960'
+    ✓            lot.plate_number               src=batch_details      '47루2678'
+    ✓            lot.registration_date          src=batch_details      '2026-03-27'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      0.1
+    ✓            lot.drive_type                 src=search             '4wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062297096'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture04/pic4174/41748783_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 14/40: 41761483  |  Ford 익스플로러 3.5 리미티드 4WD 2016
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,450B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,813B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,877B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 16,093B — set 23 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      '1FM5K8F82GGC79086'
+    ✓            lot.plate_number               src=batch_details      '162조7754'
+    ✓            lot.registration_date          src=batch_details      '2026-03-30'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'lien'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             8
+    ✓            lot.insurance_count            src=record             5
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      3.5
+    ✓            lot.drive_type                 src=search             '4wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062422397'
+    ✓            lot.options                    src=batch_details      ['001', '003', '004', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture05/pic4175/41755127_001.jpg?
+    ✓            lot.repair_cost                src=record             5031118
+
+==========================================================================================
+LOT 15/40: 41765359  |  Hyundai 더 뉴 코나 가솔린 2.0 2WD 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,437B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,142B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,273B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,535B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMHKH81CGNU001453'
+    ✓            lot.plate_number               src=batch_details      '141더3242'
+    ✓            lot.registration_date          src=batch_details      '2026-03-30'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             5
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062277844'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture06/pic4176/41761943_027.jpg?
+    ✓            lot.repair_cost                src=record             331769
+
+==========================================================================================
+LOT 16/40: 41769935  |  Mercedes-Benz GLS-클래스 X167 GLS580 4MATIC 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,382B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,308B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 970B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,410B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1NFF8FE7RB058935'
+    ✓            lot.plate_number               src=batch_details      '267서8211'
+    ✓            lot.registration_date          src=batch_details      '2026-03-31'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      4.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062219877'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture06/pic4176/41767159_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 17/40: 41779570  |  Kia K8 하이브리드 시그니처 2023
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,351B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,818B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,691B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 17,062B — set 21 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KNAM6411BPA028834'
+    ✓            lot.plate_number               src=batch_details      '274버1997'
+    ✓            lot.registration_date          src=batch_details      '2026-04-01'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'lien'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✓            lot.insurance_count            src=record             5
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      1.6
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062117570'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture07/pic4177/41779241_001.jpg?
+    ✓            lot.repair_cost                src=record             13195900
+
+==========================================================================================
+LOT 18/40: 41784564  |  Genesis GV80 2.5T 가솔린 AWD 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,453B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,213B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 956B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 14,471B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTHA81BDRU207276'
+    ✓            lot.plate_number               src=batch_details      '244나3895'
+    ✓            lot.registration_date          src=batch_details      '2026-04-02'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062463143'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4178/41782158_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 19/40: 41782844  |  Genesis GV80 2.5T 가솔린 AWD 2025
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,453B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,181B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,222B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,565B — set 20 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTHA81BDSU259671'
+    ✓            lot.plate_number               src=batch_details      '195더2456'
+    ✓            lot.registration_date          src=batch_details      '2026-04-01'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✓            lot.insurance_count            src=record             2
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062235391'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture07/pic4177/41779938_027.jpg?
+    ✓            lot.repair_cost                src=record             1180739
+
+==========================================================================================
+LOT 20/40: 41806663  |  Mercedes-Benz GLB-클래스 X247 GLB250 4MATIC 2021
+==========================================================================================
+  Condition: ['Inspection', 'Record']
+  [search] ✓ 1,378B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,146B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,109B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,614B — set 23 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1N4M4HB000000000'
+    ✓            lot.plate_number               src=batch_details      '244소1630'
+    ✓            lot.registration_date          src=batch_details      '2026-04-03'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             2
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062416356'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture09/pic4179/41795945_027.jpg?
+    ✓            lot.repair_cost                src=record             3208200
+
+==========================================================================================
+LOT 21/40: 41806665  |  Genesis GV80 2.5T 가솔린 AWD 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,442B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,315B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 944B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,366B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTHA81BDRU207718'
+    ✓            lot.plate_number               src=batch_details      '100두5415'
+    ✓            lot.registration_date          src=batch_details      '2026-04-06'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062119593'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture10/pic4180/41800719_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 22/40: 41815004  |  Genesis GV60 스탠다드 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,427B — set 27 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,294B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,225B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,934B — set 20 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTKB81AFNU004368'
+    ✓            lot.plate_number               src=batch_details      '62도8258'
+    ✓            lot.registration_date          src=batch_details      '2026-04-07'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             2
+    ✓            lot.insurance_count            src=record             2
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      0.1
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062241603'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture10/pic4180/41809188_027.jpg?
+    ✓            lot.repair_cost                src=record             1606980
+
+==========================================================================================
+LOT 23/40: 41815602  |  Hyundai 투싼 (NX4) 가솔린 1.6 터보 2WD 2021
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,467B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,976B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,100B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,349B — set 20 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMHJE81BGMU010316'
+    ✓            lot.plate_number               src=batch_details      '175더5881'
+    ✓            lot.registration_date          src=batch_details      '2026-04-07'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      1.6
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062299581'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture10/pic4180/41809206_001.jpg?
+    ✓            lot.repair_cost                src=record             1803410
+
+==========================================================================================
+LOT 24/40: 41362763  |  Mercedes-Benz GLS-클래스 X167 GLS580 4MATIC 2024
+==========================================================================================
+  Condition: ['Inspection', 'InspectionDirect', 'Record', 'Resume']
+  [search] ✓ 1,401B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,268B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 959B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,249B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1NFF8FE4RB075384'
+    ✓            lot.plate_number               src=batch_details      '232우2998'
+    ✓            lot.registration_date          src=batch_details      '2026-01-16'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      4.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062206401'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture05/pic4135/41359555_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 25/40: 41400492  |  Mercedes-Benz GLE-클래스 W167 AMG GLE53 4MATIC+ 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,397B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,195B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 947B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,405B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1NFB6BB5NA643203'
+    ✓            lot.plate_number               src=batch_details      '135더4059'
+    ✓            lot.registration_date          src=batch_details      '2026-01-22'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062336640'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4138/41389544_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 26/40: 41641184  |  Hyundai 베라크루즈 디젤 2WD 300VX 2012
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,461B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,198B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,117B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,658B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMHNU81WBCU186346'
+    ✓            lot.plate_number               src=batch_details      '30거4751'
+    ✓            lot.registration_date          src=batch_details      '2026-03-11'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062253937'
+    ✓            lot.options                    src=batch_details      ['001', '003', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4163/41639825_027.jpg?
+    ✓            lot.repair_cost                src=record             505058
+
+==========================================================================================
+LOT 27/40: 41607149  |  BMW X3 (G01) xDrive 20i M 스포츠 온라인 익스클루시브 에디션 2021
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,374B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,842B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,331B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,793B — set 22 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'WBA51BG07M9G83708'
+    ✓            lot.plate_number               src=batch_details      '373서7475'
+    ✓            lot.registration_date          src=batch_details      '2026-03-04'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             3
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062013665'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture09/pic4159/41593270_001.jpg?
+    ✓            lot.repair_cost                src=record             21399951
+
+==========================================================================================
+LOT 28/40: 41651905  |  Volvo XC90 2세대 T8 얼티메이트 브라이트 하이브리드 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,455B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,288B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,095B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 16,475B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'YV1LFH604R1239683'
+    ✓            lot.plate_number               src=batch_details      '200라4636'
+    ✓            lot.registration_date          src=batch_details      '2026-03-11'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062348611'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture03/pic4163/41638792_027.jpg?
+    ✓            lot.repair_cost                src=record             1559005
+
+==========================================================================================
+LOT 29/40: 41692280  |  BMW 5시리즈 (G30) 520i 럭셔리 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,383B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,213B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,089B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,587B — set 23 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'WBA11BH0XNWX60486'
+    ✓            lot.plate_number               src=batch_details      '124나1369'
+    ✓            lot.registration_date          src=batch_details      '2026-03-18'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062452942'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4168/41688711_027.jpg?
+    ✓            lot.repair_cost                src=record             5017849
+
+==========================================================================================
+LOT 30/40: 41702330  |  Volvo XC90 2세대 T8 얼티메이트 브라이트 하이브리드 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,454B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,334B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 952B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 16,404B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'YV1LFH608R1213989'
+    ✓            lot.plate_number               src=batch_details      '348보7630'
+    ✓            lot.registration_date          src=batch_details      '2026-03-19'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062285075'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture09/pic4169/41697510_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 31/40: 41722921  |  Mercedes-Benz E-클래스 W213 E53 AMG 4MATIC+ 2023
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,385B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,295B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,090B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,411B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1KZF6BB4PB145330'
+    ✓            lot.plate_number               src=batch_details      '133어4969'
+    ✓            lot.registration_date          src=batch_details      '2026-03-23'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      3.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062303295'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '010', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture01/pic4171/41714174_027.jpg?
+    ✓            lot.repair_cost                src=record             4716240
+
+==========================================================================================
+LOT 32/40: 41740514  |  KG모빌리티(쌍용) 티볼리 아머 디젤 기어 플러스 2WD 2019
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,461B — set 26 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,242B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,455B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 16,106B — set 23 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KPBXH3AP1KP285228'
+    ✓            lot.plate_number               src=batch_details      '62가6335'
+    ✓            lot.registration_date          src=batch_details      '2026-03-25'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             4
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      1.6
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062229744'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture02/pic4172/41728810_027.jpg?
+    ✓            lot.repair_cost                src=record             4681710
+
+==========================================================================================
+LOT 33/40: 41750598  |  Mercedes-Benz E-클래스 W213 E300 아방가르드 2020
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,353B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,851B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,343B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 16,287B — set 22 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1KZF4JB6LA816132'
+    ✓            lot.plate_number               src=batch_details      '114마1043'
+    ✓            lot.registration_date          src=batch_details      '2026-03-27'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             3
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062452247'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture04/pic4174/41746570_001.jpg?
+    ✓            lot.repair_cost                src=record             16901080
+
+==========================================================================================
+LOT 34/40: 41759675  |  Kia 스포티지 5세대 가솔린 1.6 터보 2WD 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,487B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,276B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,012B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,536B — set 21 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KNAPV81BGNK028569'
+    ✓            lot.plate_number               src=batch_details      '132너7809'
+    ✓            lot.registration_date          src=batch_details      '2026-03-30'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✓            lot.owners_count               src=record             1
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      1.6
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062315489'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture05/pic4175/41755175_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 35/40: 41788882  |  Genesis GV80 2.5T 가솔린 AWD 2026
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,442B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,211B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 944B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,565B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTHA81BDTU315274'
+    ✓            lot.plate_number               src=batch_details      '390조7440'
+    ✓            lot.registration_date          src=batch_details      '2026-04-02'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062349441'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture08/pic4178/41785377_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 36/40: 41805555  |  Genesis GV80 2.5T 가솔린 2WD 2025
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,395B — set 26 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,227B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 944B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 15,364B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTHA81BBSU275515'
+    ✓            lot.plate_number               src=batch_details      '319어8746'
+    ✓            lot.registration_date          src=batch_details      '2026-04-03'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062354991'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture09/pic4179/41795963_027.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 37/40: 41815212  |  Mercedes-Benz E-클래스 W213 E350 4MATIC AMG Line 2023
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,390B — set 25 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 7,209B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 1,117B — set 25 fields: insp.accident_detail, insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan...
+  [inspection] ✓ 15,450B — set 22 fields: insp.cert_no, insp.has_accident, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] ✓ 394B — set 0 fields: 
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'W1KZF8GBXPB137575'
+    ✓            lot.plate_number               src=batch_details      '219저4689'
+    ✓            lot.registration_date          src=batch_details      '2026-04-07'
+    ✓            lot.has_accident               src=record             True
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'clean'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✓            lot.insurance_count            src=record             1
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      2.0
+    ✗ MISSING    lot.drive_type                 src=—                  
+    ✓            lot.dealer_name                src=batch_details      'dlguddnjs'
+    ✓            lot.dealer_phone               src=batch_details      '05062286412'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '010', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture10/pic4180/41809198_027.jpg?
+    ✓            lot.repair_cost                src=record             3349930
+
+==========================================================================================
+LOT 38/40: 41501484  |  Genesis G80 (RG3) 가솔린 2.5 터보 AWD 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,460B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,736B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 971B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 14,305B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTGB41CDNU123409'
+    ✓            lot.plate_number               src=batch_details      '126하6332'
+    ✓            lot.registration_date          src=batch_details      '2026-02-11'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'lien'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'sedan'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'autoplanet4'
+    ✓            lot.dealer_phone               src=batch_details      '05062126940'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture09/pic4149/41498624_001.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 39/40: 41375475  |  Genesis GV80 2.5T 가솔린 AWD 2022
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,438B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,712B — set 17 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 957B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 14,951B — set 20 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.outer_detail, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMTHA81BDNU089170'
+    ✓            lot.plate_number               src=batch_details      '126하2864'
+    ✓            lot.registration_date          src=batch_details      '2026-01-20'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'lien'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             'awd'
+    ✓            lot.dealer_name                src=batch_details      'autoplanet4'
+    ✓            lot.dealer_phone               src=batch_details      '05062252064'
+    ✓            lot.options                    src=batch_details      ['001', '002', '004', '005', '006', '007', '008', '014', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture07/pic4137/41375269_001.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+==========================================================================================
+LOT 40/40: 41814485  |  Hyundai 싼타페 (MX5) 가솔린 2.5T 2WD 2024
+==========================================================================================
+  Condition: ['Inspection', 'Record', 'Resume']
+  [search] ✓ 1,469B — set 28 fields: lot.id, lot.source, lot.make, lot.model, lot.year, lot.price, lot.price_krw, lot.mileage, lot.fuel, lot.transmission...
+  [batch_details] ✓ 5,812B — set 19 fields: lot.body_type, lot.dealer_name, lot.dealer_phone, lot.engine_volume, lot.location, lot.options, lot.plate_number, lot.registration_date, lot.vin, raw.ad_status...
+  [record] ✓ 986B — set 23 fields: insp.first_registration, insp.has_accident, insp.has_flood, insp.lot_id, insp.source, insp_d.accidents, insp_d.business, insp_d.government, insp_d.loan, insp_d.my_accident_cost...
+  [inspection] ✓ 14,556B — set 19 fields: insp.cert_no, insp.has_outer_damage, insp.has_tuning, insp.inspection_date, insp.inspection_mileage, insp.report_url, insp.valid_from, insp.valid_until, insp_d.car_state, insp_d.engine_check...
+  [inspection_html] — not called
+  [diagnosis] ✗ 0B — no useful data
+  [sellingpoint] — not called
+
+  ── CRITICAL FIELDS ──
+    ✓            lot.vin                        src=batch_details      'KMHP581LGRU014311'
+    ✓            lot.plate_number               src=batch_details      '130호7722'
+    ✓            lot.registration_date          src=batch_details      '2026-04-07'
+    ✗ MISSING    lot.has_accident               src=—                  
+    ✗ MISSING    lot.flood_history              src=—                  
+    ✗ MISSING    lot.total_loss_history         src=—                  
+    ✓            lot.lien_status                src=record             'lien'
+    ✓            lot.seizure_status             src=record             'clean'
+    ✗ MISSING    lot.owners_count               src=—                  
+    ✗ MISSING    lot.insurance_count            src=—                  
+    ✓            lot.body_type                  src=batch_details      'suv'
+    ✓            lot.engine_volume              src=batch_details      2.5
+    ✓            lot.drive_type                 src=search             '2wd'
+    ✓            lot.dealer_name                src=batch_details      'autoplanet4'
+    ✓            lot.dealer_phone               src=batch_details      '05062271305'
+    ✓            lot.options                    src=batch_details      ['001', '004', '005', '006', '007', '008', '014', '015', '01
+    ✓            lot.image_url                  src=search             'https://ci.encar.com/carpicture01/pic4181/41812924_001.jpg?
+    ✗ MISSING    lot.repair_cost                src=—                  
+
+
+##########################################################################################
+SUMMARY — 40 lots
+##########################################################################################
+
+==========================================================================================
+VIN COVERAGE (the field you asked about)
+==========================================================================================
+  VIN filled: 40/40 (100%)
+    from batch_details: 40/40
+
+==========================================================================================
+CRITICAL FIELDS COVERAGE
+==========================================================================================
+  ✓ lot.vin                              40/40 (100.0%)  src: batch_details=40
+  ✓ lot.plate_number                     40/40 (100.0%)  src: batch_details=40
+  ✓ lot.registration_date                40/40 (100.0%)  src: batch_details=40
+  ✗ lot.has_accident                     19/40 ( 47.5%)  src: record=19
+  ✗ lot.flood_history                     0/40 (  0.0%)  src: —
+  ✗ lot.total_loss_history                0/40 (  0.0%)  src: —
+  ✓ lot.lien_status                      40/40 (100.0%)  src: record=40
+  ✓ lot.seizure_status                   40/40 (100.0%)  src: record=40
+  ✗ lot.owners_count                     17/40 ( 42.5%)  src: record=17
+  ✗ lot.insurance_count                  19/40 ( 47.5%)  src: record=19
+  ✓ lot.body_type                        40/40 (100.0%)  src: batch_details=40
+  ✓ lot.engine_volume                    40/40 (100.0%)  src: batch_details=40
+  ✗ lot.drive_type                       19/40 ( 47.5%)  src: search=19
+  ✓ lot.dealer_name                      40/40 (100.0%)  src: batch_details=40
+  ✓ lot.dealer_phone                     40/40 (100.0%)  src: batch_details=40
+  ✓ lot.options                          40/40 (100.0%)  src: batch_details=40
+  ✓ lot.image_url                        40/40 (100.0%)  src: search=40
+  ✗ lot.repair_cost                      19/40 ( 47.5%)  src: record=19
+
+==========================================================================================
+API STATS
+==========================================================================================
+  Stage                 Called  Useful   Total KB
+  --------------------------------------------------
+  search                    40      40      55.6K
+  batch_details             40      40     267.2K
+  record                    40      40      43.7K
+  inspection                40      40     610.8K
+  inspection_html            0       0       0.0K
+  diagnosis                 40       0       0.0K
+  sellingpoint              21      21       8.1K
+
+==========================================================================================
+FIELDS THAT WOULD BE LOST (only from inspection_html / sellingpoint)
+==========================================================================================
+  ✓ NONE — all fields are covered by other APIs
+
+==========================================================================================
+FULL FIELD → FIRST-SOURCE MAP
+==========================================================================================
+  insp.accident_detail                          record=19
+  insp.cert_no                                  inspection=40
+  insp.first_registration                       record=40
+  insp.has_accident                             record=19
+  insp.has_outer_damage                         inspection=9
+  insp.inspection_date                          inspection=40
+  insp.inspection_mileage                       inspection=40
+  insp.lot_id                                   record=40
+  insp.outer_detail                             inspection=9
+  insp.report_url                               inspection=40
+  insp.source                                   record=40
+  insp.valid_from                               inspection=40
+  insp.valid_until                              inspection=40
+  insp_d.accidents                              record=19
+  insp_d.car_state                              inspection=40
+  insp_d.engine_check                           inspection=38
+  insp_d.loan                                   record=5
+  insp_d.my_accident_cost                       record=17
+  insp_d.other_accident_cost                    record=7
+  insp_d.outer_parts                            inspection=9
+  insp_d.owner_changes                          record=17
+  insp_d.plate_change_cnt                       record=7
+  insp_d.plate_changes                          record=40
+  insp_d.recall                                 inspection=25
+  insp_d.recall_types                           inspection=25
+  insp_d.simple_repair                          inspection=9
+  insp_d.trns_check                             inspection=38
+  lot.body_type                                 batch_details=40
+  lot.color                                     search=40
+  lot.dealer_name                               batch_details=40
+  lot.dealer_phone                              batch_details=40
+  lot.drive_type                                search=19
+  lot.engine_volume                             batch_details=40
+  lot.fuel                                      search=40
+  lot.has_accident                              record=19
+  lot.id                                        search=40
+  lot.image_url                                 search=40
+  lot.insurance_count                           record=19
+  lot.lien_status                               record=40
+  lot.location                                  search=40
+  lot.lot_url                                   search=40
+  lot.make                                      search=40
+  lot.mileage                                   search=40
+  lot.model                                     search=40
+  lot.options                                   batch_details=40
+  lot.owners_count                              record=17
+  lot.plate_number                              batch_details=40
+  lot.price                                     search=40
+  lot.price_krw                                 search=40
+  lot.registration_date                         batch_details=40
+  lot.repair_cost                               record=19
+  lot.seat_color                                search=40
+  lot.seizure_status                            record=40
+  lot.source                                    search=40
+  lot.title                                     search=40
+  lot.transmission                              search=40
+  lot.trim                                      search=17
+  lot.vin                                       batch_details=40
+  lot.year                                      search=40
+  raw.ad_status                                 batch_details=40
+  raw.ad_type                                   search=40
+  raw.badge_detail_kr                           search=17
+  raw.badge_kr                                  search=40
+  raw.car_state                                 inspection=40
+  raw.condition                                 search=40
+  raw.domestic                                  batch_details=19
+  raw.engine_code                               inspection=40
+  raw.grade_detail_en                           batch_details=8
+  raw.grade_detail_kr                           batch_details=8
+  raw.import_type                               batch_details=40
+  raw.inspect_vehicle_id                        batch_details=40
+  raw.manufacturer_kr                           search=40
+  raw.model_group_kr                            search=40
+  raw.model_kr                                  search=40
+  raw.origin_price                              batch_details=40
+  raw.photo_count                               batch_details=40
+  raw.photo_path                                search=40
+  raw.photos                                    batch_details=40
+  raw.recall                                    inspection=25
+  raw.recall_status                             inspection=25
+  raw.seat_count                                batch_details=40
+  raw.sell_type                                 search=40
+  raw.warranty_type                             inspection=40
+  raw.year_month                                search=40
