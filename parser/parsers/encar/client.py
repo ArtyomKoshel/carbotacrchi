@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import random
 import re
+import string
 import time
 
 import httpx
@@ -41,10 +43,44 @@ _HEADERS = {
 }
 
 
+def _generate_random_session() -> str:
+    """Generate a random session ID for FloppyData proxy."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+
+
+def _generate_floppy_proxies(count: int = 20) -> list[str]:
+    """
+    Generate proxy URLs using FloppyData API.
+    If API key is not configured, fall back to static proxy list.
+    """
+    if not Config.FLOPPY_API_KEY:
+        logger.warning("[FloppyData] API key not configured, using static ENCAR_PROXY_LIST")
+        return Config.ENCAR_PROXY_LIST or []
+
+    proxies = []
+    base_creds = "user-3L8YmcrVpKK3wN9W"  # Base username from provider
+    password = "1TigQ7ujPds0xcv6"  # Password from provider
+
+    for _ in range(count):
+        session = _generate_random_session()
+        proxy_url = (
+            f"http://{base_creds}-type-residential-session-{session}"
+            f"-country-US-city-New_York-rotation-15:{password}@geo.g-w.info:10080"
+        )
+        proxies.append(proxy_url)
+
+    logger.info(f"[FloppyData] Generated {len(proxies)} dynamic proxy sessions")
+    return proxies
+
+
 class EncarClient:
     def __init__(self, proxy: str | None = None):
-        # Build proxy list: ENCAR_PROXY_LIST takes precedence over single ENCAR_PROXY / arg
-        proxy_list = Config.ENCAR_PROXY_LIST or ([proxy or Config.ENCAR_PROXY] if (proxy or Config.ENCAR_PROXY) else [])
+        # Use dynamic proxy generation if FloppyData API key is configured
+        if Config.FLOPPY_API_KEY:
+            proxy_list = _generate_floppy_proxies(count=Config.ENCAR_WORKERS)
+        else:
+            # Fallback to static proxy list
+            proxy_list = Config.ENCAR_PROXY_LIST or ([proxy or Config.ENCAR_PROXY] if (proxy or Config.ENCAR_PROXY) else [])
         self._proxies: list[str | None] = proxy_list if proxy_list else [None]
         self._proxy_idx: int = 0
         self._s = self._build_client(self._proxies[0])

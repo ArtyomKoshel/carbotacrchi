@@ -42,6 +42,10 @@ class Config:
     ]
     ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "5"))
 
+    # FloppyData API for dynamic proxy generation
+    FLOPPY_API_KEY = os.getenv("FLOPPY_API_KEY", "")
+    FLOPPY_BASE_URL = os.getenv("FLOPPY_BASE_URL", "https://api.floppydata.com")
+
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

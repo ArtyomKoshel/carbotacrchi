@@ -18,7 +18,17 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-_LOG_FMT = logging.Formatter(
+class _UTC3Formatter(logging.Formatter):
+    """Logging formatter that stamps times in UTC+3 (Moscow/Railway default offset)."""
+    _tz = __import__("datetime").timezone(__import__("datetime").timedelta(hours=3))
+
+    def formatTime(self, record, datefmt=None):
+        import datetime
+        dt = datetime.datetime.fromtimestamp(record.created, tz=self._tz)
+        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
+
+
+_LOG_FMT = _UTC3Formatter(
     "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )

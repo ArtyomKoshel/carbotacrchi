@@ -1006,7 +1006,7 @@ class EncarParser(AbstractParser):
                 try:
                     return fn(*args)
                 except httpx.HTTPStatusError as e:
-                    if e.response.status_code in (403, 429, 503) and attempt < _max_retries:
+                    if e.response.status_code in (403, 429, 503, 407) and attempt < _max_retries:
                         wait = 1 * (2 ** attempt)  # 1s, 2s, 4s
                         logger.debug(f"[{source}] {e.response.status_code} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
                         _time.sleep(wait)
