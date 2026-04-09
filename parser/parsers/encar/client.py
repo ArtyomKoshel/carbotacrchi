@@ -48,14 +48,26 @@ def _generate_random_session() -> str:
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
 
+# Module-level cache for generated proxies
+_CACHED_PROXIES: list[str] | None = None
+
+
 def _generate_floppy_proxies(count: int = 20) -> list[str]:
     """
     Generate proxy URLs using FloppyData API.
     If API key is not configured, fall back to static proxy list.
+    Proxies are cached at module level to avoid regenerating on each client initialization.
     """
+    global _CACHED_PROXIES
+
+    # Return cached proxies if already generated
+    if _CACHED_PROXIES is not None:
+        return _CACHED_PROXIES
+
     if not Config.FLOPPYDATA_API_KEY:
         logger.warning("[FloppyData] API key not configured, using static ENCAR_PROXY_LIST")
-        return Config.ENCAR_PROXY_LIST or []
+        _CACHED_PROXIES = Config.ENCAR_PROXY_LIST or []
+        return _CACHED_PROXIES
 
     proxies = []
     base_creds = "user-3L8YmcrVpKK3wN9W"  # Base username from provider
@@ -69,7 +81,8 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
         )
         proxies.append(proxy_url)
 
-    logger.info(f"[FloppyData] Generated {len(proxies)} dynamic proxy sessions")
+    logger.info(f"[FloppyData] Generated {len(proxies)} dynamic proxy sessions (cached)")
+    _CACHED_PROXIES = proxies
     return proxies
 
 
