@@ -53,7 +53,7 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
     Generate proxy URLs using FloppyData API.
     If API key is not configured, fall back to static proxy list.
     """
-    if not Config.FLOPPY_API_KEY:
+    if not Config.FLOPPYDATA_API_KEY:
         logger.warning("[FloppyData] API key not configured, using static ENCAR_PROXY_LIST")
         return Config.ENCAR_PROXY_LIST or []
 
@@ -76,7 +76,7 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
 class EncarClient:
     def __init__(self, proxy: str | None = None):
         # Use dynamic proxy generation if FloppyData API key is configured
-        if Config.FLOPPY_API_KEY:
+        if Config.FLOPPYDATA_API_KEY:
             proxy_list = _generate_floppy_proxies(count=Config.ENCAR_WORKERS)
         else:
             # Fallback to static proxy list
