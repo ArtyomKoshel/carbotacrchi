@@ -12,7 +12,7 @@ from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser
-from .client import EncarClient, _generate_floppy_proxies, _reset_proxy_cache
+from .client import EncarClient, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
 logger = logging.getLogger(__name__)
@@ -697,6 +697,16 @@ class EncarParser(AbstractParser):
                     stop_reason = f"HTTP {e.response.status_code}"
                     logger.error(f"[{source}]{label} p.{page+1} error: {e}")
                     break
+            except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout) as e:
+                logger.warning(f"[{source}]{label} p.{page+1}: {type(e).__name__}: {e}, rotating proxy and retrying")
+                self._client.rotate_proxy()
+                _time.sleep(3)
+                try:
+                    data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
+                except Exception as e2:
+                    stop_reason = f"proxy retry failed: {e2}"
+                    logger.error(f"[{source}]{label} p.{page+1} {stop_reason}")
+                    break
             except Exception as e:
                 stop_reason = f"error: {type(e).__name__}: {e}"
                 logger.error(f"[{source}]{label} p.{page+1} {stop_reason}")
@@ -817,6 +827,8 @@ class EncarParser(AbstractParser):
         logger.info(f"[STAT] [{source}] ========== IMPORT STARTED ==========")
         logger.info(f"[STAT] [{source}] Pages: {pages}, page_size: {_PAGE_SIZE}")
 
+        check_floppy_balance()
+
         existing_ids = self.repo.get_existing_ids(source)
         logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
 
@@ -846,8 +858,10 @@ class EncarParser(AbstractParser):
             logger.info(f"[{source}] Phase 2: per-manufacturer pagination")
             consecutive_maker_errors = 0
             proxy_regens = 0
-            _MAX_PROXY_REGENS = 3
-            for maker in discovered_makers:
+            _MAX_PROXY_REGENS = 5
+            maker_idx = 0
+            while maker_idx < len(discovered_makers):
+                maker = discovered_makers[maker_idx]
                 mq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}.)"
                 try:
                     count_data = self._client.search(query=mq, offset=0, count=1)
@@ -859,17 +873,20 @@ class EncarParser(AbstractParser):
                     if consecutive_maker_errors >= 5:
                         if proxy_regens < _MAX_PROXY_REGENS:
                             proxy_regens += 1
-                            logger.warning(f"[{source}] Regenerating proxy sessions (attempt {proxy_regens}/{_MAX_PROXY_REGENS})...")
+                            wait = 60 * proxy_regens  # 60s, 120s, 180s, 240s, 300s
+                            logger.warning(f"[{source}] Regenerating proxy sessions (attempt {proxy_regens}/{_MAX_PROXY_REGENS}), waiting {wait}s...")
                             self._regenerate_proxies()
                             consecutive_maker_errors = 0
-                            _time.sleep(5)
-                            continue
+                            _time.sleep(wait)
+                            continue  # retry same maker (maker_idx not incremented)
                         logger.error(f"[{source}] API appears down after {proxy_regens} proxy regenerations — aborting Phase 2")
                         break
+                    maker_idx += 1
                     continue
 
                 logger.debug(f"[{source}] [{maker}]: {maker_total} total")
                 if maker_total == 0:
+                    maker_idx += 1
                     continue
 
                 if maker_total <= _MAX_SAFE_OFFSET:
@@ -886,8 +903,15 @@ class EncarParser(AbstractParser):
                             ydata = self._client.search(query=yq, offset=0, count=1)
                             year_total = ydata.get("Count", 0)
                         except Exception as e:
-                            logger.warning(f"[{source}] [{maker}/{year}] count query failed: {e}")
-                            continue
+                            logger.warning(f"[{source}] [{maker}/{year}] count query failed: {type(e).__name__}: {e}, retrying...")
+                            self._client.rotate_proxy()
+                            _time.sleep(2)
+                            try:
+                                ydata = self._client.search(query=yq, offset=0, count=1)
+                                year_total = ydata.get("Count", 0)
+                            except Exception as e2:
+                                logger.warning(f"[{source}] [{maker}/{year}] count query retry failed: {type(e2).__name__}: {e2}")
+                                continue
                         if year_total == 0:
                             continue
                         if year_total <= _MAX_SAFE_OFFSET:
@@ -905,8 +929,15 @@ class EncarParser(AbstractParser):
                                     mdata = self._client.search(query=mq2, offset=0, count=1)
                                     model_total = mdata.get("Count", 0)
                                 except Exception as e:
-                                    logger.warning(f"[{source}] [{maker}/{year}/{model}] count query failed: {e}")
-                                    continue
+                                    logger.warning(f"[{source}] [{maker}/{year}/{model}] count query failed: {type(e).__name__}: {e}, retrying...")
+                                    self._client.rotate_proxy()
+                                    _time.sleep(2)
+                                    try:
+                                        mdata = self._client.search(query=mq2, offset=0, count=1)
+                                        model_total = mdata.get("Count", 0)
+                                    except Exception as e2:
+                                        logger.warning(f"[{source}] [{maker}/{year}/{model}] count query retry failed: {type(e2).__name__}: {e2}")
+                                        continue
                                 if model_total > 0:
                                     self._paginate_query(
                                         mq2, 100, seen_ids, existing_ids, stats,
@@ -918,6 +949,7 @@ class EncarParser(AbstractParser):
                                 yq, 100, seen_ids, existing_ids, stats,
                                 on_page_callback, label=f" [{maker}/{year}/fallback]",
                             )
+                maker_idx += 1
 
         elapsed = _time.monotonic() - run_start
 
@@ -991,11 +1023,11 @@ class EncarParser(AbstractParser):
                     except Exception as e2:
                         logger.error(f"[encar] detail {vid} error: {type(e2).__name__}: {e2}")
                         stats["errors"] += 1
-                        # rotate proxy on block/rate-limit
-                        if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code in (403, 429, 503):
-                            if self._client.rotate_proxy():
-                                logger.info(f"[encar] rotated proxy after {e2.response.status_code}")
-                        elif isinstance(e2, (httpx.ProxyError, httpx.ConnectError)):
+                        # rotate proxy on block/rate-limit/proxy error
+                        if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
+                            self._client.rotate_proxy()
+                            logger.info(f"[encar] rotated proxy after {e2.response.status_code}")
+                        elif isinstance(e2, (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout)):
                             self._client.rotate_proxy()
                     _time.sleep(0.5)
                 logger.info(f"[encar] single fallback: enriched {ok}/{len(chunk)} lots")

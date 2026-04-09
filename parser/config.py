@@ -44,7 +44,8 @@ class Config:
 
     # FloppyData API for dynamic proxy generation
     FLOPPYDATA_API_KEY = os.getenv("FLOPPYDATA_API_KEY", "")
-    FLOPPY_BASE_URL = os.getenv("FLOPPY_BASE_URL", "https://api.floppydata.com")
+    FLOPPY_BASE_URL = os.getenv("FLOPPY_BASE_URL", "https://client-api.floppy.host")
+    PROXY_DEBUG = os.getenv("PROXY_DEBUG", "true").lower() in ("1", "true", "yes")
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 
