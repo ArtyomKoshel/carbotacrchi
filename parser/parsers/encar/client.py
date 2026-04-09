@@ -86,6 +86,13 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
     return proxies
 
 
+def _reset_proxy_cache() -> None:
+    """Clear cached proxies so that the next call to _generate_floppy_proxies creates fresh sessions."""
+    global _CACHED_PROXIES
+    _CACHED_PROXIES = None
+    logger.info("[FloppyData] Proxy cache cleared — next generation will create fresh sessions")
+
+
 class EncarClient:
     def __init__(self, proxy: str | None = None):
         # Use dynamic proxy generation if FloppyData API key is configured

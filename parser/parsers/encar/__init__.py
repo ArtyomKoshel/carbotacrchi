@@ -12,7 +12,7 @@ from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser
-from .client import EncarClient
+from .client import EncarClient, _generate_floppy_proxies, _reset_proxy_cache
 from .normalizer import EncarNormalizer
 
 logger = logging.getLogger(__name__)
@@ -641,6 +641,12 @@ class EncarParser(AbstractParser):
         self._client = EncarClient()
         self._norm = EncarNormalizer()
 
+    def _regenerate_proxies(self):
+        """Clear proxy cache, generate fresh sessions, and rebuild the HTTP client."""
+        _reset_proxy_cache()
+        self._client = EncarClient()
+        logger.info(f"[{_SOURCE}] Client rebuilt with fresh proxy sessions")
+
     def get_source_key(self) -> str:
         return _SOURCE
 
@@ -677,10 +683,10 @@ class EncarParser(AbstractParser):
             try:
                 data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
             except httpx.HTTPStatusError as e:
-                if e.response.status_code in (403, 407, 429, 503):
+                if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
                     logger.warning(f"[{source}]{label} p.{page+1}: {e.response.status_code}, rotating proxy and retrying")
                     self._client.rotate_proxy()
-                    _time.sleep(1)
+                    _time.sleep(2)
                     try:
                         data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
                     except Exception as e2:
@@ -839,6 +845,8 @@ class EncarParser(AbstractParser):
             # Phase 2: per-manufacturer queries to bypass 10k pagination cap
             logger.info(f"[{source}] Phase 2: per-manufacturer pagination")
             consecutive_maker_errors = 0
+            proxy_regens = 0
+            _MAX_PROXY_REGENS = 3
             for maker in discovered_makers:
                 mq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}.)"
                 try:
@@ -849,7 +857,14 @@ class EncarParser(AbstractParser):
                     consecutive_maker_errors += 1
                     logger.warning(f"[{source}] [{maker}] count query failed ({consecutive_maker_errors} in a row): {e}")
                     if consecutive_maker_errors >= 5:
-                        logger.error(f"[{source}] API appears down — {consecutive_maker_errors} consecutive maker queries failed, aborting Phase 2")
+                        if proxy_regens < _MAX_PROXY_REGENS:
+                            proxy_regens += 1
+                            logger.warning(f"[{source}] Regenerating proxy sessions (attempt {proxy_regens}/{_MAX_PROXY_REGENS})...")
+                            self._regenerate_proxies()
+                            consecutive_maker_errors = 0
+                            _time.sleep(5)
+                            continue
+                        logger.error(f"[{source}] API appears down after {proxy_regens} proxy regenerations — aborting Phase 2")
                         break
                     continue
 
@@ -1006,7 +1021,7 @@ class EncarParser(AbstractParser):
                 try:
                     return fn(*args)
                 except httpx.HTTPStatusError as e:
-                    if e.response.status_code in (403, 429, 503, 407) and attempt < _max_retries:
+                    if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504) and attempt < _max_retries:
                         wait = 1 * (2 ** attempt)  # 1s, 2s, 4s
                         logger.debug(f"[{source}] {e.response.status_code} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
                         _time.sleep(wait)

@@ -187,28 +187,49 @@ def process_pending_job() -> None:
                 logger.warning(f"[job_worker] Could not create job log file: {lh_err}")
                 job_handler = None
 
-        try:
-            result = _run_parse(source, filters, job_id, conn, r)
-            _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
-            _publish(r, source, {"job_id": job_id, "status": "done", **result})
-            logger.info(f"[job_worker] Job #{job_id} done: {result}")
-        except JobCancelledError:
-            logger.info(f"[job_worker] Job #{job_id} CANCELLED — parser stopped cleanly")
-            _set_job(conn, job_id, "cancelled", progress={"status": "cancelled"})
-            _publish(r, source, {"job_id": job_id, "status": "cancelled"})
-        except Exception as e:
-            msg = f"{type(e).__name__}: {e}"
-            _set_job(conn, job_id, "error", progress={"status": "error"},
-                     result={"error": msg})
-            _publish(r, source, {"job_id": job_id, "status": "error", "error": msg})
-            logger.error(f"[job_worker] Job #{job_id} failed: {msg}")
-        finally:
-            release_parse_lock(r, source)
-            if job_handler:
-                root.removeHandler(job_handler)
-                job_handler.close()
-            if main_handler and main_filter:
-                main_handler.removeFilter(main_filter)
+        _MAX_JOB_RETRIES = 3
+        last_error = None
+        for attempt in range(1, _MAX_JOB_RETRIES + 1):
+            try:
+                if attempt > 1:
+                    logger.info(f"[job_worker] Job #{job_id} retry {attempt}/{_MAX_JOB_RETRIES} — regenerating proxies...")
+                    _set_job(conn, job_id, "running", progress={"status": f"retry {attempt}/{_MAX_JOB_RETRIES}"})
+                    _publish(r, source, {"job_id": job_id, "status": "running", "retry": attempt})
+                    try:
+                        from parsers.encar.client import _reset_proxy_cache
+                        _reset_proxy_cache()
+                    except ImportError:
+                        pass
+                    _time.sleep(10 * attempt)  # 10s, 20s, 30s
+
+                result = _run_parse(source, filters, job_id, conn, r)
+                _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
+                _publish(r, source, {"job_id": job_id, "status": "done", **result})
+                logger.info(f"[job_worker] Job #{job_id} done: {result}")
+                last_error = None
+                break
+            except JobCancelledError:
+                logger.info(f"[job_worker] Job #{job_id} CANCELLED — parser stopped cleanly")
+                _set_job(conn, job_id, "cancelled", progress={"status": "cancelled"})
+                _publish(r, source, {"job_id": job_id, "status": "cancelled"})
+                last_error = None
+                break
+            except Exception as e:
+                last_error = e
+                msg = f"{type(e).__name__}: {e}"
+                logger.error(f"[job_worker] Job #{job_id} attempt {attempt}/{_MAX_JOB_RETRIES} failed: {msg}")
+                if attempt >= _MAX_JOB_RETRIES:
+                    _set_job(conn, job_id, "error", progress={"status": "error"},
+                             result={"error": msg})
+                    _publish(r, source, {"job_id": job_id, "status": "error", "error": msg})
+                    logger.error(f"[job_worker] Job #{job_id} failed after {_MAX_JOB_RETRIES} attempts: {msg}")
+
+        release_parse_lock(r, source)
+        if job_handler:
+            root.removeHandler(job_handler)
+            job_handler.close()
+        if main_handler and main_filter:
+            main_handler.removeFilter(main_filter)
     finally:
         conn.close()
 
