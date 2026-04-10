@@ -680,37 +680,50 @@ class EncarParser(AbstractParser):
             if offset > _MAX_SAFE_OFFSET:
                 stop_reason = f"offset {offset} > API cap {_MAX_SAFE_OFFSET}"
                 break
+            _t_search = _time.monotonic()
             try:
                 data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
             except httpx.HTTPStatusError as e:
+                etype = str(e.response.status_code)
+                stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
                 if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
                     logger.warning(f"[{source}]{label} p.{page+1}: {e.response.status_code}, rotating proxy and retrying")
                     self._client.rotate_proxy()
-                    _time.sleep(2)
+                    _p = _time.monotonic(); _time.sleep(2); stats["pause_time"] += _time.monotonic() - _p
                     try:
                         data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
                     except Exception as e2:
                         stop_reason = f"retry failed: {e2}"
+                        stats["error_log"].append(f"p.{page+1}{label}: {stop_reason}")
                         logger.error(f"[{source}]{label} p.{page+1} {stop_reason}")
                         break
                 else:
                     stop_reason = f"HTTP {e.response.status_code}"
+                    stats["error_log"].append(f"p.{page+1}{label}: {stop_reason}")
                     logger.error(f"[{source}]{label} p.{page+1} error: {e}")
                     break
             except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout) as e:
-                logger.warning(f"[{source}]{label} p.{page+1}: {type(e).__name__}: {e}, rotating proxy and retrying")
+                etype = type(e).__name__
+                stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
+                logger.warning(f"[{source}]{label} p.{page+1}: {etype}: {e}, rotating proxy and retrying")
                 self._client.rotate_proxy()
-                _time.sleep(3)
+                _p = _time.monotonic(); _time.sleep(3); stats["pause_time"] += _time.monotonic() - _p
                 try:
                     data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
                 except Exception as e2:
                     stop_reason = f"proxy retry failed: {e2}"
+                    stats["error_log"].append(f"p.{page+1}{label}: {stop_reason}")
                     logger.error(f"[{source}]{label} p.{page+1} {stop_reason}")
                     break
             except Exception as e:
-                stop_reason = f"error: {type(e).__name__}: {e}"
+                etype = type(e).__name__
+                stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
+                stop_reason = f"error: {etype}: {e}"
+                stats["error_log"].append(f"p.{page+1}{label}: {stop_reason}")
                 logger.error(f"[{source}]{label} p.{page+1} {stop_reason}")
                 break
+            finally:
+                stats["search_time"] += _time.monotonic() - _t_search
 
             if total_count is None:
                 total_count = data.get("Count", 0)
@@ -763,7 +776,9 @@ class EncarParser(AbstractParser):
             consecutive_empty = 0  # reset on any page with new data
             logger.debug(f"[{source}]{label} p.{page+1}: {len(page_lots)} lots from search")
 
+            _t_batch_start = _time.monotonic()
             self._enrich_batch(page_lots, stats)
+            stats["search_time"] += _time.monotonic() - _t_batch_start
 
             self.repo.upsert_batch(page_lots)
             for lot in page_lots:
@@ -787,13 +802,15 @@ class EncarParser(AbstractParser):
                 on_page_callback(
                     page=stats["total"] // _PAGE_SIZE,
                     found=len(page_lots),
-                    total_pages=None,
+                    total_pages=total_count,
                 )
 
             _t_after_upsert = _time.monotonic()
             new_lots = [l for l in page_lots if l.id not in existing_ids]
             if new_lots:
+                _t_enr = _time.monotonic()
                 self._enrich_accident_data(new_lots, stats)
+                stats["enrich_time"] += _time.monotonic() - _t_enr
 
             _t_total = _time.monotonic() - _t_page
             _t_enrich = _time.monotonic() - _t_after_upsert
@@ -820,7 +837,14 @@ class EncarParser(AbstractParser):
     ) -> int:
         source = _SOURCE
         run_start = _time.monotonic()
-        stats = {"total": 0, "new": 0, "updated": 0, "errors": 0}
+        stats = {
+            "total": 0, "new": 0, "updated": 0, "errors": 0,
+            "pause_time": 0.0,       # total seconds spent in sleeps/delays
+            "enrich_time": 0.0,      # total seconds in enrichment
+            "search_time": 0.0,      # total seconds in search/pagination
+            "error_types": {},       # { "410": 3, "ProxyError": 1, ... }
+            "error_log": [],         # last N error messages for display
+        }
 
         pages = max_pages or 9999  # 0 / None = all pages
 
@@ -855,11 +879,12 @@ class EncarParser(AbstractParser):
             logger.info(f"[{source}] Phase 1 done. Models per maker: { {k: len(v) for k, v in discovered_models.items()} }")
 
             # Phase 2: per-manufacturer queries to bypass 10k pagination cap
-            logger.info(f"[{source}] Phase 2: per-manufacturer pagination")
+            logger.info(f"[{source}] Phase 2: per-manufacturer pagination ({len(discovered_makers)} makers)")
             consecutive_maker_errors = 0
             proxy_regens = 0
             _MAX_PROXY_REGENS = 5
             maker_idx = 0
+            makers_api_sum = 0  # sum of all maker totals from API
             while maker_idx < len(discovered_makers):
                 maker = discovered_makers[maker_idx]
                 mq = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}.)"
@@ -869,6 +894,10 @@ class EncarParser(AbstractParser):
                     consecutive_maker_errors = 0  # reset on success
                 except Exception as e:
                     consecutive_maker_errors += 1
+                    etype = str(e.response.status_code) if isinstance(e, httpx.HTTPStatusError) else type(e).__name__
+                    stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
+                    stats["errors"] += 1
+                    stats["error_log"].append(f"[{maker}] count: {etype}: {e}")
                     logger.warning(f"[{source}] [{maker}] count query failed ({consecutive_maker_errors} in a row): {e}")
                     if consecutive_maker_errors >= 5:
                         if proxy_regens < _MAX_PROXY_REGENS:
@@ -877,14 +906,15 @@ class EncarParser(AbstractParser):
                             logger.warning(f"[{source}] Regenerating proxy sessions (attempt {proxy_regens}/{_MAX_PROXY_REGENS}), waiting {wait}s...")
                             self._regenerate_proxies()
                             consecutive_maker_errors = 0
-                            _time.sleep(wait)
+                            _p = _time.monotonic(); _time.sleep(wait); stats["pause_time"] += _time.monotonic() - _p
                             continue  # retry same maker (maker_idx not incremented)
                         logger.error(f"[{source}] API appears down after {proxy_regens} proxy regenerations — aborting Phase 2")
                         break
                     maker_idx += 1
                     continue
 
-                logger.debug(f"[{source}] [{maker}]: {maker_total} total")
+                makers_api_sum += maker_total
+                logger.info(f"[{source}] [{maker}]: {maker_total} total (maker {maker_idx+1}/{len(discovered_makers)}, sum={makers_api_sum})")
                 if maker_total == 0:
                     maker_idx += 1
                     continue
@@ -905,7 +935,7 @@ class EncarParser(AbstractParser):
                         except Exception as e:
                             logger.warning(f"[{source}] [{maker}/{year}] count query failed: {type(e).__name__}: {e}, retrying...")
                             self._client.rotate_proxy()
-                            _time.sleep(2)
+                            _p = _time.monotonic(); _time.sleep(2); stats["pause_time"] += _time.monotonic() - _p
                             try:
                                 ydata = self._client.search(query=yq, offset=0, count=1)
                                 year_total = ydata.get("Count", 0)
@@ -931,7 +961,7 @@ class EncarParser(AbstractParser):
                                 except Exception as e:
                                     logger.warning(f"[{source}] [{maker}/{year}/{model}] count query failed: {type(e).__name__}: {e}, retrying...")
                                     self._client.rotate_proxy()
-                                    _time.sleep(2)
+                                    _p = _time.monotonic(); _time.sleep(2); stats["pause_time"] += _time.monotonic() - _p
                                     try:
                                         mdata = self._client.search(query=mq2, offset=0, count=1)
                                         model_total = mdata.get("Count", 0)
@@ -950,6 +980,11 @@ class EncarParser(AbstractParser):
                                 on_page_callback, label=f" [{maker}/{year}/fallback]",
                             )
                 maker_idx += 1
+
+            logger.info(
+                f"[{source}] Phase 2 done. Makers API sum: {makers_api_sum:,} | "
+                f"Phase 1 API total: {api_total:,} | Processed so far: {stats['total']:,}"
+            )
 
         elapsed = _time.monotonic() - run_start
 
@@ -976,9 +1011,35 @@ class EncarParser(AbstractParser):
         logger.info(f"[STAT] [{source}] Stale:   {stale}")
         logger.info(f"[STAT] [{source}] Errors:  {stats['errors']}")
         logger.info(f"[STAT] [{source}] Time:    {elapsed:.1f}s")
+        logger.info(f"[STAT] [{source}] Search:  {stats['search_time']:.1f}s")
+        logger.info(f"[STAT] [{source}] Enrich:  {stats['enrich_time']:.1f}s")
+        logger.info(f"[STAT] [{source}] Pauses:  {stats['pause_time']:.1f}s")
+        if stats["error_types"]:
+            logger.info(f"[STAT] [{source}] Err types: {stats['error_types']}")
 
         self._client.close()
-        return stats["total"]
+        hours = int(elapsed // 3600)
+        mins = int((elapsed % 3600) // 60)
+        time_str = f"{hours}h {mins}m" if hours else f"{mins}m"
+        avg_per_lot = round(elapsed / stats["total"], 2) if stats["total"] else 0
+        return {
+            "total": stats["total"],
+            "new": stats["new"],
+            "updated": stats["updated"],
+            "errors": stats["errors"],
+            "stale": stale,
+            "api_total": api_total,
+            "coverage_pct": round(coverage_pct, 1),
+            "db_count": db_count,
+            "time": time_str,
+            "elapsed_s": round(elapsed, 1),
+            "search_time_s": round(stats["search_time"], 1),
+            "enrich_time_s": round(stats["enrich_time"], 1),
+            "pause_time_s": round(stats["pause_time"], 1),
+            "avg_per_lot_s": avg_per_lot,
+            "error_types": stats["error_types"],
+            "error_log": stats["error_log"][-50:],  # last 50 errors
+        }
 
     def _enrich_batch(self, lots: list[CarLot], stats: dict) -> None:
         if not lots:

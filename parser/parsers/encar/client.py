@@ -242,7 +242,8 @@ class EncarClient:
 
         if not r.is_success:
             self._error_count += 1
-            if Config.PROXY_DEBUG:
+            # 404 is expected for optional endpoints (diagnosis, inspection, etc.) — skip verbose dump
+            if Config.PROXY_DEBUG and r.status_code != 404:
                 body = r.text[:1000] if r.text else "<empty>"
                 logger.warning(
                     f"[encar:http] {r.status_code} {r.reason_phrase} | {context}\n"

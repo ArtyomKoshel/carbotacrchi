@@ -61,7 +61,9 @@
     <tbody class="divide-y divide-gray-800" id="jobs-table">
       @forelse($jobs as $job)
       <tr data-id="{{ $job->id }}" data-status="{{ $job->status }}" data-source="{{ $job->source }}">
-        <td class="px-5 py-3 text-gray-600 text-xs">{{ $job->id }}</td>
+        <td class="px-5 py-3 text-xs">
+          <a href="{{ route('admin.jobs.detail', $job->id) }}" class="text-blue-400 hover:text-blue-300 underline">{{ $job->id }}</a>
+        </td>
         <td class="px-5 py-3 text-white">
           {{ $job->source }}
           @if(($job->filters['triggered_by'] ?? 'manual') === 'scheduler')
@@ -84,9 +86,9 @@
         </td>
         <td class="px-5 py-3 text-xs text-gray-400 progress-cell">
           @if($job->progress)
-            @if(isset($job->progress['page']))
-              p.{{ $job->progress['page'] }}
-              @if(isset($job->progress['found_total'])) · {{ $job->progress['found_total'] }} found @endif
+            @if(isset($job->progress['pct']))
+              <span class="text-white font-semibold">{{ $job->progress['pct'] }}%</span>
+              <span class="text-gray-600 ml-1">{{ number_format($job->progress['found_total'] ?? 0) }} / {{ number_format($job->progress['api_total'] ?? 0) }}</span>
             @else
               {{ $job->progress['status'] ?? '' }}
             @endif
@@ -97,7 +99,27 @@
             @if(isset($job->result['error']))
               <span class="text-red-400">{{ Str::limit($job->result['error'], 60) }}</span>
             @else
-              {{ $job->result['total'] ?? 0 }} lots · {{ $job->result['pages'] ?? 0 }} pages
+              <span class="text-white font-semibold">{{ number_format($job->result['total'] ?? 0) }}</span> lots
+              @if(isset($job->result['coverage_pct']))
+                <span class="text-gray-600">·</span>
+                <span class="{{ ($job->result['coverage_pct'] ?? 0) >= 95 ? 'text-green-400' : 'text-yellow-400' }}">{{ $job->result['coverage_pct'] }}%</span>
+              @endif
+              @if(isset($job->result['new']) && $job->result['new'])
+                <span class="text-gray-600">·</span>
+                <span class="text-blue-400">+{{ number_format($job->result['new']) }}</span>
+              @endif
+              @if(isset($job->result['stale']) && $job->result['stale'])
+                <span class="text-gray-600">·</span>
+                <span class="text-orange-400">-{{ number_format($job->result['stale']) }}</span>
+              @endif
+              @if(isset($job->result['errors']) && $job->result['errors'])
+                <span class="text-gray-600">·</span>
+                <span class="text-red-400">{{ $job->result['errors'] }} err</span>
+              @endif
+              @if(isset($job->result['time']))
+                <span class="text-gray-600">·</span>
+                <span class="text-gray-500">{{ $job->result['time'] }}</span>
+              @endif
             @endif
           @endif
         </td>
@@ -202,10 +224,10 @@ function watchJob(id, source) {
                 : d.status === 'pending' ? 'text-gray-600'
                 : 'text-gray-300';
     line.className = color;
-    if (d.page !== undefined) {
-      line.textContent = `p.${d.page} · ${d.found_total ?? 0} found`;
+    if (d.pct !== undefined) {
+      line.textContent = `${d.pct}% · ${(d.found_total ?? 0).toLocaleString()} / ${(d.api_total ?? 0).toLocaleString()}`;
     } else {
-      line.textContent = d.status + (d.error ? ': ' + d.error : d.total !== undefined ? ` — ${d.total} lots` : '');
+      line.textContent = d.status + (d.error ? ': ' + d.error : d.total !== undefined ? ` — ${d.total.toLocaleString()} lots` : '');
     }
     pane.appendChild(line);
     pane.scrollTop = pane.scrollHeight;
@@ -219,8 +241,14 @@ function watchJob(id, source) {
         cancelled:'bg-gray-800 text-gray-500' };
       badge.className = `status-badge text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
       badge.textContent = d.status;
-      if (d.found_total !== undefined) row.querySelector('.progress-cell').textContent = `p.${d.page} · ${d.found_total} found`;
-      if (d.total !== undefined) row.querySelector('.result-cell').textContent = `${d.total} lots · ${d.pages} pages`;
+      if (d.pct !== undefined) row.querySelector('.progress-cell').innerHTML = `<span class="text-white font-semibold">${d.pct}%</span> <span class="text-gray-600">${(d.found_total??0).toLocaleString()} / ${(d.api_total??0).toLocaleString()}</span>`;
+      if (d.total !== undefined) {
+        let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> lots`;
+        if (d.coverage_pct) r += ` <span class="text-gray-600">·</span> <span class="${d.coverage_pct>=95?'text-green-400':'text-yellow-400'}">${d.coverage_pct}%</span>`;
+        if (d.new) r += ` <span class="text-gray-600">·</span> <span class="text-blue-400">+${d.new.toLocaleString()}</span>`;
+        if (d.time) r += ` <span class="text-gray-600">·</span> <span class="text-gray-500">${d.time}</span>`;
+        row.querySelector('.result-cell').innerHTML = r;
+      }
     }
     if (['done','error','cancelled'].includes(d.status)) {
       es.close(); es = null;

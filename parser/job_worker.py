@@ -97,6 +97,42 @@ def _set_job(conn, job_id: int, status: str, progress: dict | None = None, resul
     conn.commit()
 
 
+def _save_job_stats(conn, job_id: int, source: str, result: dict):
+    """Persist structured stats into job_stats table."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO job_stats "
+                "(job_id, source, total, api_total, new_lots, updated_lots, stale_lots, errors, db_count, "
+                " coverage_pct, elapsed_s, search_time_s, enrich_time_s, pause_time_s, avg_per_lot_s, "
+                " pages, error_types, error_log) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    job_id, source,
+                    result.get("total", 0),
+                    result.get("api_total", 0),
+                    result.get("new", 0),
+                    result.get("updated", 0),
+                    result.get("stale", 0),
+                    result.get("errors", 0),
+                    result.get("db_count", 0),
+                    result.get("coverage_pct", 0),
+                    result.get("elapsed_s", 0),
+                    result.get("search_time_s", 0),
+                    result.get("enrich_time_s", 0),
+                    result.get("pause_time_s", 0),
+                    result.get("avg_per_lot_s", 0),
+                    result.get("pages", 0),
+                    json.dumps(result.get("error_types", {})),
+                    json.dumps(result.get("error_log", [])),
+                ),
+            )
+        conn.commit()
+        logger.info(f"[job_worker] Job #{job_id} stats saved to job_stats")
+    except Exception as e:
+        logger.warning(f"[job_worker] Failed to save job_stats for #{job_id}: {e}")
+
+
 def _publish(r: redis.Redis, source: str, payload: dict):
     try:
         r.publish(f"{_CHANNEL_PREFIX}{source}", json.dumps(payload))
@@ -204,6 +240,7 @@ def process_pending_job() -> None:
 
                 result = _run_parse(source, filters, job_id, conn, r)
                 _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
+                _save_job_stats(conn, job_id, source, result)
                 _publish(r, source, {"job_id": job_id, "status": "done", **result})
                 logger.info(f"[job_worker] Job #{job_id} done: {result}")
                 last_error = None
@@ -252,32 +289,41 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
         maker_filter = filters.get("maker") or None
 
         page_counts: list[int] = []
+        _api_total_ref: list[int] = [0]  # mutable ref for closure
 
         def _on_page(page: int, found: int, total_pages: int | None = None):
             page_counts.append(found)
+            found_total = sum(page_counts)
+            if total_pages and total_pages > _api_total_ref[0]:
+                _api_total_ref[0] = total_pages
             # Check cancel BEFORE overwriting status — otherwise SET running overwrites 'cancelled'
             with conn.cursor() as _cur:
                 _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
                 row = _cur.fetchone()
             if row and row["status"] == "cancelled":
-                logger.info(f"[job_worker] Job #{job_id} cancel detected at page #{page} of {total_pages}")
+                logger.info(f"[job_worker] Job #{job_id} cancel detected at page #{page}")
                 raise JobCancelledError(f"Job #{job_id} cancelled by user")
+            pct = round(found_total / _api_total_ref[0] * 100, 1) if _api_total_ref[0] else 0
             progress = {
-                "status": "running",
+                "status": f"{pct}%",
+                "pct": pct,
                 "page": page,
-                "total_pages": total_pages,
-                "found_this_page": found,
-                "found_total": sum(page_counts),
+                "found_total": found_total,
+                "api_total": _api_total_ref[0],
             }
             _set_job(conn, job_id, "running", progress=progress)
             _publish(r, source, {"job_id": job_id, **progress})
 
-        total = parser.run(
+        run_result = parser.run(
             max_pages=max_pages,
             maker_filter=maker_filter,
             on_page_callback=_on_page,
         )
 
-        return {"total": total, "pages": len(page_counts)}
+        # parser.run() returns dict with full stats or int (legacy)
+        if isinstance(run_result, dict):
+            run_result["pages"] = len(page_counts)
+            return run_result
+        return {"total": run_result, "pages": len(page_counts)}
     finally:
         repo.close()

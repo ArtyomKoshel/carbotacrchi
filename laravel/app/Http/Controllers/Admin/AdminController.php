@@ -365,6 +365,82 @@ class AdminController extends Controller
         ]);
     }
 
+    public function jobDetail(int $id)
+    {
+        $job = ParseJob::findOrFail($id);
+
+        // Structured stats from job_stats table (if saved)
+        $stat = DB::table('job_stats')->where('job_id', $id)->first();
+
+        // Recent runs for this source for comparison
+        $history = DB::table('job_stats')
+            ->where('source', $job->source)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        return view('admin.job-detail', compact('job', 'stat', 'history'));
+    }
+
+    public function jobLog(Request $request, int $id)
+    {
+        $job = ParseJob::findOrFail($id);
+        $baseFile = config('admin.log_file');
+        if (!$baseFile) {
+            return response()->json(['lines' => [], 'error' => 'Log file not configured']);
+        }
+
+        $jobLogPath = dirname($baseFile) . '/jobs/job-' . $id . '.log';
+        if (!file_exists($jobLogPath)) {
+            return response()->json(['lines' => [], 'error' => 'Job log file not found']);
+        }
+
+        $level = $request->query('level', '');
+        $limit = min((int) $request->query('limit', 200), 2000);
+
+        $fp = @fopen($jobLogPath, 'r');
+        if (!$fp) {
+            return response()->json(['lines' => [], 'error' => 'Cannot open log file']);
+        }
+
+        // Read from end of file
+        fseek($fp, 0, SEEK_END);
+        $pos = ftell($fp);
+        $results = [];
+        $remainder = '';
+        $chunkSize = 65536;
+
+        while ($pos > 0 && count($results) < $limit) {
+            $read = min($chunkSize, $pos);
+            $pos -= $read;
+            fseek($fp, $pos);
+            $chunk = fread($fp, $read);
+            $block = $chunk . $remainder;
+            $lines = explode("\n", $block);
+            $remainder = array_shift($lines);
+
+            for ($i = count($lines) - 1; $i >= 0; $i--) {
+                $line = $lines[$i];
+                if ($line === '') continue;
+                if ($level && !str_contains($line, "[{$level}]")) continue;
+                $results[] = $line;
+                if (count($results) >= $limit) break;
+            }
+        }
+        if ($remainder !== '' && count($results) < $limit) {
+            if (!$level || str_contains($remainder, "[{$level}]")) {
+                $results[] = $remainder;
+            }
+        }
+        fclose($fp);
+
+        return response()->json([
+            'lines' => $results,
+            'total' => count($results),
+            'file_size' => filesize($jobLogPath),
+        ]);
+    }
+
     public function logsClear(Request $request)
     {
         $logFile = config('admin.log_file');
