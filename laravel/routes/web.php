@@ -29,6 +29,7 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::get('/jobs/{id}/log',                 [AdminController::class, 'jobLog'])->name('jobs.log');
     Route::get('/schedules',                       [AdminController::class, 'schedules'])->name('schedules');
     Route::get('/accuracy',                          [AdminController::class, 'fieldStats'])->name('accuracy');
+    Route::post('/accuracy/refresh',                 [AdminController::class, 'accuracyRefresh'])->name('accuracy.refresh');
     Route::get('/proxy-balance',                     [AdminController::class, 'proxyBalance'])->name('proxy.balance');
     Route::post('/schedules/{source}',           [AdminController::class, 'updateSchedule'])->name('schedules.update');
 });

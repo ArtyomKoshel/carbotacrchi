@@ -8,6 +8,29 @@ $barColor = fn($p) => $p >= 80 ? 'bg-emerald-500' : ($p >= 40 ? 'bg-amber-400' :
 $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-400' : 'text-red-400');
 @endphp
 
+{{-- Header row: title + refresh button + cache age --}}
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-white font-semibold text-lg">Field Accuracy</h2>
+  <div class="flex items-center gap-3">
+    @if($cachedAt ?? null)
+      @php $ageMin = round((time() - $cachedAt) / 60) @endphp
+      <span class="text-xs text-gray-500">cached {{ $ageMin < 1 ? 'just now' : "{$ageMin}m ago" }}</span>
+    @endif
+    <form method="POST" action="{{ route('admin.accuracy.refresh') }}">
+      @csrf
+      <button type="submit" class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition">
+        ↻ Refresh
+      </button>
+    </form>
+  </div>
+</div>
+
+@if(session('success'))
+  <div class="mb-4 bg-green-900/40 border border-green-700 rounded-xl px-4 py-2 text-sm text-green-300">
+    {{ session('success') }}
+  </div>
+@endif
+
 {{-- SQL errors (shown only when a query fails) --}}
 @if(!empty($errors))
   <div class="mb-6 bg-red-900/50 border border-red-700 rounded-xl p-4 space-y-1">

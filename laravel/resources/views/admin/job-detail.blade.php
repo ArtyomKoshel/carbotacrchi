@@ -191,6 +191,7 @@ const JOB_STATUS = '{{ $job->status }}';
 const JOB_SOURCE = '{{ $job->source }}';
 let logsLoaded = false;
 let logPage = 0, logTotalPages = 1, logAutoRefresh = null;
+let logNextRawLine = 0;  // tracks position for incremental auto-refresh
 
 function switchTab(tab) {
   ['errors', 'error-types', 'logs'].forEach(t => {
@@ -209,11 +210,30 @@ function switchTab(tab) {
   if (tab === 'logs' && !logsLoaded) loadLogs();
 }
 
+function _renderLine(line, search) {
+  const div = document.createElement('div');
+  let cls = 'text-gray-500';
+  if (line.includes('[ERROR]'))        cls = 'log-error';
+  else if (line.includes('[WARNING]')) cls = 'log-warning';
+  else if (line.includes('[INFO]'))    cls = 'log-info';
+  else if (line.includes('[DEBUG]'))   cls = 'log-debug';
+  if (line.includes('[STAT]'))         cls = 'log-stat';
+  div.className = cls;
+  if (search) {
+    div.innerHTML = line.replace(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+      '<mark class="bg-yellow-700/60 text-yellow-200 rounded px-0.5">$1</mark>');
+  } else {
+    div.textContent = line;
+  }
+  return div;
+}
+
 function loadLogs() {
   const level  = document.getElementById('log-level').value;
   const search = document.getElementById('log-search').value;
   const content = document.getElementById('log-content');
   content.innerHTML = '<div class="text-gray-500">Loading...</div>';
+  logNextRawLine = 0;  // full reload resets incremental position
 
   const params = new URLSearchParams({ level, search, page: logPage, limit: 500 });
   fetch(`/admin/jobs/${JOB_ID}/log?${params}`)
@@ -224,13 +244,12 @@ function loadLogs() {
         content.innerHTML = `<div class="text-red-400">${data.error}</div>`;
         return;
       }
+      logNextRawLine = data.next_raw_line ?? data.total_raw ?? 0;
 
-      // Meta
       const mb = (data.file_size / 1024 / 1024).toFixed(1);
       document.getElementById('log-meta').textContent =
         `${data.total.toLocaleString()} of ${data.total_raw.toLocaleString()} lines · ${mb} MB`;
 
-      // Pagination
       logPage = data.page;
       logTotalPages = data.total_pages;
       const pgEl = document.getElementById('log-pagination');
@@ -241,34 +260,36 @@ function loadLogs() {
         pgEl.classList.add('hidden');
       }
 
-      // Render lines
       if (!data.lines.length) {
         content.innerHTML = '<div class="text-gray-600">No matching log lines</div>';
         return;
       }
       content.innerHTML = '';
-      const searchLower = search.toLowerCase();
-      data.lines.forEach(line => {
-        const div = document.createElement('div');
-        let cls = 'text-gray-500';
-        if (line.includes('[ERROR]'))   cls = 'log-error';
-        else if (line.includes('[WARNING]')) cls = 'log-warning';
-        else if (line.includes('[INFO]'))    cls = 'log-info';
-        else if (line.includes('[DEBUG]'))   cls = 'log-debug';
-        if (line.includes('[STAT]')) cls = 'log-stat';
-        div.className = cls;
-        if (searchLower) {
-          div.innerHTML = line.replace(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
-            '<mark class="bg-yellow-700/60 text-yellow-200 rounded px-0.5">$1</mark>');
-        } else {
-          div.textContent = line;
-        }
-        content.appendChild(div);
-      });
+      data.lines.forEach(line => content.appendChild(_renderLine(line, search)));
     })
     .catch(e => {
       content.innerHTML = `<div class="text-red-400">Failed: ${e}</div>`;
     });
+}
+
+function loadLogsTail() {
+  // Incremental: only fetch lines added since last load (no filter, no pagination)
+  if (!logsLoaded || logNextRawLine === 0) { loadLogs(); return; }
+  const params = new URLSearchParams({ since_raw_line: logNextRawLine, limit: 500 });
+  fetch(`/admin/jobs/${JOB_ID}/log?${params}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.lines || !data.lines.length) return;
+      logNextRawLine = data.next_raw_line ?? logNextRawLine;
+      const content = document.getElementById('log-content');
+      const atBottom = content.scrollHeight - content.scrollTop - content.clientHeight < 60;
+      data.lines.forEach(line => content.appendChild(_renderLine(line, '')));
+      if (atBottom) content.scrollTop = content.scrollHeight;
+      const mb = (data.file_size / 1024 / 1024).toFixed(1);
+      document.getElementById('log-meta').textContent =
+        `${data.total_raw.toLocaleString()} lines · ${mb} MB`;
+    })
+    .catch(() => {});
 }
 
 function toggleLogAutoRefresh() {
@@ -279,8 +300,8 @@ function toggleLogAutoRefresh() {
     document.getElementById('log-ar-btn').classList.remove('text-green-400');
     document.getElementById('log-ar-btn').classList.add('text-gray-400');
   } else {
-    loadLogs();
-    logAutoRefresh = setInterval(() => loadLogs(), 3000);
+    if (!logsLoaded) loadLogs();
+    logAutoRefresh = setInterval(() => loadLogsTail(), 3000);
     document.getElementById('log-ar-state').textContent = '3s';
     document.getElementById('log-ar-btn').classList.add('text-green-400');
     document.getElementById('log-ar-btn').classList.remove('text-gray-400');

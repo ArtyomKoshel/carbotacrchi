@@ -410,10 +410,11 @@ class AdminController extends Controller
             return response()->json(['lines' => [], 'error' => "Job log not found: job-{$id}.log"]);
         }
 
-        $level  = $request->query('level', '');
-        $search = trim($request->query('search', ''));
-        $page   = max(0, (int) $request->query('page', 0));
-        $perPage = min((int) $request->query('limit', 500), 5000);
+        $level      = $request->query('level', '');
+        $search     = trim($request->query('search', ''));
+        $page       = max(0, (int) $request->query('page', 0));
+        $perPage    = min((int) $request->query('limit', 500), 5000);
+        $sinceRaw   = max(0, (int) $request->query('since_raw_line', 0));
 
         // Read all lines (job logs are bounded — typically <50k lines)
         $raw = @file($jobLogPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -421,7 +422,25 @@ class AdminController extends Controller
             return response()->json(['lines' => [], 'error' => 'Cannot read log file']);
         }
 
-        // Filter
+        $totalRaw  = count($raw);
+        $fileSize  = filesize($jobLogPath);
+
+        // Incremental mode: only process lines added since last fetch
+        if ($sinceRaw > 0 && !$level && !$search && $page === 0) {
+            $newLines = array_slice($raw, $sinceRaw);
+            return response()->json([
+                'lines'         => array_values($newLines),
+                'total'         => count($newLines),
+                'total_raw'     => $totalRaw,
+                'next_raw_line' => $totalRaw,
+                'page'          => 0,
+                'total_pages'   => 1,
+                'per_page'      => $perPage,
+                'file_size'     => $fileSize,
+            ]);
+        }
+
+        // Full mode — filter + paginate
         $filtered = $raw;
         if ($level) {
             $filtered = array_values(array_filter($filtered, fn($l) => str_contains($l, "[{$level}]")));
@@ -433,18 +452,17 @@ class AdminController extends Controller
         $totalFiltered = count($filtered);
         $totalPages = max(1, (int) ceil($totalFiltered / $perPage));
         $page = min($page, $totalPages - 1);
-
-        // Slice for current page (chronological order — oldest first)
         $pageLines = array_slice($filtered, $page * $perPage, $perPage);
 
         return response()->json([
-            'lines'       => $pageLines,
-            'total'       => $totalFiltered,
-            'total_raw'   => count($raw),
-            'page'        => $page,
-            'total_pages' => $totalPages,
-            'per_page'    => $perPage,
-            'file_size'   => filesize($jobLogPath),
+            'lines'         => $pageLines,
+            'total'         => $totalFiltered,
+            'total_raw'     => $totalRaw,
+            'next_raw_line' => $totalRaw,
+            'page'          => $page,
+            'total_pages'   => $totalPages,
+            'per_page'      => $perPage,
+            'file_size'     => $fileSize,
         ]);
     }
 
@@ -515,7 +533,9 @@ class AdminController extends Controller
     public function fieldStats()
     {
         $errors = [];
-        $ttl = 300; // 5 min cache
+        $ttl     = 1800; // 30 min — accuracy data changes slowly
+        $ttlSlow = 3600; // 1 h  — JSON_EXTRACT queries are expensive
+        $cachedAt = cache()->get('accuracy:cached_at');
 
         // ── 1. lots columns ───────────────────────────────────────────────
         try {
@@ -557,7 +577,7 @@ class AdminController extends Controller
                     SUM(image_url    IS NOT NULL AND image_url != '')       AS image_url,
                     SUM(fuel_economy IS NOT NULL AND fuel_economy > 0)      AS fuel_economy,
                     SUM(warranty_text IS NOT NULL AND warranty_text != '')   AS warranty_text
-                FROM lots
+                FROM lots WHERE is_active = 1
                 GROUP BY source
             "));
         } catch (\Exception $e) {
@@ -567,7 +587,7 @@ class AdminController extends Controller
 
         // ── 2. raw_data JSON keys ─────────────────────────────────────────
         try {
-            $rawStats = cache()->remember('accuracy:raw', $ttl, fn() => DB::select("
+            $rawStats = cache()->remember('accuracy:raw', $ttlSlow, fn() => DB::select("
                 SELECT
                     source,
                     COUNT(*) AS total,
@@ -582,7 +602,7 @@ class AdminController extends Controller
                     SUM(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id') IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id')) <> 'NULL') AS inspect_vehicle_id,
                     SUM(JSON_EXTRACT(raw_data, '$.drive_type')         IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.drive_type')) <> 'NULL') AS drive_type_raw,
                     SUM(JSON_EXTRACT(raw_data, '$.photo_count')        IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.photo_count')) <> 'NULL') AS photo_count
-                FROM lots
+                FROM lots WHERE is_active = 1
                 GROUP BY source
             "));
         } catch (\Exception $e) {
@@ -613,6 +633,7 @@ class AdminController extends Controller
                     COUNT(DISTINCT CASE WHEN li.report_url        IS NOT NULL THEN li.lot_id END) AS report_url
                 FROM lots l
                 LEFT JOIN lot_inspections li ON li.lot_id = l.id
+                WHERE l.is_active = 1
                 GROUP BY l.source
             "));
         } catch (\Exception $e) {
@@ -631,6 +652,7 @@ class AdminController extends Controller
                     ROUND(COUNT(lp.id) / NULLIF(COUNT(DISTINCT lp.lot_id), 0), 1) AS avg_photos_per_lot
                 FROM lots l
                 LEFT JOIN lot_photos lp ON lp.lot_id = l.id
+                WHERE l.is_active = 1
                 GROUP BY l.source
             "));
         } catch (\Exception $e) {
@@ -638,9 +660,23 @@ class AdminController extends Controller
             $errors[] = 'lot_photos: ' . $e->getMessage();
         }
 
+        // Stamp cache time on first successful full load
+        if (!$cachedAt && empty($errors)) {
+            cache()->put('accuracy:cached_at', now()->timestamp, $ttl);
+        }
+        $cachedAt = cache()->get('accuracy:cached_at');
+
         return view('admin.accuracy', compact(
-            'lotsStats', 'rawStats', 'inspStats', 'photoStats', 'errors'
+            'lotsStats', 'rawStats', 'inspStats', 'photoStats', 'errors', 'cachedAt'
         ));
+    }
+
+    public function accuracyRefresh()
+    {
+        foreach (['accuracy:lots', 'accuracy:raw', 'accuracy:insp', 'accuracy:photos', 'accuracy:cached_at'] as $key) {
+            cache()->forget($key);
+        }
+        return redirect()->route('admin.accuracy')->with('success', 'Cache cleared — data will reload from DB');
     }
 
     public function schedules()
