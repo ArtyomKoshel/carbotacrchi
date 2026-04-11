@@ -134,11 +134,11 @@ class KBChaEnricher:
                     self._inc_error(stats, "detail_fetch", f"detail fetch failed {lot.id}")
                 if combined:
                     self._apply_combined(lot, combined, enriched_fields)
-                    if insp_raw:
-                        self._apply_inspection_result(lot, insp_raw, stats)
                     pending.append(lot)
                     all_valid_lots.append(lot)
-                    _flush()
+                    _flush()  # lot must be in DB before inspection FK write
+                    if insp_raw:
+                        self._apply_inspection_result(lot, insp_raw, stats)
                 else:
                     total_skipped += 1
                 if on_page_callback:
