@@ -91,7 +91,31 @@ class KBChaEnricher:
             finally:
                 client.close()
 
-        results: list[tuple[CarLot, dict, int]] = []
+        FLUSH_EVERY = 1  # write each lot immediately as its detail fetch completes
+        pending: list[CarLot] = []
+        all_valid_lots: list[CarLot] = []
+        total_saved = 0
+        total_skipped = 0
+
+        def _flush(force: bool = False) -> None:
+            nonlocal total_saved
+            if not pending:
+                return
+            if not force and len(pending) < FLUSH_EVERY:
+                return
+            logger.info(f"[{self._source}] Writing {len(pending)} lots to DB...")
+            try:
+                self._repo.upsert_batch(pending, stats=stats)
+                saved = sum(1 for l in pending if not l.raw_data.get("_db_skip"))
+                total_saved += saved
+                logger.info(f"[{self._source}] DB write done: {saved}/{len(pending)} lots saved "
+                            f"(total so far: {total_saved})")
+            except Exception as e:
+                etype = type(e).__name__
+                self._inc_error(stats, etype, f"batch upsert failed ({len(pending)} lots): {etype}: {e}")
+                logger.warning(f"[{self._source}] batch upsert failed: {etype}: {e}")
+            pending.clear()
+
         with ThreadPoolExecutor(max_workers=workers) as pool:
             future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(lots)}
             for i, future in enumerate(as_completed(future_map)):
@@ -99,45 +123,33 @@ class KBChaEnricher:
                 stats["errors"] += errors
                 if errors:
                     self._inc_error(stats, "detail_fetch", f"detail fetch failed {lot.id}")
-                results.append((lot, combined))
+                if combined:
+                    self._apply_combined(lot, combined, enriched_fields)
+                    pending.append(lot)
+                    all_valid_lots.append(lot)
+                    _flush()
+                else:
+                    total_skipped += 1
                 if on_page_callback:
                     try:
                         on_page_callback(page=i + 1, found=1, total_pages=len(lots), stats=stats)
                     except Exception:
                         pass
 
-        valid_lots: list = []
-        skipped = 0
-        for lot, combined in results:
-            if not combined:
-                skipped += 1
-                continue
-            self._apply_combined(lot, combined, enriched_fields)
-            valid_lots.append(lot)
+        _flush(force=True)  # write remaining lots
 
-        logger.info(
-            f"[{self._source}] Detail results: {len(valid_lots)} enriched, "
-            f"{skipped} skipped (no detail data), "
-            f"{stats.get('errors', 0)} errors"
-        )
-
-        if valid_lots:
-            logger.info(f"[{self._source}] Writing {len(valid_lots)} lots to DB...")
-            try:
-                self._repo.upsert_batch(valid_lots, stats=stats)
-                saved = sum(1 for l in valid_lots if not l.raw_data.get("_db_skip"))
-                logger.info(f"[{self._source}] DB write done: {saved}/{len(valid_lots)} lots saved")
-            except Exception as e:
-                etype = type(e).__name__
-                self._inc_error(stats, etype, f"batch upsert failed ({len(valid_lots)} lots): {etype}: {e}")
-                logger.warning(f"[{self._source}] batch upsert failed: {etype}: {e}")
-        else:
+        if total_saved == 0 and total_skipped == len(lots):
             logger.warning(
-                f"[{self._source}] No lots to write — all {len(results)} detail fetches returned empty. "
+                f"[{self._source}] No lots written — all {len(lots)} detail fetches returned empty. "
                 f"Possible bot-block or site error."
             )
+        else:
+            logger.info(
+                f"[{self._source}] Enrichment complete: {total_saved} saved, "
+                f"{total_skipped} skipped, {stats.get('errors', 0)} errors"
+            )
 
-        for lot in valid_lots:
+        for lot in all_valid_lots:
             if lot.raw_data.get("_db_skip"):
                 continue
             photos = lot.raw_data.get("photos") or []
