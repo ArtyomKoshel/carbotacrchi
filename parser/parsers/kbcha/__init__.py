@@ -187,6 +187,7 @@ class KBChaParser(AbstractParser):
                 maker_code,
                 maker_name,
                 seen_ids,
+                existing_ids,
                 stats,
                 max_pages=effective_pages,
                 on_page_callback=on_page_callback,
@@ -206,8 +207,6 @@ class KBChaParser(AbstractParser):
                 stats["enrich_time"] += _time.monotonic() - _t_enrich
 
             if maker_lots:
-                stats["new"] += len(new_lots)
-                stats["updated"] += len(updated_lots)
                 all_lots.extend(maker_lots)
 
             maker_elapsed = _time.monotonic() - maker_start
@@ -308,6 +307,7 @@ class KBChaParser(AbstractParser):
         maker_code: str,
         maker_name: str,
         seen_ids: set[str],
+        existing_ids: set[str],
         stats: dict,
         max_pages: int | None = None,
         on_page_callback=None,
@@ -328,7 +328,7 @@ class KBChaParser(AbstractParser):
                     )
                     for class_code, class_name, class_count in classes:
                         class_lots = self._fetch_pages(
-                            maker_code, maker_name, seen_ids, stats,
+                            maker_code, maker_name, seen_ids, existing_ids, stats,
                             pages, on_page_callback,
                             class_code=class_code, class_label=class_name,
                         )
@@ -341,7 +341,7 @@ class KBChaParser(AbstractParser):
 
         logger.info(f"[{source}] --- {maker_name} ({maker_code}) ---")
         return self._fetch_pages(
-            maker_code, maker_name, seen_ids, stats, pages, on_page_callback
+            maker_code, maker_name, seen_ids, existing_ids, stats, pages, on_page_callback
         )
 
     def _fetch_pages(
@@ -349,6 +349,7 @@ class KBChaParser(AbstractParser):
         maker_code: str,
         maker_name: str,
         seen_ids: set[str],
+        existing_ids: set[str],
         stats: dict,
         pages: int,
         on_page_callback=None,
@@ -435,6 +436,10 @@ class KBChaParser(AbstractParser):
                     seen_ids.add(lot.id)
                     lots.append(lot)
                     new_on_page += 1
+                    if lot.id in existing_ids:
+                        stats["updated"] += 1
+                    else:
+                        stats["new"] += 1
 
             stats["total"] += new_on_page
 

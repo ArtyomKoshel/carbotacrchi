@@ -322,8 +322,10 @@ if (JOB_STATUS === 'running') {
     return h ? `${h}h ${m}m` : `${m}m`;
   };
 
-  let lifetimeStart = Math.floor(Date.now() / 1000);
+  // lifetimeStart will be synced from SSE elapsed_s on first event
+  let lifetimeStart = null;
   setInterval(() => {
+    if (lifetimeStart === null) return;
     const el = Math.floor(Date.now() / 1000) - lifetimeStart;
     document.getElementById('t-elapsed').textContent = fmtTime(el);
   }, 1000);
@@ -357,9 +359,13 @@ if (JOB_STATUS === 'running') {
       eel.className = `text-xl font-bold mt-1 ${d.errors > 0 ? 'text-red-400' : 'text-gray-500'}`;
     }
 
-    // Timing cards
-    if (d.elapsed_s) document.getElementById('t-elapsed').textContent = fmtTime(d.elapsed_s);
-    else if (d.time) document.getElementById('t-elapsed').textContent = d.time;
+    // Timing cards — sync local timer from server elapsed_s
+    if (d.elapsed_s) {
+      if (lifetimeStart === null) {
+        lifetimeStart = Math.floor(Date.now() / 1000) - d.elapsed_s;
+      }
+      document.getElementById('t-elapsed').textContent = fmtTime(d.elapsed_s);
+    } else if (d.time) document.getElementById('t-elapsed').textContent = d.time;
     if (d.avg_per_lot_s) document.getElementById('t-avg').textContent = d.avg_per_lot_s + 's';
     if (d.search_time_s !== undefined) document.getElementById('t-search').textContent = d.search_time_s + 's';
     if (d.enrich_time_s !== undefined) document.getElementById('t-enrich').textContent = d.enrich_time_s + 's';
