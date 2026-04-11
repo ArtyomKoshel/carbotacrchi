@@ -450,9 +450,6 @@ class KBChaParser(AbstractParser):
             logger.info(f"[{source}] {label} p.{page}: "
                          f"{len(page_lots)} parsed, {new_on_page} unique")
 
-            if enrich_callback and new_page_lots:
-                enrich_callback(new_page_lots)
-
             if on_page_callback:
                 try:
                     on_page_callback(
@@ -466,6 +463,9 @@ class KBChaParser(AbstractParser):
                     stats["_cancelled"] = True
                     stats["_cancel_exc"] = _cancel_exc
                     break
+
+            if enrich_callback and new_page_lots:
+                enrich_callback(new_page_lots)
 
             _p = _time.monotonic()
             _time.sleep(Config.REQUEST_DELAY)
