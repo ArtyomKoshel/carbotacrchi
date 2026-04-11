@@ -206,7 +206,6 @@ class KBChaParser(AbstractParser):
                 stats["enrich_time"] += _time.monotonic() - _t_enrich
 
             if maker_lots:
-                stats["total"] += len(maker_lots)
                 stats["new"] += len(new_lots)
                 stats["updated"] += len(updated_lots)
                 all_lots.extend(maker_lots)
@@ -436,6 +435,8 @@ class KBChaParser(AbstractParser):
                     seen_ids.add(lot.id)
                     lots.append(lot)
                     new_on_page += 1
+
+            stats["total"] += new_on_page
 
             logger.info(f"[{source}] {label} p.{page}: "
                          f"{len(page_lots)} parsed, {new_on_page} unique")
