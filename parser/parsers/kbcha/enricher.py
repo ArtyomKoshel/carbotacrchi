@@ -107,19 +107,35 @@ class KBChaEnricher:
                         pass
 
         valid_lots: list = []
+        skipped = 0
         for lot, combined in results:
             if not combined:
+                skipped += 1
                 continue
             self._apply_combined(lot, combined, enriched_fields)
             valid_lots.append(lot)
 
+        logger.info(
+            f"[{self._source}] Detail results: {len(valid_lots)} enriched, "
+            f"{skipped} skipped (no detail data), "
+            f"{stats.get('errors', 0)} errors"
+        )
+
         if valid_lots:
+            logger.info(f"[{self._source}] Writing {len(valid_lots)} lots to DB...")
             try:
                 self._repo.upsert_batch(valid_lots, stats=stats)
+                saved = sum(1 for l in valid_lots if not l.raw_data.get("_db_skip"))
+                logger.info(f"[{self._source}] DB write done: {saved}/{len(valid_lots)} lots saved")
             except Exception as e:
                 etype = type(e).__name__
                 self._inc_error(stats, etype, f"batch upsert failed ({len(valid_lots)} lots): {etype}: {e}")
                 logger.warning(f"[{self._source}] batch upsert failed: {etype}: {e}")
+        else:
+            logger.warning(
+                f"[{self._source}] No lots to write — all {len(results)} detail fetches returned empty. "
+                f"Possible bot-block or site error."
+            )
 
         for lot in valid_lots:
             if lot.raw_data.get("_db_skip"):
