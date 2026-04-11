@@ -14,6 +14,40 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
+_CACHED_PROXIES: list[str] | None = None
+
+
+def _generate_kbcha_proxies(count: int = 10) -> list[str]:
+    """Generate KR residential proxy URLs with random session IDs (Floppydata).
+    Falls back to KBCHA_PROXY_LIST if no API key configured."""
+    global _CACHED_PROXIES
+    if _CACHED_PROXIES is not None:
+        return _CACHED_PROXIES
+
+    if not Config.FLOPPYDATA_API_KEY:
+        logger.warning("[kbcha:proxy] No FLOPPYDATA_API_KEY — using static KBCHA_PROXY_LIST")
+        _CACHED_PROXIES = Config.KBCHA_PROXY_LIST or ([Config.KBCHA_PROXY] if Config.KBCHA_PROXY else [])
+        return _CACHED_PROXIES
+
+    base_creds = "user-3L8YmcrVpKK3wN9W"
+    password = "1TigQ7ujPds0xcv6"
+    proxies = []
+    for _ in range(count):
+        session = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        proxies.append(
+            f"http://{base_creds}-type-residential-session-{session}"
+            f"-country-KR-rotation-15:{password}@geo.g-w.info:10080"
+        )
+    logger.info(f"[kbcha:proxy] Generated {len(proxies)} KR residential proxy sessions")
+    _CACHED_PROXIES = proxies
+    return proxies
+
+
+def _reset_proxy_cache() -> None:
+    global _CACHED_PROXIES
+    _CACHED_PROXIES = None
+
+
 BASE_URL = "https://www.kbchachacha.com"
 CARMODOO_URL = "https://ck.carmodoo.com"
 
@@ -42,8 +76,7 @@ _PAGE_HEADERS = {
 
 class KBChaClient:
     def __init__(self):
-        # Build proxy list: KBCHA_PROXY_LIST takes precedence over single KBCHA_PROXY
-        proxy_list = Config.KBCHA_PROXY_LIST or ([Config.KBCHA_PROXY] if Config.KBCHA_PROXY else [])
+        proxy_list = _generate_kbcha_proxies()
         self._proxies: list[str | None] = proxy_list if proxy_list else [None]
         self._proxy_idx: int = 0
         self._last_list_url: str = f"{BASE_URL}/public/search/main.kbc"
