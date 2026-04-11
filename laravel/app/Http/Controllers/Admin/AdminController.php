@@ -45,18 +45,19 @@ class AdminController extends Controller
     public function dashboard()
     {
         $t0 = microtime(true);
+        $dbg = [];
 
         $sources = DB::table('lots')
             ->select('source', DB::raw('SUM(is_active) as active'), DB::raw('COUNT(*) as total'))
             ->groupBy('source')
             ->get();
-        \Log::debug('[dashboard] sources: ' . round((microtime(true) - $t0) * 1000) . 'ms');
+        $dbg['sources'] = round((microtime(true) - $t0) * 1000);
 
         $t1 = microtime(true);
         $recentChanges = LotChange::orderByDesc('recorded_at')
             ->limit(10)
             ->get();
-        \Log::debug('[dashboard] recentChanges: ' . round((microtime(true) - $t1) * 1000) . 'ms');
+        $dbg['recentChanges'] = round((microtime(true) - $t1) * 1000);
 
         $t2 = microtime(true);
         $changeSummary = DB::table('lot_changes')
@@ -64,14 +65,14 @@ class AdminController extends Controller
             ->where('recorded_at', '>=', now()->subDay())
             ->groupBy('event')
             ->pluck('cnt', 'event');
-        \Log::debug('[dashboard] changeSummary: ' . round((microtime(true) - $t2) * 1000) . 'ms');
+        $dbg['changeSummary'] = round((microtime(true) - $t2) * 1000);
 
         $t3 = microtime(true);
         $lastParsed = DB::table('lots')
             ->select('source', DB::raw('MAX(parsed_at) as last_parsed'))
             ->groupBy('source')
             ->pluck('last_parsed', 'source');
-        \Log::debug('[dashboard] lastParsed: ' . round((microtime(true) - $t3) * 1000) . 'ms');
+        $dbg['lastParsed'] = round((microtime(true) - $t3) * 1000);
 
         $t4 = microtime(true);
         $lastScheduled = DB::table('parse_jobs')
@@ -81,12 +82,11 @@ class AdminController extends Controller
             ->groupBy('source')
             ->get()
             ->keyBy('source');
-        \Log::debug('[dashboard] lastScheduled: ' . round((microtime(true) - $t4) * 1000) . 'ms');
-
-        \Log::debug('[dashboard] TOTAL: ' . round((microtime(true) - $t0) * 1000) . 'ms');
+        $dbg['lastScheduled'] = round((microtime(true) - $t4) * 1000);
+        $dbg['total'] = round((microtime(true) - $t0) * 1000);
 
         return view('admin.dashboard', compact(
-            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'lastScheduled'
+            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'lastScheduled', 'dbg'
         ));
     }
 

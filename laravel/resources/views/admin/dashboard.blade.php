@@ -180,4 +180,16 @@ function loadProxyBalance() {
   </table>
 </div>
 
+{{-- Query timing --}}
+<div class="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
+  <div class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Query timing</div>
+  <div class="flex flex-wrap gap-3">
+    @foreach($dbg as $label => $ms)
+    <span class="text-xs px-2 py-1 rounded {{ $ms > 1000 ? 'bg-red-900 text-red-400' : ($ms > 200 ? 'bg-yellow-900 text-yellow-400' : 'bg-gray-800 text-gray-500') }}">
+      {{ $label }}: {{ $ms }}ms
+    </span>
+    @endforeach
+  </div>
+</div>
+
 @endsection
