@@ -290,8 +290,9 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
 
         page_counts: list[int] = []
         _api_total_ref: list[int] = [0]  # mutable ref for closure
+        _run_start = _time.monotonic()
 
-        def _on_page(page: int, found: int, total_pages: int | None = None):
+        def _on_page(page: int, found: int, total_pages: int | None = None, stats: dict | None = None):
             page_counts.append(found)
             found_total = sum(page_counts)
             if total_pages and total_pages > _api_total_ref[0]:
@@ -304,12 +305,23 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
                 logger.info(f"[job_worker] Job #{job_id} cancel detected at page #{page}")
                 raise JobCancelledError(f"Job #{job_id} cancelled by user")
             pct = round(found_total / _api_total_ref[0] * 100, 1) if _api_total_ref[0] else 0
+            elapsed = round(_time.monotonic() - _run_start, 1)
+            avg_lot = round(elapsed / found_total, 2) if found_total else 0
             progress = {
                 "status": f"{pct}%",
                 "pct": pct,
                 "page": page,
                 "found_total": found_total,
                 "api_total": _api_total_ref[0],
+                "total": stats["total"] if stats else found_total,
+                "new": stats["new"] if stats else 0,
+                "updated": stats["updated"] if stats else 0,
+                "errors": stats["errors"] if stats else 0,
+                "elapsed_s": elapsed,
+                "avg_per_lot_s": avg_lot,
+                "search_time_s": round(stats["search_time"], 1) if stats else 0,
+                "enrich_time_s": round(stats["enrich_time"], 1) if stats else 0,
+                "pause_time_s": round(stats["pause_time"], 1) if stats else 0,
             }
             _set_job(conn, job_id, "running", progress=progress)
             _publish(r, source, {"job_id": job_id, **progress})

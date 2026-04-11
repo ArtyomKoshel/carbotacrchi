@@ -18,8 +18,8 @@ class AbstractParser(ABC):
         """Display name: 'KBChacha', 'Encar', 'Copart'"""
 
     @abstractmethod
-    def run(self, **kwargs) -> int:
-        """Run full import cycle. Return total lots upserted."""
+    def run(self, **kwargs) -> int | dict:
+        """Run full import cycle. Return total lots upserted or structured stats dict."""
 
     def run_reenrich(self, limit: int | None = None) -> int:
         """Re-fetch detail pages for existing lots. Override in subclass if supported."""

@@ -105,8 +105,15 @@ def run_once(pages: int | None = None, maker: str | None = None) -> None:
     try:
         for key, reg in get_enabled().items():
             parser = reg.cls(repo)
-            count = parser.run(max_pages=pages, maker_filter=maker)
-            logger.info(f"{parser.get_source_name()}: {count} lots imported")
+            result = parser.run(max_pages=pages, maker_filter=maker)
+            if isinstance(result, dict):
+                logger.info(
+                    f"{parser.get_source_name()}: {result.get('total', 0)} lots imported "
+                    f"(new={result.get('new', 0)}, updated={result.get('updated', 0)}, "
+                    f"errors={result.get('errors', 0)})"
+                )
+            else:
+                logger.info(f"{parser.get_source_name()}: {result} lots imported")
     finally:
         repo.close()
 

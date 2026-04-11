@@ -250,10 +250,14 @@ class LotRepository:
                 if old_val != new_val and new_val is not None:
                     diff[field] = {"old": old_val, "new": new_val}
             if diff:
+                # Detect relist: is_active changed from 0 to 1
+                event = "update"
+                if "is_active" in diff and diff["is_active"].get("old") in (0, False):
+                    event = "relisted"
                 changes_to_insert.append({
                     "lot_id": lot.id,
                     "source": lot.source,
-                    "event": "update",
+                    "event": event,
                     "changes": diff,
                 })
         if changes_to_insert:
@@ -287,14 +291,15 @@ class LotRepository:
             logger.error(f"[DB] count_active failed: {e}")
             return -1
 
-    def mark_inactive(self, source: str, active_ids: set[str], grace_hours: int = 24) -> int:
+    def mark_inactive(self, source: str, active_ids: set[str], grace_hours: int = 1) -> int:
+        """Delist active lots not seen this run (with grace period to avoid double-run issues)."""
         if not active_ids:
             return 0
 
         conn = self._get_conn()
         placeholders = ",".join(["%s"] * len(active_ids))
+        params = [source] + list(active_ids) + [grace_hours]
 
-        # Find which lots will be delisted BEFORE updating them
         select_sql = f"""
             SELECT id FROM lots
             WHERE source = %s
@@ -312,23 +317,23 @@ class LotRepository:
 
         try:
             t0 = _time.monotonic()
-            params = [source] + list(active_ids) + [grace_hours]
             with conn.cursor() as cursor:
                 cursor.execute(select_sql, params)
                 delisted_ids = [row["id"] for row in cursor.fetchall()]
                 cursor.execute(update_sql, params)
             conn.commit()
-            affected = len(delisted_ids)
             elapsed = _time.monotonic() - t0
-            logger.info(f"[DB] Marked {affected} lots inactive for '{source}' "
-                         f"(grace={grace_hours}h) in {elapsed:.2f}s")
+            logger.info(
+                f"[DB] Delist for '{source}': {len(delisted_ids)} lots delisted "
+                f"(grace={grace_hours}h) in {elapsed:.2f}s"
+            )
             if delisted_ids:
                 self._insert_lot_changes([
                     {"lot_id": lid, "source": source, "event": "delisted",
                      "changes": {"is_active": {"old": True, "new": False}}}
                     for lid in delisted_ids
                 ])
-            return affected
+            return len(delisted_ids)
         except Exception as e:
             conn.rollback()
             logger.error(f"[DB] mark_inactive FAILED: {type(e).__name__}: {e}")

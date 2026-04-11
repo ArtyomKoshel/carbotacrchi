@@ -5,6 +5,7 @@ import random
 import re
 import string
 import time as _time
+from urllib.parse import urlparse
 
 import httpx
 from httpx import Timeout as _Timeout
@@ -22,6 +23,20 @@ HEADERS = {
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     "Referer": f"{BASE_URL}/public/search/main.kbc",
     "X-Requested-With": "XMLHttpRequest",
+}
+
+_PAGE_HEADERS = {
+    "User-Agent": HEADERS["User-Agent"],
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": HEADERS["Accept-Language"],
+    "Accept-Encoding": "gzip, deflate, br",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
+    "Connection": "keep-alive",
 }
 
 
@@ -48,8 +63,10 @@ class KBChaClient:
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
 
     @staticmethod
-    def _bump_session(proxy_url: str) -> str | None:
+    def _bump_session(proxy_url: str | None) -> str | None:
         """Replace -session-XXX with a new random session ID (Floppydata / rotating proxy)."""
+        if not proxy_url:
+            return None
         new_id = KBChaClient._new_session_id()
         result, n = re.subn(r'(-session-)([^-:@]+)', rf'\g<1>{new_id}', proxy_url)
         return result if n else None
@@ -57,7 +74,10 @@ class KBChaClient:
     def rotate_proxy(self) -> bool:
         """Switch to the next proxy in the list and reset the session. Returns True if rotated.
         For single-proxy Floppydata URLs with -session- pattern, bumps the session ID instead."""
-        if len(self._proxies) > 1:
+        real_proxies = [p for p in self._proxies if p]
+        if not real_proxies:
+            return False
+        if len(real_proxies) > 1 and len(self._proxies) > 1:
             old_idx = self._proxy_idx
             self._proxy_idx = (self._proxy_idx + 1) % len(self._proxies)
             self._client.close()
@@ -89,28 +109,23 @@ class KBChaClient:
             return self._client.get(url, params=params, headers=headers)
 
     def warmup(self) -> None:
-        """Visit homepage + search page to establish a proper browser session before detail fetches."""
+        """Visit homepage → search page → list page to establish a real browser session."""
+        steps = [
+            (f"{BASE_URL}/", None),
+            (f"{BASE_URL}/public/search/main.kbc", f"{BASE_URL}/"),
+            (f"{BASE_URL}/public/search/list.kbc", f"{BASE_URL}/public/search/main.kbc"),
+        ]
         try:
-            resp = self._client.get(
-                f"{BASE_URL}/",
-                headers={
-                    "User-Agent": HEADERS["User-Agent"],
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": HEADERS["Accept-Language"],
-                },
-            )
-            logger.debug(f"[kbcha:warmup] homepage -> {resp.status_code} ({len(resp.content)} bytes)")
-            _time.sleep(1.0)
-            resp = self._client.get(
-                f"{BASE_URL}/public/search/main.kbc",
-                headers={
-                    "User-Agent": HEADERS["User-Agent"],
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": HEADERS["Accept-Language"],
-                    "Referer": f"{BASE_URL}/",
-                },
-            )
-            logger.debug(f"[kbcha:warmup] search/main.kbc -> {resp.status_code} ({len(resp.content)} bytes)")
+            for url, referer in steps:
+                h = {
+                    **_PAGE_HEADERS,
+                    "Sec-Fetch-Site": "none" if referer is None else "same-origin",
+                }
+                if referer:
+                    h["Referer"] = referer
+                resp = self._client.get(url, headers=h)
+                logger.debug(f"[kbcha:warmup] {url} -> {resp.status_code} ({len(resp.content)} bytes)")
+                _time.sleep(1.2)
         except Exception as e:
             logger.warning(f"[kbcha:warmup] failed: {e}")
 
@@ -133,9 +148,7 @@ class KBChaClient:
         url = f"{BASE_URL}/public/car/detail.kbc"
         params = {"carSeq": car_seq}
         headers = {
-            "User-Agent": HEADERS["User-Agent"],
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": HEADERS["Accept-Language"],
+            **_PAGE_HEADERS,
             "Referer": self._last_list_url,
         }
         t0 = _time.monotonic()
@@ -209,6 +222,34 @@ class KBChaClient:
         resp.raise_for_status()
         logger.debug(f"[kbcha:http] kb_inspection carSeq={car_seq} "
                      f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
+        return resp.text
+
+    def fetch_external_report(self, report_url: str, referer: str | None = None) -> str:
+        url = (report_url or "").strip()
+        if not url:
+            raise ValueError("empty report_url")
+        if url.startswith("//"):
+            url = f"https:{url}"
+        if not url.startswith(("http://", "https://")):
+            url = f"https://{url.lstrip('/')}"
+
+        headers = {
+            "User-Agent": HEADERS["User-Agent"],
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+            "Referer": referer or f"{BASE_URL}/",
+        }
+
+        t0 = _time.monotonic()
+        resp = self._get(url, headers=headers)
+        elapsed = _time.monotonic() - t0
+        resp.raise_for_status()
+
+        host = urlparse(url).netloc
+        logger.debug(
+            f"[kbcha:http] external host={host} "
+            f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)"
+        )
         return resp.text
 
     def close(self):

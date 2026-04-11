@@ -194,6 +194,14 @@ class KBChaDetailParser:
         if "세금미납" in info:
             result["tax_paid"] = (info["세금미납"] == "없음")
 
+        # Parse cylinders from engine_str if present in raw_data
+        engine_str = result.get("engine_str")
+        if engine_str:
+            cylinders = self._norm.parse_cylinders(engine_str)
+            if cylinders:
+                result["cylinders"] = cylinders
+                logger.debug(f"[kbcha:detail] cylinders: '{cylinders}' from engine_str")
+
     # ── History (성능점검·보험사고이력) ──────────────────────────────────────
 
     def _parse_history_section(self, soup: BeautifulSoup, result: dict) -> None:

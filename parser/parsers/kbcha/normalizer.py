@@ -218,6 +218,8 @@ class KBChaNormalizer:
             return None
 
     def parse_year(self, text: str) -> int:
+        if not text:
+            return 0
         m = re.search(r"(\d{2})년형", text)
         if m:
             y = int(m.group(1))
@@ -229,6 +231,8 @@ class KBChaNormalizer:
         return 0
 
     def parse_mileage(self, text: str) -> int:
+        if not text:
+            return 0
         return int(re.sub(r"[^\d]", "", text) or 0)
 
     def parse_fuel_economy(self, value: str | None) -> float | None:
@@ -240,6 +244,26 @@ class KBChaNormalizer:
                 return float(m.group(1))
             except ValueError:
                 return None
+        return None
+
+    def parse_cylinders(self, value: str | None) -> int | None:
+        """Parse cylinder count from Korean text like '4기통' or 'V6'."""
+        if not value:
+            return None
+        # Korean pattern: "4기통", "6기통"
+        m = re.search(r"(\d+)\s*기통", value)
+        if m:
+            try:
+                return int(m.group(1))
+            except ValueError:
+                pass
+        # V-pattern: "V6", "V8", "V12"
+        m = re.search(r"V(\d+)", value, re.IGNORECASE)
+        if m:
+            try:
+                return int(m.group(1))
+            except ValueError:
+                pass
         return None
 
     def parse_price_man(self, text: str) -> int:

@@ -119,10 +119,22 @@ class KBChaParser(AbstractParser):
         max_pages: int | None = None,
         maker_filter: str | None = None,
         on_page_callback=None,
-    ) -> int:
+    ) -> dict:
         source = self.get_source_key()
         run_start = _time.monotonic()
-        stats = {"total": 0, "new": 0, "updated": 0, "detail_fetched": 0, "errors": 0}
+        stats = {
+            "total": 0,
+            "new": 0,
+            "updated": 0,
+            "detail_fetched": 0,
+            "errors": 0,
+            "pause_time": 0.0,
+            "enrich_time": 0.0,
+            "search_time": 0.0,
+            "inspect_time": 0.0,
+            "error_types": {},
+            "error_log": [],
+        }
 
         effective_pages = max_pages or 9999  # 0 / None = all pages
         makers = {
@@ -132,29 +144,35 @@ class KBChaParser(AbstractParser):
         if maker_filter and not makers:
             logger.warning(f"[{source}] No makers matched filter '{maker_filter}'. "
                            f"Available: {', '.join(MAKER_CODES.values())}")
-            return 0
+            return stats
 
-        logger.info(f"[{source}] ========== IMPORT STARTED ==========")
-        logger.info(f"[{source}] Makers: {len(makers)}, "
+        logger.info(f"[STAT] [{source}] ========== IMPORT STARTED ==========")
+        logger.info(f"[STAT] [{source}] Makers: {len(makers)}, "
                     f"max_pages={effective_pages}, delay={Config.REQUEST_DELAY}s")
         if maker_filter:
-            logger.info(f"[{source}] Maker filter: '{maker_filter}' -> {list(makers.values())}")
+            logger.info(f"[STAT] [{source}] Maker filter: '{maker_filter}' -> {list(makers.values())}")
 
         logger.info(f"[{source}] Warming up session...")
         self._client.warmup()
 
         existing_ids = self.repo.get_existing_ids(source)
-        logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
+        logger.info(f"[STAT] [{source}] Existing active lots in DB: {len(existing_ids)}")
 
         seen_ids: set[str] = set()
         maker_stats: dict[str, int] = {}
+        all_lots: list[CarLot] = []
 
         for maker_code, maker_name in makers.items():
             maker_start = _time.monotonic()
 
-            maker_lots = self._fetch_maker(maker_code, maker_name, seen_ids,
-                                               max_pages=effective_pages,
-                                               on_page_callback=on_page_callback)
+            maker_lots = self._fetch_maker(
+                maker_code,
+                maker_name,
+                seen_ids,
+                stats,
+                max_pages=effective_pages,
+                on_page_callback=on_page_callback,
+            )
             if not maker_lots:
                 continue
 
@@ -164,47 +182,99 @@ class KBChaParser(AbstractParser):
             if maker_lots:
                 logger.info(f"[{source}] {maker_name}: enriching {len(maker_lots)} lots with details "
                             f"({len(new_lots)} new, {len(updated_lots)} existing)...")
+                _t_enrich = _time.monotonic()
                 self._enricher.enrich_details(maker_lots, stats, on_page_callback=on_page_callback)
-
-            if new_lots:
-                self._enricher.enrich_inspections(new_lots, stats, on_page_callback=on_page_callback)
+                stats["enrich_time"] += _time.monotonic() - _t_enrich
 
             if maker_lots:
                 stats["total"] += len(maker_lots)
                 stats["new"] += len(new_lots)
                 stats["updated"] += len(updated_lots)
+                all_lots.extend(maker_lots)
 
             maker_elapsed = _time.monotonic() - maker_start
             maker_stats[maker_name] = len(maker_lots)
-            logger.info(f"[{source}] {maker_name}: {len(maker_lots)} lots "
-                         f"({len(new_lots)} new, {len(updated_lots)} upd) "
-                         f"in {maker_elapsed:.1f}s -> DB OK")
+            logger.info(
+                f"[STAT] [{source}] {maker_name}: {len(maker_lots)} lots "
+                f"({len(new_lots)} new, {len(updated_lots)} upd) in {maker_elapsed:.1f}s"
+            )
 
-        stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
+        # Enrich inspections for ALL lots (new + updated)
+        if all_lots:
+            logger.info(f"[STAT] [{source}] Enriching inspections for {len(all_lots)} lots...")
+            _t_inspect = _time.monotonic()
+            self._enricher.enrich_inspections(all_lots, stats, on_page_callback=on_page_callback)
+            stats["inspect_time"] += _time.monotonic() - _t_inspect
+
+        _MIN_DELIST_COVERAGE = 80.0
+        existing_count = len(existing_ids)
+        coverage_pct = stats["total"] / existing_count * 100 if existing_count else 100.0
+        if coverage_pct >= _MIN_DELIST_COVERAGE:
+            stale = self.repo.mark_inactive(source, seen_ids, grace_hours=1)
+        else:
+            stale = 0
+            logger.warning(
+                f"[{source}] Skipping delist: coverage {coverage_pct:.1f}% < {_MIN_DELIST_COVERAGE}% "
+                f"(seen {stats['total']:,} / existing {existing_count:,}). "
+                f"Lots not seen may be due to incomplete run."
+            )
         counts = self.repo.count_by_source(source)
-        run_elapsed = _time.monotonic() - run_start
+        elapsed = _time.monotonic() - run_start
+        db_count = counts.get("active", 0)
 
-        logger.info(f"[{source}] ========== IMPORT COMPLETE ==========")
-        logger.info(f"[{source}] Upserted:       {stats['total']}")
-        logger.info(f"[{source}] New lots:        {stats['new']}")
-        logger.info(f"[{source}] Updated lots:    {stats['updated']}")
-        logger.info(f"[{source}] Details fetched: {stats['detail_fetched']}")
-        logger.info(f"[{source}] Marked inactive: {stale}")
-        logger.info(f"[{source}] Errors:          {stats['errors']}")
-        logger.info(f"[{source}] DB totals:       {counts['active']} active, {counts['inactive']} inactive")
-        logger.info(f"[{source}] Total time:      {run_elapsed:.1f}s ({run_elapsed / 60:.1f} min)")
+        logger.info(f"[STAT] [{source}] ========== IMPORT COMPLETE ==========")
+        logger.info(f"[STAT] [{source}] Processed:   {stats['total']:,} ({coverage_pct:.1f}% coverage)")
+        logger.info(f"[STAT] [{source}] In DB now:   {db_count:,}")
+        logger.info(f"[STAT] [{source}] New:     {stats['new']}")
+        logger.info(f"[STAT] [{source}] Updated: {stats['updated']}")
+        logger.info(f"[STAT] [{source}] Stale:   {stale}")
+        logger.info(f"[STAT] [{source}] Errors:  {stats['errors']}")
+        logger.info(f"[STAT] [{source}] Time:    {elapsed:.1f}s")
+        logger.info(f"[STAT] [{source}] Search:  {stats['search_time']:.1f}s")
+        logger.info(f"[STAT] [{source}] Enrich:  {stats['enrich_time']:.1f}s")
+        logger.info(f"[STAT] [{source}] Inspect: {stats['inspect_time']:.1f}s")
+        logger.info(f"[STAT] [{source}] Pauses:  {stats['pause_time']:.1f}s")
+        if stats["error_types"]:
+            logger.info(f"[STAT] [{source}] Err types: {stats['error_types']}")
 
         if maker_stats:
-            logger.info(f"[{source}] Per-maker breakdown:")
+            logger.info(f"[STAT] [{source}] Per-maker breakdown:")
             for name, count in sorted(maker_stats.items(), key=lambda x: -x[1]):
                 if count > 0:
-                    logger.info(f"[{source}]   {name}: {count}")
+                    logger.info(f"[STAT] [{source}]   {name}: {count}")
 
         self._client.close()
-        return stats["total"]
+        hours = int(elapsed // 3600)
+        mins = int((elapsed % 3600) // 60)
+        time_str = f"{hours}h {mins}m" if hours else f"{mins}m"
+        avg_per_lot = round(elapsed / stats["total"], 2) if stats["total"] else 0
+        return {
+            "total": stats["total"],
+            "new": stats["new"],
+            "updated": stats["updated"],
+            "errors": stats["errors"],
+            "stale": stale,
+            "api_total": max(existing_count, stats["total"]),
+            "coverage_pct": round(coverage_pct, 1),
+            "db_count": db_count,
+            "time": time_str,
+            "elapsed_s": round(elapsed, 1),
+            "search_time_s": round(stats["search_time"], 1),
+            "enrich_time_s": round(stats["enrich_time"], 1),
+            "inspect_time_s": round(stats["inspect_time"], 1),
+            "pause_time_s": round(stats["pause_time"], 1),
+            "avg_per_lot_s": avg_per_lot,
+            "error_types": stats["error_types"],
+            "error_log": stats["error_log"][-50:],
+            "maker_breakdown": maker_stats,
+        }
 
     def _fetch_maker(
-        self, maker_code: str, maker_name: str, seen_ids: set[str],
+        self,
+        maker_code: str,
+        maker_name: str,
+        seen_ids: set[str],
+        stats: dict,
         max_pages: int | None = None,
         on_page_callback=None,
     ) -> list[CarLot]:
@@ -215,19 +285,69 @@ class KBChaParser(AbstractParser):
         logger.info(f"[{source}] --- {maker_name} ({maker_code}) ---")
 
         for page in range(1, pages + 1):
+            _t_search = _time.monotonic()
             try:
                 html = self._client.fetch_list_page(maker_code, page)
-            except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
-                logger.warning(f"[{source}] {maker_name} p.{page} timeout ({type(e).__name__}), retrying in 5s...")
-                _time.sleep(5)
+            except httpx.HTTPStatusError as e:
+                etype = str(e.response.status_code)
+                stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
+                stats["errors"] += 1
+                msg = f"[{maker_name}] p.{page} HTTP {etype}"
+                stats["error_log"].append(msg)
+                if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
+                    logger.warning(
+                        f"[{source}] {maker_name} p.{page}: {etype}, rotating proxy and retrying"
+                    )
+                    self._client.rotate_proxy()
+                    _p = _time.monotonic()
+                    _time.sleep(2)
+                    stats["pause_time"] += _time.monotonic() - _p
+                    try:
+                        html = self._client.fetch_list_page(maker_code, page)
+                    except Exception as e2:
+                        etype2 = type(e2).__name__
+                        stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
+                        stats["errors"] += 1
+                        stats["error_log"].append(f"[{maker_name}] p.{page} retry failed: {etype2}: {e2}")
+                        logger.error(
+                            f"[{source}] {maker_name} p.{page} fetch error after retry: {etype2}: {e2}"
+                        )
+                        break
+                else:
+                    logger.error(f"[{source}] {maker_name} p.{page} HTTP error: {etype}")
+                    break
+            except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+                etype = type(e).__name__
+                stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
+                stats["errors"] += 1
+                stats["error_log"].append(f"[{maker_name}] p.{page}: {etype}: {e}")
+                logger.warning(
+                    f"[{source}] {maker_name} p.{page} {etype}, rotating proxy and retrying"
+                )
+                self._client.rotate_proxy()
+                _p = _time.monotonic()
+                _time.sleep(3)
+                stats["pause_time"] += _time.monotonic() - _p
                 try:
                     html = self._client.fetch_list_page(maker_code, page)
                 except Exception as e2:
-                    logger.error(f"[{source}] {maker_name} p.{page} fetch error after retry: {type(e2).__name__}: {e2}")
+                    etype2 = type(e2).__name__
+                    stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
+                    stats["errors"] += 1
+                    stats["error_log"].append(f"[{maker_name}] p.{page} retry failed: {etype2}: {e2}")
+                    logger.error(
+                        f"[{source}] {maker_name} p.{page} fetch error after retry: {etype2}: {e2}"
+                    )
                     break
             except Exception as e:
-                logger.error(f"[{source}] {maker_name} p.{page} fetch error: {type(e).__name__}: {e}")
+                etype = type(e).__name__
+                stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
+                stats["errors"] += 1
+                stats["error_log"].append(f"[{maker_name}] p.{page}: {etype}: {e}")
+                logger.error(f"[{source}] {maker_name} p.{page} fetch error: {etype}: {e}")
                 break
+            finally:
+                stats["search_time"] += _time.monotonic() - _t_search
 
             page_lots = self._list_parser.parse(html, maker_code)
             if not page_lots:
@@ -246,11 +366,13 @@ class KBChaParser(AbstractParser):
 
             if on_page_callback:
                 try:
-                    on_page_callback(page=page, found=new_on_page, total_pages=pages)
+                    on_page_callback(page=page, found=new_on_page, total_pages=pages, stats=stats)
                 except Exception:
                     pass
 
+            _p = _time.monotonic()
             _time.sleep(Config.REQUEST_DELAY)
+            stats["pause_time"] += _time.monotonic() - _p
 
         return lots
 

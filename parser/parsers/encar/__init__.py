@@ -803,6 +803,7 @@ class EncarParser(AbstractParser):
                     page=stats["total"] // _PAGE_SIZE,
                     found=len(page_lots),
                     total_pages=total_count,
+                    stats=stats,
                 )
 
             _t_after_upsert = _time.monotonic()
@@ -993,7 +994,7 @@ class EncarParser(AbstractParser):
 
         _MIN_DELIST_COVERAGE = 95.0
         if coverage_pct >= _MIN_DELIST_COVERAGE:
-            stale = self.repo.mark_inactive(source, seen_ids, grace_hours=24)
+            stale = self.repo.mark_inactive(source, seen_ids, grace_hours=1)
         else:
             stale = 0
             logger.warning(
