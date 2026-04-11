@@ -185,6 +185,13 @@ class KBChaParser(AbstractParser):
             maker_start = _time.monotonic()
             maker_count = maker_counts.get(maker_code, 0)
 
+            def _enrich_page(page_lots: list) -> None:
+                if not page_lots:
+                    return
+                _t = _time.monotonic()
+                self._enricher.enrich_details(page_lots, stats, on_page_callback=on_page_callback)
+                stats["enrich_time"] += _time.monotonic() - _t
+
             maker_lots = self._fetch_maker(
                 maker_code,
                 maker_name,
@@ -194,19 +201,8 @@ class KBChaParser(AbstractParser):
                 max_pages=effective_pages,
                 on_page_callback=on_page_callback,
                 maker_count=maker_count,
+                enrich_callback=_enrich_page,
             )
-            if not maker_lots:
-                continue
-
-            new_lots = [lot for lot in maker_lots if lot.id not in existing_ids]
-            updated_lots = [lot for lot in maker_lots if lot.id in existing_ids]
-
-            if maker_lots:
-                logger.info(f"[{source}] {maker_name}: enriching {len(maker_lots)} lots with details "
-                            f"({len(new_lots)} new, {len(updated_lots)} existing)...")
-                _t_enrich = _time.monotonic()
-                self._enricher.enrich_details(maker_lots, stats, on_page_callback=on_page_callback)
-                stats["enrich_time"] += _time.monotonic() - _t_enrich
 
             if maker_lots:
                 all_lots.extend(maker_lots)
@@ -316,6 +312,7 @@ class KBChaParser(AbstractParser):
         max_pages: int | None = None,
         on_page_callback=None,
         maker_count: int = 0,
+        enrich_callback=None,
     ) -> list[CarLot]:
         source = self.get_source_key()
         lots: list[CarLot] = []
@@ -335,6 +332,7 @@ class KBChaParser(AbstractParser):
                             maker_code, maker_name, seen_ids, existing_ids, stats,
                             pages, on_page_callback,
                             class_code=class_code, class_label=class_name,
+                            enrich_callback=enrich_callback,
                         )
                         lots.extend(class_lots)
                     return lots
@@ -345,7 +343,8 @@ class KBChaParser(AbstractParser):
 
         logger.info(f"[{source}] --- {maker_name} ({maker_code}) ---")
         return self._fetch_pages(
-            maker_code, maker_name, seen_ids, existing_ids, stats, pages, on_page_callback
+            maker_code, maker_name, seen_ids, existing_ids, stats, pages, on_page_callback,
+            enrich_callback=enrich_callback,
         )
 
     def _fetch_pages(
@@ -359,6 +358,7 @@ class KBChaParser(AbstractParser):
         on_page_callback=None,
         class_code: str | None = None,
         class_label: str | None = None,
+        enrich_callback=None,
     ) -> list[CarLot]:
         source = self.get_source_key()
         lots: list[CarLot] = []
@@ -435,10 +435,12 @@ class KBChaParser(AbstractParser):
                 break
 
             new_on_page = 0
+            new_page_lots: list[CarLot] = []
             for lot in page_lots:
                 if lot.id not in seen_ids:
                     seen_ids.add(lot.id)
                     lots.append(lot)
+                    new_page_lots.append(lot)
                     new_on_page += 1
                     if lot.id not in existing_ids:
                         stats["new"] += 1
@@ -447,6 +449,9 @@ class KBChaParser(AbstractParser):
 
             logger.info(f"[{source}] {label} p.{page}: "
                          f"{len(page_lots)} parsed, {new_on_page} unique")
+
+            if enrich_callback and new_page_lots:
+                enrich_callback(new_page_lots)
 
             if on_page_callback:
                 try:
