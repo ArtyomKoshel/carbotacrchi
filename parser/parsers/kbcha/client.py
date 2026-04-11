@@ -97,14 +97,27 @@ class KBChaClient:
 
         return False
 
+    def _rebuild_client(self) -> None:
+        """Close and recreate the HTTP client with the current proxy (fresh connection pool)."""
+        try:
+            self._client.close()
+        except Exception:
+            pass
+        self._client = self._build_client(self._proxies[self._proxy_idx] if self._proxies else None)
+
     def _get(self, url: str, params: dict | None = None,
              headers: dict | None = None) -> httpx.Response:
-        """Wrapper around client.get that auto-rotates proxy on ProxyError and retries once."""
+        """Wrapper around client.get that handles network/proxy errors with retry."""
         try:
             return self._client.get(url, params=params, headers=headers)
         except httpx.ProxyError as e:
             logger.warning(f"[kbcha:proxy] ProxyError ({e}) — rotating and retrying...")
             self.rotate_proxy()
+            _time.sleep(2)
+            return self._client.get(url, params=params, headers=headers)
+        except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError) as e:
+            logger.warning(f"[kbcha:proxy] {type(e).__name__} ({e}) — rebuilding client and retrying...")
+            self._rebuild_client()
             _time.sleep(2)
             return self._client.get(url, params=params, headers=headers)
 
