@@ -180,6 +180,8 @@ class KBChaParser(AbstractParser):
         all_lots: list[CarLot] = []
 
         for maker_code, maker_name in makers.items():
+            if stats.get("_cancelled"):
+                break
             maker_start = _time.monotonic()
             maker_count = maker_counts.get(maker_code, 0)
 
@@ -276,6 +278,8 @@ class KBChaParser(AbstractParser):
                         logger.info(f"[STAT] [{source}]   {name}: {collected:,}")
 
         self._client.close()
+        if stats.get("_cancel_exc") is not None:
+            raise stats["_cancel_exc"]
         hours = int(elapsed // 3600)
         mins = int((elapsed % 3600) // 60)
         time_str = f"{hours}h {mins}m" if hours else f"{mins}m"
@@ -436,9 +440,7 @@ class KBChaParser(AbstractParser):
                     seen_ids.add(lot.id)
                     lots.append(lot)
                     new_on_page += 1
-                    if lot.id in existing_ids:
-                        stats["updated"] += 1
-                    else:
+                    if lot.id not in existing_ids:
                         stats["new"] += 1
 
             stats["total"] += new_on_page
@@ -453,8 +455,12 @@ class KBChaParser(AbstractParser):
                         total_pages=stats.get("site_api_total") or len(seen_ids),
                         stats=stats,
                     )
-                except Exception:
-                    pass
+                except BaseException as _cancel_exc:
+                    logger.info(f"[{source}] {label}: cancel signal — stopping pagination, "
+                                f"returning {len(lots)} collected lots for enrichment")
+                    stats["_cancelled"] = True
+                    stats["_cancel_exc"] = _cancel_exc
+                    break
 
             _p = _time.monotonic()
             _time.sleep(Config.REQUEST_DELAY)

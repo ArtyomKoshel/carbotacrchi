@@ -85,7 +85,7 @@ class LotRepository:
             conn.rollback()
             logger.warning(f"[DB] _insert_lot_changes failed: {type(e).__name__}: {e}")
 
-    def upsert_batch(self, lots: list[CarLot]) -> int:
+    def upsert_batch(self, lots: list[CarLot], stats: dict | None = None) -> int:
         if not lots:
             return 0
 
@@ -262,6 +262,8 @@ class LotRepository:
                 })
         if changes_to_insert:
             self._insert_lot_changes(changes_to_insert)
+            if stats is not None:
+                stats["updated"] = stats.get("updated", 0) + len(changes_to_insert)
 
         return len(rows)
 

@@ -106,16 +106,23 @@ class KBChaEnricher:
                     except Exception:
                         pass
 
+        valid_lots: list = []
         for lot, combined in results:
             if not combined:
                 continue
             self._apply_combined(lot, combined, enriched_fields)
+            valid_lots.append(lot)
+
+        if valid_lots:
             try:
-                self._repo.upsert_batch([lot])
+                self._repo.upsert_batch(valid_lots, stats=stats)
             except Exception as e:
                 etype = type(e).__name__
-                self._inc_error(stats, etype, f"detail upsert lot {lot.id}: {etype}: {e}")
-                logger.warning(f"[{self._source}] upsert lot after detail failed {lot.id}: {etype}: {e}")
+                self._inc_error(stats, etype, f"batch upsert failed ({len(valid_lots)} lots): {etype}: {e}")
+                logger.warning(f"[{self._source}] batch upsert failed: {etype}: {e}")
+
+        for lot in valid_lots:
+            if lot.raw_data.get("_db_skip"):
                 continue
             photos = lot.raw_data.get("photos") or []
             if photos:
