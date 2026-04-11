@@ -24,7 +24,6 @@
     @foreach([
       ['route' => 'admin.dashboard', 'icon' => '▦', 'label' => 'Dashboard'],
       ['route' => 'admin.changes',   'icon' => '↻', 'label' => 'Changes'],
-      ['route' => 'admin.stats',     'icon' => '▲', 'label' => 'Stats'],
       ['route' => 'admin.logs',      'icon' => '≡', 'label' => 'Logs'],
       ['route' => 'admin.jobs',      'icon' => '▶', 'label' => 'Jobs'],
       ['route' => 'admin.schedules', 'icon' => '⏱', 'label' => 'Schedules'],

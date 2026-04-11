@@ -127,12 +127,10 @@
           {{ $job->created_at->diffForHumans() }}
         </td>
         <td class="px-5 py-3 text-right flex items-center gap-2 justify-end">
-          @if(in_array($job->status, ['running', 'pending']))
-            <button onclick="watchJob({{ $job->id }}, '{{ $job->source }}')"
-                    class="px-2 py-1 rounded text-xs bg-blue-900/50 text-blue-300 hover:bg-blue-900 transition">
-              Watch
-            </button>
-          @endif
+          <a href="{{ route('admin.jobs.detail', $job->id) }}"
+             class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white transition">
+            Details
+          </a>
           @if(in_array($job->status, ['pending', 'running']))
             <form method="POST"
                   action="{{ route('admin.jobs.cancel', ['id' => $job->id]) }}">
@@ -153,152 +151,38 @@
 
 <div class="mt-4">{{ $jobs->withQueryString()->links() }}</div>
 
-{{-- Live progress panel --}}
-<div id="progress-panel" class="hidden fixed bottom-4 right-4 w-[480px] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
-  <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-    <div class="flex items-center gap-3">
-      <span class="text-sm font-semibold text-white" id="progress-title">Job progress</span>
-      <span class="text-xs text-gray-500 font-mono" id="progress-lifetime"></span>
-    </div>
-    <button onclick="closeProgress()" class="text-gray-500 hover:text-white text-lg leading-none">×</button>
-  </div>
-  {{-- Tabs --}}
-  <div class="flex border-b border-gray-800 text-xs">
-    <button id="tab-progress" onclick="switchTab('progress')"
-            class="px-4 py-2 text-blue-400 border-b-2 border-blue-500 font-semibold">Progress</button>
-    <button id="tab-lots" onclick="switchTab('lots')"
-            class="px-4 py-2 text-gray-500 hover:text-white">Lots <span id="lots-count" class="ml-1 text-gray-600"></span></button>
-  </div>
-  <div id="pane-progress" class="p-3 text-xs font-mono space-y-0.5" style="max-height:300px;overflow-y:auto"></div>
-  <div id="pane-lots"     class="hidden p-3 text-xs space-y-1"      style="max-height:300px;overflow-y:auto"></div>
-</div>
-
 <script>
-let es = null, lotsTimer = null, watchId = null, lifetimeTimer = null, lifetimeStart = null;
-
-function switchTab(tab) {
-  const tabs = ['progress','lots'];
-  tabs.forEach(t => {
-    document.getElementById(`tab-${t}`).className =
-      t === tab ? 'px-4 py-2 text-blue-400 border-b-2 border-blue-500 font-semibold text-xs'
-                : 'px-4 py-2 text-gray-500 hover:text-white text-xs';
-    document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== tab);
-  });
-}
-
-function fmtElapsed(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  return h ? `${h}h ${m}m ${sec}s` : m ? `${m}m ${sec}s` : `${sec}s`;
-}
-
-function watchJob(id, source) {
-  if (es) { es.close(); es = null; }
-  if (lotsTimer) { clearInterval(lotsTimer); lotsTimer = null; }
-  if (lifetimeTimer) { clearInterval(lifetimeTimer); lifetimeTimer = null; }
-  watchId = id;
-
-  const panel = document.getElementById('progress-panel');
-  document.getElementById('pane-progress').innerHTML = '';
-  document.getElementById('pane-lots').innerHTML = '';
-  document.getElementById('lots-count').textContent = '';
-  document.getElementById('progress-title').textContent = `Job #${id} — ${source}`;
-  panel.classList.remove('hidden');
-  switchTab('progress');
-
-  // Lifetime timer
-  lifetimeStart = Math.floor(Date.now() / 1000);
-  const ltEl = document.getElementById('progress-lifetime');
-  ltEl.textContent = '0s';
-  lifetimeTimer = setInterval(() => {
-    ltEl.textContent = fmtElapsed(Math.floor(Date.now() / 1000) - lifetimeStart);
-  }, 1000);
-
-  // SSE progress stream
-  es = new EventSource(`/admin/jobs/${id}/progress`);
+// Lightweight SSE: only update table rows for running jobs, no popup
+function watchJobRow(id, source) {
+  const es = new EventSource(`/admin/jobs/${id}/progress`);
   es.onmessage = (e) => {
     const d = JSON.parse(e.data);
-    const pane = document.getElementById('pane-progress');
-    const line = document.createElement('div');
-    const color = d.status === 'error' ? 'text-red-400'
-                : d.status === 'done' || d.status === 'cancelled' ? 'text-green-400'
-                : d.status === 'pending' ? 'text-gray-600'
-                : 'text-gray-300';
-    line.className = color;
-    if (d.pct !== undefined) {
-      line.textContent = `${d.pct}% · ${(d.found_total ?? 0).toLocaleString()} / ${(d.api_total ?? 0).toLocaleString()}`;
-    } else {
-      line.textContent = d.status + (d.error ? ': ' + d.error : d.total !== undefined ? ` — ${d.total.toLocaleString()} lots` : '');
-    }
-    pane.appendChild(line);
-    pane.scrollTop = pane.scrollHeight;
-
     const row = document.querySelector(`tr[data-id="${id}"]`);
-    if (row) {
-      row.dataset.status = d.status;
-      const badge = row.querySelector('.status-badge');
-      const colors = { done:'bg-green-900 text-green-400', error:'bg-red-900 text-red-400',
-        running:'bg-yellow-900 text-yellow-400', pending:'bg-blue-900/50 text-blue-400',
-        cancelled:'bg-gray-800 text-gray-500' };
-      badge.className = `status-badge text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
-      badge.textContent = d.status;
-      if (d.pct !== undefined) row.querySelector('.progress-cell').innerHTML = `<span class="text-white font-semibold">${d.pct}%</span> <span class="text-gray-600">${(d.found_total??0).toLocaleString()} / ${(d.api_total??0).toLocaleString()}</span>`;
-      if (d.total !== undefined) {
-        let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> lots`;
-        if (d.coverage_pct) r += ` <span class="text-gray-600">·</span> <span class="${d.coverage_pct>=95?'text-green-400':'text-yellow-400'}">${d.coverage_pct}%</span>`;
-        if (d.new) r += ` <span class="text-gray-600">·</span> <span class="text-blue-400">+${d.new.toLocaleString()}</span>`;
-        if (d.time) r += ` <span class="text-gray-600">·</span> <span class="text-gray-500">${d.time}</span>`;
-        row.querySelector('.result-cell').innerHTML = r;
-      }
+    if (!row) return;
+    row.dataset.status = d.status;
+    const badge = row.querySelector('.status-badge');
+    const colors = { done:'bg-green-900 text-green-400', error:'bg-red-900 text-red-400',
+      running:'bg-yellow-900 text-yellow-400', pending:'bg-blue-900/50 text-blue-400',
+      cancelled:'bg-gray-800 text-gray-500' };
+    badge.className = `status-badge text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
+    badge.textContent = d.status;
+    if (d.pct !== undefined) row.querySelector('.progress-cell').innerHTML = `<span class="text-white font-semibold">${d.pct}%</span> <span class="text-gray-600">${(d.found_total??0).toLocaleString()} / ${(d.api_total??0).toLocaleString()}</span>`;
+    if (d.total !== undefined) {
+      let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> lots`;
+      if (d.new) r += ` <span class="text-gray-600">·</span> <span class="text-blue-400">+${d.new.toLocaleString()}</span>`;
+      if (d.errors) r += ` <span class="text-gray-600">·</span> <span class="text-red-400">${d.errors} err</span>`;
+      row.querySelector('.result-cell').innerHTML = r;
     }
     if (['done','error','cancelled'].includes(d.status)) {
-      es.close(); es = null;
-      if (lifetimeTimer) { clearInterval(lifetimeTimer); lifetimeTimer = null; }
+      es.close();
+      setTimeout(() => location.reload(), 1500);
     }
   };
-  es.onerror = () => { es.close(); es = null; };
-
-  // Poll all processed lots every 5s
-  const pollLots = () => {
-    fetch(`/admin/jobs/${id}/events`)
-      .then(r => r.json())
-      .then(data => {
-        const pane = document.getElementById('pane-lots');
-        pane.innerHTML = '';
-        const fmtPrice = (p) => p ? `$${Number(p).toLocaleString()}` : '';
-        const fmtMi = (m) => m ? `${Number(m).toLocaleString()} km` : '';
-        (data.lots || []).forEach(lot => {
-          const div = document.createElement('div');
-          div.className = 'flex items-center gap-2 border-b border-gray-800/50 pb-1';
-          const badge = lot.changed
-            ? '<span class="text-[10px] px-1 rounded bg-yellow-900/60 text-yellow-400">upd</span>'
-            : '<span class="text-[10px] px-1 rounded bg-gray-800 text-gray-600">ok</span>';
-          div.innerHTML = `${badge}
-            <span class="text-gray-300 font-mono shrink-0">${lot.id}</span>
-            <span class="text-gray-400 truncate flex-1">${lot.title}</span>
-            <span class="text-gray-500 shrink-0">${fmtPrice(lot.price)}</span>
-            <span class="text-gray-600 shrink-0">${fmtMi(lot.mileage)}</span>`;
-          pane.appendChild(div);
-        });
-        const chTxt = data.changed ? `, ${data.changed} changed` : '';
-        document.getElementById('lots-count').textContent = data.total ? `(${data.total}${chTxt})` : '';
-        if (['done','error','cancelled'].includes(data.status)) {
-          clearInterval(lotsTimer); lotsTimer = null;
-        }
-      }).catch(() => {});
-  };
-  pollLots();
-  lotsTimer = setInterval(pollLots, 3000);
-}
-
-function closeProgress() {
-  if (es) { es.close(); es = null; }
-  if (lotsTimer) { clearInterval(lotsTimer); lotsTimer = null; }
-  if (lifetimeTimer) { clearInterval(lifetimeTimer); lifetimeTimer = null; }
-  document.getElementById('progress-panel').classList.add('hidden');
+  es.onerror = () => es.close();
 }
 
 document.querySelectorAll('tr[data-status="running"]').forEach(row => {
-  watchJob(parseInt(row.dataset.id), row.dataset.source);
+  watchJobRow(parseInt(row.dataset.id), row.dataset.source);
 });
 </script>
 

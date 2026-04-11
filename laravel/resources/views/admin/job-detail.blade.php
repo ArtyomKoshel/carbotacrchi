@@ -24,20 +24,21 @@
 </div>
 
 @php
-  // Prefer $stat (DB) over $job->result (JSON) for display
+  // Prefer $stat (DB) > $job->result (JSON) > $job->progress (live) for display
   $r = $job->result ?? [];
-  $total     = $stat->total ?? ($r['total'] ?? 0);
-  $apiTotal  = $stat->api_total ?? ($r['api_total'] ?? 0);
-  $cov       = $stat->coverage_pct ?? ($r['coverage_pct'] ?? ($job->progress['pct'] ?? 0));
-  $newLots   = $stat->new_lots ?? ($r['new'] ?? 0);
-  $updated   = $stat->updated_lots ?? ($r['updated'] ?? 0);
+  $p = $job->progress ?? [];
+  $total     = $stat->total ?? ($r['total'] ?? ($p['total'] ?? 0));
+  $apiTotal  = $stat->api_total ?? ($r['api_total'] ?? ($p['api_total'] ?? 0));
+  $cov       = $stat->coverage_pct ?? ($r['coverage_pct'] ?? ($p['pct'] ?? 0));
+  $newLots   = $stat->new_lots ?? ($r['new'] ?? ($p['new'] ?? 0));
+  $updated   = $stat->updated_lots ?? ($r['updated'] ?? ($p['updated'] ?? 0));
   $stale     = $stat->stale_lots ?? ($r['stale'] ?? 0);
-  $errors    = $stat->errors ?? ($r['errors'] ?? 0);
-  $elapsed   = $stat->elapsed_s ?? ($r['elapsed_s'] ?? 0);
-  $avgLot    = $stat->avg_per_lot_s ?? ($r['avg_per_lot_s'] ?? 0);
-  $searchT   = $stat->search_time_s ?? ($r['search_time_s'] ?? null);
-  $enrichT   = $stat->enrich_time_s ?? ($r['enrich_time_s'] ?? null);
-  $pauseT    = $stat->pause_time_s ?? ($r['pause_time_s'] ?? 0);
+  $errors    = $stat->errors ?? ($r['errors'] ?? ($p['errors'] ?? 0));
+  $elapsed   = $stat->elapsed_s ?? ($r['elapsed_s'] ?? ($p['elapsed_s'] ?? 0));
+  $avgLot    = $stat->avg_per_lot_s ?? ($r['avg_per_lot_s'] ?? ($p['avg_per_lot_s'] ?? 0));
+  $searchT   = $stat->search_time_s ?? ($r['search_time_s'] ?? ($p['search_time_s'] ?? null));
+  $enrichT   = $stat->enrich_time_s ?? ($r['enrich_time_s'] ?? ($p['enrich_time_s'] ?? null));
+  $pauseT    = $stat->pause_time_s ?? ($r['pause_time_s'] ?? ($p['pause_time_s'] ?? 0));
   $timeStr   = $r['time'] ?? '--';
   $errTypes  = $stat ? json_decode($stat->error_types ?? '{}', true) : ($r['error_types'] ?? []);
   $errLog    = $stat ? json_decode($stat->error_log ?? '[]', true) : ($r['error_log'] ?? []);
@@ -120,9 +121,6 @@
   <button onclick="switchTab('logs')" id="tab-logs" class="px-4 py-2 text-gray-500 hover:text-white">
     Logs
   </button>
-  <button onclick="switchTab('history')" id="tab-history" class="px-4 py-2 text-gray-500 hover:text-white">
-    History <span class="text-gray-600 ml-1">{{ count($history) }}</span>
-  </button>
 </div>
 
 {{-- Error log pane --}}
@@ -152,70 +150,39 @@
 
 {{-- Logs pane --}}
 <div id="pane-logs" class="hidden bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-  <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-800">
-    <select id="log-level" onchange="loadLogs()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white">
+  {{-- Toolbar row 1: level + search --}}
+  <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-800 flex-wrap">
+    <select id="log-level" onchange="logPage=0;loadLogs()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white">
       <option value="">All levels</option>
-      <option value="ERROR">ERROR</option>
-      <option value="WARNING">WARNING</option>
-      <option value="INFO">INFO</option>
-      <option value="STAT">STAT</option>
+      <option value="ERROR">Errors</option>
+      <option value="WARNING">Warnings</option>
+      <option value="INFO">Info</option>
+      <option value="DEBUG">Debug</option>
+      <option value="STAT">Stats</option>
     </select>
+    <input id="log-search" type="text" placeholder="Search..." onkeydown="if(event.key==='Enter'){logPage=0;loadLogs()}"
+           class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white placeholder-gray-600 w-48">
+    <button onclick="logPage=0;loadLogs()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">Search</button>
     <button onclick="loadLogs()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">↻ Refresh</button>
-    <span id="log-meta" class="text-xs text-gray-600 ml-auto"></span>
+    <button id="log-ar-btn" onclick="toggleLogAutoRefresh()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-green-400">
+      Auto: <span id="log-ar-state">OFF</span>
+    </button>
+    <button onclick="scrollLogBottom()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white" title="Scroll to end">↓ End</button>
+    <a href="/admin/jobs/{{ $job->id }}/log?limit=50000" target="_blank"
+       class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white ml-auto">↓ Raw</a>
+    <span id="log-meta" class="text-xs text-gray-600"></span>
+  </div>
+  {{-- Toolbar row 2: pagination --}}
+  <div id="log-pagination" class="hidden flex items-center gap-1 px-4 py-2 border-b border-gray-800">
+    <button onclick="logPage=0;loadLogs()" class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">«</button>
+    <button onclick="logPage=Math.max(0,logPage-1);loadLogs()" class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">‹</button>
+    <span id="log-page-info" class="text-xs text-gray-500 mx-2"></span>
+    <button onclick="logPage=Math.min(logTotalPages-1,logPage+1);loadLogs()" class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">›</button>
+    <button onclick="logPage=logTotalPages-1;loadLogs()" class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">»</button>
   </div>
   <div id="log-content" class="p-4 font-mono text-xs space-y-0.5 max-h-[600px] overflow-y-auto">
-    <div class="text-gray-600">Click "Refresh" or switch to this tab to load logs</div>
+    <div class="text-gray-600">Switch to this tab to load logs</div>
   </div>
-</div>
-
-{{-- History pane --}}
-<div id="pane-history" class="hidden bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-  @if($history->isEmpty())
-    <div class="p-4 text-gray-600 text-xs">No historical data yet</div>
-  @else
-    <table class="w-full text-xs">
-      <thead>
-        <tr class="text-[10px] text-gray-500 uppercase border-b border-gray-800">
-          <th class="px-3 py-2 text-left">Job</th>
-          <th class="px-3 py-2 text-right">Total</th>
-          <th class="px-3 py-2 text-right">API</th>
-          <th class="px-3 py-2 text-right">Cov%</th>
-          <th class="px-3 py-2 text-right">New</th>
-          <th class="px-3 py-2 text-right">Stale</th>
-          <th class="px-3 py-2 text-right">Errors</th>
-          <th class="px-3 py-2 text-right">Elapsed</th>
-          <th class="px-3 py-2 text-right">Avg/Lot</th>
-          <th class="px-3 py-2 text-right">Pauses</th>
-          <th class="px-3 py-2 text-left">Date</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-800">
-        @foreach($history as $h)
-          @php $isCurrent = $h->job_id == $job->id; @endphp
-          <tr class="{{ $isCurrent ? 'bg-blue-900/20' : '' }}">
-            <td class="px-3 py-2">
-              <a href="{{ route('admin.jobs.detail', $h->job_id) }}" class="text-blue-400 hover:text-blue-300 {{ $isCurrent ? 'font-bold' : '' }}">
-                #{{ $h->job_id }}{{ $isCurrent ? ' ←' : '' }}
-              </a>
-            </td>
-            <td class="px-3 py-2 text-right text-white font-mono">{{ number_format($h->total) }}</td>
-            <td class="px-3 py-2 text-right text-gray-500 font-mono">{{ number_format($h->api_total) }}</td>
-            <td class="px-3 py-2 text-right font-mono {{ $h->coverage_pct >= 95 ? 'text-green-400' : 'text-yellow-400' }}">{{ $h->coverage_pct }}%</td>
-            <td class="px-3 py-2 text-right text-blue-400 font-mono">{{ number_format($h->new_lots) }}</td>
-            <td class="px-3 py-2 text-right text-orange-400 font-mono">{{ number_format($h->stale_lots) }}</td>
-            <td class="px-3 py-2 text-right font-mono {{ $h->errors > 0 ? 'text-red-400' : 'text-gray-600' }}">{{ $h->errors }}</td>
-            <td class="px-3 py-2 text-right text-gray-400 font-mono">
-              @php $eh = (int)($h->elapsed_s/3600); $em = (int)(fmod($h->elapsed_s,3600)/60); @endphp
-              {{ $eh ? "{$eh}h {$em}m" : "{$em}m" }}
-            </td>
-            <td class="px-3 py-2 text-right text-gray-500 font-mono">{{ $h->avg_per_lot_s }}s</td>
-            <td class="px-3 py-2 text-right text-gray-600 font-mono">{{ $h->pause_time_s }}s</td>
-            <td class="px-3 py-2 text-gray-500">{{ \Carbon\Carbon::parse($h->created_at)->format('M d H:i') }}</td>
-          </tr>
-        @endforeach
-      </tbody>
-    </table>
-  @endif
 </div>
 
 <script>
@@ -223,14 +190,15 @@ const JOB_ID = {{ $job->id }};
 const JOB_STATUS = '{{ $job->status }}';
 const JOB_SOURCE = '{{ $job->source }}';
 let logsLoaded = false;
+let logPage = 0, logTotalPages = 1, logAutoRefresh = null;
 
 function switchTab(tab) {
-  ['errors', 'error-types', 'logs', 'history'].forEach(t => {
+  ['errors', 'error-types', 'logs'].forEach(t => {
     const btn = document.getElementById(`tab-${t}`);
     const pane = document.getElementById(`pane-${t}`);
     if (t === tab) {
       const colors = { errors: 'text-red-400 border-red-500', logs: 'text-blue-400 border-blue-500',
-        'error-types': 'text-yellow-400 border-yellow-500', history: 'text-green-400 border-green-500' };
+        'error-types': 'text-yellow-400 border-yellow-500' };
       btn.className = 'px-4 py-2 border-b-2 font-semibold ' + (colors[t] || '');
       pane.classList.remove('hidden');
     } else {
@@ -242,11 +210,13 @@ function switchTab(tab) {
 }
 
 function loadLogs() {
-  const level = document.getElementById('log-level').value;
+  const level  = document.getElementById('log-level').value;
+  const search = document.getElementById('log-search').value;
   const content = document.getElementById('log-content');
   content.innerHTML = '<div class="text-gray-500">Loading...</div>';
 
-  fetch(`/admin/jobs/${JOB_ID}/log?level=${level}&limit=500`)
+  const params = new URLSearchParams({ level, search, page: logPage, limit: 500 });
+  fetch(`/admin/jobs/${JOB_ID}/log?${params}`)
     .then(r => r.json())
     .then(data => {
       logsLoaded = true;
@@ -254,13 +224,30 @@ function loadLogs() {
         content.innerHTML = `<div class="text-red-400">${data.error}</div>`;
         return;
       }
+
+      // Meta
+      const mb = (data.file_size / 1024 / 1024).toFixed(1);
       document.getElementById('log-meta').textContent =
-        `${data.total} lines · ${(data.file_size / 1024 / 1024).toFixed(1)} MB`;
+        `${data.total.toLocaleString()} of ${data.total_raw.toLocaleString()} lines · ${mb} MB`;
+
+      // Pagination
+      logPage = data.page;
+      logTotalPages = data.total_pages;
+      const pgEl = document.getElementById('log-pagination');
+      if (logTotalPages > 1) {
+        pgEl.classList.remove('hidden');
+        document.getElementById('log-page-info').textContent = `Page ${logPage + 1} / ${logTotalPages}`;
+      } else {
+        pgEl.classList.add('hidden');
+      }
+
+      // Render lines
       if (!data.lines.length) {
-        content.innerHTML = '<div class="text-gray-600">No log lines</div>';
+        content.innerHTML = '<div class="text-gray-600">No matching log lines</div>';
         return;
       }
       content.innerHTML = '';
+      const searchLower = search.toLowerCase();
       data.lines.forEach(line => {
         const div = document.createElement('div');
         let cls = 'text-gray-500';
@@ -270,13 +257,39 @@ function loadLogs() {
         else if (line.includes('[DEBUG]'))   cls = 'log-debug';
         if (line.includes('[STAT]')) cls = 'log-stat';
         div.className = cls;
-        div.textContent = line;
+        if (searchLower) {
+          div.innerHTML = line.replace(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+            '<mark class="bg-yellow-700/60 text-yellow-200 rounded px-0.5">$1</mark>');
+        } else {
+          div.textContent = line;
+        }
         content.appendChild(div);
       });
     })
     .catch(e => {
       content.innerHTML = `<div class="text-red-400">Failed: ${e}</div>`;
     });
+}
+
+function toggleLogAutoRefresh() {
+  if (logAutoRefresh) {
+    clearInterval(logAutoRefresh);
+    logAutoRefresh = null;
+    document.getElementById('log-ar-state').textContent = 'OFF';
+    document.getElementById('log-ar-btn').classList.remove('text-green-400');
+    document.getElementById('log-ar-btn').classList.add('text-gray-400');
+  } else {
+    loadLogs();
+    logAutoRefresh = setInterval(() => loadLogs(), 3000);
+    document.getElementById('log-ar-state').textContent = '3s';
+    document.getElementById('log-ar-btn').classList.add('text-green-400');
+    document.getElementById('log-ar-btn').classList.remove('text-gray-400');
+  }
+}
+
+function scrollLogBottom() {
+  const el = document.getElementById('log-content');
+  el.scrollTop = el.scrollHeight;
 }
 
 // Live updates via SSE for running jobs
@@ -308,24 +321,32 @@ if (JOB_STATUS === 'running') {
       if (det) det.textContent = `${fmt(d.found_total)} / ${fmt(d.api_total)}`;
     }
 
-    // Stats
-    if (d.total !== undefined) {
-      document.getElementById('s-total').textContent = fmt(d.total);
-      if (d.coverage_pct) {
-        const cel = document.getElementById('s-coverage');
-        cel.textContent = d.coverage_pct + '%';
-        cel.className = `text-xl font-bold mt-1 ${d.coverage_pct >= 95 ? 'text-green-400' : 'text-yellow-400'}`;
-      }
-      if (d.new !== undefined) document.getElementById('s-new').textContent = fmt(d.new);
-      if (d.updated !== undefined) document.getElementById('s-updated').textContent = fmt(d.updated);
-      if (d.stale !== undefined) document.getElementById('s-stale').textContent = fmt(d.stale);
-      if (d.errors !== undefined) document.getElementById('s-errors').textContent = d.errors;
-      if (d.time) document.getElementById('t-elapsed').textContent = d.time;
-      if (d.avg_per_lot_s) document.getElementById('t-avg').textContent = d.avg_per_lot_s + 's';
-      if (d.search_time_s !== undefined) document.getElementById('t-search').textContent = d.search_time_s + 's';
-      if (d.enrich_time_s !== undefined) document.getElementById('t-enrich').textContent = d.enrich_time_s + 's';
-      if (d.pause_time_s !== undefined) document.getElementById('t-pause').textContent = d.pause_time_s + 's';
+    // Stats cards
+    if (d.total !== undefined) document.getElementById('s-total').textContent = fmt(d.total);
+    if (d.pct !== undefined) {
+      const cel = document.getElementById('s-coverage');
+      cel.textContent = d.pct + '%';
+      cel.className = `text-xl font-bold mt-1 ${d.pct >= 95 ? 'text-green-400' : d.pct > 0 ? 'text-yellow-400' : 'text-gray-500'}`;
     }
+    if (d.new !== undefined) document.getElementById('s-new').textContent = fmt(d.new);
+    if (d.updated !== undefined) document.getElementById('s-updated').textContent = fmt(d.updated);
+    if (d.errors !== undefined) {
+      const eel = document.getElementById('s-errors');
+      eel.textContent = d.errors;
+      eel.className = `text-xl font-bold mt-1 ${d.errors > 0 ? 'text-red-400' : 'text-gray-500'}`;
+    }
+
+    // Timing cards
+    if (d.elapsed_s) document.getElementById('t-elapsed').textContent = fmtTime(d.elapsed_s);
+    else if (d.time) document.getElementById('t-elapsed').textContent = d.time;
+    if (d.avg_per_lot_s) document.getElementById('t-avg').textContent = d.avg_per_lot_s + 's';
+    if (d.search_time_s !== undefined) document.getElementById('t-search').textContent = d.search_time_s + 's';
+    if (d.enrich_time_s !== undefined) document.getElementById('t-enrich').textContent = d.enrich_time_s + 's';
+    if (d.pause_time_s !== undefined) document.getElementById('t-pause').textContent = d.pause_time_s + 's';
+
+    // API total sub-label
+    if (d.api_total) document.querySelector('#s-total + div')?.remove(),
+      document.getElementById('s-total').insertAdjacentHTML('afterend', `<div class="text-[10px] text-gray-600 mt-0.5">API: ${fmt(d.api_total)}</div>`);
 
     // Status change
     if (['done', 'error', 'cancelled'].includes(d.status)) {

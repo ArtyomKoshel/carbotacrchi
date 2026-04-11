@@ -66,6 +66,7 @@ class AdminController extends Controller
 
         $lastScheduled = DB::table('parse_jobs')
             ->select('source', DB::raw('MAX(created_at) as last_run'), DB::raw('MAX(status) as last_status'))
+            ->where('created_at', '>=', now()->subDays(30))
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(filters, '$.triggered_by')) = 'scheduler'")
             ->groupBy('source')
             ->get()
@@ -94,7 +95,22 @@ class AdminController extends Controller
             ->distinct()
             ->pluck('event');
 
-        return view('admin.changes', compact('changes', 'events', 'event'));
+        $dailyChanges = DB::table('lot_changes')
+            ->select(DB::raw('DATE(recorded_at) as day'), DB::raw('COUNT(*) as cnt'))
+            ->where('recorded_at', '>=', now()->subDays(14))
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get();
+
+        $topChanged = DB::table('lot_changes')
+            ->select('lot_id', DB::raw('COUNT(*) as cnt'))
+            ->where('recorded_at', '>=', now()->subDays(7))
+            ->groupBy('lot_id')
+            ->orderByDesc('cnt')
+            ->limit(20)
+            ->get();
+
+        return view('admin.changes', compact('changes', 'events', 'event', 'dailyChanges', 'topChanged'));
     }
 
     public function logs(Request $request)
@@ -372,14 +388,7 @@ class AdminController extends Controller
         // Structured stats from job_stats table (if saved)
         $stat = DB::table('job_stats')->where('job_id', $id)->first();
 
-        // Recent runs for this source for comparison
-        $history = DB::table('job_stats')
-            ->where('source', $job->source)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get();
-
-        return view('admin.job-detail', compact('job', 'stat', 'history'));
+        return view('admin.job-detail', compact('job', 'stat'));
     }
 
     public function jobLog(Request $request, int $id)
@@ -392,52 +401,44 @@ class AdminController extends Controller
 
         $jobLogPath = dirname($baseFile) . '/jobs/job-' . $id . '.log';
         if (!file_exists($jobLogPath)) {
-            return response()->json(['lines' => [], 'error' => 'Job log file not found']);
+            return response()->json(['lines' => [], 'error' => "Job log not found: job-{$id}.log"]);
         }
 
-        $level = $request->query('level', '');
-        $limit = min((int) $request->query('limit', 200), 2000);
+        $level  = $request->query('level', '');
+        $search = trim($request->query('search', ''));
+        $page   = max(0, (int) $request->query('page', 0));
+        $perPage = min((int) $request->query('limit', 500), 5000);
 
-        $fp = @fopen($jobLogPath, 'r');
-        if (!$fp) {
-            return response()->json(['lines' => [], 'error' => 'Cannot open log file']);
+        // Read all lines (job logs are bounded — typically <50k lines)
+        $raw = @file($jobLogPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($raw === false) {
+            return response()->json(['lines' => [], 'error' => 'Cannot read log file']);
         }
 
-        // Read from end of file
-        fseek($fp, 0, SEEK_END);
-        $pos = ftell($fp);
-        $results = [];
-        $remainder = '';
-        $chunkSize = 65536;
-
-        while ($pos > 0 && count($results) < $limit) {
-            $read = min($chunkSize, $pos);
-            $pos -= $read;
-            fseek($fp, $pos);
-            $chunk = fread($fp, $read);
-            $block = $chunk . $remainder;
-            $lines = explode("\n", $block);
-            $remainder = array_shift($lines);
-
-            for ($i = count($lines) - 1; $i >= 0; $i--) {
-                $line = $lines[$i];
-                if ($line === '') continue;
-                if ($level && !str_contains($line, "[{$level}]")) continue;
-                $results[] = $line;
-                if (count($results) >= $limit) break;
-            }
+        // Filter
+        $filtered = $raw;
+        if ($level) {
+            $filtered = array_values(array_filter($filtered, fn($l) => str_contains($l, "[{$level}]")));
         }
-        if ($remainder !== '' && count($results) < $limit) {
-            if (!$level || str_contains($remainder, "[{$level}]")) {
-                $results[] = $remainder;
-            }
+        if ($search) {
+            $filtered = array_values(array_filter($filtered, fn($l) => stripos($l, $search) !== false));
         }
-        fclose($fp);
+
+        $totalFiltered = count($filtered);
+        $totalPages = max(1, (int) ceil($totalFiltered / $perPage));
+        $page = min($page, $totalPages - 1);
+
+        // Slice for current page (chronological order — oldest first)
+        $pageLines = array_slice($filtered, $page * $perPage, $perPage);
 
         return response()->json([
-            'lines' => $results,
-            'total' => count($results),
-            'file_size' => filesize($jobLogPath),
+            'lines'       => $pageLines,
+            'total'       => $totalFiltered,
+            'total_raw'   => count($raw),
+            'page'        => $page,
+            'total_pages' => $totalPages,
+            'per_page'    => $perPage,
+            'file_size'   => filesize($jobLogPath),
         ]);
     }
 
@@ -508,10 +509,11 @@ class AdminController extends Controller
     public function fieldStats()
     {
         $errors = [];
+        $ttl = 300; // 5 min cache
 
         // ── 1. lots columns ───────────────────────────────────────────────
         try {
-            $lotsStats = DB::select("
+            $lotsStats = cache()->remember('accuracy:lots', $ttl, fn() => DB::select("
                 SELECT
                     source,
                     COUNT(*) AS total,
@@ -524,7 +526,7 @@ class AdminController extends Controller
                     SUM(transmission IS NOT NULL AND transmission != '')    AS transmission,
                     SUM(drive_type   IS NOT NULL AND drive_type != '')      AS drive_type,
                     SUM(engine_volume IS NOT NULL)                          AS engine_volume,
-                    SUM(mileage      IS NOT NULL)                           AS mileage,
+                    SUM(mileage > 0)                                        AS mileage,
                     SUM(color        IS NOT NULL AND color != '')           AS color,
                     SUM(seat_color   IS NOT NULL AND seat_color != '')      AS seat_color,
                     SUM(has_accident IS NOT NULL)                           AS has_accident,
@@ -533,19 +535,25 @@ class AdminController extends Controller
                     SUM(flood_history IS NOT NULL)                          AS flood_history,
                     SUM(total_loss_history IS NOT NULL)                     AS total_loss_history,
                     SUM(registration_date IS NOT NULL)                      AS registration_date,
-                    SUM(price        IS NOT NULL)                           AS price,
-                    SUM(lien_status  IS NOT NULL AND lien_status <> 'clean') AS lien_not_clean,
-                    SUM(seizure_status IS NOT NULL AND seizure_status <> 'clean') AS seizure_not_clean,
-                    SUM(repair_cost  IS NOT NULL AND repair_cost > 0)       AS repair_cost,
+                    SUM(price > 0)                                          AS price,
+                    SUM(price_krw IS NOT NULL AND price_krw > 0)            AS price_krw,
+                    SUM(lien_status IS NOT NULL AND lien_status != '')      AS lien_status,
+                    SUM(lien_status IS NOT NULL AND lien_status <> 'clean' AND lien_status <> '') AS lien_not_clean,
+                    SUM(seizure_status IS NOT NULL AND seizure_status != '') AS seizure_status,
+                    SUM(seizure_status IS NOT NULL AND seizure_status <> 'clean' AND seizure_status <> '') AS seizure_not_clean,
+                    SUM(repair_cost IS NOT NULL)                             AS repair_cost,
+                    SUM(repair_cost IS NOT NULL AND repair_cost > 0)        AS repair_cost_positive,
                     SUM(dealer_name  IS NOT NULL AND dealer_name != '')     AS dealer_name,
                     SUM(dealer_phone IS NOT NULL AND dealer_phone != '')    AS dealer_phone,
                     SUM(dealer_company IS NOT NULL AND dealer_company != '') AS dealer_company,
                     SUM(location     IS NOT NULL AND location != '')        AS location,
                     SUM(options      IS NOT NULL AND JSON_LENGTH(options) > 0) AS has_options,
-                    SUM(image_url    IS NOT NULL AND image_url != '')       AS image_url
+                    SUM(image_url    IS NOT NULL AND image_url != '')       AS image_url,
+                    SUM(fuel_economy IS NOT NULL AND fuel_economy > 0)      AS fuel_economy,
+                    SUM(warranty_text IS NOT NULL AND warranty_text != '')   AS warranty_text
                 FROM lots
                 GROUP BY source
-            ");
+            "));
         } catch (\Exception $e) {
             $lotsStats = [];
             $errors[] = 'lots: ' . $e->getMessage();
@@ -553,24 +561,24 @@ class AdminController extends Controller
 
         // ── 2. raw_data JSON keys ─────────────────────────────────────────
         try {
-            $rawStats = DB::select("
+            $rawStats = cache()->remember('accuracy:raw', $ttl, fn() => DB::select("
                 SELECT
                     source,
                     COUNT(*) AS total,
-                    SUM(JSON_EXTRACT(raw_data, '$.photos')             IS NOT NULL) AS photos,
-                    SUM(JSON_EXTRACT(raw_data, '$.engine_code')        IS NOT NULL) AS engine_code,
-                    SUM(JSON_EXTRACT(raw_data, '$.warranty_type')      IS NOT NULL) AS warranty_type,
-                    SUM(JSON_EXTRACT(raw_data, '$.recall')             IS NOT NULL) AS recall,
-                    SUM(JSON_EXTRACT(raw_data, '$.recall_status')      IS NOT NULL) AS recall_status,
-                    SUM(JSON_EXTRACT(raw_data, '$.car_state')          IS NOT NULL) AS car_state,
-                    SUM(JSON_EXTRACT(raw_data, '$.mechanical_issues')  IS NOT NULL) AS mechanical_issues,
-                    SUM(JSON_EXTRACT(raw_data, '$.diagnosis_center')   IS NOT NULL) AS diagnosis_center,
-                    SUM(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id') IS NOT NULL) AS inspect_vehicle_id,
-                    SUM(JSON_EXTRACT(raw_data, '$.drive_type')         IS NOT NULL) AS drive_type_raw,
-                    SUM(JSON_EXTRACT(raw_data, '$.photo_count')        IS NOT NULL) AS photo_count
+                    SUM(JSON_EXTRACT(raw_data, '$.photos')             IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.photos')) <> 'NULL') AS photos,
+                    SUM(JSON_EXTRACT(raw_data, '$.engine_code')        IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.engine_code')) <> 'NULL') AS engine_code,
+                    SUM(JSON_EXTRACT(raw_data, '$.warranty_type')      IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.warranty_type')) <> 'NULL') AS warranty_type,
+                    SUM(JSON_EXTRACT(raw_data, '$.recall')             IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.recall')) <> 'NULL') AS recall,
+                    SUM(JSON_EXTRACT(raw_data, '$.recall_status')      IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.recall_status')) <> 'NULL') AS recall_status,
+                    SUM(JSON_EXTRACT(raw_data, '$.car_state')          IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.car_state')) <> 'NULL') AS car_state,
+                    SUM(JSON_EXTRACT(raw_data, '$.mechanical_issues')  IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.mechanical_issues')) <> 'NULL') AS mechanical_issues,
+                    SUM(JSON_EXTRACT(raw_data, '$.diagnosis_center')   IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.diagnosis_center')) <> 'NULL') AS diagnosis_center,
+                    SUM(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id') IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.inspect_vehicle_id')) <> 'NULL') AS inspect_vehicle_id,
+                    SUM(JSON_EXTRACT(raw_data, '$.drive_type')         IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.drive_type')) <> 'NULL') AS drive_type_raw,
+                    SUM(JSON_EXTRACT(raw_data, '$.photo_count')        IS NOT NULL AND JSON_TYPE(JSON_EXTRACT(raw_data, '$.photo_count')) <> 'NULL') AS photo_count
                 FROM lots
                 GROUP BY source
-            ");
+            "));
         } catch (\Exception $e) {
             $rawStats = [];
             $errors[] = 'raw_data: ' . $e->getMessage();
@@ -578,29 +586,29 @@ class AdminController extends Controller
 
         // ── 3. lot_inspections per source ─────────────────────────────────
         try {
-            $inspStats = DB::select("
+            $inspStats = cache()->remember('accuracy:insp', $ttl, fn() => DB::select("
                 SELECT
                     l.source,
                     COUNT(DISTINCT l.id)          AS total_lots,
                     COUNT(DISTINCT li.lot_id)     AS lots_with_insp,
-                    SUM(li.cert_no        IS NOT NULL) AS cert_no,
-                    SUM(li.inspection_date IS NOT NULL) AS inspection_date,
-                    SUM(li.valid_from     IS NOT NULL) AS valid_from,
-                    SUM(li.valid_until    IS NOT NULL) AS valid_until,
-                    SUM(li.inspection_mileage IS NOT NULL) AS inspection_mileage,
-                    SUM(li.has_accident   IS NOT NULL) AS has_accident,
-                    SUM(CASE WHEN li.has_accident = 1 THEN 1 ELSE 0 END) AS accident_true,
-                    SUM(li.has_outer_damage IS NOT NULL) AS has_outer_damage,
-                    SUM(CASE WHEN li.has_outer_damage = 1 THEN 1 ELSE 0 END) AS outer_damage_true,
-                    SUM(CASE WHEN li.outer_detail IS NOT NULL AND li.outer_detail <> '' THEN 1 ELSE 0 END) AS outer_detail,
-                    SUM(li.has_flood  IS NOT NULL) AS has_flood,
-                    SUM(li.has_tuning IS NOT NULL) AS has_tuning,
-                    SUM(CASE WHEN li.accident_detail IS NOT NULL AND li.accident_detail <> '' THEN 1 ELSE 0 END) AS accident_detail,
-                    SUM(li.report_url IS NOT NULL) AS report_url
+                    COUNT(DISTINCT CASE WHEN li.cert_no            IS NOT NULL THEN li.lot_id END) AS cert_no,
+                    COUNT(DISTINCT CASE WHEN li.inspection_date    IS NOT NULL THEN li.lot_id END) AS inspection_date,
+                    COUNT(DISTINCT CASE WHEN li.valid_from         IS NOT NULL THEN li.lot_id END) AS valid_from,
+                    COUNT(DISTINCT CASE WHEN li.valid_until        IS NOT NULL THEN li.lot_id END) AS valid_until,
+                    COUNT(DISTINCT CASE WHEN li.inspection_mileage IS NOT NULL THEN li.lot_id END) AS inspection_mileage,
+                    COUNT(DISTINCT CASE WHEN li.has_accident       IS NOT NULL THEN li.lot_id END) AS has_accident,
+                    COUNT(DISTINCT CASE WHEN li.has_accident = 1              THEN li.lot_id END) AS accident_true,
+                    COUNT(DISTINCT CASE WHEN li.has_outer_damage   IS NOT NULL THEN li.lot_id END) AS has_outer_damage,
+                    COUNT(DISTINCT CASE WHEN li.has_outer_damage = 1          THEN li.lot_id END) AS outer_damage_true,
+                    COUNT(DISTINCT CASE WHEN li.outer_detail IS NOT NULL AND li.outer_detail <> '' THEN li.lot_id END) AS outer_detail,
+                    COUNT(DISTINCT CASE WHEN li.has_flood          IS NOT NULL THEN li.lot_id END) AS has_flood,
+                    COUNT(DISTINCT CASE WHEN li.has_tuning         IS NOT NULL THEN li.lot_id END) AS has_tuning,
+                    COUNT(DISTINCT CASE WHEN li.accident_detail IS NOT NULL AND li.accident_detail <> '' THEN li.lot_id END) AS accident_detail,
+                    COUNT(DISTINCT CASE WHEN li.report_url        IS NOT NULL THEN li.lot_id END) AS report_url
                 FROM lots l
                 LEFT JOIN lot_inspections li ON li.lot_id = l.id
                 GROUP BY l.source
-            ");
+            "));
         } catch (\Exception $e) {
             $inspStats = [];
             $errors[] = 'lot_inspections: ' . $e->getMessage();
@@ -608,38 +616,24 @@ class AdminController extends Controller
 
         // ── 4. lot_photos per source ──────────────────────────────────────
         try {
-            $photoStats = DB::select("
+            $photoStats = cache()->remember('accuracy:photos', $ttl, fn() => DB::select("
                 SELECT
                     l.source,
                     COUNT(DISTINCT l.id)      AS total_lots,
                     COUNT(DISTINCT lp.lot_id) AS lots_with_photos,
-                    COUNT(lp.id)              AS total_photos
+                    COUNT(lp.id)              AS total_photos,
+                    ROUND(COUNT(lp.id) / NULLIF(COUNT(DISTINCT lp.lot_id), 0), 1) AS avg_photos_per_lot
                 FROM lots l
                 LEFT JOIN lot_photos lp ON lp.lot_id = l.id
                 GROUP BY l.source
-            ");
+            "));
         } catch (\Exception $e) {
             $photoStats = [];
             $errors[] = 'lot_photos: ' . $e->getMessage();
         }
 
-        // ── 5. Fields never/rarely filled ────────────────────────────────
-        try {
-            $neverSeen = DB::select("
-                SELECT source,
-                    SUM(drive_type    IS NULL OR drive_type = '')     AS no_drive_type,
-                    SUM(dealer_company IS NULL OR dealer_company = '') AS no_dealer_company,
-                    SUM(repair_cost   IS NULL OR repair_cost = 0)     AS no_repair_cost,
-                    COUNT(*) AS total
-                FROM lots GROUP BY source
-            ");
-        } catch (\Exception $e) {
-            $neverSeen = [];
-            $errors[] = 'neverSeen: ' . $e->getMessage();
-        }
-
         return view('admin.accuracy', compact(
-            'lotsStats', 'rawStats', 'inspStats', 'photoStats', 'neverSeen', 'errors'
+            'lotsStats', 'rawStats', 'inspStats', 'photoStats', 'errors'
         ));
     }
 
@@ -675,15 +669,17 @@ class AdminController extends Controller
         if (!$key) {
             return null;
         }
-        try {
-            $resp = Http::timeout(5)
-                ->withHeader('X-Api-Key', $key)
-                ->get('https://client-api.floppy.host/v1/rotating/balance');
-            if ($resp->successful()) {
-                return $resp->json();
-            }
-        } catch (\Throwable) {}
-        return null;
+        return \Illuminate\Support\Facades\Cache::remember('proxy_balance', 300, function () use ($key) {
+            try {
+                $resp = Http::timeout(3)
+                    ->withHeader('X-Api-Key', $key)
+                    ->get('https://client-api.floppy.host/v1/rotating/balance');
+                if ($resp->successful()) {
+                    return $resp->json();
+                }
+            } catch (\Throwable) {}
+            return null;
+        });
     }
 
     /**

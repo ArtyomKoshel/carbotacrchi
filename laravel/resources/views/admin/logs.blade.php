@@ -50,24 +50,6 @@
 </div>
 @endif
 
-{{-- Per-job log files --}}
-@if(count($jobFiles) > 0)
-<div class="flex items-center gap-2 flex-wrap mb-3">
-  <span class="text-xs text-gray-600">Job logs:</span>
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source])) }}"
-     class="px-3 py-1 rounded text-xs font-mono transition {{ !$jobFile ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-    main
-  </a>
-  @foreach($jobFiles as $jf)
-  @php $jlabel = $jf['label']; $jsize = round($jf['size']/1024).'k'; @endphp
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jlabel])) }}"
-     class="px-3 py-1 rounded text-xs font-mono transition {{ $jobFile === $jlabel ? 'bg-indigo-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-    {{ $jlabel }} <span class="text-gray-600">({{ $jsize }})</span>
-  </a>
-  @endforeach
-</div>
-@endif
-
 {{-- Filters --}}
 <div class="mb-4 space-y-2">
   {{-- Level filter (links, not form buttons) --}}
@@ -83,28 +65,6 @@
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
       📊 Stats
-    </a>
-  </div>
-
-  {{-- Source quick-filter (links) --}}
-  <div class="flex items-center gap-2 flex-wrap">
-    <span class="text-xs text-gray-600">Flow:</span>
-    @foreach(['' => 'All', 'kbcha' => 'KBCha', 'encar' => 'Encar', 'job_worker' => 'Jobs', 'scheduler' => 'Scheduler'] as $src => $lbl)
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $src, 'limit' => $maxLines != 1000 ? $maxLines : null, 'job' => $jobFile ?: null])) }}"
-       class="px-3 py-1.5 rounded-lg text-sm transition
-              {{ $source === $src ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-      {{ $lbl }}
-    </a>
-    @endforeach
-    {{-- Phase quick filters --}}
-    <span class="text-xs text-gray-600 ml-2">Phase:</span>
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[global]', 'limit' => $maxLines != 1000 ? $maxLines : null, 'job' => $jobFile ?: null])) }}"
-       class="px-3 py-1.5 rounded-lg text-sm transition {{ $search === '[global]' ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-emerald-500 hover:bg-emerald-900/40' }}">
-      Phase 1
-    </a>
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => 'Phase 2', 'limit' => $maxLines != 1000 ? $maxLines : null, 'job' => $jobFile ?: null])) }}"
-       class="px-3 py-1.5 rounded-lg text-sm transition {{ $search === 'Phase 2' ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-emerald-500 hover:bg-emerald-900/40' }}">
-      Phase 2
     </a>
   </div>
 

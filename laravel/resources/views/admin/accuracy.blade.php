@@ -58,8 +58,8 @@ $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-40
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     @php $cards = [
       ['Total lots',        $tot,                              ''],
-      ['With inspection',   $ins?->lots_with_insp ?? 0,        $itot ? $pct($ins->lots_with_insp, $itot).'%' : '—'],
-      ['With photos (DB)',  $ph?->lots_with_photos ?? 0,       $itot ? $pct($ph->lots_with_photos ?? 0, $tot).'%' : '—'],
+      ['With inspection',   $ins?->lots_with_insp ?? 0,        $tot ? $pct($ins->lots_with_insp ?? 0, $tot).'%' : '—'],
+      ['With photos (DB)',  $ph?->lots_with_photos ?? 0,       $tot ? $pct($ph->lots_with_photos ?? 0, $tot).'%' : '—'],
       ['Avg photos/lot',    ($ph?->avg_photos_per_lot ?? '—'), ''],
     ] @endphp
     @foreach($cards as [$label, $val, $sub])
@@ -88,7 +88,8 @@ $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-40
         ['transmission',     $lt->transmission,     'Коробка передач'],
         ['drive_type',       $lt->drive_type,       'Привод (4WD/FWD/RWD)'],
         ['engine_volume',    $lt->engine_volume,    'Объём двигателя (л)'],
-        ['mileage',          $lt->mileage,          'Пробег'],
+        ['fuel_economy',     $lt->fuel_economy,     'Расход топлива (км/л)'],
+        ['mileage',          $lt->mileage,          'Пробег > 0'],
         ['color',            $lt->color,            'Цвет'],
         ['seat_color',       $lt->seat_color,       'Цвет салона'],
         ['has_accident',     $lt->has_accident,     'Факт аварии (bool)'],
@@ -97,23 +98,31 @@ $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-40
         ['flood_history',    $lt->flood_history,    'История затопления'],
         ['total_loss_history',$lt->total_loss_history,'Полная гибель'],
         ['registration_date',$lt->registration_date,'Дата первой регистрации'],
-        ['price',            $lt->price,            'Цена (тыс. USD)'],
-        ['lien (non-clean)', $lt->lien_not_clean,   'Залог — не clean'],
-        ['seizure (non-clean)',$lt->seizure_not_clean,'Арест — не clean'],
-        ['repair_cost',      $lt->repair_cost,      'Стоимость ремонта (>0)'],
+        ['price',            $lt->price,            'Цена > 0 (USD)'],
+        ['price_krw',        $lt->price_krw,        'Цена в KRW'],
+        ['lien_status',      $lt->lien_status,      'Статус залога (заполнен)'],
+        ['  → lien ≠ clean', $lt->lien_not_clean,   'Залог — не clean'],
+        ['seizure_status',   $lt->seizure_status,   'Статус ареста (заполнен)'],
+        ['  → seizure ≠ clean',$lt->seizure_not_clean,'Арест — не clean'],
+        ['repair_cost',      $lt->repair_cost,      'Стоимость ремонта (заполнено)'],
+        ['  → repair > 0',   $lt->repair_cost_positive, 'Есть стоимость ремонта'],
         ['dealer_name',      $lt->dealer_name,      'Дилер'],
         ['dealer_phone',     $lt->dealer_phone,     'Телефон дилера'],
         ['dealer_company',   $lt->dealer_company,   'Компания дилера'],
         ['location',         $lt->location,         'Местоположение'],
         ['options (has)',     $lt->has_options,      'Список опций заполнен'],
         ['image_url',        $lt->image_url,        'Главное фото'],
+        ['warranty_text',    $lt->warranty_text,     'Текст гарантии'],
       ] @endphp
 
       @foreach($lotsFields as [$field, $cnt, $desc])
-        @php $p = $pct($cnt, $tot) @endphp
-        <div class="flex items-center px-5 py-2.5 gap-4 hover:bg-gray-800/40 transition">
-          <div class="w-40 shrink-0">
-            <span class="font-mono text-xs text-gray-300">{{ $field }}</span>
+        @php
+          $isIndent = str_starts_with($field, '  →');
+          $p = $pct($cnt, $tot);
+        @endphp
+        <div class="flex items-center px-5 py-2.5 gap-4 hover:bg-gray-800/40 transition {{ $isIndent ? 'bg-gray-800/20' : '' }}">
+          <div class="w-40 shrink-0 {{ $isIndent ? 'pl-4' : '' }}">
+            <span class="font-mono text-xs {{ $isIndent ? 'text-gray-500' : 'text-gray-300' }}">{{ $field }}</span>
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-xs text-gray-500 truncate">{{ $desc }}</div>
@@ -229,40 +238,6 @@ $badge    = fn($p) => $p >= 80 ? 'text-emerald-400' : ($p >= 40 ? 'text-amber-40
   @elseif($ins)
   <div class="bg-gray-900 rounded-xl px-5 py-4 text-sm text-gray-500">
     lot_inspections: нет записей для <span class="text-white font-mono">{{ $src }}</span>
-  </div>
-  @endif
-
-  {{-- ── Fields never / rarely filled ── --}}
-  @php
-    $never = collect($neverSeen)->firstWhere('source', $src);
-  @endphp
-  @if($never && $tot > 0)
-  <div class="bg-gray-900 rounded-xl overflow-hidden">
-    <div class="px-5 py-3 border-b border-gray-800">
-      <span class="text-sm font-semibold text-white">Поля которые всегда/почти всегда пустые</span>
-    </div>
-    <div class="px-5 py-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-      @php
-        $empties = [
-          ['drive_type',     $never->no_drive_type,     'В Encar только у сертиф. машин'],
-          ['dealer_company', $never->no_dealer_company, 'Не отдаётся через публичный API'],
-          ['repair_cost=0',  $never->no_repair_cost,    '0 или NULL (большинство машин без аварий)'],
-        ];
-      @endphp
-      @foreach($empties as [$field, $empty, $reason])
-        @php $emptyPct = $pct($empty, $tot) @endphp
-        <div class="bg-gray-800 rounded-lg p-3">
-          <div class="font-mono text-xs text-red-400 mb-1">{{ $field }}</div>
-          <div class="text-xs text-gray-400 mb-2">{{ $reason }}</div>
-          <div class="flex items-center gap-2">
-            <div class="flex-1 h-1.5 rounded-full bg-gray-700">
-              <div class="bg-red-500 h-full rounded-full" style="width:{{ $emptyPct }}%"></div>
-            </div>
-            <span class="text-xs text-red-400 font-bold">{{ $emptyPct }}% пусто</span>
-          </div>
-        </div>
-      @endforeach
-    </div>
   </div>
   @endif
 
