@@ -151,6 +151,8 @@ class KBChaNormalizer:
             and not _YEAR_RE.match(t)
             and not _GEN_NUMGEN_RE.match(t)
             and not _DRIVE_RE.match(t)
+            and not t.startswith("(")                        # e.g. "(Turbo" from "(Turbo GDi)"
+            and re.split(r"[\d(]", t)[0] not in MODEL_FUEL_STOP  # e.g. "디젤(e-VGT)R2.2"
             and len(t) >= 2
         ]
 

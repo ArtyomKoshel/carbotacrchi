@@ -21,14 +21,35 @@ MODEL_FUEL_STOP: frozenset[str] = frozenset({
 })
 
 MODEL_TRIM_STOP: frozenset[str] = frozenset({
+    # ── Korean trim names ───────────────────────────────────────────────────
     "프레스티지", "모던", "럭셔리", "스마트", "인스퍼레이션",
     "노블레스", "시그니처", "시그니쳐", "트렌디", "컴포트", "스타일",
     "프리미엄", "익스클루시브", "스탠다드", "밸류플러스",
     "캘리그래피", "그래비티", "GL", "GLS", "GLX",
     "고급형", "일반형", "기본형",
+    # Hyundai/Kia trim labels seen in production data
+    "르블랑", "에센셜", "라이트",
+    "모던초이스", "블루세이버", "블랙잉크",
+    "모던스페셜", "셀러브리티", "프리미어",
+    "아너스", "모범형", "크로스",
+    "케어플러스", "디럭스", "로얄",
+    "익스트림", "아이언맨", "에디션",
+    "유니크", "오리지널", "코어",
+    "스펙", "수출형", "특장",
+    "모던플러스", "셀렉션", "파이니스트",
+    "얼티밋", "이그젝큐티브", "장애인용",
+    # ── English / mixed-case trim labels ───────────────────────────────────
     "Value", "Premium", "Exclusive", "Luxury", "Style", "Smart",
     "Prestige", "Signature", "Modern", "Comfort", "Trend", "Special",
     "Standard", "Noblesse", "Plus",
+    # Uppercase variants (older Hyundai/Santa Fe/Veracruz use ALL-CAPS trims)
+    "VALUE", "PREMIUM", "EXCLUSIVE", "LUXURY", "SMART", "MODERN",
+    # English trims used by specific models
+    "VIP", "FLUX", "PYL", "DCT",
+    "Turbo", "Extreme", "Premier",
+    "Top", "Inspiration", "Business",
+    "N20", "S16",
+    "D-spec", "Line",
 })
 
 MODEL_DRIVE_STOP: frozenset[str] = frozenset({
@@ -40,10 +61,21 @@ MODEL_DRIVE_STOP: frozenset[str] = frozenset({
 ENGINE_DESC_TOKENS: frozenset[str] = frozenset({
     "터보", "GDi", "T-GDi", "GDI", "MPI", "VGT", "CRDI", "CRDi",
     "HEV", "PHEV", "EV", "FCEV", "e-VGT",
+    "VVT", "DOHC", "SOHC",
     "4기통", "6기통", "8기통", "V6", "V8", "V12",
-    "9인승", "11인승", "15인승",
+    # Passenger-count tokens (N인승) — appear mid-title for vans/MPVs
+    "7인승", "9인승", "11인승", "12인승", "15인승",
     "Sport", "SPORT", "스포츠",
     "하이브리드",
+    # Model-variant alphanumeric codes (Veracruz 300X/300VX/300VXL, Grandeur HG300 etc.)
+    "HG300", "300X", "300VX", "300VXL",
+    # Commercial-vehicle body & configuration tokens (Porter2, Starex, Solati)
+    "내장탑차", "저상내장탑차", "하이내장탑차",
+    "파워게이트", "윙바디", "전동식윙바디",
+    "장축", "더블캡", "슈퍼캡", "초장축",
+    "슈퍼", "골드", "하이슈퍼",
+    "어린이버스", "어린이보호차",
+    "사업자용",
 })
 
 # Tokens that look like trims on the site but are actually fuel/type descriptors

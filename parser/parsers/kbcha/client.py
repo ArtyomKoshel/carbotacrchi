@@ -50,6 +50,12 @@ def _reset_proxy_cache() -> None:
 
 _SENTINEL = object()  # default marker for KBChaClient(proxy=) parameter
 
+# All vehicle-type codes used by KBCha (경차/소형/준중형/중형/대형/SUV/RV/화물/버스/승합/기타)
+_USE_CODES: tuple[str, ...] = (
+    "002001", "002002", "002003", "002004", "002005",
+    "002006", "002007", "002008", "002009", "002010", "002011",
+)
+
 BASE_URL = "https://www.kbchachacha.com"
 CARMODOO_URL = "https://ck.carmodoo.com"
 
@@ -180,9 +186,51 @@ class KBChaClient:
         except Exception as e:
             logger.warning(f"[kbcha:warmup] failed: {e}")
 
-    def fetch_list_page(self, maker_code: str, page: int) -> str:
+    def fetch_makers(self) -> dict[str, tuple[str, int]]:
+        """Return {maker_code: (maker_name, count)} from carMaker.json (live API)."""
+        url = f"{BASE_URL}/public/search/carMaker.json"
+        t0 = _time.monotonic()
+        resp = self._get(url, params={"page": "1"})
+        resp.raise_for_status()
+        elapsed = _time.monotonic() - t0
+        data = resp.json()
+        result: dict[str, tuple[str, int]] = {}
+        for group in data.get("result", {}).values():
+            if not isinstance(group, list):
+                continue
+            for item in group:
+                if isinstance(item, dict) and item.get("count", 0) > 0:
+                    result[item["makerCode"]] = (item["makerName"], int(item["count"]))
+        logger.info(f"[kbcha:api] carMaker.json: {len(result)} active makers in {elapsed:.2f}s")
+        return result
+
+    def fetch_car_classes(self, maker_code: str) -> list[tuple[str, str, int]]:
+        """Return [(class_code, class_name, count)] for all models of a maker.
+        Iterates all USE_CODES to collect the full model list."""
+        url = f"{BASE_URL}/public/search/carClass.json"
+        seen: dict[str, tuple[str, int]] = {}
+        for use_code in _USE_CODES:
+            try:
+                resp = self._get(url, params={"page": "1", "makerCode": maker_code, "useCode": use_code})
+                resp.raise_for_status()
+                data = resp.json().get("result", {})
+                sale: dict = data.get("sale", {})
+                for entry in data.get("code", []):
+                    cc = entry.get("classCode", "")
+                    if cc and cc not in seen:
+                        seen[cc] = (entry.get("className", cc), int(sale.get(cc, 0)))
+            except Exception as e:
+                logger.debug(f"[kbcha:api] carClass {maker_code}/{use_code}: {e}")
+        classes = [(cc, name, cnt) for cc, (name, cnt) in seen.items() if cnt > 0]
+        logger.debug(f"[kbcha:api] carClass maker={maker_code}: {len(classes)} active models")
+        return classes
+
+    def fetch_list_page(self, maker_code: str, page: int,
+                        class_code: str | None = None) -> str:
         url = f"{BASE_URL}/public/search/list.empty"
-        params = {"makerCode": maker_code, "page": str(page)}
+        params: dict = {"makerCode": maker_code, "page": str(page)}
+        if class_code:
+            params["classCode"] = class_code
 
         t0 = _time.monotonic()
         resp = self._get(url, params=params)
@@ -191,7 +239,8 @@ class KBChaClient:
         resp.raise_for_status()
         # Store the effective URL so detail page can use it as Referer
         self._last_list_url = str(resp.url)
-        logger.debug(f"[kbcha:http] list.empty maker={maker_code} p={page} "
+        label = f"maker={maker_code}" + (f" class={class_code}" if class_code else "")
+        logger.debug(f"[kbcha:http] list.empty {label} p={page} "
                       f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 

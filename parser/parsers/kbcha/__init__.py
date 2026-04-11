@@ -14,7 +14,9 @@ from .detail_parser import KBChaDetailParser
 from .enricher import KBChaEnricher
 from .inspection_parser import CarmodooInspectionParser
 from .list_parser import KBChaListParser
-from .normalizer import KBChaNormalizer, MAKER_CODES
+from .normalizer import KBChaNormalizer, MAKER_CODES as _MAKER_CODES_FALLBACK
+
+_CLASS_SPLIT_THRESHOLD = 5000  # makers with more lots use per-class pagination
 
 logger = logging.getLogger(__name__)
 
@@ -137,13 +139,25 @@ class KBChaParser(AbstractParser):
         }
 
         effective_pages = max_pages or 9999  # 0 / None = all pages
-        makers = {
-            code: name for code, name in MAKER_CODES.items()
-            if maker_filter is None or maker_filter.lower() in name.lower()
-        }
+
+        # -- dynamic maker discovery --
+        makers_raw: dict[str, tuple[str, int]] = {}
+        try:
+            makers_raw = self._client.fetch_makers()
+            logger.info(f"[STAT] [{source}] Live makers from API: {len(makers_raw)}")
+        except Exception as e:
+            logger.warning(f"[{source}] carMaker.json failed ({e}), using hardcoded fallback")
+            makers_raw = {code: (name, 0) for code, name in _MAKER_CODES_FALLBACK.items()}
+
+        makers: dict[str, str] = {}
+        maker_counts: dict[str, int] = {}
+        for code, (name, count) in makers_raw.items():
+            if maker_filter is None or maker_filter.lower() in name.lower():
+                makers[code] = name
+                maker_counts[code] = count
+
         if maker_filter and not makers:
-            logger.warning(f"[{source}] No makers matched filter '{maker_filter}'. "
-                           f"Available: {', '.join(MAKER_CODES.values())}")
+            logger.warning(f"[{source}] No makers matched filter '{maker_filter}'.")
             return stats
 
         logger.info(f"[STAT] [{source}] ========== IMPORT STARTED ==========")
@@ -164,6 +178,7 @@ class KBChaParser(AbstractParser):
 
         for maker_code, maker_name in makers.items():
             maker_start = _time.monotonic()
+            maker_count = maker_counts.get(maker_code, 0)
 
             maker_lots = self._fetch_maker(
                 maker_code,
@@ -172,6 +187,7 @@ class KBChaParser(AbstractParser):
                 stats,
                 max_pages=effective_pages,
                 on_page_callback=on_page_callback,
+                maker_count=maker_count,
             )
             if not maker_lots:
                 continue
@@ -193,10 +209,17 @@ class KBChaParser(AbstractParser):
                 all_lots.extend(maker_lots)
 
             maker_elapsed = _time.monotonic() - maker_start
-            maker_stats[maker_name] = len(maker_lots)
+            collected = len(maker_lots)
+            api_cnt = maker_count  # from carMaker.json
+            if api_cnt > 0:
+                cov = collected / api_cnt * 100
+                cov_str = f" | {cov:.1f}% of {api_cnt:,} on site"
+            else:
+                cov_str = ""
+            maker_stats[maker_name] = (collected, api_cnt)
             logger.info(
-                f"[STAT] [{source}] {maker_name}: {len(maker_lots)} lots "
-                f"({len(new_lots)} new, {len(updated_lots)} upd) in {maker_elapsed:.1f}s"
+                f"[STAT] [{source}] {maker_name}: {collected:,} lots "
+                f"({len(new_lots)} new, {len(updated_lots)} upd){cov_str} in {maker_elapsed:.1f}s"
             )
 
         # Enrich inspections for ALL lots (new + updated)
@@ -222,8 +245,12 @@ class KBChaParser(AbstractParser):
         elapsed = _time.monotonic() - run_start
         db_count = counts.get("active", 0)
 
+        api_total = sum(c for (_, c) in maker_stats.values()) if maker_stats else 0
+        api_coverage = stats["total"] / api_total * 100 if api_total else 0.0
+
         logger.info(f"[STAT] [{source}] ========== IMPORT COMPLETE ==========")
-        logger.info(f"[STAT] [{source}] Processed:   {stats['total']:,} ({coverage_pct:.1f}% coverage)")
+        logger.info(f"[STAT] [{source}] Processed:   {stats['total']:,} (DB coverage {coverage_pct:.1f}%"
+                    + (f", site coverage {api_coverage:.1f}% of {api_total:,}" if api_total else "") + ")")
         logger.info(f"[STAT] [{source}] In DB now:   {db_count:,}")
         logger.info(f"[STAT] [{source}] New:     {stats['new']}")
         logger.info(f"[STAT] [{source}] Updated: {stats['updated']}")
@@ -239,9 +266,13 @@ class KBChaParser(AbstractParser):
 
         if maker_stats:
             logger.info(f"[STAT] [{source}] Per-maker breakdown:")
-            for name, count in sorted(maker_stats.items(), key=lambda x: -x[1]):
-                if count > 0:
-                    logger.info(f"[STAT] [{source}]   {name}: {count}")
+            for name, (collected, api_cnt) in sorted(maker_stats.items(), key=lambda x: -x[1][0]):
+                if collected > 0:
+                    if api_cnt > 0:
+                        pct = collected / api_cnt * 100
+                        logger.info(f"[STAT] [{source}]   {name}: {collected:,} / {api_cnt:,} ({pct:.1f}%)")
+                    else:
+                        logger.info(f"[STAT] [{source}]   {name}: {collected:,}")
 
         self._client.close()
         hours = int(elapsed // 3600)
@@ -254,7 +285,8 @@ class KBChaParser(AbstractParser):
             "updated": stats["updated"],
             "errors": stats["errors"],
             "stale": stale,
-            "api_total": max(existing_count, stats["total"]),
+            "api_total": api_total or max(existing_count, stats["total"]),
+            "api_coverage_pct": round(api_coverage, 1) if api_total else None,
             "coverage_pct": round(coverage_pct, 1),
             "db_count": db_count,
             "time": time_str,
@@ -277,17 +309,58 @@ class KBChaParser(AbstractParser):
         stats: dict,
         max_pages: int | None = None,
         on_page_callback=None,
+        maker_count: int = 0,
     ) -> list[CarLot]:
         source = self.get_source_key()
         lots: list[CarLot] = []
-        pages = max_pages or 9999  # 0 / None = all pages
+        pages = max_pages or 9999
+
+        # For large makers: fetch per-class to avoid pagination cap
+        if maker_count >= _CLASS_SPLIT_THRESHOLD:
+            try:
+                classes = self._client.fetch_car_classes(maker_code)
+                if classes:
+                    logger.info(
+                        f"[{source}] {maker_name} ({maker_count:,} lots) → "
+                        f"per-class strategy: {len(classes)} models"
+                    )
+                    for class_code, class_name, class_count in classes:
+                        class_lots = self._fetch_pages(
+                            maker_code, maker_name, seen_ids, stats,
+                            pages, on_page_callback,
+                            class_code=class_code, class_label=class_name,
+                        )
+                        lots.extend(class_lots)
+                    return lots
+            except Exception as e:
+                logger.warning(
+                    f"[{source}] {maker_name} class fetch failed ({e}), falling back to maker pagination"
+                )
 
         logger.info(f"[{source}] --- {maker_name} ({maker_code}) ---")
+        return self._fetch_pages(
+            maker_code, maker_name, seen_ids, stats, pages, on_page_callback
+        )
+
+    def _fetch_pages(
+        self,
+        maker_code: str,
+        maker_name: str,
+        seen_ids: set[str],
+        stats: dict,
+        pages: int,
+        on_page_callback=None,
+        class_code: str | None = None,
+        class_label: str | None = None,
+    ) -> list[CarLot]:
+        source = self.get_source_key()
+        lots: list[CarLot] = []
+        label = f"{maker_name}/{class_label}" if class_label else maker_name
 
         for page in range(1, pages + 1):
             _t_search = _time.monotonic()
             try:
-                html = self._client.fetch_list_page(maker_code, page)
+                html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
             except httpx.HTTPStatusError as e:
                 etype = str(e.response.status_code)
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
@@ -296,62 +369,62 @@ class KBChaParser(AbstractParser):
                 stats["error_log"].append(msg)
                 if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
                     logger.warning(
-                        f"[{source}] {maker_name} p.{page}: {etype}, rotating proxy and retrying"
+                        f"[{source}] {label} p.{page}: {etype}, rotating proxy and retrying"
                     )
                     self._client.rotate_proxy()
                     _p = _time.monotonic()
                     _time.sleep(2)
                     stats["pause_time"] += _time.monotonic() - _p
                     try:
-                        html = self._client.fetch_list_page(maker_code, page)
+                        html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
                     except Exception as e2:
                         etype2 = type(e2).__name__
                         stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
                         stats["errors"] += 1
-                        stats["error_log"].append(f"[{maker_name}] p.{page} retry failed: {etype2}: {e2}")
+                        stats["error_log"].append(f"[{label}] p.{page} retry failed: {etype2}: {e2}")
                         logger.error(
-                            f"[{source}] {maker_name} p.{page} fetch error after retry: {etype2}: {e2}"
+                            f"[{source}] {label} p.{page} fetch error after retry: {etype2}: {e2}"
                         )
                         break
                 else:
-                    logger.error(f"[{source}] {maker_name} p.{page} HTTP error: {etype}")
+                    logger.error(f"[{source}] {label} p.{page} HTTP error: {etype}")
                     break
             except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
                 etype = type(e).__name__
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
                 stats["errors"] += 1
-                stats["error_log"].append(f"[{maker_name}] p.{page}: {etype}: {e}")
+                stats["error_log"].append(f"[{label}] p.{page}: {etype}: {e}")
                 logger.warning(
-                    f"[{source}] {maker_name} p.{page} {etype}, rotating proxy and retrying"
+                    f"[{source}] {label} p.{page} {etype}, rotating proxy and retrying"
                 )
                 self._client.rotate_proxy()
                 _p = _time.monotonic()
                 _time.sleep(3)
                 stats["pause_time"] += _time.monotonic() - _p
                 try:
-                    html = self._client.fetch_list_page(maker_code, page)
+                    html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
                 except Exception as e2:
                     etype2 = type(e2).__name__
                     stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
                     stats["errors"] += 1
-                    stats["error_log"].append(f"[{maker_name}] p.{page} retry failed: {etype2}: {e2}")
+                    stats["error_log"].append(f"[{label}] p.{page} retry failed: {etype2}: {e2}")
                     logger.error(
-                        f"[{source}] {maker_name} p.{page} fetch error after retry: {etype2}: {e2}"
+                        f"[{source}] {label} p.{page} fetch error after retry: {etype2}: {e2}"
                     )
                     break
             except Exception as e:
                 etype = type(e).__name__
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
                 stats["errors"] += 1
-                stats["error_log"].append(f"[{maker_name}] p.{page}: {etype}: {e}")
-                logger.error(f"[{source}] {maker_name} p.{page} fetch error: {etype}: {e}")
+                stats["error_log"].append(f"[{label}] p.{page}: {etype}: {e}")
+                logger.error(f"[{source}] {label} p.{page} fetch error: {etype}: {e}")
                 break
             finally:
                 stats["search_time"] += _time.monotonic() - _t_search
 
             page_lots = self._list_parser.parse(html, maker_code)
             if not page_lots:
-                logger.debug(f"[{source}] {maker_name} p.{page}: empty -> done")
+                logger.debug(f"[{source}] {label} p.{page}: empty -> done")
                 break
 
             new_on_page = 0
@@ -361,7 +434,7 @@ class KBChaParser(AbstractParser):
                     lots.append(lot)
                     new_on_page += 1
 
-            logger.info(f"[{source}] {maker_name} p.{page}: "
+            logger.info(f"[{source}] {label} p.{page}: "
                          f"{len(page_lots)} parsed, {new_on_page} unique")
 
             if on_page_callback:
@@ -375,4 +448,5 @@ class KBChaParser(AbstractParser):
             stats["pause_time"] += _time.monotonic() - _p
 
         return lots
+
 
