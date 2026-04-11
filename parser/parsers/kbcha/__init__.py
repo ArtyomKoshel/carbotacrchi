@@ -160,8 +160,11 @@ class KBChaParser(AbstractParser):
             logger.warning(f"[{source}] No makers matched filter '{maker_filter}'.")
             return stats
 
+        site_api_total = sum(maker_counts.values())
+        stats["site_api_total"] = site_api_total
+
         logger.info(f"[STAT] [{source}] ========== IMPORT STARTED ==========")
-        logger.info(f"[STAT] [{source}] Makers: {len(makers)}, "
+        logger.info(f"[STAT] [{source}] Makers: {len(makers)}, site total: {site_api_total:,}, "
                     f"max_pages={effective_pages}, delay={Config.REQUEST_DELAY}s")
         if maker_filter:
             logger.info(f"[STAT] [{source}] Maker filter: '{maker_filter}' -> {list(makers.values())}")
@@ -439,7 +442,11 @@ class KBChaParser(AbstractParser):
 
             if on_page_callback:
                 try:
-                    on_page_callback(page=page, found=new_on_page, total_pages=pages, stats=stats)
+                    on_page_callback(
+                        page=page, found=new_on_page,
+                        total_pages=stats.get("site_api_total") or len(seen_ids),
+                        stats=stats,
+                    )
                 except Exception:
                     pass
 
