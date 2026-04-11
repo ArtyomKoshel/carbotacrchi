@@ -223,13 +223,6 @@ class KBChaParser(AbstractParser):
                 f"({n_new} new, {n_upd} upd){cov_str} in {maker_elapsed:.1f}s"
             )
 
-        # Enrich inspections for ALL lots (new + updated)
-        if all_lots:
-            logger.info(f"[STAT] [{source}] Enriching inspections for {len(all_lots)} lots...")
-            _t_inspect = _time.monotonic()
-            self._enricher.enrich_inspections(all_lots, stats, on_page_callback=on_page_callback)
-            stats["inspect_time"] += _time.monotonic() - _t_inspect
-
         _MIN_DELIST_COVERAGE = 80.0
         existing_count = len(existing_ids)
         coverage_pct = stats["total"] / existing_count * 100 if existing_count else 100.0

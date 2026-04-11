@@ -86,18 +86,19 @@ class KBChaEnricher:
                 _thread_local.proxy_idx = proxy_idx
             return _thread_local.client
 
-        def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, int]:
+        def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, tuple | None, int]:
             try:
                 client = _get_thread_client(idx % max(len(proxy_pool), 1) if proxy_pool else 0)
                 car_seq = lot.id.replace("kbcha_", "")
                 combined = self._fetch_combined_with(car_seq, lot, client, stats, _stats_lock, delay)
-                return lot, combined, 0
+                insp_raw = self._fetch_inspection_html(lot, combined, client, delay) if combined else None
+                return lot, combined, insp_raw, 0
             except Exception as e:
                 logger.warning(
                     f"[{self._source}] Detail fetch failed for {lot.id}: {type(e).__name__}: {e}\n"
                     + _tb.format_exc(limit=6)
                 )
-                return lot, {}, 1
+                return lot, {}, None, 1
 
         FLUSH_EVERY = 1  # write each lot immediately as its detail fetch completes
         pending: list[CarLot] = []
@@ -127,12 +128,14 @@ class KBChaEnricher:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(lots)}
             for i, future in enumerate(as_completed(future_map)):
-                lot, combined, errors = future.result()
+                lot, combined, insp_raw, errors = future.result()
                 stats["errors"] += errors
                 if errors:
                     self._inc_error(stats, "detail_fetch", f"detail fetch failed {lot.id}")
                 if combined:
                     self._apply_combined(lot, combined, enriched_fields)
+                    if insp_raw:
+                        self._apply_inspection_result(lot, insp_raw, stats)
                     pending.append(lot)
                     all_valid_lots.append(lot)
                     _flush()
@@ -212,6 +215,62 @@ class KBChaEnricher:
         # km-analysis popup disabled — endpoint returns 500 server-side
 
         return combined
+
+    def _fetch_inspection_html(
+        self, lot: CarLot, combined: dict, client: KBChaClient, delay: float
+    ) -> tuple[str, str, str] | None:
+        """Fetch inspection HTML in worker thread. Returns (insp_type, report_url, html) or None."""
+        insp_type = combined.get("inspection_type")
+        if not insp_type or insp_type in ("other", None):
+            return None
+        if insp_type in _INSP_URL_KEYS:
+            url_key = _INSP_URL_KEYS[insp_type]
+            report_url = combined.get(url_key)
+            if report_url:
+                try:
+                    _time.sleep(delay)
+                    html = client.fetch_external_report(report_url, referer=lot.lot_url or "")
+                    if _PHOTO_ONLY_MARKER in html:
+                        return None
+                    return (insp_type, report_url, html)
+                except Exception as e:
+                    logger.warning(f"[{self._source}] {lot.id}: inspection fetch failed ({insp_type}): {e}")
+                    return None
+        if insp_type == "kb_popup":
+            try:
+                car_seq = lot.id.replace("kbcha_", "")
+                _time.sleep(delay)
+                html = client.fetch_kb_inspection(car_seq)
+                if len(html.strip()) < 1024:
+                    return None
+                if _PHOTO_ONLY_MARKER in html:
+                    return None
+                return ("kb_popup", "", html)
+            except Exception as e:
+                logger.warning(f"[{self._source}] {lot.id}: kb_popup inspection fetch failed: {e}")
+                return None
+        return None
+
+    def _apply_inspection_result(
+        self, lot: CarLot, insp_raw: tuple[str, str, str], stats: dict
+    ) -> None:
+        """Parse inspection HTML and apply to lot. Runs on main thread (no DB writes here)."""
+        insp_type, report_url, html = insp_raw
+        insp_stats: dict[str, int] = {"parsed": 0, "url_saved": 0, "photo_only": 0,
+                                       "no_button": 0, "other": 0, "errors": 0}
+        try:
+            if insp_type == "kb_popup":
+                self._parse_and_save_inspection(lot, lot.id.replace("kbcha_", ""), html, insp_stats)
+            elif insp_type in _INSP_URL_KEYS and report_url:
+                parsed = self._external_parser.parse(report_url, html)
+                if parsed.get("details", {}).get("parsed_count", 0) > 0:
+                    self._upsert_external_inspection(lot, insp_type, report_url, parsed, insp_stats, stats)
+                else:
+                    self._save_inspection_url(lot, insp_type, insp_stats, stats)
+        except Exception as e:
+            etype = type(e).__name__
+            logger.warning(f"[{self._source}] {lot.id}: inspection apply failed ({insp_type}): {e}")
+            self._inc_error(stats, etype, f"inspection apply failed {lot.id}: {e}")
 
     def _fetch_combined(self, car_seq: str, lot: CarLot, stats: dict, delay: float) -> dict:
         """Legacy single-client wrapper (used by run_reenrich)."""
