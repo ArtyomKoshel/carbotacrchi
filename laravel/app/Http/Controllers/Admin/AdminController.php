@@ -669,17 +669,15 @@ class AdminController extends Controller
         if (!$key) {
             return null;
         }
-        return \Illuminate\Support\Facades\Cache::remember('proxy_balance', 300, function () use ($key) {
-            try {
-                $resp = Http::timeout(3)
-                    ->withHeader('X-Api-Key', $key)
-                    ->get('https://client-api.floppy.host/v1/rotating/balance');
-                if ($resp->successful()) {
-                    return $resp->json();
-                }
-            } catch (\Throwable) {}
-            return null;
-        });
+        try {
+            $resp = Http::connectTimeout(2)->timeout(3)
+                ->withHeader('X-Api-Key', $key)
+                ->get('https://client-api.floppy.host/v1/rotating/balance');
+            if ($resp->successful()) {
+                return $resp->json();
+            }
+        } catch (\Throwable) {}
+        return null;
     }
 
     /**
