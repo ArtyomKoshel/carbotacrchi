@@ -44,26 +44,36 @@ class AdminController extends Controller
 
     public function dashboard()
     {
+        $t0 = microtime(true);
+
         $sources = DB::table('lots')
             ->select('source', DB::raw('SUM(is_active) as active'), DB::raw('COUNT(*) as total'))
             ->groupBy('source')
             ->get();
+        \Log::debug('[dashboard] sources: ' . round((microtime(true) - $t0) * 1000) . 'ms');
 
+        $t1 = microtime(true);
         $recentChanges = LotChange::orderByDesc('recorded_at')
             ->limit(10)
             ->get();
+        \Log::debug('[dashboard] recentChanges: ' . round((microtime(true) - $t1) * 1000) . 'ms');
 
+        $t2 = microtime(true);
         $changeSummary = DB::table('lot_changes')
             ->select('event', DB::raw('COUNT(*) as cnt'))
             ->where('recorded_at', '>=', now()->subDay())
             ->groupBy('event')
             ->pluck('cnt', 'event');
+        \Log::debug('[dashboard] changeSummary: ' . round((microtime(true) - $t2) * 1000) . 'ms');
 
+        $t3 = microtime(true);
         $lastParsed = DB::table('lots')
             ->select('source', DB::raw('MAX(parsed_at) as last_parsed'))
             ->groupBy('source')
             ->pluck('last_parsed', 'source');
+        \Log::debug('[dashboard] lastParsed: ' . round((microtime(true) - $t3) * 1000) . 'ms');
 
+        $t4 = microtime(true);
         $lastScheduled = DB::table('parse_jobs')
             ->select('source', DB::raw('MAX(created_at) as last_run'), DB::raw('MAX(status) as last_status'))
             ->where('created_at', '>=', now()->subDays(30))
@@ -71,11 +81,12 @@ class AdminController extends Controller
             ->groupBy('source')
             ->get()
             ->keyBy('source');
+        \Log::debug('[dashboard] lastScheduled: ' . round((microtime(true) - $t4) * 1000) . 'ms');
 
-        $proxyBalance = $this->fetchProxyBalance();
+        \Log::debug('[dashboard] TOTAL: ' . round((microtime(true) - $t0) * 1000) . 'ms');
 
         return view('admin.dashboard', compact(
-            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'lastScheduled', 'proxyBalance'
+            'sources', 'recentChanges', 'changeSummary', 'lastParsed', 'lastScheduled'
         ));
     }
 
@@ -663,21 +674,23 @@ class AdminController extends Controller
             ->with('success', "Schedule for {$source} updated.");
     }
 
-    private function fetchProxyBalance(): ?array
+    public function proxyBalance(): \Illuminate\Http\JsonResponse
     {
         $key = config('auction.floppydata_api_key');
         if (!$key) {
-            return null;
+            return response()->json(['error' => 'API key not configured'], 404);
         }
         try {
-            $resp = Http::connectTimeout(2)->timeout(3)
+            $resp = Http::connectTimeout(3)->timeout(8)
                 ->withHeader('X-Api-Key', $key)
                 ->get('https://client-api.floppy.host/v1/rotating/balance');
             if ($resp->successful()) {
-                return $resp->json();
+                return response()->json($resp->json());
             }
-        } catch (\Throwable) {}
-        return null;
+            return response()->json(['error' => 'API error ' . $resp->status()], 502);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 502);
+        }
     }
 
     /**

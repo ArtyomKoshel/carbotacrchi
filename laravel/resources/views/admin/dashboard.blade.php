@@ -58,33 +58,63 @@
   @endforeach
 </div>
 
-{{-- Proxy balance --}}
-@if($proxyBalance)
-@php
-  $res = $proxyBalance['residential'] ?? null;
-  $gb  = ($res['nonExpiring']['gb'] ?? 0) + ($res['subscription']['gb'] ?? 0);
-  $pct = min(100, round($gb / 9 * 100));
-  $color = $pct > 50 ? 'bg-green-500' : ($pct > 20 ? 'bg-yellow-500' : 'bg-red-500');
-@endphp
-<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8">
-  <div class="flex items-center justify-between mb-3">
+{{-- Proxy balance (on-demand) --}}
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8" id="proxy-balance-card">
+  <div class="flex items-center justify-between">
     <span class="text-xs font-bold uppercase tracking-widest text-gray-500">Proxy Traffic (Floppydata)</span>
-    <span class="text-xs text-gray-500">Residential</span>
+    <button onclick="loadProxyBalance()" id="proxy-balance-btn"
+            class="text-xs px-3 py-1 rounded bg-gray-800 text-gray-400 hover:bg-blue-900/50 hover:text-blue-300 transition">
+      Check balance
+    </button>
   </div>
-  <div class="flex items-end gap-3 mb-3">
-    <span class="text-3xl font-bold text-white">{{ number_format($gb, 2) }} GB</span>
-    <span class="text-sm text-gray-500 mb-1">remaining</span>
+  <div id="proxy-balance-result" class="mt-3 hidden">
+    <div class="flex items-end gap-3 mb-3">
+      <span class="text-3xl font-bold text-white" id="proxy-gb">—</span>
+      <span class="text-sm text-gray-500 mb-1">GB remaining</span>
+    </div>
+    <div class="w-full bg-gray-800 rounded-full h-2">
+      <div id="proxy-bar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+    </div>
+    <div id="proxy-expires" class="text-xs text-gray-600 mt-2 hidden"></div>
   </div>
-  <div class="w-full bg-gray-800 rounded-full h-2">
-    <div class="{{ $color }} h-2 rounded-full transition-all" style="width: {{ $pct }}%"></div>
-  </div>
-  @if(isset($res['subscription']['expiresOn']))
-  <div class="text-xs text-gray-600 mt-2">
-    Subscription expires: {{ \Carbon\Carbon::parse($res['subscription']['expiresOn'])->diffForHumans() }}
-  </div>
-  @endif
+  <div id="proxy-balance-error" class="mt-2 text-xs text-red-500 hidden"></div>
 </div>
-@endif
+
+<script>
+function loadProxyBalance() {
+  const btn = document.getElementById('proxy-balance-btn');
+  btn.textContent = 'Loading…';
+  btn.disabled = true;
+  fetch('{{ route('admin.proxy.balance') }}')
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { throw new Error(data.error); }
+      const res = data.residential ?? {};
+      const gb = ((res.nonExpiring?.gb ?? 0) + (res.subscription?.gb ?? 0));
+      const pct = Math.min(100, Math.round(gb / 9 * 100));
+      const color = pct > 50 ? 'bg-green-500' : (pct > 20 ? 'bg-yellow-500' : 'bg-red-500');
+      document.getElementById('proxy-gb').textContent = gb.toFixed(2);
+      const bar = document.getElementById('proxy-bar');
+      bar.className = color + ' h-2 rounded-full transition-all';
+      bar.style.width = pct + '%';
+      if (res.subscription?.expiresOn) {
+        const exp = document.getElementById('proxy-expires');
+        exp.textContent = 'Subscription expires: ' + new Date(res.subscription.expiresOn).toLocaleDateString();
+        exp.classList.remove('hidden');
+      }
+      document.getElementById('proxy-balance-result').classList.remove('hidden');
+      document.getElementById('proxy-balance-error').classList.add('hidden');
+      btn.textContent = 'Refresh';
+      btn.disabled = false;
+    })
+    .catch(e => {
+      document.getElementById('proxy-balance-error').textContent = 'Error: ' + e.message;
+      document.getElementById('proxy-balance-error').classList.remove('hidden');
+      btn.textContent = 'Check balance';
+      btn.disabled = false;
+    });
+}
+</script>
 
 {{-- Recent changes --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
