@@ -48,10 +48,12 @@ class AdminController extends Controller
         $dbg = [];
 
         $sources = DB::table('lots')
-            ->select('source', DB::raw('SUM(is_active) as active'), DB::raw('COUNT(*) as total'))
+            ->select('source', DB::raw('SUM(is_active) as active'), DB::raw('COUNT(*) as total'), DB::raw('MAX(parsed_at) as last_parsed'))
             ->groupBy('source')
             ->get();
         $dbg['sources'] = round((microtime(true) - $t0) * 1000);
+
+        $lastParsed = $sources->pluck('last_parsed', 'source');
 
         $t1 = microtime(true);
         $recentChanges = LotChange::orderByDesc('recorded_at')
@@ -66,13 +68,6 @@ class AdminController extends Controller
             ->groupBy('event')
             ->pluck('cnt', 'event');
         $dbg['changeSummary'] = round((microtime(true) - $t2) * 1000);
-
-        $t3 = microtime(true);
-        $lastParsed = DB::table('lots')
-            ->select('source', DB::raw('MAX(parsed_at) as last_parsed'))
-            ->groupBy('source')
-            ->pluck('last_parsed', 'source');
-        $dbg['lastParsed'] = round((microtime(true) - $t3) * 1000);
 
         $t4 = microtime(true);
         $lastScheduled = DB::table('parse_jobs')
