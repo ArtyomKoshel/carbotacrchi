@@ -48,6 +48,8 @@ def _reset_proxy_cache() -> None:
     _CACHED_PROXIES = None
 
 
+_SENTINEL = object()  # default marker for KBChaClient(proxy=) parameter
+
 BASE_URL = "https://www.kbchachacha.com"
 CARMODOO_URL = "https://ck.carmodoo.com"
 
@@ -75,9 +77,12 @@ _PAGE_HEADERS = {
 
 
 class KBChaClient:
-    def __init__(self):
-        proxy_list = _generate_kbcha_proxies()
-        self._proxies: list[str | None] = proxy_list if proxy_list else [None]
+    def __init__(self, proxy: str | None = _SENTINEL):
+        if proxy is _SENTINEL:
+            proxy_list = _generate_kbcha_proxies()
+            self._proxies: list[str | None] = proxy_list if proxy_list else [None]
+        else:
+            self._proxies = [proxy]
         self._proxy_idx: int = 0
         self._last_list_url: str = f"{BASE_URL}/public/search/main.kbc"
         self._client = self._build_client(self._proxies[0])

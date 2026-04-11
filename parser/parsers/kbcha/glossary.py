@@ -26,6 +26,9 @@ MODEL_TRIM_STOP: frozenset[str] = frozenset({
     "프리미엄", "익스클루시브", "스탠다드", "밸류플러스",
     "캘리그래피", "그래비티", "GL", "GLS", "GLX",
     "고급형", "일반형", "기본형",
+    "Value", "Premium", "Exclusive", "Luxury", "Style", "Smart",
+    "Prestige", "Signature", "Modern", "Comfort", "Trend", "Special",
+    "Standard", "Noblesse", "Plus",
 })
 
 MODEL_DRIVE_STOP: frozenset[str] = frozenset({

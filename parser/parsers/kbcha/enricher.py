@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time as _time
 import traceback as _tb
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
-from .client import KBChaClient
+from .client import KBChaClient, _generate_kbcha_proxies
 from .detail_parser import KBChaDetailParser
 from .external_inspection_parser import KBChaExternalInspectionParser, compare_report_vs_lot
 from .inspection_parser import CarmodooInspectionParser
@@ -64,64 +66,66 @@ class KBChaEnricher:
     # ── Detail enrichment ──────────────────────────────────────────────────
 
     def enrich_details(self, lots: list[CarLot], stats: dict, on_page_callback=None) -> None:
+        workers = min(Config.KBCHA_WORKERS, len(lots))
         delay = max(Config.REQUEST_DELAY, 1.5)
         enriched_fields: dict[str, int] = {}
+        proxy_pool = _generate_kbcha_proxies()
+        _stats_lock = threading.Lock()
 
-        logger.debug(f"[{self._source}] Warming up session before detail fetches...")
-        self._client.warmup()
-        _p = _time.monotonic()
-        _time.sleep(delay)
-        stats["pause_time"] = stats.get("pause_time", 0.0) + (_time.monotonic() - _p)
+        logger.info(f"[{self._source}] Detail enrichment: {len(lots)} lots, {workers} workers")
 
-        for i, lot in enumerate(lots):
-            car_seq = lot.id.replace("kbcha_", "")
+        def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, int]:
+            proxy = proxy_pool[idx % len(proxy_pool)] if proxy_pool else None
+            client = KBChaClient(proxy=proxy)
             try:
-                combined = self._fetch_combined(car_seq, lot, stats, delay)
-                self._apply_combined(lot, combined, enriched_fields)
-                try:
-                    self._repo.upsert_batch([lot])
-                except Exception as e:
-                    etype = type(e).__name__
-                    self._inc_error(stats, etype, f"detail upsert lot {lot.id}: {etype}: {e}")
-                    logger.warning(f"[{self._source}] upsert lot after detail failed {lot.id}: {etype}: {e}")
-                    continue
-                photos = lot.raw_data.get("photos") or []
-                if photos:
-                    try:
-                        self._repo.upsert_photos(lot.id, photos)
-                    except Exception as e:
-                        etype = type(e).__name__
-                        self._inc_error(stats, etype, f"upsert photos {lot.id}: {etype}: {e}")
-                        logger.warning(f"[{self._source}] upsert photos failed {lot.id}: {etype}: {e}")
-                stats["detail_fetched"] += 1
-                self._log_lot_dump(lot)
-
-                if (i + 1) % 10 == 0:
-                    logger.info(
-                        f"[{self._source}] Detail progress: {i + 1}/{len(lots)} "
-                        f"({stats['detail_fetched']} ok, {stats['errors']} err, "
-                        f"{stats.get('bot_checks', 0)} bot-checks)"
-                    )
+                client.warmup()
+                car_seq = lot.id.replace("kbcha_", "")
+                combined = self._fetch_combined_with(car_seq, lot, client, stats, _stats_lock, delay)
+                return lot, combined, 0
             except Exception as e:
                 logger.warning(
                     f"[{self._source}] Detail fetch failed for {lot.id}: {type(e).__name__}: {e}\n"
                     + _tb.format_exc(limit=6)
                 )
-                self._inc_error(
-                    stats,
-                    type(e).__name__,
-                    f"detail fetch failed {lot.id}: {type(e).__name__}: {e}",
-                )
+                return lot, {}, 1
+            finally:
+                client.close()
 
-            if on_page_callback:
+        results: list[tuple[CarLot, dict, int]] = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(lots)}
+            for i, future in enumerate(as_completed(future_map)):
+                lot, combined, errors = future.result()
+                stats["errors"] += errors
+                if errors:
+                    self._inc_error(stats, "detail_fetch", f"detail fetch failed {lot.id}")
+                results.append((lot, combined))
+                if on_page_callback:
+                    try:
+                        on_page_callback(page=i + 1, found=1, total_pages=len(lots), stats=stats)
+                    except Exception:
+                        pass
+
+        for lot, combined in results:
+            if not combined:
+                continue
+            self._apply_combined(lot, combined, enriched_fields)
+            try:
+                self._repo.upsert_batch([lot])
+            except Exception as e:
+                etype = type(e).__name__
+                self._inc_error(stats, etype, f"detail upsert lot {lot.id}: {etype}: {e}")
+                logger.warning(f"[{self._source}] upsert lot after detail failed {lot.id}: {etype}: {e}")
+                continue
+            photos = lot.raw_data.get("photos") or []
+            if photos:
                 try:
-                    on_page_callback(page=i + 1, found=1, total_pages=len(lots), stats=stats)
-                except Exception:
-                    pass
-
-            _p = _time.monotonic()
-            _time.sleep(delay)
-            stats["pause_time"] = stats.get("pause_time", 0.0) + (_time.monotonic() - _p)
+                    self._repo.upsert_photos(lot.id, photos)
+                except Exception as e:
+                    etype = type(e).__name__
+                    self._inc_error(stats, etype, f"upsert photos {lot.id}: {etype}: {e}")
+            stats["detail_fetched"] += 1
+            self._log_lot_dump(lot)
 
         if enriched_fields:
             logger.info(f"[{self._source}] Detail enrichment summary:")
@@ -129,19 +133,24 @@ class KBChaEnricher:
                 pct = count / len(lots) * 100 if lots else 0
                 logger.info(f"[{self._source}]   {field}: {count}/{len(lots)} ({pct:.0f}%)")
 
-    def _fetch_combined(self, car_seq: str, lot: CarLot, stats: dict, delay: float) -> dict:
+    def _fetch_combined_with(
+        self, car_seq: str, lot: CarLot,
+        client: KBChaClient, stats: dict, lock: threading.Lock, delay: float
+    ) -> dict:
+        def _inc_stat(key: str, val: int | float = 1) -> None:
+            with lock:
+                stats[key] = stats.get(key, 0) + val
+
         # 1. Primary: full detail page
-        detail_html = self._client.fetch_detail_page(car_seq)
+        detail_html = client.fetch_detail_page(car_seq)
         bot_blocked = self._detail_parser.is_bot_check_page(detail_html)
         if bot_blocked:
-            stats["bot_checks"] = stats.get("bot_checks", 0) + 1
-            if self._client.rotate_proxy():
+            _inc_stat("bot_checks")
+            if client.rotate_proxy():
                 logger.info(f"[{self._source}] {lot.id}: bot-check — rotated proxy, retrying...")
-                self._client.warmup()
-                _p = _time.monotonic()
+                client.warmup()
                 _time.sleep(1.0)
-                stats["pause_time"] = stats.get("pause_time", 0.0) + (_time.monotonic() - _p)
-                detail_html = self._client.fetch_detail_page(car_seq)
+                detail_html = client.fetch_detail_page(car_seq)
                 bot_blocked = self._detail_parser.is_bot_check_page(detail_html)
         if bot_blocked:
             logger.warning(f"[{self._source}] {lot.id}: bot-check — going directly to popups")
@@ -150,11 +159,9 @@ class KBChaEnricher:
         # 2. Fallback: basic-info popup if spec fields are missing
         if not any(f in combined for f in _SPEC_FIELDS):
             logger.debug(f"[{self._source}] {lot.id}: missing specs, fetching basic_info popup")
-            _p = _time.monotonic()
             _time.sleep(delay)
-            stats["pause_time"] = stats.get("pause_time", 0.0) + (_time.monotonic() - _p)
             try:
-                basic_html = self._client.fetch_basic_info(car_seq)
+                basic_html = client.fetch_basic_info(car_seq)
                 combined = {**self._detail_parser.parse_basic_info(basic_html), **combined}
             except Exception as e:
                 logger.warning(f"[{self._source}] {lot.id}: basic_info popup failed: {e}")
@@ -162,6 +169,11 @@ class KBChaEnricher:
         # km-analysis popup disabled — endpoint returns 500 server-side
 
         return combined
+
+    def _fetch_combined(self, car_seq: str, lot: CarLot, stats: dict, delay: float) -> dict:
+        """Legacy single-client wrapper (used by run_reenrich)."""
+        _lock = threading.Lock()
+        return self._fetch_combined_with(car_seq, lot, self._client, stats, _lock, delay)
 
     def _apply_combined(self, lot: CarLot, combined: dict, enriched_fields: dict) -> None:
         for field in combined:

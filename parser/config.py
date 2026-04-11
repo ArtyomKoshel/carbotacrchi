@@ -17,6 +17,7 @@ class Config:
     KBCHA_PROXY_LIST: list[str] = [
         p.strip() for p in os.getenv("KBCHA_PROXY_LIST", "").split(",") if p.strip()
     ]
+    KBCHA_WORKERS = int(os.getenv("KBCHA_WORKERS", "2"))
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
 
