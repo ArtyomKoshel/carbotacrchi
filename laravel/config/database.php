@@ -20,7 +20,7 @@ return [
     ],
 
     'redis' => [
-        'client' => 'phpredis',
+        'client' => env('REDIS_CLIENT', 'predis'),
         'default' => [
             'host'     => env('REDIS_HOST', '127.0.0.1'),
             'port'     => env('REDIS_PORT', 6379),
