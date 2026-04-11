@@ -209,6 +209,8 @@ class KBChaParser(AbstractParser):
 
             maker_elapsed = _time.monotonic() - maker_start
             collected = len(maker_lots)
+            n_new = sum(1 for lot in maker_lots if lot.id not in existing_ids)
+            n_upd = collected - n_new
             api_cnt = maker_count  # from carMaker.json
             if api_cnt > 0:
                 cov = collected / api_cnt * 100
@@ -218,7 +220,7 @@ class KBChaParser(AbstractParser):
             maker_stats[maker_name] = (collected, api_cnt)
             logger.info(
                 f"[STAT] [{source}] {maker_name}: {collected:,} lots "
-                f"({len(new_lots)} new, {len(updated_lots)} upd){cov_str} in {maker_elapsed:.1f}s"
+                f"({n_new} new, {n_upd} upd){cov_str} in {maker_elapsed:.1f}s"
             )
 
         # Enrich inspections for ALL lots (new + updated)

@@ -74,11 +74,21 @@ class KBChaEnricher:
 
         logger.info(f"[{self._source}] Detail enrichment: {len(lots)} lots, {workers} workers")
 
+        _thread_local = threading.local()
+
+        def _get_thread_client(proxy_idx: int) -> KBChaClient:
+            """Return a warmed-up client for this thread; create+warmup only on first call."""
+            if not getattr(_thread_local, "client", None):
+                proxy = proxy_pool[proxy_idx % len(proxy_pool)] if proxy_pool else None
+                c = KBChaClient(proxy=proxy)
+                c.warmup()
+                _thread_local.client = c
+                _thread_local.proxy_idx = proxy_idx
+            return _thread_local.client
+
         def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, int]:
-            proxy = proxy_pool[idx % len(proxy_pool)] if proxy_pool else None
-            client = KBChaClient(proxy=proxy)
             try:
-                client.warmup()
+                client = _get_thread_client(idx % max(len(proxy_pool), 1) if proxy_pool else 0)
                 car_seq = lot.id.replace("kbcha_", "")
                 combined = self._fetch_combined_with(car_seq, lot, client, stats, _stats_lock, delay)
                 return lot, combined, 0
@@ -88,8 +98,6 @@ class KBChaEnricher:
                     + _tb.format_exc(limit=6)
                 )
                 return lot, {}, 1
-            finally:
-                client.close()
 
         FLUSH_EVERY = 1  # write each lot immediately as its detail fetch completes
         pending: list[CarLot] = []
