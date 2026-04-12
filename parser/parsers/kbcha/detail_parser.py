@@ -151,6 +151,7 @@ class KBChaDetailParser:
             logger.debug(f"[kbcha:info_raw] {raw_dump}")
         
         # Use FieldMapper for consistent processing
+        self._field_mapper.apply(info, result)
         self._field_mapper.apply_raw_data(info, result)
 
     # ── History (성능점검·보험사고이력) ──────────────────────────────────────

@@ -107,13 +107,35 @@ class KBChaFieldMapper:
         
         return mappings
     
-    def apply(self, source: Dict[str, Any], target: CarLot) -> int:
+    def apply(self, source: Dict[str, Any], target: Dict[str, Any]) -> int:
         """Apply all mappings and return count of successful mappings."""
         applied = 0
         for mapping in self.mappings.values():
-            if mapping.apply(source, target, self.normalizer):
+            if self._apply_mapping(mapping, source, target):
                 applied += 1
         return applied
+    
+    def _apply_mapping(self, mapping: 'FieldMapping', source: Dict[str, Any], target: Dict[str, Any]) -> bool:
+        """Apply a single mapping to dict target."""
+        value = source.get(mapping.source_key)
+        if value is None or value == "information" or not mapping.condition(value):
+            return False
+        
+        # Don't overwrite existing values unless explicitly allowed
+        if not mapping.overwrite and mapping.target_field in target:
+            current_value = target[mapping.target_field]
+            if current_value is not None:
+                return False
+        
+        # Apply transformation
+        try:
+            transformed_value = mapping.transformer(value)
+            if transformed_value is not None:
+                target[mapping.target_field] = transformed_value
+                return True
+        except Exception:
+            pass
+        return False
     
     def apply_raw_data(self, source: Dict[str, Any], target: Dict[str, Any]) -> None:
         """Store raw info data."""
