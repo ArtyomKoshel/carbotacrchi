@@ -75,7 +75,7 @@ class KBChaFieldMapper:
             elif method == "_parse_year":
                 mappings[kr_key] = FieldMapping(
                     kr_key, "year", 
-                    transformer=lambda x: normalizer.parse_year(x),
+                    transformer=lambda x, norm=self.normalizer: norm.parse_year(x),
                     condition=lambda x: x and x != "information"
                 )
                 # Also store registration date
@@ -88,7 +88,7 @@ class KBChaFieldMapper:
             elif method == "_parse_mileage":
                 mappings[kr_key] = FieldMapping(
                     kr_key, "mileage",
-                    transformer=lambda x: normalizer.parse_mileage(x),
+                    transformer=lambda x, norm=self.normalizer: norm.parse_mileage(x),
                     condition=lambda x: x and x != "information"
                 )
             elif method == "_parse_owners":
@@ -97,11 +97,11 @@ class KBChaFieldMapper:
                     transformer=lambda x: int(re.search(r"(\d+)", x).group(1)) if re.search(r"(\d+)", x) else None,
                     condition=lambda x: x and x != "information"
                 )
-            elif hasattr(normalizer, method):
+            elif hasattr(self.normalizer, method):
                 # Use normalizer method
                 mappings[kr_key] = FieldMapping(
                     kr_key, field_name,
-                    transformer=lambda x, m=method: getattr(normalizer, m)(x),
+                    transformer=lambda x, m=method, norm=self.normalizer: getattr(norm, m)(x),
                     condition=lambda x: x and x != "information"
                 )
         
