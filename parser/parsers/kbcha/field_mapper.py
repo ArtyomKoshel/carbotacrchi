@@ -115,20 +115,20 @@ class KBChaFieldMapper:
                 applied += 1
         return applied
     
-    def apply_raw_data(self, source: Dict[str, Any], target: CarLot) -> None:
+    def apply_raw_data(self, source: Dict[str, Any], target: Dict[str, Any]) -> None:
         """Store raw info data."""
-        target.raw_data["_raw_info"] = dict(source)
+        target["_raw_info"] = dict(source)
         
         # Handle tax payment status
         if source.get("tax_unpaid"):
-            target.tax_paid = (source["tax_unpaid"] == "none")
+            target["tax_paid"] = (source["tax_unpaid"] == "none")
         
         # Parse cylinders from engine string if present
-        engine_str = target.raw_data.get("engine_str")
+        engine_str = target.get("engine_str")
         if engine_str:
             cylinders = self.normalizer.parse_cylinders(engine_str)
             if cylinders:
-                target.cylinders = cylinders
+                target["cylinders"] = cylinders
 
 
 def create_kbcha_history_mappings() -> Dict[str, FieldMapping]:
