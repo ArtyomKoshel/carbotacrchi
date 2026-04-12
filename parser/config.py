@@ -13,11 +13,7 @@ class Config:
     # KBCHA_SCHEDULE overrides KBCHA_INTERVAL_MINUTES when set.
     # Format: "interval:60" (minutes) or "cron:0 * * * *" (cron expression min h dom mon dow)
     KBCHA_SCHEDULE = os.getenv("KBCHA_SCHEDULE", "")
-    KBCHA_PROXY = os.getenv("KBCHA_PROXY", "")
-    KBCHA_PROXY_LIST: list[str] = [
-        p.strip() for p in os.getenv("KBCHA_PROXY_LIST", "").split(",") if p.strip()
-    ]
-    KBCHA_WORKERS = int(os.getenv("KBCHA_WORKERS", "2"))
+    KBCHA_WORKERS = int(os.getenv("KBCHA_WORKERS", "10"))
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
 
@@ -37,10 +33,6 @@ class Config:
     ENCAR_ENABLED = os.getenv("ENCAR_ENABLED", "false").lower() == "true"
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "60"))
     ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
-    ENCAR_PROXY = os.getenv("ENCAR_PROXY", "")
-    ENCAR_PROXY_LIST: list[str] = [
-        p.strip() for p in os.getenv("ENCAR_PROXY_LIST", "").split(",") if p.strip()
-    ]
     ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "5"))
 
     # FloppyData API for dynamic proxy generation

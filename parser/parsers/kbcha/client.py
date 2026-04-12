@@ -17,16 +17,16 @@ logger = logging.getLogger(__name__)
 _CACHED_PROXIES: list[str] | None = None
 
 
-def _generate_kbcha_proxies(count: int = 10) -> list[str]:
+def _generate_kbcha_proxies(count: int = 20) -> list[str]:
     """Generate KR residential proxy URLs with random session IDs (Floppydata).
-    Falls back to KBCHA_PROXY_LIST if no API key configured."""
+    Returns empty list when FloppyData key is not configured."""
     global _CACHED_PROXIES
     if _CACHED_PROXIES is not None:
         return _CACHED_PROXIES
 
     if not Config.FLOPPYDATA_API_KEY:
-        logger.warning("[kbcha:proxy] No FLOPPYDATA_API_KEY — using static KBCHA_PROXY_LIST")
-        _CACHED_PROXIES = Config.KBCHA_PROXY_LIST or ([Config.KBCHA_PROXY] if Config.KBCHA_PROXY else [])
+        logger.warning("[kbcha:proxy] No FLOPPYDATA_API_KEY — dynamic proxy generation disabled")
+        _CACHED_PROXIES = []
         return _CACHED_PROXIES
 
     base_creds = "user-3L8YmcrVpKK3wN9W"
@@ -164,6 +164,13 @@ class KBChaClient:
             self._rebuild_client()
             _time.sleep(2)
             return self._client.get(url, params=params, headers=headers)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 424:
+                logger.warning(f"[kbcha:proxy] 424 Failed Dependency ({url}) — rotating proxy and retrying...")
+                self.rotate_proxy()
+                _time.sleep(3)
+                return self._client.get(url, params=params, headers=headers)
+            raise
 
     def warmup(self) -> None:
         """Visit homepage → search page → list page to establish a real browser session."""

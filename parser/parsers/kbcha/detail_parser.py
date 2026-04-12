@@ -11,6 +11,7 @@ from .glossary import (
     WARRANTY_PATTERN, PAID_OPTIONS_PATTERN,
 )
 from .normalizer import KBChaNormalizer
+from .field_mapper import KBChaFieldMapper, create_kbcha_history_mappings
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,8 @@ class KBChaDetailParser:
 
     def __init__(self, normalizer: KBChaNormalizer):
         self._norm = normalizer
+        self._field_mapper = KBChaFieldMapper(normalizer)
+        self._history_mapper = create_kbcha_history_mappings()
 
     @staticmethod
     def is_bot_check_page(html: str) -> bool:
@@ -69,9 +72,7 @@ class KBChaDetailParser:
     def _parse_info_table_fields(self, soup: BeautifulSoup, result: dict) -> None:
         info = self._extract_info_table(soup)
         if not info:
-            logger.debug("[kbcha:detail] Legacy info table: nothing found (expected for current page structure)")
             return
-        logger.debug(f"[kbcha:detail] Legacy info table keys: {list(info.keys())}")
         self._apply_info_fields(info, result)
 
 
@@ -86,7 +87,6 @@ class KBChaDetailParser:
         if not info:
             logger.warning("[kbcha:basic_info] No fields extracted from popup")
             return result
-        logger.debug(f"[kbcha:basic_info] Raw fields: {list(info.keys())}")
         self._apply_info_fields(info, result)
         return result
 
@@ -120,7 +120,6 @@ class KBChaDetailParser:
                     if key and val and val != "정보없음" and len(val) < 200:
                         info[key] = val
             if info:
-                logger.debug(f"[kbcha:detail] detail-info-table: {len(info)} fields")
                 return info
         else:
             html_str = str(soup)
@@ -146,61 +145,13 @@ class KBChaDetailParser:
         return info
 
     def _apply_info_fields(self, info: dict[str, str], result: dict) -> None:
-        """Apply INFO_FIELDS mapping from raw key→value dict to result."""
+        """Apply INFO_FIELDS mapping using FieldMapper for cleaner code."""
         if logger.isEnabledFor(logging.DEBUG) and info:
             raw_dump = " | ".join(f"'{k}'='{v}'" for k, v in info.items())
             logger.debug(f"[kbcha:info_raw] {raw_dump}")
-        for kr_key, (field_name, method) in INFO_FIELDS.items():
-            raw = info.get(kr_key)
-            if raw is None or raw == "정보없음":
-                continue
-
-            if method is None:
-                if field_name.startswith("_"):
-                    continue
-                if field_name == "vin" and "vin" in result:
-                    continue
-                result[field_name] = raw
-                logger.debug(f"[kbcha:detail] {field_name}: '{raw}'")
-
-            elif method == "_parse_year":
-                year = self._norm.parse_year(raw)
-                if year:
-                    result["year"] = year
-                result["registration_date"] = raw
-                logger.debug(f"[kbcha:detail] year/reg: '{raw}' -> {year}")
-
-            elif method == "_parse_mileage":
-                mileage = self._norm.parse_mileage(raw)
-                if mileage:
-                    result["mileage"] = mileage
-
-            elif method == "_parse_owners":
-                m = re.search(r"(\d+)", raw)
-                if m:
-                    result["owners_count"] = int(m.group(1))
-                    logger.debug(f"[kbcha:detail] owners_count: {result['owners_count']}")
-
-            elif hasattr(self._norm, method):
-                val = getattr(self._norm, method)(raw)
-                if val is not None:
-                    result[field_name] = val
-                    logger.debug(f"[kbcha:detail] {field_name}: '{raw}' -> '{val}'")
-                else:
-                    logger.debug(f"[kbcha:detail] {field_name}: '{raw}' -> unmapped")
-
-        result["_raw_info"] = dict(info)
-
-        if "세금미납" in info:
-            result["tax_paid"] = (info["세금미납"] == "없음")
-
-        # Parse cylinders from engine_str if present in raw_data
-        engine_str = result.get("engine_str")
-        if engine_str:
-            cylinders = self._norm.parse_cylinders(engine_str)
-            if cylinders:
-                result["cylinders"] = cylinders
-                logger.debug(f"[kbcha:detail] cylinders: '{cylinders}' from engine_str")
+        
+        # Use FieldMapper for consistent processing
+        self._field_mapper.apply_raw_data(info, result)
 
     # ── History (성능점검·보험사고이력) ──────────────────────────────────────
 
@@ -215,7 +166,6 @@ class KBChaDetailParser:
                     val = btn.get_text(strip=True)
                     if val in ("사고있음", "사고없음", "없음"):
                         result["has_accident"] = (val == "사고있음")
-                        logger.debug(f"[kbcha:detail] has_accident: '{val}'")
                     break
 
             # History dl: 전손이력, 침수이력, 소유자변경
@@ -233,12 +183,10 @@ class KBChaDetailParser:
                         if key_clean in HISTORY_BOOL_LABELS:
                             field = HISTORY_BOOL_LABELS[key_clean]
                             result[field] = (val != "없음")
-                            logger.debug(f"[kbcha:detail] {field}: '{val}' -> {result[field]}")
                         elif "소유자변경" in key_clean and "owners_count" not in result:
                             m = re.search(r"(\d+)", val)
                             if m:
                                 result["owners_count"] = int(m.group(1))
-                                logger.debug(f"[kbcha:detail] owners_count: {result['owners_count']}")
                         key = None
 
         # Fallback: text-based regex
@@ -248,12 +196,10 @@ class KBChaDetailParser:
             if m:
                 val = m.group(1)
                 result["has_accident"] = (val == "사고있음")
-                logger.debug(f"[kbcha:detail] has_accident (fallback): '{val}'")
 
         insurance_match = re.search(r"보험이력\s*(\d+)\s*건", text)
         if insurance_match:
             result["insurance_count"] = int(insurance_match.group(1))
-            logger.debug(f"[kbcha:detail] insurance_count: {result['insurance_count']}")
 
     # ── Mileage Analysis (주행거리분석) ─────────────────────────────────────
     # Primary source: /public/layer/car/km/analysis/info.kbc popup
@@ -270,10 +216,7 @@ class KBChaDetailParser:
                 text = strong.get_text(strip=True)
                 if text in self._KM_GRADES:
                     result["mileage_grade"] = text
-                    logger.debug(f"[kbcha:km] mileage_grade: '{text}'")
                     break
-        if "mileage_grade" not in result:
-            logger.debug("[kbcha:km] mileage_grade not found in popup")
         return result
 
     def _parse_mileage_analysis(self, soup: BeautifulSoup, result: dict) -> None:
@@ -286,14 +229,12 @@ class KBChaDetailParser:
                 text = span.get_text(strip=True)
                 if text in self._KM_GRADES:
                     result["mileage_grade"] = text
-                    logger.debug(f"[kbcha:detail] mileage_grade: '{text}'")
                     return
         # Fallback: regex on full page text
         text = soup.get_text()
         m = re.search(MILEAGE_GRADE_PATTERN, text)
         if m:
             result["mileage_grade"] = m.group(1)
-            logger.debug(f"[kbcha:detail] mileage_grade (regex): '{result['mileage_grade']}'")
 
     # ── Pricing (AI 시세, 신차 대비) ────────────────────────────────────────
 
@@ -303,13 +244,11 @@ class KBChaDetailParser:
         ratio_match = re.search(r"신차\s*출고\s*가격\s*대비\s*(\d+)\s*%", text)
         if ratio_match:
             result["new_car_price_ratio"] = int(ratio_match.group(1))
-            logger.debug(f"[kbcha:detail] new_car_price_ratio: {result['new_car_price_ratio']}%")
 
         range_match = re.search(r"적정범위\s*([\d,]+)\s*[~～]\s*([\d,]+)\s*만원", text)
         if range_match:
             result["_ai_price_min"] = int(range_match.group(1).replace(",", ""))
             result["_ai_price_max"] = int(range_match.group(2).replace(",", ""))
-            logger.debug(f"[kbcha:detail] ai_price: {result['_ai_price_min']}~{result['_ai_price_max']}만원")
 
         for script in soup.find_all("script"):
             s = script.get_text()
@@ -331,7 +270,6 @@ class KBChaDetailParser:
                     price_man = int(raw)
                     if 500 < price_man < 50000:
                         result["_original_msrp_man"] = price_man
-                        logger.debug(f"[kbcha:detail] original_msrp: {price_man}만원")
                 except (ValueError, TypeError):
                     pass
                 break
@@ -363,7 +301,6 @@ class KBChaDetailParser:
 
         if options:
             result["options"] = options
-            logger.debug(f"[kbcha:detail] options ({len(options)}): {options}")
 
     # ── Dealer (판매자정보) ─────────────────────────────────────────────────
 
@@ -373,7 +310,6 @@ class KBChaDetailParser:
         phone_match = re.search(r"(0507-\d{4}-\d{4}|0\d{1,2}-\d{3,4}-\d{4})", text)
         if phone_match:
             result["dealer_phone"] = phone_match.group(1)
-            logger.debug(f"[kbcha:detail] dealer_phone: '{result['dealer_phone']}'")
 
         dealer_el = soup.find(string=re.compile(r"딜러$"))
         if dealer_el and dealer_el.parent:
@@ -381,21 +317,18 @@ class KBChaDetailParser:
             name = name_text.replace("딜러", "").strip()
             if name and len(name) < 20:
                 result["dealer_name"] = name
-                logger.debug(f"[kbcha:detail] dealer_name: '{name}'")
 
         company_el = soup.find(string=re.compile(r"상사명\s*:"))
         if company_el:
             m = re.search(r"상사명\s*:\s*(.+)", company_el.get_text(strip=True))
             if m:
                 result["dealer_company"] = m.group(1).strip()
-                logger.debug(f"[kbcha:detail] dealer_company: '{result['dealer_company']}'")
 
         addr_el = soup.find(string=re.compile(r"주소\s*:"))
         if addr_el:
             m = re.search(r"주소\s*:\s*(.+)", addr_el.get_text(strip=True))
             if m:
                 result["dealer_location"] = m.group(1).strip()
-                logger.debug(f"[kbcha:detail] dealer_location: '{result['dealer_location']}'")
 
         desc_el = soup.find(string=re.compile(r"판매자\s*설명"))
         if desc_el:
@@ -411,7 +344,6 @@ class KBChaDetailParser:
                         desc = re.sub(r"\s+", " ", desc).strip()
                         if desc:
                             result["dealer_description"] = desc
-                            logger.debug(f"[kbcha:detail] dealer_description: '{desc[:80]}'")
                         break
                 node = node.parent
 

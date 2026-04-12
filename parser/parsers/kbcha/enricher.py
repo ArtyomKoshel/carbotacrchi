@@ -220,6 +220,7 @@ class KBChaEnricher:
         self, lot: CarLot, combined: dict, client: KBChaClient, delay: float
     ) -> tuple[str, str, str] | None:
         """Fetch inspection HTML in worker thread. Returns (insp_type, report_url, html) or None."""
+        insp_delay = max(delay * 0.5, 0.5)
         insp_type = combined.get("inspection_type")
         if not insp_type or insp_type in ("other", None):
             return None
@@ -228,7 +229,7 @@ class KBChaEnricher:
             report_url = combined.get(url_key)
             if report_url:
                 try:
-                    _time.sleep(delay)
+                    _time.sleep(insp_delay)
                     html = client.fetch_external_report(report_url, referer=lot.lot_url or "")
                     if _PHOTO_ONLY_MARKER in html:
                         return None
@@ -239,7 +240,7 @@ class KBChaEnricher:
         if insp_type == "kb_popup":
             try:
                 car_seq = lot.id.replace("kbcha_", "")
-                _time.sleep(delay)
+                _time.sleep(insp_delay)
                 html = client.fetch_kb_inspection(car_seq)
                 if len(html.strip()) < 1024:
                     return None

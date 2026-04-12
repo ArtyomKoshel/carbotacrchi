@@ -462,9 +462,10 @@ class KBChaParser(AbstractParser):
             if enrich_callback and new_page_lots:
                 enrich_callback(new_page_lots)
 
-            _p = _time.monotonic()
-            _time.sleep(Config.REQUEST_DELAY)
-            stats["pause_time"] += _time.monotonic() - _p
+            if not enrich_callback and Config.REQUEST_DELAY > 0:
+                _p = _time.monotonic()
+                _time.sleep(Config.REQUEST_DELAY)
+                stats["pause_time"] += _time.monotonic() - _p
 
         return lots
 

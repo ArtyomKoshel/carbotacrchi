@@ -171,18 +171,19 @@ class KBChaNormalizer:
         clean = value.strip()
         result = FUEL.get(clean) or FUEL.get(clean.lower())
         if result:
-            return result
-        if "하이브리드" in clean or "hybrid" in clean.lower() or "+전기" in clean:
-            return "Hybrid"
+            return result.lower()  # Normalize to lowercase to match inspection reports
+        if "hbrid" in clean or "hybrid" in clean.lower() or "+electric" in clean:
+            return "hybrid"
         for key, mapped in FUEL.items():
             if key in clean:
-                return mapped
+                return mapped.lower()
         return None
 
     def normalize_transmission(self, value: str | None) -> str | None:
         if not value:
             return None
-        return TRANSMISSION.get(value.strip(), TRANSMISSION.get(value.strip().lower()))
+        result = TRANSMISSION.get(value.strip(), TRANSMISSION.get(value.strip().lower()))
+        return result.lower() if result else None
 
     def normalize_body_type(self, value: str | None) -> str | None:
         if not value:

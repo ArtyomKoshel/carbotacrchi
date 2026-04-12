@@ -266,6 +266,7 @@ function loadLogs() {
       }
       content.innerHTML = '';
       data.lines.forEach(line => content.appendChild(_renderLine(line, search)));
+      content.scrollTop = content.scrollHeight;
     })
     .catch(e => {
       content.innerHTML = `<div class="text-red-400">Failed: ${e}</div>`;

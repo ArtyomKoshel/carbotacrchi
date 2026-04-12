@@ -76,6 +76,9 @@ ENGINE_DESC_TOKENS: frozenset[str] = frozenset({
     "슈퍼", "골드", "하이슈퍼",
     "어린이버스", "어린이보호차",
     "사업자용",
+    # Audi-specific tokens to reduce unknown warnings
+    "quattro", "TFSI", "TDI", "e-tron", "g-tron", "S", "RS", "Audi",
+    "Sportback", "Avant", "allroad", "plus", "matrix", "virtual",
 })
 
 # Tokens that look like trims on the site but are actually fuel/type descriptors

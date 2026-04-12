@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time as _time
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -62,6 +63,10 @@ def _redis() -> redis.Redis:
 
 
 PARSE_LOCK_TTL = 4 * 3600  # 4 hours max
+
+_RUNNING_THREADS: dict[int, threading.Thread] = {}
+_RUNNING_SOURCES: dict[str, int] = {}
+_RUNNING_LOCK = threading.Lock()
 
 
 def acquire_parse_lock(r: redis.Redis, source: str, owner: str) -> bool:
@@ -140,15 +145,152 @@ def _publish(r: redis.Redis, source: str, payload: dict):
         logger.warning(f"[job_worker] Redis publish failed ({type(e).__name__}): {e} — progress will not be live but job continues")
 
 
+def _cleanup_finished_threads() -> None:
+    with _RUNNING_LOCK:
+        finished = [job_id for job_id, t in _RUNNING_THREADS.items() if not t.is_alive()]
+        for job_id in finished:
+            _RUNNING_THREADS.pop(job_id, None)
+            for src, src_job_id in list(_RUNNING_SOURCES.items()):
+                if src_job_id == job_id:
+                    _RUNNING_SOURCES.pop(src, None)
+
+
+def _unregister_running(job_id: int, source: str) -> None:
+    with _RUNNING_LOCK:
+        _RUNNING_THREADS.pop(job_id, None)
+        if _RUNNING_SOURCES.get(source) == job_id:
+            _RUNNING_SOURCES.pop(source, None)
+
+
+def _execute_job(job_id: int, source: str, filters: dict) -> None:
+    conn = _get_conn()
+    r: redis.Redis | None = None
+    locked = False
+    job_handler: RotatingFileHandler | None = None
+    main_filter: _ImportantOnly | None = None
+    main_handler: logging.Handler | None = None
+    root = logging.getLogger()
+    try:
+        logger.info(f"[job_worker] Job #{job_id} starting: source={source} filters={filters}")
+
+        r = _redis()
+
+        try:
+            locked = acquire_parse_lock(r, source, f"job:{job_id}")
+        except Exception as e:
+            logger.error(f"[job_worker] Job #{job_id}: Redis lock failed ({type(e).__name__}): {e} — marking as error")
+            _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": f"Redis: {e}"})
+            return
+
+        if not locked:
+            holder = r.get(f"parse_lock:{source}") or "unknown"
+            logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
+            with conn.cursor() as _cur:
+                _cur.execute(
+                    "UPDATE parse_jobs SET status='pending', updated_at=NOW() WHERE id=%s AND status='running'",
+                    (job_id,)
+                )
+            conn.commit()
+            return
+
+        _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
+
+        if Config.LOG_FILE:
+            job_log_dir = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs")
+            os.makedirs(job_log_dir, exist_ok=True)
+            job_log_path = os.path.join(job_log_dir, f"job-{job_id}.log")
+            try:
+                job_handler = RotatingFileHandler(
+                    job_log_path, maxBytes=50 * 1024 * 1024, backupCount=1, encoding="utf-8"
+                )
+                job_handler.setFormatter(_LOG_FMT)
+                job_handler.setLevel(logging.DEBUG)
+                main_log_path = os.path.abspath(Config.LOG_FILE)
+                for h in root.handlers:
+                    if isinstance(h, RotatingFileHandler):
+                        base = os.path.abspath(getattr(h, "baseFilename", ""))
+                        if base == main_log_path:
+                            main_handler = h
+                            break
+                if main_handler:
+                    main_filter = _ImportantOnly()
+                    main_handler.addFilter(main_filter)
+                root.addHandler(job_handler)
+                logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
+            except Exception as lh_err:
+                logger.warning(f"[job_worker] Could not create job log file: {lh_err}")
+                job_handler = None
+
+        _MAX_JOB_RETRIES = 3
+        for attempt in range(1, _MAX_JOB_RETRIES + 1):
+            try:
+                if attempt > 1:
+                    logger.info(f"[job_worker] Job #{job_id} retry {attempt}/{_MAX_JOB_RETRIES} — regenerating proxies...")
+                    _set_job(conn, job_id, "running", progress={"status": f"retry {attempt}/{_MAX_JOB_RETRIES}"})
+                    _publish(r, source, {"job_id": job_id, "status": "running", "retry": attempt})
+                    try:
+                        from parsers.encar.client import _reset_proxy_cache
+                        _reset_proxy_cache()
+                    except ImportError:
+                        pass
+                    _time.sleep(10 * attempt)
+
+                result = _run_parse(source, filters, job_id, conn, r)
+                _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
+                _save_job_stats(conn, job_id, source, result)
+                _publish(r, source, {"job_id": job_id, "status": "done", **result})
+                logger.info(f"[job_worker] Job #{job_id} done: {result}")
+                break
+            except JobCancelledError:
+                logger.info(f"[job_worker] Job #{job_id} CANCELLED — parser stopped cleanly")
+                _set_job(conn, job_id, "cancelled", progress={"status": "cancelled"})
+                _publish(r, source, {"job_id": job_id, "status": "cancelled"})
+                break
+            except Exception as e:
+                msg = f"{type(e).__name__}: {e}"
+                logger.error(f"[job_worker] Job #{job_id} attempt {attempt}/{_MAX_JOB_RETRIES} failed: {msg}")
+                if attempt >= _MAX_JOB_RETRIES:
+                    _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": msg})
+                    _publish(r, source, {"job_id": job_id, "status": "error", "error": msg})
+                    logger.error(f"[job_worker] Job #{job_id} failed after {_MAX_JOB_RETRIES} attempts: {msg}")
+    finally:
+        if locked and r is not None:
+            try:
+                release_parse_lock(r, source)
+            except Exception:
+                pass
+        if job_handler:
+            root.removeHandler(job_handler)
+            job_handler.close()
+        if main_handler and main_filter:
+            main_handler.removeFilter(main_filter)
+        _unregister_running(job_id, source)
+        conn.close()
+
+
 def process_pending_job() -> None:
-    """Pick one pending parse_job and run it."""
+    """Pick one pending parse_job and dispatch it to a background thread."""
+    _cleanup_finished_threads()
+
     conn = _get_conn()
     try:
+        with _RUNNING_LOCK:
+            busy_sources = set(_RUNNING_SOURCES.keys())
+
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT * FROM parse_jobs WHERE status = 'pending' "
-                "ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED"
-            )
+            if busy_sources:
+                placeholders = ",".join(["%s"] * len(busy_sources))
+                cur.execute(
+                    f"SELECT * FROM parse_jobs WHERE status = 'pending' "
+                    f"AND source NOT IN ({placeholders}) "
+                    f"ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED",
+                    tuple(sorted(busy_sources)),
+                )
+            else:
+                cur.execute(
+                    "SELECT * FROM parse_jobs WHERE status = 'pending' "
+                    "ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED"
+                )
             job = cur.fetchone()
         if not job:
             return
@@ -170,103 +312,24 @@ def process_pending_job() -> None:
             logger.info(f"[job_worker] Job #{job_id} no longer pending (cancelled?), skipping")
             return
 
-        logger.info(f"[job_worker] Job #{job_id} starting: source={source} filters={filters}")
-
-        r = _redis()
-
+        thread = threading.Thread(
+            target=_execute_job,
+            args=(job_id, source, filters),
+            name=f"parse-job-{job_id}",
+            daemon=True,
+        )
+        with _RUNNING_LOCK:
+            _RUNNING_THREADS[job_id] = thread
+            _RUNNING_SOURCES[source] = job_id
         try:
-            locked = acquire_parse_lock(r, source, f"job:{job_id}")
+            thread.start()
         except Exception as e:
-            logger.error(f"[job_worker] Job #{job_id}: Redis lock failed ({type(e).__name__}): {e} — marking as error")
-            _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": f"Redis: {e}"})
-            return
-        if not locked:
-            holder = r.get(f"parse_lock:{source}") or "unknown"
-            logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
-            with conn.cursor() as _cur:
-                _cur.execute(
-                    "UPDATE parse_jobs SET status='pending', updated_at=NOW() WHERE id=%s AND status='running'",
-                    (job_id,)
-                )
-            conn.commit()
+            _unregister_running(job_id, source)
+            _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": f"ThreadStartError: {e}"})
+            logger.error(f"[job_worker] Job #{job_id} thread start failed: {e}")
             return
 
-        _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
-
-        # Per-job log file: /app/logs/jobs/job-{id}.log
-        # During a job: verbose logs → job file only, important (WARNING+ / STAT) → both.
-        job_handler: RotatingFileHandler | None = None
-        main_filter: _ImportantOnly | None = None
-        main_handler: logging.Handler | None = None
-        root = logging.getLogger()
-        if Config.LOG_FILE:
-            job_log_dir = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs")
-            os.makedirs(job_log_dir, exist_ok=True)
-            job_log_path = os.path.join(job_log_dir, f"job-{job_id}.log")
-            try:
-                job_handler = RotatingFileHandler(
-                    job_log_path, maxBytes=50 * 1024 * 1024, backupCount=1, encoding="utf-8"
-                )
-                job_handler.setFormatter(_LOG_FMT)
-                job_handler.setLevel(logging.DEBUG)
-                # Throttle main handler: only WARNING+ and [STAT] during the job
-                for h in root.handlers:
-                    if isinstance(h, RotatingFileHandler) and h is not job_handler:
-                        main_handler = h
-                        break
-                if main_handler:
-                    main_filter = _ImportantOnly()
-                    main_handler.addFilter(main_filter)
-                root.addHandler(job_handler)
-                logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
-            except Exception as lh_err:
-                logger.warning(f"[job_worker] Could not create job log file: {lh_err}")
-                job_handler = None
-
-        _MAX_JOB_RETRIES = 3
-        last_error = None
-        for attempt in range(1, _MAX_JOB_RETRIES + 1):
-            try:
-                if attempt > 1:
-                    logger.info(f"[job_worker] Job #{job_id} retry {attempt}/{_MAX_JOB_RETRIES} — regenerating proxies...")
-                    _set_job(conn, job_id, "running", progress={"status": f"retry {attempt}/{_MAX_JOB_RETRIES}"})
-                    _publish(r, source, {"job_id": job_id, "status": "running", "retry": attempt})
-                    try:
-                        from parsers.encar.client import _reset_proxy_cache
-                        _reset_proxy_cache()
-                    except ImportError:
-                        pass
-                    _time.sleep(10 * attempt)  # 10s, 20s, 30s
-
-                result = _run_parse(source, filters, job_id, conn, r)
-                _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
-                _save_job_stats(conn, job_id, source, result)
-                _publish(r, source, {"job_id": job_id, "status": "done", **result})
-                logger.info(f"[job_worker] Job #{job_id} done: {result}")
-                last_error = None
-                break
-            except JobCancelledError:
-                logger.info(f"[job_worker] Job #{job_id} CANCELLED — parser stopped cleanly")
-                _set_job(conn, job_id, "cancelled", progress={"status": "cancelled"})
-                _publish(r, source, {"job_id": job_id, "status": "cancelled"})
-                last_error = None
-                break
-            except Exception as e:
-                last_error = e
-                msg = f"{type(e).__name__}: {e}"
-                logger.error(f"[job_worker] Job #{job_id} attempt {attempt}/{_MAX_JOB_RETRIES} failed: {msg}")
-                if attempt >= _MAX_JOB_RETRIES:
-                    _set_job(conn, job_id, "error", progress={"status": "error"},
-                             result={"error": msg})
-                    _publish(r, source, {"job_id": job_id, "status": "error", "error": msg})
-                    logger.error(f"[job_worker] Job #{job_id} failed after {_MAX_JOB_RETRIES} attempts: {msg}")
-
-        release_parse_lock(r, source)
-        if job_handler:
-            root.removeHandler(job_handler)
-            job_handler.close()
-        if main_handler and main_filter:
-            main_handler.removeFilter(main_filter)
+        logger.info(f"[job_worker] Job #{job_id} dispatched to {thread.name}")
     finally:
         conn.close()
 

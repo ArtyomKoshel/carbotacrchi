@@ -55,7 +55,7 @@ _CACHED_PROXIES: list[str] | None = None
 def _generate_floppy_proxies(count: int = 20) -> list[str]:
     """
     Generate proxy URLs using FloppyData API.
-    If API key is not configured, fall back to static proxy list.
+    If API key is not configured, return an empty list.
     Proxies are cached at module level to avoid regenerating on each client initialization.
     """
     global _CACHED_PROXIES
@@ -65,8 +65,8 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
         return _CACHED_PROXIES
 
     if not Config.FLOPPYDATA_API_KEY:
-        logger.warning("[FloppyData] API key not configured, using static ENCAR_PROXY_LIST")
-        _CACHED_PROXIES = Config.ENCAR_PROXY_LIST or []
+        logger.warning("[FloppyData] API key not configured, dynamic proxy generation disabled")
+        _CACHED_PROXIES = []
         return _CACHED_PROXIES
 
     proxies = []
@@ -123,12 +123,10 @@ _CLIENT_MAX_AGE = 30 * 60  # rebuild httpx.Client every 30 minutes
 
 class EncarClient:
     def __init__(self, proxy: str | None = None):
-        # Use dynamic proxy generation if FloppyData API key is configured
         if Config.FLOPPYDATA_API_KEY:
-            proxy_list = _generate_floppy_proxies(count=Config.ENCAR_WORKERS)
+            proxy_list = _generate_floppy_proxies(count=max(Config.ENCAR_WORKERS, 20))
         else:
-            # Fallback to static proxy list
-            proxy_list = Config.ENCAR_PROXY_LIST or ([proxy or Config.ENCAR_PROXY] if (proxy or Config.ENCAR_PROXY) else [])
+            proxy_list = [proxy] if proxy else []
         self._proxies: list[str | None] = proxy_list if proxy_list else [None]
         self._proxy_idx: int = 0
         self._s = self._build_client(self._proxies[0])
