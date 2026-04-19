@@ -42,6 +42,12 @@ class EncarParser(AbstractParser):
         self._record_enricher = RecordEnricher()
         self._inspection_enricher = InspectionEnricher()
     
+    def get_source_key(self) -> str:
+        return "encar"
+    
+    def get_source_name(self) -> str:
+        return "Encar"
+    
     def run(
         self,
         max_pages: int | None = None,
