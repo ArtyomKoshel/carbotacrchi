@@ -290,10 +290,18 @@ class KBChaEnricher:
         if photos:
             lot.photos = list(photos)
 
+        # Convert MSRP from 만원 to retail_value (KRW) before merge
+        msrp_man = combined.pop("_original_msrp_man", None)
+        if msrp_man and not combined.get("retail_value"):
+            combined["retail_value"] = int(msrp_man) * 10_000
+
         lot.merge_details(combined)
         for key in _RAW_DATA_KEYS:
             if key in combined:
                 lot.raw_data[key] = combined[key]
+        # Also keep original MSRP in raw_data for debugging
+        if msrp_man:
+            lot.raw_data["_original_msrp_man"] = msrp_man
 
     def _log_lot_dump(self, lot: CarLot) -> None:
         if not logger.isEnabledFor(logging.DEBUG):

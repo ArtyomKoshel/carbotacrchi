@@ -17,7 +17,7 @@
   @endphp
   <span id="status-badge" class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $job->status }}</span>
   <span class="text-xs text-gray-600">{{ $job->source }}</span>
-  @if(($job->filters['triggered_by'] ?? 'manual') === 'scheduler')
+  @if($job->triggered_by === 'scheduler')
     <span class="text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ auto</span>
   @endif
   <span class="text-xs text-gray-600 ml-auto">{{ $job->created_at->format('Y-m-d H:i:s') }}</span>

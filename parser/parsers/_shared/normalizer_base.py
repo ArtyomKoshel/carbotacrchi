@@ -112,6 +112,29 @@ class BaseNormalizer:
                 return mapped
         return clean  # keep raw label for UI
 
+    # ── Lien / Seizure normalization ────────────────────────────────────────
+    # Both Encar and KBCha must produce "clean" | "lien" / "seizure" | raw text.
+    _LIEN_CLEAN = {"clean", "없음", "없다", "none", "0", "해당없음"}
+    _SEIZURE_CLEAN = {"clean", "없음", "없다", "none", "0", "해당없음"}
+
+    @classmethod
+    def normalize_lien(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        v = str(value).strip().lower()
+        if not v:
+            return None
+        return "clean" if v in cls._LIEN_CLEAN else "lien"
+
+    @classmethod
+    def normalize_seizure(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        v = str(value).strip().lower()
+        if not v:
+            return None
+        return "clean" if v in cls._SEIZURE_CLEAN else "seizure"
+
     # ── Numeric helpers (non-mapping, pure parsing) ────────────────────────
     @staticmethod
     def price_krw_from_man(man_won: Any) -> int:

@@ -126,8 +126,8 @@ INFO_FIELDS: dict[str, tuple[str, str | None]] = {
     "차시번호": ("vin",           None),
     "제시번호": ("_inspection_no", None),   # stored in raw_data only
     "시트색상": ("seat_color",    "normalize_color"),
-    "저당":   ("lien_status",   None),
-    "압류":   ("seizure_status", None),
+    "저당":   ("lien_status",   "normalize_lien"),
+    "압류":   ("seizure_status", "normalize_seizure"),
 }
 
 # ── History-section labels ────────────────────────────────────────────────────

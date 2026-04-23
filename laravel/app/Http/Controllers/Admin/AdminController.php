@@ -79,7 +79,7 @@ class AdminController extends Controller
         $lastScheduled = DB::table('parse_jobs')
             ->select('source', DB::raw('MAX(created_at) as last_run'), DB::raw('MAX(status) as last_status'))
             ->where('created_at', '>=', now()->subDays(30))
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(filters, '$.triggered_by')) = 'scheduler'")
+            ->where('triggered_by', 'scheduler')
             ->groupBy('source')
             ->get()
             ->keyBy('source');

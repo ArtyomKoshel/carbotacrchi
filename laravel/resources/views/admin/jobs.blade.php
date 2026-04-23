@@ -66,7 +66,7 @@
         </td>
         <td class="px-5 py-3 text-white">
           {{ $job->source }}
-          @if(($job->filters['triggered_by'] ?? 'manual') === 'scheduler')
+          @if($job->triggered_by === 'scheduler')
             <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ auto</span>
           @else
             <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">manual</span>

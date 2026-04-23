@@ -665,6 +665,8 @@ def _enrich_from_sellingpoint(lot: CarLot, sp: dict, norm: EncarNormalizer) -> N
 
 
 class EncarParser(AbstractParser):
+    MIN_DELIST_COVERAGE = 95.0  # Encar API total is reliable → stricter threshold
+
     def __init__(self, repo: LotRepository):
         super().__init__(repo)
         self._client = EncarClient()
@@ -1018,57 +1020,17 @@ class EncarParser(AbstractParser):
         elapsed = _time.monotonic() - run_start
 
         db_count = self.repo.count_active(source)
-        coverage_pct = stats["total"] / api_total * 100 if api_total else 0.0
 
-        _MIN_DELIST_COVERAGE = 95.0
-        if coverage_pct >= _MIN_DELIST_COVERAGE:
-            stale = self.repo.mark_inactive(source, seen_ids, grace_hours=1)
-        else:
-            stale = 0
-            logger.warning(
-                f"[{source}] Skipping delist: coverage {coverage_pct:.1f}% < {_MIN_DELIST_COVERAGE}% "
-                f"(seen {stats['total']:,} / API {api_total:,}). "
-                f"Lots not seen may just be beyond pagination cap, not truly delisted."
-            )
-
-        logger.info(f"[STAT] [{source}] ========== IMPORT COMPLETE ==========")
-        logger.info(f"[STAT] [{source}] API reported: {api_total:,}")
-        logger.info(f"[STAT] [{source}] Processed:   {stats['total']:,} ({coverage_pct:.1f}% coverage)")
-        logger.info(f"[STAT] [{source}] In DB now:   {db_count:,}")
-        logger.info(f"[STAT] [{source}] New:     {stats['new']}")
-        logger.info(f"[STAT] [{source}] Updated: {stats['updated']}")
-        logger.info(f"[STAT] [{source}] Stale:   {stale}")
-        logger.info(f"[STAT] [{source}] Errors:  {stats['errors']}")
-        logger.info(f"[STAT] [{source}] Time:    {elapsed:.1f}s")
-        logger.info(f"[STAT] [{source}] Search:  {stats['search_time']:.1f}s")
-        logger.info(f"[STAT] [{source}] Enrich:  {stats['enrich_time']:.1f}s")
-        logger.info(f"[STAT] [{source}] Pauses:  {stats['pause_time']:.1f}s")
-        if stats["error_types"]:
-            logger.info(f"[STAT] [{source}] Err types: {stats['error_types']}")
+        # Use base-class delist (respects MIN_DELIST_COVERAGE = 95%)
+        stale = self.delist_if_complete(seen_ids, reference_total=api_total, grace_hours=1)
 
         self._client.close()
-        hours = int(elapsed // 3600)
-        mins = int((elapsed % 3600) // 60)
-        time_str = f"{hours}h {mins}m" if hours else f"{mins}m"
-        avg_per_lot = round(elapsed / stats["total"], 2) if stats["total"] else 0
-        return {
-            "total": stats["total"],
-            "new": stats["new"],
-            "updated": stats["updated"],
-            "errors": stats["errors"],
-            "stale": stale,
-            "api_total": api_total,
-            "coverage_pct": round(coverage_pct, 1),
-            "db_count": db_count,
-            "time": time_str,
-            "elapsed_s": round(elapsed, 1),
-            "search_time_s": round(stats["search_time"], 1),
-            "enrich_time_s": round(stats["enrich_time"], 1),
-            "pause_time_s": round(stats["pause_time"], 1),
-            "avg_per_lot_s": avg_per_lot,
-            "error_types": stats["error_types"],
-            "error_log": stats["error_log"][-50:],  # last 50 errors
-        }
+
+        # Use base-class summary emitter (consistent [STAT] format + dict)
+        return self.finalize_summary(
+            elapsed, stats, seen_ids,
+            api_total=api_total, stale=stale, db_count=db_count,
+        )
 
     def _enrich_batch(self, lots: list[CarLot], stats: dict) -> None:
         if not lots:

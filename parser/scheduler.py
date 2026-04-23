@@ -111,14 +111,14 @@ def _enqueue_scheduled_job(
                 logger.info(f"[{source_key}] Scheduled trigger skipped — job already pending/running")
                 conn.close()
                 return
-            filters: dict = {"triggered_by": "scheduler"}
+            filters: dict = {}
             if max_pages:
                 filters["max_pages"] = max_pages
             if maker_filter:
                 filters["maker"] = maker_filter
             cur.execute(
-                "INSERT INTO parse_jobs (source, status, filters, created_at, updated_at) "
-                "VALUES (%s, 'pending', %s, NOW(), NOW())",
+                "INSERT INTO parse_jobs (source, status, filters, triggered_by, created_at, updated_at) "
+                "VALUES (%s, 'pending', %s, 'scheduler', NOW(), NOW())",
                 (source_key, json.dumps(filters)),
             )
         conn.commit()

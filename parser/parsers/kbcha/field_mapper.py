@@ -140,11 +140,7 @@ class KBChaFieldMapper:
     def apply_raw_data(self, source: Dict[str, Any], target: Dict[str, Any]) -> None:
         """Store raw info data."""
         target["_raw_info"] = dict(source)
-        
-        # Handle tax payment status
-        if source.get("tax_unpaid"):
-            target["tax_paid"] = (source["tax_unpaid"] == "none")
-        
+
         # Parse cylinders from engine string if present
         engine_str = target.get("engine_str")
         if engine_str:

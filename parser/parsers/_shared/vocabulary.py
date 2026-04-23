@@ -168,6 +168,7 @@ ENCAR_BODY: dict[str, str] = {
     "SUV":     BODY_SUV,
     "해치백":    BODY_HATCHBACK,
     "쿠페":     BODY_COUPE,
+    "스포츠카":   BODY_COUPE,
     "컨버터블":   BODY_CONVERTIBLE,
     "픽업트럭":   BODY_PICKUP,
     "밴":      BODY_VAN,
@@ -293,14 +294,19 @@ KBCHA_BODY: dict[str, str] = {
     "wagon":   BODY_WAGON,
     "쿠페":     BODY_COUPE,
     "coupe":   BODY_COUPE,
+    "스포츠카":   BODY_COUPE,
     "컨버터블":   BODY_CONVERTIBLE,
     "convertible": BODY_CONVERTIBLE,
     "밴":      BODY_VAN,
     "van":     BODY_VAN,
     "MPV":     BODY_VAN,
+    "승합":     BODY_MINIVAN,
     "트럭":     BODY_TRUCK,
     "truck":   BODY_TRUCK,
+    "카고":     BODY_CARGO,
     "경차":     BODY_KEI,
+    "픽업트럭":   BODY_PICKUP,
+    "픽업":     BODY_PICKUP,
 }
 
 KBCHA_MAKE: dict[str, str] = {

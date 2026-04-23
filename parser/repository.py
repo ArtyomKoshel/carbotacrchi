@@ -362,7 +362,7 @@ class LotRepository:
             logger.warning(f"[DB] One-by-one retry: {saved}/{len(rows)} saved, {len(rows)-saved} skipped")
             # Remove skipped lots from change-detection below
             lots = [l for l in lots if not l.raw_data.get("_db_skip")]
-            rows = [_lot_to_row(l) for l in lots]
+            rows = [l.to_db_row() for l in lots]
 
         # Detect field changes for existing lots and persist to lot_changes
         changes_to_insert = []
@@ -646,6 +646,8 @@ class LotRepository:
                         dealer_phone=row.get("dealer_phone"),
                         dealer_description=row.get("dealer_description"),
                         new_car_price_ratio=row.get("new_car_price_ratio"),
+                        sell_type=row.get("sell_type"),
+                        sell_type_raw=row.get("sell_type_raw"),
                     )
                     lots.append(lot)
                 except Exception as e:

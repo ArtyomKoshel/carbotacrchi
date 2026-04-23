@@ -10,7 +10,7 @@
 @endif
 
 <p class="text-sm text-gray-500 mb-6">
-  Changes take effect after the parser process restarts. Schedule format: <code class="text-gray-400">interval:60</code> or <code class="text-gray-400">cron:0 * * * *</code>
+  Changes are applied automatically within 1 minute (hot-reload). Schedule format: <code class="text-gray-400">interval:60</code> or <code class="text-gray-400">cron:0 * * * *</code>
 </p>
 
 <div class="space-y-4">
