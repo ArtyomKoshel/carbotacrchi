@@ -83,6 +83,7 @@ fi
 echo "[start] Clearing config cache..."
 php "$APP_DIR/artisan" config:clear 2>/dev/null || true
 
+NEED_MIGRATE=0
 if [ -n "$DB_HOST" ]; then
     echo "[start] Waiting for MySQL at ${DB_HOST}:${DB_PORT:-3306}..."
     MAX=30
@@ -96,6 +97,20 @@ if [ -n "$DB_HOST" ]; then
         sleep 2
     done
 
+    NEED_MIGRATE=1
+fi
+
+echo "[start] Preparing log directory..."
+mkdir -p /app/logs
+chown -R www-data:www-data /app/logs
+
+# Start web server FIRST so healthcheck /up passes while migrations run
+echo "[start] Starting nginx + php-fpm via supervisord..."
+/usr/bin/supervisord -c /etc/supervisord.conf &
+SUPER_PID=$!
+sleep 2  # give php-fpm a moment to bind
+
+if [ "$NEED_MIGRATE" = "1" ]; then
     echo "[start] Running migrations..."
     php "$APP_DIR/artisan" migrate --force --no-interaction || \
         echo "[start] WARNING: migrate failed, continuing anyway"
@@ -111,9 +126,5 @@ if [ -n "$DB_HOST" ]; then
     fi
 fi
 
-echo "[start] Preparing log directory..."
-mkdir -p /app/logs
-chown -R www-data:www-data /app/logs
-
-echo "[start] Starting nginx + php-fpm via supervisord..."
-exec /usr/bin/supervisord -c /etc/supervisord.conf
+# Keep container alive — wait on supervisord
+wait $SUPER_PID
