@@ -255,6 +255,7 @@ class LotRepository:
                 dealer_name, dealer_company, dealer_location,
                 dealer_phone, dealer_description,
                 sell_type, sell_type_raw,
+                seat_count, is_domestic, import_type,
                 created_at, updated_at
             ) VALUES (
                 %(id)s, %(source)s, %(make)s, %(model)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
@@ -274,6 +275,7 @@ class LotRepository:
                 %(dealer_name)s, %(dealer_company)s, %(dealer_location)s,
                 %(dealer_phone)s, %(dealer_description)s,
                 %(sell_type)s, %(sell_type_raw)s,
+                %(seat_count)s, %(is_domestic)s, %(import_type)s,
                 %(now)s, %(now)s
             ) ON DUPLICATE KEY UPDATE
                 price=VALUES(price), mileage=VALUES(mileage),
@@ -317,6 +319,9 @@ class LotRepository:
                 dealer_description=COALESCE(VALUES(dealer_description), dealer_description),
                 sell_type=COALESCE(VALUES(sell_type), sell_type),
                 sell_type_raw=COALESCE(VALUES(sell_type_raw), sell_type_raw),
+                seat_count=COALESCE(VALUES(seat_count), seat_count),
+                is_domestic=COALESCE(VALUES(is_domestic), is_domestic),
+                import_type=COALESCE(VALUES(import_type), import_type),
                 parsed_at=VALUES(parsed_at), updated_at=VALUES(updated_at)
         """
 

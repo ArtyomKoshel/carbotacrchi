@@ -128,6 +128,7 @@ INFO_FIELDS: dict[str, tuple[str, str | None]] = {
     "시트색상": ("seat_color",    "normalize_color"),
     "저당":   ("lien_status",   "normalize_lien"),
     "압류":   ("seizure_status", "normalize_seizure"),
+    "세금미납": ("tax_paid",      "_parse_tax"),
 }
 
 # ── History-section labels ────────────────────────────────────────────────────

@@ -54,6 +54,16 @@ class FieldMapping:
             return False
 
 
+def _ym_to_date(ym: int | None) -> str | None:
+    """Convert YYYYMM int (e.g. 202003) to 'YYYY-MM-01' date string."""
+    if ym is None or ym < 190001:
+        return None
+    y, m = divmod(ym, 100)
+    if not (1 <= m <= 12):
+        return None
+    return f"{y:04d}-{m:02d}-01"
+
+
 class KBChaFieldMapper:
     """Field mapper specialized for KBCha data processing."""
     
@@ -84,6 +94,20 @@ class KBChaFieldMapper:
                     transformer=lambda x, norm=self.normalizer: norm.parse_year_month(x),
                     condition=lambda x: x and x != "information",
                     overwrite=False
+                )
+                # Also derive registration_date (YYYY-MM-01)
+                mappings[kr_key + "_reg"] = FieldMapping(
+                    kr_key, "registration_date",
+                    transformer=lambda x, norm=self.normalizer: _ym_to_date(norm.parse_year_month(x)),
+                    condition=lambda x: x and x != "information",
+                    overwrite=False
+                )
+            elif method == "_parse_tax":
+                # 세금미납: '없음' = no unpaid tax → tax_paid=True
+                mappings[kr_key] = FieldMapping(
+                    kr_key, field_name,
+                    transformer=lambda x: x.strip() == "없음",
+                    condition=lambda x: x and x != "information"
                 )
             elif method == "_parse_mileage":
                 mappings[kr_key] = FieldMapping(
