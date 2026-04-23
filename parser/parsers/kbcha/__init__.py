@@ -223,40 +223,13 @@ class KBChaParser(AbstractParser):
                 f"({n_new} new, {n_upd} upd){cov_str} in {maker_elapsed:.1f}s"
             )
 
-        _MIN_DELIST_COVERAGE = 80.0
-        existing_count = len(existing_ids)
-        coverage_pct = stats["total"] / existing_count * 100 if existing_count else 100.0
-        if coverage_pct >= _MIN_DELIST_COVERAGE:
-            stale = self.repo.mark_inactive(source, seen_ids, grace_hours=1)
-        else:
-            stale = 0
-            logger.warning(
-                f"[{source}] Skipping delist: coverage {coverage_pct:.1f}% < {_MIN_DELIST_COVERAGE}% "
-                f"(seen {stats['total']:,} / existing {existing_count:,}). "
-                f"Lots not seen may be due to incomplete run."
-            )
-        counts = self.repo.count_by_source(source)
         elapsed = _time.monotonic() - run_start
-        db_count = counts.get("active", 0)
-
         api_total = sum(c for (_, c) in maker_stats.values()) if maker_stats else 0
-        api_coverage = stats["total"] / api_total * 100 if api_total else 0.0
+        db_count = self.repo.count_active(source)
 
-        logger.info(f"[STAT] [{source}] ========== IMPORT COMPLETE ==========")
-        logger.info(f"[STAT] [{source}] Processed:   {stats['total']:,} (DB coverage {coverage_pct:.1f}%"
-                    + (f", site coverage {api_coverage:.1f}% of {api_total:,}" if api_total else "") + ")")
-        logger.info(f"[STAT] [{source}] In DB now:   {db_count:,}")
-        logger.info(f"[STAT] [{source}] New:     {stats['new']}")
-        logger.info(f"[STAT] [{source}] Updated: {stats['updated']}")
-        logger.info(f"[STAT] [{source}] Stale:   {stale}")
-        logger.info(f"[STAT] [{source}] Errors:  {stats['errors']}")
-        logger.info(f"[STAT] [{source}] Time:    {elapsed:.1f}s")
-        logger.info(f"[STAT] [{source}] Search:  {stats['search_time']:.1f}s")
-        logger.info(f"[STAT] [{source}] Enrich:  {stats['enrich_time']:.1f}s")
-        logger.info(f"[STAT] [{source}] Inspect: {stats['inspect_time']:.1f}s")
-        logger.info(f"[STAT] [{source}] Pauses:  {stats['pause_time']:.1f}s")
-        if stats["error_types"]:
-            logger.info(f"[STAT] [{source}] Err types: {stats['error_types']}")
+        # Use base-class delist (respects MIN_DELIST_COVERAGE = 80%)
+        ref_total = api_total or len(existing_ids) or stats["total"]
+        stale = self.delist_if_complete(seen_ids, reference_total=ref_total, grace_hours=1)
 
         if maker_stats:
             logger.info(f"[STAT] [{source}] Per-maker breakdown:")
@@ -271,31 +244,13 @@ class KBChaParser(AbstractParser):
         self._client.close()
         if stats.get("_cancel_exc") is not None:
             raise stats["_cancel_exc"]
-        hours = int(elapsed // 3600)
-        mins = int((elapsed % 3600) // 60)
-        time_str = f"{hours}h {mins}m" if hours else f"{mins}m"
-        avg_per_lot = round(elapsed / stats["total"], 2) if stats["total"] else 0
-        return {
-            "total": stats["total"],
-            "new": stats["new"],
-            "updated": stats["updated"],
-            "errors": stats["errors"],
-            "stale": stale,
-            "api_total": api_total or max(existing_count, stats["total"]),
-            "api_coverage_pct": round(api_coverage, 1) if api_total else None,
-            "coverage_pct": round(coverage_pct, 1),
-            "db_count": db_count,
-            "time": time_str,
-            "elapsed_s": round(elapsed, 1),
-            "search_time_s": round(stats["search_time"], 1),
-            "enrich_time_s": round(stats["enrich_time"], 1),
-            "inspect_time_s": round(stats["inspect_time"], 1),
-            "pause_time_s": round(stats["pause_time"], 1),
-            "avg_per_lot_s": avg_per_lot,
-            "error_types": stats["error_types"],
-            "error_log": stats["error_log"][-50:],
-            "maker_breakdown": maker_stats,
-        }
+
+        result = self.finalize_summary(
+            elapsed, stats, seen_ids,
+            api_total=api_total or ref_total, stale=stale, db_count=db_count,
+        )
+        result["maker_breakdown"] = maker_stats
+        return result
 
     def _fetch_maker(
         self,
@@ -367,53 +322,59 @@ class KBChaParser(AbstractParser):
                 etype = str(e.response.status_code)
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
                 stats["errors"] += 1
-                msg = f"[{maker_name}] p.{page} HTTP {etype}"
-                stats["error_log"].append(msg)
+                stats["error_log"].append(f"[{label}] p.{page} HTTP {etype}")
                 if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
-                    logger.warning(
-                        f"[{source}] {label} p.{page}: {etype}, rotating proxy and retrying"
-                    )
-                    self._client.rotate_proxy()
-                    _p = _time.monotonic()
-                    _time.sleep(2)
-                    stats["pause_time"] += _time.monotonic() - _p
-                    try:
-                        html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
-                    except Exception as e2:
-                        etype2 = type(e2).__name__
-                        stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
-                        stats["errors"] += 1
-                        stats["error_log"].append(f"[{label}] p.{page} retry failed: {etype2}: {e2}")
-                        logger.error(
-                            f"[{source}] {label} p.{page} fetch error after retry: {etype2}: {e2}"
+                    html = None
+                    for attempt in range(1, 4):
+                        self._client.rotate_proxy()
+                        delay = 2 ** attempt
+                        logger.warning(
+                            f"[{source}] {label} p.{page}: HTTP {etype}, retry {attempt}/3 after {delay}s"
                         )
-                        break
+                        _p = _time.monotonic()
+                        _time.sleep(delay)
+                        stats["pause_time"] += _time.monotonic() - _p
+                        try:
+                            html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
+                            break
+                        except Exception as e2:
+                            etype2 = type(e2).__name__
+                            stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
+                            stats["errors"] += 1
+                            stats["error_log"].append(f"[{label}] p.{page} retry {attempt}: {etype2}: {e2}")
+                    if html is None:
+                        logger.error(f"[{source}] {label} p.{page}: all retries exhausted, skipping page")
+                        continue
                 else:
-                    logger.error(f"[{source}] {label} p.{page} HTTP error: {etype}")
+                    logger.error(f"[{source}] {label} p.{page} HTTP {etype} (non-retryable)")
                     break
             except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
                 etype = type(e).__name__
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
                 stats["errors"] += 1
                 stats["error_log"].append(f"[{label}] p.{page}: {etype}: {e}")
-                logger.warning(
-                    f"[{source}] {label} p.{page} {etype}, rotating proxy and retrying"
-                )
-                self._client.rotate_proxy()
-                _p = _time.monotonic()
-                _time.sleep(3)
-                stats["pause_time"] += _time.monotonic() - _p
-                try:
-                    html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
-                except Exception as e2:
-                    etype2 = type(e2).__name__
-                    stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
-                    stats["errors"] += 1
-                    stats["error_log"].append(f"[{label}] p.{page} retry failed: {etype2}: {e2}")
-                    logger.error(
-                        f"[{source}] {label} p.{page} fetch error after retry: {etype2}: {e2}"
+                # Exponential backoff: up to 3 retries with proxy rotation
+                html = None
+                for attempt in range(1, 4):
+                    self._client.rotate_proxy()
+                    delay = 2 ** attempt  # 2s, 4s, 8s
+                    logger.warning(
+                        f"[{source}] {label} p.{page} {etype}, retry {attempt}/3 after {delay}s"
                     )
-                    break
+                    _p = _time.monotonic()
+                    _time.sleep(delay)
+                    stats["pause_time"] += _time.monotonic() - _p
+                    try:
+                        html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
+                        break  # success
+                    except Exception as e2:
+                        etype2 = type(e2).__name__
+                        stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
+                        stats["errors"] += 1
+                        stats["error_log"].append(f"[{label}] p.{page} retry {attempt} failed: {etype2}: {e2}")
+                if html is None:
+                    logger.error(f"[{source}] {label} p.{page}: all retries exhausted, skipping page")
+                    continue  # skip this page, try next (don't abandon maker)
             except Exception as e:
                 etype = type(e).__name__
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
