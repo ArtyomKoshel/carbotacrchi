@@ -305,7 +305,11 @@ class EncarClient:
             return None
 
     def diagnosis(self, vehicle_id: int | str) -> dict | None:
-        """Fetch Encar internal diagnosis (body panel check, certified cars only)."""
+        """Fetch Encar internal diagnosis (body panel check, certified cars only).
+
+        NOTE: Currently unused — endpoint returns 404 via proxies.
+        Kept for potential future re-enablement.
+        """
         url = _DIAG_URL.format(id=vehicle_id)
         try:
             r = self._request("GET", url, context=f"diagnosis id={vehicle_id}")

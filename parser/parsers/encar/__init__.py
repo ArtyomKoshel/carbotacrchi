@@ -827,7 +827,7 @@ class EncarParser(AbstractParser):
             self._enrich_batch(page_lots, stats)
             stats["search_time"] += _time.monotonic() - _t_batch_start
 
-            self.repo.upsert_batch(page_lots)
+            self.repo.upsert_batch(page_lots, stats)
             # Photos are auto-upserted by LotRepository.upsert_batch from
             # lot.photos (see parser/models.py). No need to handle them here.
             for lot in page_lots:
@@ -1164,16 +1164,10 @@ class EncarParser(AbstractParser):
             except Exception as e:
                 logger.warning(f"[{source}] inspection {lot.id}: {e}")
 
-        # Diagnosis — certified cars only
-        if is_certified:
-            try:
-                diag = _call(client.diagnosis, lot.id)
-                if diag:
-                    if insp_record is None:
-                        insp_record = InspectionRecord(lot_id=lot.id, source="encar")
-                    _enrich_from_diagnosis(lot, diag, insp_record)
-            except Exception as e:
-                logger.warning(f"[{source}] diagnosis {lot.id}: {e}")
+        # NOTE: diagnosis endpoint disabled — returns 404 via proxies (requires
+        # origin:fem.encar.com header which proxies strip). The /inspection
+        # endpoint already provides identical data (outers, inners, master).
+        # Removing saves ~10s per page of wasted 404 calls.
 
         # NOTE: inspection_html removed after field-source audit (called 0/40, 0 unique fields).
         # sellingpoint kept — provides drive_type for ~2.5% of lots not covered by search.
@@ -1189,7 +1183,7 @@ class EncarParser(AbstractParser):
         return lot, insp_record, errors
 
     def _enrich_accident_data(self, lots: list[CarLot], stats: dict) -> None:
-        """Fetch record + inspection + diagnosis in parallel; DB writes on main thread."""
+        """Fetch record + inspection in parallel; DB writes on main thread."""
         source = _SOURCE
         workers = min(Config.ENCAR_WORKERS, len(lots))
 
@@ -1224,7 +1218,7 @@ class EncarParser(AbstractParser):
         n_accident = n_flood = n_insp = 0
         for lot, insp_record in results:
             try:
-                self.repo.upsert_batch([lot])
+                self.repo.upsert_batch([lot], stats)
                 logger.debug(
                     f"[{source}] ENRICHED {lot.id} | "
                     f"vin={lot.vin or '-'} | accident={lot.has_accident} | "
