@@ -325,7 +325,7 @@ function filterForm() {
       return window.__FIELD_SCHEMA__.find(f => f.name === this.form.field) || null;
     },
     get availableOperators() {
-      return this.currentField?.operators || ['eq','ne','gt','gte','lt','lte','in','not_in','is_null','is_not_null','contains','regex'];
+      return this.currentField?.operators || ['eq','ne','gt','gte','lt','lte','between','in','not_in','is_null','is_not_null','contains','not_contains','regex'];
     },
     get needsValue() {
       return !['is_null','is_not_null'].includes(this.form.operator);
