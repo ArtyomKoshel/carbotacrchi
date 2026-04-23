@@ -879,6 +879,7 @@ class EncarParser(AbstractParser):
         max_pages: int | None = None,
         maker_filter: str | None = None,
         on_page_callback: Callable | None = None,
+        checkpoint: dict | None = None,
     ) -> int:
         source = _SOURCE
         run_start = _time.monotonic()

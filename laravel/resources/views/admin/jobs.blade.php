@@ -75,11 +75,12 @@
         <td class="px-5 py-3">
           @php
             $badge = match($job->status) {
-              'done'      => 'bg-green-900 text-green-400',
-              'error'     => 'bg-red-900 text-red-400',
-              'running'   => 'bg-yellow-900 text-yellow-400',
-              'cancelled' => 'bg-gray-800 text-gray-500',
-              default     => 'bg-blue-900/50 text-blue-400',
+              'done'        => 'bg-green-900 text-green-400',
+              'error'       => 'bg-red-900 text-red-400',
+              'running'     => 'bg-yellow-900 text-yellow-400',
+              'interrupted' => 'bg-orange-900 text-orange-400',
+              'cancelled'   => 'bg-gray-800 text-gray-500',
+              default       => 'bg-blue-900/50 text-blue-400',
             };
           @endphp
           <span class="status-badge text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $job->status }}</span>
@@ -131,7 +132,7 @@
              class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white transition">
             Details
           </a>
-          @if(in_array($job->status, ['pending', 'running']))
+          @if(in_array($job->status, ['pending', 'running', 'interrupted']))
             <form method="POST"
                   action="{{ route('admin.jobs.cancel', ['id' => $job->id]) }}">
               @csrf
@@ -181,7 +182,7 @@ function watchJobRow(id, source) {
   es.onerror = () => es.close();
 }
 
-document.querySelectorAll('tr[data-status="running"]').forEach(row => {
+document.querySelectorAll('tr[data-status="running"], tr[data-status="pending"], tr[data-status="interrupted"]').forEach(row => {
   watchJobRow(parseInt(row.dataset.id), row.dataset.source);
 });
 </script>

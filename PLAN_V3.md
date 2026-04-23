@@ -521,6 +521,21 @@ SELECT COUNT(*) FROM lot_inspections WHERE cert_no = '82';
 ### 5.3 `KBChachaProvider::normalize()` — рассинхронизирован
 Не учитывает новые колонки (`sell_type`, `registration_year_month`).
 
+### 5.4 Fields page показывает только 8 полей вместо ~50
+
+**Проблема**: `FieldRegistryService` пытается получить полную схему тремя способами:
+1. `storage/app/fields.json` (файл) — не существует
+2. `python -m fields.schema` (Process) — падает (Python недоступен из Laravel контейнера или `PARSER_DIR` не настроен)
+3. `fallbackSchema()` — **8 хардкоженных полей** (make, year, price, mileage, sell_type, has_accident, flood_history, insurance_count)
+
+В итоге страница `/admin/fields` видит только fallback. Таблица `field_coverage_stats` может быть пустой (команда не запускалась), а `FieldMappingsService` тоже может падать с пустым результатом. Union из трёх пустых источников = 8 fallback-полей.
+
+**Решение**:
+1. **Deploy-время**: Добавить в `start.sh` / CI step генерацию `storage/app/fields.json` через `python -m fields.schema > storage/app/fields.json`. Это самый быстрый path — никаких Process-вызовов в runtime.
+2. **Python-сторона**: `parser/fields/schema.py` должен экспортировать ВСЕ поля из `CarLot` dataclass + виртуальные (photos, inspections). Сейчас `registry.py` может не покрывать все колонки.
+3. **Fallback**: Расширить `fallbackSchema()` — добавить все основные колонки `lots` таблицы (vin, model, badge, fuel, transmission, body_type, color, drive_type, displacement, cylinders, options, dealer_*, registration_date, retail_value, damage, lien_status, seizure_status и т.д.), чтобы даже при полном отказе Python страница показывала полный список.
+4. **Admin UI**: Добавить warning banner если schema пришла из fallback ("Schema загружена из fallback. Запустите `php artisan fields:export-schema` для полного списка полей").
+
 ---
 
 ## ЧАСТЬ 6: Оптимизация `lot_inspections`
@@ -672,7 +687,50 @@ flowchart TD
     TestRun -->|"dry run"| GroupEval
 ```
 
-### 8.5 Примеры новых фильтров
+### 8.5 Лог пропущенных лотов (skip audit trail)
+
+**Проблема**: Когда фильтр пропускает лот с `ACTION_SKIP`, информация теряется безвозвратно:
+- Для **новых** лотов (ещё нет в БД) — нет никакой записи. Лот просто не попадает в `lots`.
+- Для **существующих** лотов — пишется `lot_changes` с `deactivated_filter`, но без деталей (какое правило сработало).
+- `FilterEngine.log_summary()` даёт только агрегатные числа в лог-файле.
+- В Admin UI нет раздела для просмотра пропущенных лотов.
+
+**Решение**:
+
+**A. Таблица `filter_skip_log`** (новая):
+```sql
+CREATE TABLE filter_skip_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    source VARCHAR(20) NOT NULL,          -- encar / kbcha
+    source_id VARCHAR(100) NOT NULL,      -- внешний ID лота
+    lot_url VARCHAR(500),                 -- прямая ссылка на лот
+    rule_name VARCHAR(100) NOT NULL,      -- имя правила
+    rule_id INT UNSIGNED,                 -- FK на parse_filters.id
+    action ENUM('skip','mark_inactive'),
+    field_name VARCHAR(100),              -- какое поле совпало
+    field_value TEXT,                     -- значение поля при совпадении
+    skipped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_source_date (source, skipped_at),
+    INDEX idx_rule (rule_id)
+);
+```
+
+**B. Изменения в `FilterEngine`**:
+- `evaluate()` при `ACTION_SKIP` / `ACTION_MARK_INACTIVE` записывает в batch-буфер
+- Новый метод `flush_skip_log(repo)` — bulk INSERT в `filter_skip_log`
+- URL формируется из `source` + `source_id` (Encar: `https://fem.encar.com/cars/detail/{id}`, KBCha: `https://www.kbchachacha.com/public/car/detail.kbc?carSeq={id}`)
+
+**C. Admin UI — новый раздел `/admin/filter-log`**:
+- Таблица: дата, source, source_id (ссылка), правило, значение поля, действие
+- Фильтры: по source, по rule, по дате
+- Пагинация (filter_skip_log может расти быстро)
+- Кнопка "Очистить старше N дней" (ротация)
+- Retention: auto-cleanup записей старше 30 дней (cron / scheduled command)
+
+**D. Обогащение `lot_changes`**:
+- Для существующих лотов которые деактивируются фильтром — писать `rule_name` и `field_value` в `lot_changes.metadata` JSON.
+
+### 8.6 Примеры новых фильтров
 
 | Сценарий | Сейчас | После |
 |---|---|---|
@@ -860,8 +918,11 @@ gantt
     6.1_autocafe_certno         :10, 11
     6.2_kbpaper_audit           :10, 11
     6.6_comparison_qa           :11, 12
+    section Phase5_Fields
+    5.4_fields_page_full_schema :3, 4
     section Phase8_Filters
-    8.5_fix_filter_bugs         :3, 4
+    8.5_skip_audit_log          :3, 5
+    8.6_fix_filter_bugs         :3, 4
     8.1_rule_groups_AND         :4, 6
     8.2_virtual_inspection_fields:6, 8
     8.3_two_phase_filtering     :8, 9

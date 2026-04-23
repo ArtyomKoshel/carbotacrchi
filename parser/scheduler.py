@@ -189,7 +189,11 @@ def _make_reload_fn(scheduler: BlockingScheduler, registry: dict, _state: dict):
 
 
 def _cleanup_stale_jobs() -> None:
-    """On startup: mark orphaned 'running' jobs as error and release their Redis locks."""
+    """On startup: mark orphaned 'running' jobs as 'interrupted' and release Redis locks.
+
+    Interrupted jobs keep their progress (which includes checkpoint data) so they
+    can be auto-resumed by the job worker on the next poll cycle.
+    """
     try:
         from job_worker import _redis, release_parse_lock
         r = _redis()
@@ -200,23 +204,33 @@ def _cleanup_stale_jobs() -> None:
             cursorclass=pymysql.cursors.DictCursor,
         )
         with conn.cursor() as cur:
-            cur.execute("SELECT id, source FROM parse_jobs WHERE status = 'running'")
+            cur.execute("SELECT id, source, progress FROM parse_jobs WHERE status = 'running'")
             stale = cur.fetchall()
         if stale:
-            ids = [r["id"] for r in stale]
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"UPDATE parse_jobs SET status='error', progress=%s, updated_at=NOW() "
-                    f"WHERE id IN ({','.join(['%s']*len(ids))})",
-                    [json.dumps({"status": "error", "error": "service restarted"})]+ids,
-                )
-            conn.commit()
             for row in stale:
+                # Preserve existing progress (contains checkpoint), just update status
+                progress = row.get("progress")
+                if isinstance(progress, str):
+                    try:
+                        progress = json.loads(progress)
+                    except (json.JSONDecodeError, TypeError):
+                        progress = {}
+                elif not isinstance(progress, dict):
+                    progress = {}
+                progress["status"] = "interrupted"
+                progress["interrupted_reason"] = "service restarted"
+                with conn.cursor() as cur2:
+                    cur2.execute(
+                        "UPDATE parse_jobs SET status='interrupted', progress=%s, updated_at=NOW() WHERE id=%s",
+                        (json.dumps(progress), row["id"]),
+                    )
                 try:
                     release_parse_lock(r, row["source"])
                 except Exception:
                     pass
-            logger.info(f"[scheduler] Cleaned up {len(stale)} stale running job(s): {ids}")
+            conn.commit()
+            ids = [r["id"] for r in stale]
+            logger.info(f"[scheduler] Marked {len(stale)} stale job(s) as interrupted: {ids}")
         conn.close()
     except Exception as e:
         logger.warning(f"[scheduler] Stale job cleanup failed (non-fatal): {e}")

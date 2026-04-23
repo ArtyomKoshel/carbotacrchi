@@ -8,11 +8,12 @@
   <h1 class="text-lg font-bold text-white">Job #{{ $job->id }}</h1>
   @php
     $badge = match($job->status) {
-      'done'      => 'bg-green-900 text-green-400',
-      'error'     => 'bg-red-900 text-red-400',
-      'running'   => 'bg-yellow-900 text-yellow-400',
-      'cancelled' => 'bg-gray-800 text-gray-500',
-      default     => 'bg-blue-900/50 text-blue-400',
+      'done'        => 'bg-green-900 text-green-400',
+      'error'       => 'bg-red-900 text-red-400',
+      'running'     => 'bg-yellow-900 text-yellow-400',
+      'interrupted' => 'bg-orange-900 text-orange-400',
+      'cancelled'   => 'bg-gray-800 text-gray-500',
+      default       => 'bg-blue-900/50 text-blue-400',
     };
   @endphp
   <span id="status-badge" class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $job->status }}</span>
@@ -98,7 +99,7 @@
 </div>
 
 {{-- Progress bar --}}
-@if($job->status === 'running')
+@if(in_array($job->status, ['running', 'interrupted']))
 <div class="mb-6">
   <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
     <span id="pb-label">{{ $job->progress['pct'] ?? 0 }}%</span>
@@ -315,7 +316,7 @@ function scrollLogBottom() {
 }
 
 // Live updates via SSE for running jobs
-if (JOB_STATUS === 'running') {
+if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
   const fmt = n => typeof n === 'number' ? n.toLocaleString() : n;
   const fmtTime = s => {
     if (!s) return '--';

@@ -121,6 +121,7 @@ class KBChaParser(AbstractParser):
         max_pages: int | None = None,
         maker_filter: str | None = None,
         on_page_callback=None,
+        checkpoint: dict | None = None,
     ) -> dict:
         source = self.get_source_key()
         run_start = _time.monotonic()
@@ -139,6 +140,12 @@ class KBChaParser(AbstractParser):
         }
 
         effective_pages = max_pages or 9999  # 0 / None = all pages
+
+        # Checkpoint resume: set of maker codes already completed in previous run
+        completed_makers: set[str] = set()
+        if checkpoint and checkpoint.get("completed_makers"):
+            completed_makers = set(checkpoint["completed_makers"])
+            logger.info(f"[STAT] [{source}] Resuming from checkpoint: {len(completed_makers)} makers already done")
 
         # -- dynamic maker discovery --
         makers_raw: dict[str, tuple[str, int]] = {}
@@ -168,6 +175,9 @@ class KBChaParser(AbstractParser):
                     f"max_pages={effective_pages}, delay={Config.REQUEST_DELAY}s")
         if maker_filter:
             logger.info(f"[STAT] [{source}] Maker filter: '{maker_filter}' -> {list(makers.values())}")
+        if completed_makers:
+            remaining = len(makers) - len(completed_makers & set(makers.keys()))
+            logger.info(f"[STAT] [{source}] Resume: {len(completed_makers)} done, {remaining} remaining")
 
         logger.info(f"[{source}] Warming up session...")
         self._client.warmup()
@@ -178,10 +188,17 @@ class KBChaParser(AbstractParser):
         seen_ids: set[str] = set()
         maker_stats: dict[str, int] = {}
         all_lots: list[CarLot] = []
+        done_makers: list[str] = list(completed_makers)
 
         for maker_code, maker_name in makers.items():
             if stats.get("_cancelled"):
                 break
+
+            # Skip makers already completed in a previous (interrupted) run
+            if maker_code in completed_makers:
+                logger.info(f"[{source}] Skipping {maker_name} ({maker_code}) — already in checkpoint")
+                continue
+
             maker_start = _time.monotonic()
             maker_count = maker_counts.get(maker_code, 0)
 
@@ -222,6 +239,10 @@ class KBChaParser(AbstractParser):
                 f"[STAT] [{source}] {maker_name}: {collected:,} lots "
                 f"({n_new} new, {n_upd} upd){cov_str} in {maker_elapsed:.1f}s"
             )
+
+            # Update checkpoint in stats so job_worker can persist it
+            done_makers.append(maker_code)
+            stats["_checkpoint"] = {"completed_makers": done_makers}
 
         elapsed = _time.monotonic() - run_start
         api_total = sum(c for (_, c) in maker_stats.values()) if maker_stats else 0

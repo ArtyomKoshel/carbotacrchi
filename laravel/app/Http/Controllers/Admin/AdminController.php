@@ -296,7 +296,7 @@ class AdminController extends Controller
 
     public function cancelJob(Request $request, int $id)
     {
-        ParseJob::where('id', $id)->whereIn('status', ['pending', 'running'])
+        ParseJob::where('id', $id)->whereIn('status', ['pending', 'running', 'interrupted'])
             ->update(['status' => 'cancelled', 'updated_at' => now()]);
         return redirect()->route('admin.jobs')
             ->with('success', "Job #{$id} cancelled");

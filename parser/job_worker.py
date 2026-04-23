@@ -162,7 +162,7 @@ def _unregister_running(job_id: int, source: str) -> None:
             _RUNNING_SOURCES.pop(source, None)
 
 
-def _execute_job(job_id: int, source: str, filters: dict) -> None:
+def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | None = None) -> None:
     conn = _get_conn()
     r: redis.Redis | None = None
     locked = False
@@ -235,7 +235,7 @@ def _execute_job(job_id: int, source: str, filters: dict) -> None:
                         pass
                     _time.sleep(10 * attempt)
 
-                result = _run_parse(source, filters, job_id, conn, r)
+                result = _run_parse(source, filters, job_id, conn, r, checkpoint=checkpoint)
                 _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
                 _save_job_stats(conn, job_id, source, result)
                 _publish(r, source, {"job_id": job_id, "status": "done", **result})
@@ -269,7 +269,10 @@ def _execute_job(job_id: int, source: str, filters: dict) -> None:
 
 
 def process_pending_job() -> None:
-    """Pick one pending parse_job and dispatch it to a background thread."""
+    """Pick one pending or interrupted parse_job and dispatch it to a background thread.
+
+    Interrupted jobs are auto-resumed with their checkpoint data.
+    """
     _cleanup_finished_threads()
 
     conn = _get_conn()
@@ -277,44 +280,60 @@ def process_pending_job() -> None:
         with _RUNNING_LOCK:
             busy_sources = set(_RUNNING_SOURCES.keys())
 
+        # Prioritize interrupted (resumable) jobs, then pending
         with conn.cursor() as cur:
+            source_filter = ""
+            params: list = []
             if busy_sources:
                 placeholders = ",".join(["%s"] * len(busy_sources))
-                cur.execute(
-                    f"SELECT * FROM parse_jobs WHERE status = 'pending' "
-                    f"AND source NOT IN ({placeholders}) "
-                    f"ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED",
-                    tuple(sorted(busy_sources)),
-                )
-            else:
-                cur.execute(
-                    "SELECT * FROM parse_jobs WHERE status = 'pending' "
-                    "ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED"
-                )
+                source_filter = f"AND source NOT IN ({placeholders})"
+                params = list(sorted(busy_sources))
+            cur.execute(
+                f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') "
+                f"{source_filter} "
+                f"ORDER BY FIELD(status, 'interrupted', 'pending'), created_at "
+                f"LIMIT 1 FOR UPDATE SKIP LOCKED",
+                params,
+            )
             job = cur.fetchone()
         if not job:
             return
 
         job_id = job["id"]
         source = job["source"]
+        old_status = job["status"]
         filters = json.loads(job["filters"]) if job["filters"] else {}
 
-        # Atomic claim — bail if job was cancelled between SELECT and UPDATE
+        # Extract checkpoint from interrupted job's progress
+        checkpoint = None
+        if old_status == "interrupted":
+            try:
+                prev_progress = json.loads(job["progress"]) if job.get("progress") else {}
+                checkpoint = prev_progress.get("checkpoint")
+            except (json.JSONDecodeError, TypeError):
+                pass
+            if checkpoint:
+                logger.info(f"[job_worker] Job #{job_id} resuming from checkpoint: {checkpoint}")
+
+        # Atomic claim
         with conn.cursor() as cur:
+            starting_progress = {"status": "resuming" if checkpoint else "starting", "page": 0}
+            if checkpoint:
+                starting_progress["checkpoint"] = checkpoint
             cur.execute(
-                "UPDATE parse_jobs SET status='running', updated_at=NOW(), progress=%s "
-                "WHERE id=%s AND status='pending'",
-                (json.dumps({"status": "starting", "page": 0}), job_id),
+                f"UPDATE parse_jobs SET status='running', updated_at=NOW(), progress=%s "
+                f"WHERE id=%s AND status=%s",
+                (json.dumps(starting_progress), job_id, old_status),
             )
             claimed = cur.rowcount
         conn.commit()
         if not claimed:
-            logger.info(f"[job_worker] Job #{job_id} no longer pending (cancelled?), skipping")
+            logger.info(f"[job_worker] Job #{job_id} no longer {old_status}, skipping")
             return
 
         thread = threading.Thread(
             target=_execute_job,
-            args=(job_id, source, filters),
+            args=(job_id, source, filters, checkpoint),
             name=f"parse-job-{job_id}",
             daemon=True,
         )
@@ -334,7 +353,8 @@ def process_pending_job() -> None:
         conn.close()
 
 
-def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) -> dict:
+def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
+               checkpoint: dict | None = None) -> dict:
     from repository import LotRepository
     import parsers  # noqa: F401
 
@@ -354,13 +374,14 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
         page_counts: list[int] = []
         _api_total_ref: list[int] = [0]  # mutable ref for closure
         _run_start = _time.monotonic()
+        _checkpoint_ref: list[dict | None] = [None]
 
         def _on_page(page: int, found: int, total_pages: int | None = None, stats: dict | None = None):
             page_counts.append(found)
             found_total = sum(page_counts)
             if total_pages and total_pages > _api_total_ref[0]:
                 _api_total_ref[0] = total_pages
-            # Check cancel BEFORE overwriting status — otherwise SET running overwrites 'cancelled'
+            # Check cancel BEFORE overwriting status
             with conn.cursor() as _cur:
                 _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
                 row = _cur.fetchone()
@@ -370,6 +391,11 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
             pct = round(found_total / _api_total_ref[0] * 100, 1) if _api_total_ref[0] else 0
             elapsed = round(_time.monotonic() - _run_start, 1)
             avg_lot = round(elapsed / found_total, 2) if found_total else 0
+
+            # Build checkpoint from stats (parser stores last_completed_maker there)
+            if stats and stats.get("_checkpoint"):
+                _checkpoint_ref[0] = stats["_checkpoint"]
+
             progress = {
                 "status": f"{pct}%",
                 "pct": pct,
@@ -386,14 +412,20 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis) ->
                 "enrich_time_s": round(stats["enrich_time"], 1) if stats else 0,
                 "pause_time_s": round(stats["pause_time"], 1) if stats else 0,
             }
+            if _checkpoint_ref[0]:
+                progress["checkpoint"] = _checkpoint_ref[0]
             _set_job(conn, job_id, "running", progress=progress)
             _publish(r, source, {"job_id": job_id, **progress})
 
-        run_result = parser.run(
-            max_pages=max_pages,
-            maker_filter=maker_filter,
-            on_page_callback=_on_page,
-        )
+        run_kwargs: dict = {
+            "max_pages": max_pages,
+            "maker_filter": maker_filter,
+            "on_page_callback": _on_page,
+        }
+        if checkpoint:
+            run_kwargs["checkpoint"] = checkpoint
+
+        run_result = parser.run(**run_kwargs)
 
         # parser.run() returns dict with full stats or int (legacy)
         if isinstance(run_result, dict):
