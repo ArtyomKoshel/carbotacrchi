@@ -59,6 +59,7 @@
         <tr>
           <th class="px-4 py-2 text-left font-medium">Prio</th>
           <th class="px-4 py-2 text-left font-medium">Name</th>
+          <th class="px-4 py-2 text-left font-medium">Group</th>
           <th class="px-4 py-2 text-left font-medium">Scope</th>
           <th class="px-4 py-2 text-left font-medium">Condition</th>
           <th class="px-4 py-2 text-left font-medium">Action</th>
@@ -74,6 +75,15 @@
               <div class="font-semibold text-white">{{ $filter->name }}</div>
               @if($filter->description)
                 <div class="text-xs text-gray-500 mt-0.5">{{ $filter->description }}</div>
+              @endif
+            </td>
+            <td class="px-4 py-3 text-xs">
+              @if($filter->rule_group_id)
+                <span class="px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300" title="AND-group: all rules in this group must match">
+                  AND:{{ $filter->rule_group_id }}
+                </span>
+              @else
+                <span class="text-gray-600">—</span>
               @endif
             </td>
             <td class="px-4 py-3 text-xs">
@@ -170,6 +180,14 @@
           <input type="number" name="priority" x-model.number="form.priority" min="0" max="10000" required
                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <p class="text-xs text-gray-600 mt-1">Lower = evaluated first (0–10000).</p>
+        </div>
+
+        <div class="col-span-2">
+          <label class="text-xs text-gray-500 mb-1 block">AND-group</label>
+          <input type="text" name="rule_group_id" x-model="form.rule_group_id"
+                 pattern="[a-zA-Z0-9_]*" placeholder="e.g. old_expensive"
+                 class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+          <p class="text-xs text-gray-600 mt-1">Rules with the same group ID use AND logic (all must match). Leave empty for independent OR rules.</p>
         </div>
 
         <div>
@@ -280,11 +298,11 @@ function filterForm() {
   return {
     open: false,
     editId: null,
-    form: { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, enabled:true, description:'' },
+    form: { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, rule_group_id:'', enabled:true, description:'' },
 
     openCreate() {
       this.editId = null;
-      this.form = { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, enabled:true, description:'' };
+      this.form = { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, rule_group_id:'', enabled:true, description:'' };
       this.open = true;
     },
     openEdit(filter) {
@@ -297,6 +315,7 @@ function filterForm() {
         value: filter.value ?? '',
         action: filter.action,
         priority: filter.priority,
+        rule_group_id: filter.rule_group_id || '',
         enabled: !!filter.enabled,
         description: filter.description || '',
       };

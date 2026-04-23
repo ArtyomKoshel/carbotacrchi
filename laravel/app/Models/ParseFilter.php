@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $value
  * @property string      $action
  * @property int         $priority
+ * @property string|null $rule_group_id
  * @property bool        $enabled
  * @property string|null $description
  */
@@ -25,7 +26,7 @@ class ParseFilter extends Model
 
     protected $fillable = [
         'name', 'source', 'field', 'operator', 'value',
-        'action', 'priority', 'enabled', 'description',
+        'action', 'priority', 'rule_group_id', 'enabled', 'description',
     ];
 
     protected $casts = [

@@ -50,26 +50,68 @@ class FilterEngine:
         self.by_rule: dict[str, int] = defaultdict(int)
 
     def evaluate(self, lot) -> FilterResult:
-        """Evaluate all applicable rules and return the strongest resulting action."""
+        """Evaluate all applicable rules and return the strongest resulting action.
+
+        Rules are partitioned into:
+        - **Ungrouped** (group_id is None): each rule is independent (OR logic).
+        - **Grouped** (same group_id): ALL rules in a group must match for the
+          group's action to fire (AND logic). The group action is the strongest
+          action among its member rules.
+        """
         source = getattr(lot, "source", None) or ""
         applicable = self._rules.for_source(source)
 
-        matched: list[Rule] = []
+        # ── Partition into ungrouped vs grouped ──────────────────────────────
+        ungrouped: list[Rule] = []
+        groups: dict[str, list[Rule]] = {}
         for rule in applicable:
+            if rule.group_id is None:
+                ungrouped.append(rule)
+            else:
+                groups.setdefault(rule.group_id, []).append(rule)
+
+        matched: list[Rule] = []
+
+        # ── 1. Evaluate ungrouped rules (OR — same as before) ────────────────
+        for rule in ungrouped:
             try:
                 if rule.evaluate(lot):
                     matched.append(rule)
                     self.by_rule[rule.name] += 1
-                    # allow wins immediately — no need to check further rules
                     if rule.action == ACTION_ALLOW:
                         self.stats[ACTION_ALLOW] += 1
                         self._apply_flag_tags(lot, matched)
                         return FilterResult(action=ACTION_ALLOW, matched_rules=matched)
             except Exception as e:
-                # A rule bug must not break the parser pipeline.
                 logger.warning(
                     f"[filter] rule {rule.name!r} raised {type(e).__name__}: {e}"
                 )
+
+        # ── 2. Evaluate AND-groups ───────────────────────────────────────────
+        for gid, group_rules in groups.items():
+            all_match = True
+            for rule in group_rules:
+                try:
+                    if not rule.evaluate(lot):
+                        all_match = False
+                        break
+                except Exception as e:
+                    logger.warning(
+                        f"[filter] rule {rule.name!r} (group={gid}) raised "
+                        f"{type(e).__name__}: {e}"
+                    )
+                    all_match = False
+                    break
+            if all_match:
+                matched.extend(group_rules)
+                for rule in group_rules:
+                    self.by_rule[rule.name] += 1
+                # Check if any rule in the group is an allow — short-circuit
+                group_actions = [r.action for r in group_rules]
+                if ACTION_ALLOW in group_actions:
+                    self.stats[ACTION_ALLOW] += 1
+                    self._apply_flag_tags(lot, matched)
+                    return FilterResult(action=ACTION_ALLOW, matched_rules=matched)
 
         if not matched:
             self.stats[ACTION_ALLOW] += 1

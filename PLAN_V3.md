@@ -633,7 +633,7 @@ Group 1 (AND):
   Rule A + Rule B → skip ТОЛЬКО если ОБА true
 ```
 
-**Решение**: Добавить `rule_group_id` в `parse_filters`. Правила с одинаковым group_id = AND. Без группы = OR (как раньше).
+**Решение**: ✅ Добавлен `rule_group_id` в `parse_filters`. Правила с одинаковым group_id = AND. Без группы = OR (как раньше). Миграция + Engine + Admin UI.
 
 **Проблема 2: Фильтры не видят inspection-данные**
 

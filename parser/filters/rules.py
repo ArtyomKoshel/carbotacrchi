@@ -132,6 +132,7 @@ class Rule:
     action: str = ACTION_SKIP
     source: str | None = None  # None = applies to all parsers; "encar"/"kbcha" = scoped
     priority: int = 100      # lower = evaluated first; allow-rules should have low numbers
+    group_id: str | None = None  # rules with same group_id use AND logic (all must match)
     enabled: bool = True
     description: str = ""
 

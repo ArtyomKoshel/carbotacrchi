@@ -33,11 +33,20 @@ def load_db_rules(conn=None) -> list[Rule]:
 
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT name, source, field, operator, value, action, priority, "
-                "enabled, description FROM parse_filters WHERE enabled = 1 "
-                "ORDER BY priority ASC, id ASC"
-            )
+            # Try with rule_group_id column (AND-groups migration)
+            try:
+                cur.execute(
+                    "SELECT name, source, field, operator, value, action, priority, "
+                    "rule_group_id, enabled, description FROM parse_filters "
+                    "WHERE enabled = 1 ORDER BY priority ASC, id ASC"
+                )
+            except Exception:
+                # Column doesn't exist yet — fall back without it
+                cur.execute(
+                    "SELECT name, source, field, operator, value, action, priority, "
+                    "enabled, description FROM parse_filters "
+                    "WHERE enabled = 1 ORDER BY priority ASC, id ASC"
+                )
             rows = cur.fetchall()
     except Exception as e:
         # Table may not exist yet (migration not applied). Non-fatal.
@@ -61,6 +70,7 @@ def load_db_rules(conn=None) -> list[Rule]:
                 action=row.get("action") or "skip",
                 source=row.get("source") or None,
                 priority=int(row.get("priority") or 100),
+                group_id=row.get("rule_group_id") or None,
                 enabled=bool(row.get("enabled", 1)),
                 description=row.get("description") or "",
             )

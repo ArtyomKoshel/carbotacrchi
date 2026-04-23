@@ -813,15 +813,17 @@ class AdminController extends Controller
             'field'       => ['required', 'string', 'max:64'],
             'operator'    => ['required', ValidationRule::in(ParseFilter::OPERATORS)],
             'value'       => ['nullable', 'string', 'max:4096'],
-            'action'      => ['required', ValidationRule::in(ParseFilter::ACTIONS)],
-            'priority'    => ['required', 'integer', 'min:0', 'max:10000'],
-            'enabled'     => ['nullable'],
+            'action'       => ['required', ValidationRule::in(ParseFilter::ACTIONS)],
+            'priority'     => ['required', 'integer', 'min:0', 'max:10000'],
+            'rule_group_id'=> ['nullable', 'string', 'max:64', 'regex:/^[a-z0-9_]+$/i'],
+            'enabled'      => ['nullable'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
         // Normalize: enabled checkbox → bool; value → JSON-encoded when parseable
         $validated['enabled'] = (bool) $request->input('enabled', false);
         $validated['source'] = $validated['source'] ?: null;
+        $validated['rule_group_id'] = $validated['rule_group_id'] ?? null ?: null;
 
         // Accept either raw JSON in the textarea ("123", "\"rental\"", "[1,2]")
         // or a plain scalar. Always store as JSON for unambiguous parsing by Python.
