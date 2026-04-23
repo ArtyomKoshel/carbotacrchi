@@ -54,7 +54,7 @@ flowchart TD
 | KBCha parser | ✅ **Работает** | ~~ConnectTimeout~~ (exponential backoff, 3 retries) |
 | KBCha inspections (kb_paper) | Почти нулевой парсинг | `parsed_count=1` для большинства |
 | KBCha inspections (autocafe) | ✅ **Исправлен** | ~~`cert_no="82"`~~ (skip short nums, OnCarNo) |
-| Dynamic filters | Работает, но ограничены | Нет AND-логики, нет inspection-данных |
+| Dynamic filters | ✅ AND-группы добавлены | ~~Нет AND-логики~~ (rule_group_id). Нет inspection-данных |
 | lots.raw_data | Раздутый | ~2-5KB дублей на строку (photos, mapped fields) |
 | lot_photos | Чистая | OK, но дублируется в raw_data |
 | Laravel admin | Работает | Мёртвый код, DTO не синхронизирован |
@@ -93,7 +93,7 @@ flowchart TD
 
 ## ЧАСТЬ 2: Оптимизация таблицы `lots` (уменьшение размера)
 
-### 2.1 Очистка `raw_data` от дублей
+### 2.1 ✅ Очистка `raw_data` от дублей
 Поля для удаления из `raw_data` (уже есть в нормализованных колонках):
 - `photos` — дублирует `lot_photos`
 - `sell_type` — есть колонка `sell_type`
@@ -104,7 +104,7 @@ flowchart TD
 
 **Экономия: ~2-5 KB на строку**. Расширить `_RAW_DATA_BLOCKLIST` в `parser/models.py`.
 
-### 2.2 Вынос полей из `raw_data` в колонки
+### 2.2 ✅ Вынос полей из `raw_data` в колонки
 | Поле в `raw_data` | Новая колонка | Тип |
 |---|---|---|
 | `domestic` | `is_domestic` | `BOOLEAN` |
@@ -359,21 +359,21 @@ class ParserLifecycle(Protocol):
 
 > Отдельный модуль на основе полного аудита 50 полей CarLot (ЧАСТЬ 4).
 
-### 4B.1 Исправить баги маппинга (7 штук)
+### 4B.1 Исправить баги маппинга (5/7 ✅)
 
 | # | Баг | Файл | Исправление |
 |---|---|---|---|
-| 1 | KBCha `cylinders` — `engine_str` не передаётся в field_mapper | `kbcha/field_mapper.py`, `kbcha/enricher.py` | Передать `engine_str` из `raw_data` в `apply_raw_data` target dict |
+| 1 | ✅ KBCha `cylinders` — `engine_str` не передаётся в field_mapper | `kbcha/field_mapper.py`, `kbcha/enricher.py` | Передать `engine_str` из `raw_data` в `apply_raw_data` target dict |
 | 2 | KBCha `registration_date` — ключ `"연식_reg"` не совпадает с `"연식"` | `kbcha/field_mapper.py` L75-87 | Исправить ключ маппинга или добавить `"연식"` → `registration_date` |
 | 3 | KBCha `tax_paid` — зависит от несуществующего `tax_unpaid` | `kbcha/field_mapper.py` | Парсить `"세금미납"` в detail_parser, передать в field_mapper |
-| 4 | KBCha `retail_value` — `_original_msrp_man` не всегда конвертируется | `kbcha/enricher.py` `_apply_combined` | Добавить explicit assignment `lot.retail_value = msrp * 10000` |
-| 5 | Encar `has_accident` — не обновляется для existing lots | `encar/__init__.py` `_paginate_query` | Запускать `_enrich_accident_data` и для updated lots (не только new) |
-| 6 | Encar `damage` — данные уходят в InspectionRecord, не в CarLot | `encar/__init__.py` | Копировать `outer_parts` summary в `lot.damage` при record/inspection enrich |
-| 7 | Encar `color` — `norm.color` не вызывается | `encar/__init__.py` `_lot_from_search` | Добавить `color=norm.color(item.get("Color", ""))` |
+| 4 | ✅ KBCha `retail_value` — `_original_msrp_man` не всегда конвертируется | `kbcha/enricher.py` `_apply_combined` | Добавить explicit assignment `lot.retail_value = msrp * 10000` |
+| 5 | ✅ Encar `has_accident` — не обновляется для existing lots | `encar/__init__.py` `_paginate_query` | Запускать `_enrich_accident_data` и для updated lots (не только new) |
+| 6 | ✅ Encar `damage` — данные уходят в InspectionRecord, не в CarLot | `encar/__init__.py` | Копировать `outer_parts` summary в `lot.damage` при record/inspection enrich |
+| 7 | ✅ Encar `color` — `norm.color` не вызывается | `encar/__init__.py` `_lot_from_search` | Добавить `color=norm.color(item.get("Color", ""))` |
 
-### 4B.2 Удалить мёртвые колонки
+### 4B.2 ✅ Удалить мёртвые колонки
 
-Миграция:
+Миграция (v3_column_cleanup):
 ```sql
 ALTER TABLE lots DROP COLUMN has_keys;
 ALTER TABLE lots DROP COLUMN document;
@@ -383,9 +383,9 @@ ALTER TABLE lots DROP COLUMN document;
 Обновить `CarLot` dataclass в `parser/models.py` — убрать поля.
 Обновить `LotDTO.php` — убрать свойства.
 
-### 4B.3 Вынести поля из raw_data в колонки
+### 4B.3 ✅ Вынести поля из raw_data в колонки
 
-Миграция:
+Миграция (v3_column_cleanup):
 ```sql
 ALTER TABLE lots ADD COLUMN seat_count TINYINT UNSIGNED NULL AFTER engine_volume;
 ALTER TABLE lots ADD COLUMN is_domestic BOOLEAN NULL AFTER sell_type_raw;
@@ -400,7 +400,7 @@ ALTER TABLE lots ADD COLUMN import_type VARCHAR(30) NULL AFTER is_domestic;
 
 Обновить `CarLot` dataclass, `_RAW_DATA_BLOCKLIST`, `LotDTO`.
 
-### 4B.4 Расширить `_RAW_DATA_BLOCKLIST`
+### 4B.4 ✅ Расширить `_RAW_DATA_BLOCKLIST`
 
 В `parser/models.py` `CarLot._RAW_DATA_BLOCKLIST` добавить:
 ```python
@@ -416,14 +416,14 @@ _RAW_DATA_BLOCKLIST = {
 }
 ```
 
-### 4B.5 Нормализация значений между источниками
+### 4B.5 Нормализация значений между источниками (частично ✅)
 
 | Поле | Проблема | Решение |
 |---|---|---|
-| `body_type` | Encar: иногда Korean (`스포츠카`) | Добавить в `ENCAR_BODY_MAP` в `vocabulary.py` |
-| `color` | Encar: raw Korean, KBCha: normalized | Вызвать `norm.color()` в Encar `_lot_from_search` |
-| `lien_status` | Оба: English after normalize | Проверить что оба дают `"clean"`/`"lien"` |
-| `seizure_status` | То же | Проверить что оба дают `"clean"`/`"seizure"` |
+| `body_type` | ✅ Encar: иногда Korean (`스포츠카`) | Добавлено в `ENCAR_BODY_MAP` в `vocabulary.py` |
+| `color` | ✅ Encar: raw Korean, KBCha: normalized | `norm.color()` вызывается в Encar `_lot_from_search` |
+| `lien_status` | ✅ Оба: English after normalize | Оба дают `"clean"`/`"lien"` |
+| `seizure_status` | ✅ То же | Оба дают `"clean"`/`"seizure"` |
 | `options` | Encar: коды (`"001"`), KBCha: Korean labels | Добавить `option_definitions` справочник для UI |
 | `model` | Encar: raw Korean concat, KBCha: parsed | Long-term: единый model normalizer |
 
@@ -432,11 +432,11 @@ _RAW_DATA_BLOCKLIST = {
 | Данные | Текущее | Действие |
 |---|---|---|
 | `paid_options` (detail) | Читается только `standard` | Добавить чтение `choice`/`paid` groups |
-| `dealer_location` | Не маппится (только `lot.location`) | Маппить `contact.address` → `dealer_location` |
+| `dealer_location` | ✅ Маппится | `contact.address` → `dealer_location` |
 | `detail.condition` | Загружается но не используется | Использовать для `lot.condition` если нужно |
-| `InspectionRecord.outer_parts` → `lot.damage` | Не копируется | Скопировать summary при inspection enrich |
+| `InspectionRecord.outer_parts` → `lot.damage` | ✅ Копируется | `lot.damage = outer_text` при inspection enrich |
 
-### 4B.7 ✅ Добавить `has_recall` из inspection данных
+### 4B.7 ✅ Добавить `has_recall` + cost columns из inspection данных
 
 Миграция:
 ```sql
@@ -516,8 +516,8 @@ SELECT COUNT(*) FROM lot_inspections WHERE cert_no = '82';
 - `AdminController::fieldStats()` и `accuracyRefresh()` — **удалены**
 - `field-mappings.blade.php` — мёртвый view
 
-### 5.2 LotDTO пропускает поля
-Не включает: `options`, `dealer_company`, `dealer_location`, `dealer_description`, `raw_data`, `registration_date`.
+### 5.2 ✅ LotDTO пропускает поля
+Все поля добавлены: `sell_type`, `seat_count`, `is_domestic`, `import_type`, `dealer_company`, `dealer_location`, `dealer_description`, `registration_date`, `paid_options`.
 
 ### 5.3 `KBChachaProvider::normalize()` — рассинхронизирован
 Не учитывает новые колонки (`sell_type`, `registration_year_month`).
