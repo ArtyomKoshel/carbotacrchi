@@ -100,9 +100,11 @@ if [ -n "$DB_HOST" ]; then
     NEED_MIGRATE=1
 fi
 
-echo "[start] Preparing log directory..."
+echo "[start] Preparing log & storage directories..."
 mkdir -p /app/logs
-chown -R www-data:www-data /app/logs
+mkdir -p "$APP_DIR/storage/logs" "$APP_DIR/storage/framework/cache" "$APP_DIR/storage/framework/sessions" "$APP_DIR/storage/framework/views" "$APP_DIR/bootstrap/cache"
+chown -R www-data:www-data /app/logs "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
+chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 
 # Start web server FIRST so healthcheck /up passes while migrations run
 echo "[start] Starting nginx + php-fpm via supervisord..."
