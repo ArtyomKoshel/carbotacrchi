@@ -173,7 +173,8 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     # into raw_data (see CarLot._RAW_DATA_BLOCKLIST).
     all_photo_urls = [EncarClient.photo_url(p["path"]) for p in photos if p.get("path")]
     if all_photo_urls:
-        lot.photos = all_photo_urls
+        # Deduplicate while preserving order
+        lot.photos = list(dict.fromkeys(all_photo_urls))
 
     # Inspection uses an inner vehicle ID embedded in photo paths (e.g. /pic4097/40977911_004.jpg)
     # which can differ from the listing ID (lot.id).
