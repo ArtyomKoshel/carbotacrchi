@@ -1,43 +1,90 @@
+"""KBCha-specific normalizer.
+
+Inherits BaseNormalizer for the simple attribute lookups (fuel, transmission,
+drive, body, make, color) — those now use the shared canonical vocabulary so
+values are identical across parsers.
+
+Keeps KBCha-specific complex logic in this file:
+  - `parse_title()` — extract model/generation/engine_str/trim/drive from Korean
+  - `parse_year()`, `parse_mileage()`, `parse_fuel_economy()`, `parse_cylinders()`
+"""
+
 from __future__ import annotations
 
 import re
 
 from config import Config
+from .._shared import vocabulary as V
+from .._shared.normalizer_base import BaseNormalizer
 from .glossary import (
-    FUEL, TRANSMISSION, BODY_TYPE, COLOR, DRIVE,
-    MAKE_NAME, MAKER_CODE,
     GEN_PREFIXES, MODEL_FUEL_STOP, MODEL_TRIM_STOP, MODEL_DRIVE_STOP,
     TRIM_BLOCKLIST, ENGINE_DESC_TOKENS,
 )
 
 _ENGINE_RE     = re.compile(r'^\d+(\.\d+)?(T|D|L)?$', re.IGNORECASE)
 _ENGINE_STR_RE = re.compile(r'(\d\.\d+)(T|D)?', re.IGNORECASE)
-_YEAR_RE       = re.compile(r'^\d{2,4}\ub144?$')
+_YEAR_RE       = re.compile(r'^\d{2,4}년?$')
 _GEN_PAREN_RE  = re.compile(r'\(([A-Z0-9]{2,5})\)')
 _GEN_PLAIN_RE  = re.compile(r'^[A-Z]{2,3}\d?$')
-_GEN_NUMGEN_RE = re.compile(r'^\d+\uc138\ub300$')  # e.g. 3세대, 4세대
+_GEN_NUMGEN_RE = re.compile(r'^\d+세대$')  # e.g. 3세대, 4세대
 _DRIVE_RE      = re.compile(r'^(2WD|4WD|AWD|FWD|RWD)$', re.IGNORECASE)
 
 # Stop-set union for gen-code exclusion
 _ALL_STOPS: frozenset[str] = MODEL_FUEL_STOP | MODEL_TRIM_STOP | MODEL_DRIVE_STOP
 
-# Back-compat aliases (used by list_parser and other modules)
-MAKER_CODES = MAKER_CODE
+# Back-compat alias — list_parser and other modules import this symbol.
+MAKER_CODES = V.KBCHA_MAKER_CODE
 
 
-class KBChaNormalizer:
+class KBChaNormalizer(BaseNormalizer):
+    FUEL_MAP         = V.KBCHA_FUEL
+    TRANSMISSION_MAP = V.KBCHA_TRANSMISSION
+    DRIVE_MAP        = V.KBCHA_DRIVE
+    BODY_MAP         = V.KBCHA_BODY
+    MAKE_MAP         = V.KBCHA_MAKE
+
+    # ── Make normalization (KBCha has a numeric maker_code route) ───────────
     def normalize_make(self, korean_name: str, maker_code: str = "") -> str:
-        if maker_code and maker_code in MAKER_CODE:
-            return MAKER_CODE[maker_code]
-        return MAKE_NAME.get(korean_name, korean_name)
+        """KBCha-specific: prefer numeric maker_code when given."""
+        if maker_code and maker_code in V.KBCHA_MAKER_CODE:
+            return V.KBCHA_MAKER_CODE[maker_code]
+        return self.make(korean_name)
 
+    # ── Back-compat wrappers (old callsites use these method names) ─────────
+    def normalize_fuel(self, value: str | None) -> str | None:
+        result = self.fuel(value)
+        if result:
+            return result
+        # Soft fallback: substring match for "hybrid" / "+전기" etc.
+        if value:
+            clean = value.lower()
+            if "hybrid" in clean or "하이브리드" in value or "+전기" in value:
+                return V.FUEL_HYBRID
+            for key, mapped in self.FUEL_MAP.items():
+                if key in value:
+                    return mapped
+        return None
+
+    def normalize_transmission(self, value: str | None) -> str | None:
+        return self.transmission(value)
+
+    def normalize_body_type(self, value: str | None) -> str | None:
+        return self.body(value)
+
+    def normalize_drive_type(self, value: str | None) -> str | None:
+        return self.drive(value)
+
+    def normalize_color(self, value: str | None) -> str | None:
+        return self.color(value)
+
+    # ── KBCha-specific: tokenized title parser ──────────────────────────────
     def _tokenize_title(self, title: str) -> list[str]:
         """Sanitize, strip make name and generation prefix; return remaining tokens."""
         title = re.sub(r'[\n\r\t,]+', ' ', title)
         title = re.sub(r'\[[^\]]*\]', '', title)
         title = re.sub(r'[^\uAC00-\uD7A3\u3130-\u318Fa-zA-Z0-9\s\-().]', ' ', title)
         title = re.sub(r'\s+', ' ', title.strip())
-        for kr in MAKE_NAME:
+        for kr in V.KBCHA_MAKE:
             if title.startswith(kr):
                 title = title[len(kr):].strip()
                 break
@@ -151,8 +198,8 @@ class KBChaNormalizer:
             and not _YEAR_RE.match(t)
             and not _GEN_NUMGEN_RE.match(t)
             and not _DRIVE_RE.match(t)
-            and not t.startswith("(")                        # e.g. "(Turbo" from "(Turbo GDi)"
-            and re.split(r"[\d(]", t)[0] not in MODEL_FUEL_STOP  # e.g. "디젤(e-VGT)R2.2"
+            and not t.startswith("(")
+            and re.split(r"[\d(]", t)[0] not in MODEL_FUEL_STOP
             and len(t) >= 2
         ]
 
@@ -165,50 +212,7 @@ class KBChaNormalizer:
             "unknown_tokens":  unknown_tokens or None,
         }
 
-    def normalize_fuel(self, value: str | None) -> str | None:
-        if not value:
-            return None
-        clean = value.strip()
-        result = FUEL.get(clean) or FUEL.get(clean.lower())
-        if result:
-            return result.lower()  # Normalize to lowercase to match inspection reports
-        if "hbrid" in clean or "hybrid" in clean.lower() or "+electric" in clean:
-            return "hybrid"
-        for key, mapped in FUEL.items():
-            if key in clean:
-                return mapped.lower()
-        return None
-
-    def normalize_transmission(self, value: str | None) -> str | None:
-        if not value:
-            return None
-        result = TRANSMISSION.get(value.strip(), TRANSMISSION.get(value.strip().lower()))
-        return result.lower() if result else None
-
-    def normalize_body_type(self, value: str | None) -> str | None:
-        if not value:
-            return None
-        return BODY_TYPE.get(value.strip(), BODY_TYPE.get(value.strip().lower()))
-
-    def normalize_drive_type(self, value: str | None) -> str | None:
-        if not value:
-            return None
-        clean = value.strip()
-        return DRIVE.get(clean, DRIVE.get(clean.upper()))
-
-    def normalize_color(self, value: str | None) -> str | None:
-        if not value:
-            return None
-        clean = value.strip()
-        if clean in COLOR:
-            return COLOR[clean]
-        base = re.sub(r"\s*\([^)]*\)", "", clean).strip()
-        if base in COLOR:
-            return COLOR[base]
-        if base:
-            return COLOR.get(base, clean)
-        return clean
-
+    # ── KBCha-specific numeric parsers ──────────────────────────────────────
     def parse_engine_cc(self, value: str | None) -> float | None:
         if not value:
             return None
@@ -233,10 +237,42 @@ class KBChaNormalizer:
             return 2000 + y if y < 90 else 1900 + y
         return 0
 
-    def parse_mileage(self, text: str) -> int:
+    def parse_year_month(self, text: str) -> int | None:
+        """Parse a KBCha date string into an int YYYYMM (e.g. 202006).
+
+        Accepted formats:
+          - "20년03월" / "20년03월(20년형)"  →  202003 + year-form adjustment
+          - "20/03식"                         →  202003
+          - "2020-03-15"                      →  202003
+        Returns None if no year+month pair can be extracted.
+        """
         if not text:
-            return 0
-        return int(re.sub(r"[^\d]", "", text) or 0)
+            return None
+        # Korean "20년03월" form
+        m = re.search(r"(\d{2,4})\s*년\s*(\d{1,2})\s*월", text)
+        if m:
+            y = int(m.group(1)); mo = int(m.group(2))
+            if y < 100:
+                y = 2000 + y if y < 90 else 1900 + y
+            if 1 <= mo <= 12:
+                return y * 100 + mo
+        # YY/MM format
+        m = re.search(r"(\d{2})/(\d{2})식", text)
+        if m:
+            y = int(m.group(1)); mo = int(m.group(2))
+            y = 2000 + y if y < 90 else 1900 + y
+            if 1 <= mo <= 12:
+                return y * 100 + mo
+        # ISO-like YYYY-MM-DD
+        m = re.search(r"(\d{4})-(\d{2})-\d{2}", text)
+        if m:
+            y = int(m.group(1)); mo = int(m.group(2))
+            if 1 <= mo <= 12:
+                return y * 100 + mo
+        return None
+
+    def parse_mileage(self, text: str) -> int:
+        return self.parse_int(text)
 
     def parse_fuel_economy(self, value: str | None) -> float | None:
         if not value:
@@ -253,14 +289,12 @@ class KBChaNormalizer:
         """Parse cylinder count from Korean text like '4기통' or 'V6'."""
         if not value:
             return None
-        # Korean pattern: "4기통", "6기통"
         m = re.search(r"(\d+)\s*기통", value)
         if m:
             try:
                 return int(m.group(1))
             except ValueError:
                 pass
-        # V-pattern: "V6", "V8", "V12"
         m = re.search(r"V(\d+)", value, re.IGNORECASE)
         if m:
             try:

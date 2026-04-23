@@ -246,10 +246,8 @@ class KBChaDetailParser:
         if ratio_match:
             result["new_car_price_ratio"] = int(ratio_match.group(1))
 
-        range_match = re.search(r"적정범위\s*([\d,]+)\s*[~～]\s*([\d,]+)\s*만원", text)
-        if range_match:
-            result["_ai_price_min"] = int(range_match.group(1).replace(",", ""))
-            result["_ai_price_max"] = int(range_match.group(2).replace(",", ""))
+        # AI-suggested price range (적정범위) intentionally not parsed anymore —
+        # the ai_price_min / ai_price_max columns were dropped (not used by UI).
 
         for script in soup.find_all("script"):
             s = script.get_text()

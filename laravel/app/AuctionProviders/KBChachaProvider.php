@@ -97,8 +97,11 @@ class KBChachaProvider extends AbstractProvider
                 taxPaid:          isset($raw['tax_paid'])          ? (bool) $raw['tax_paid']          : null,
                 mileageGrade:     $raw['mileage_grade']   ?? null,
                 newCarPriceRatio: isset($raw['new_car_price_ratio']) ? (int) $raw['new_car_price_ratio'] : null,
-                aiPriceMin:       isset($raw['ai_price_min'])      ? (int)  $raw['ai_price_min']      : null,
-                aiPriceMax:       isset($raw['ai_price_max'])      ? (int)  $raw['ai_price_max']      : null,
+                sellType:         $raw['sell_type']     ?? null,
+                sellTypeRaw:      $raw['sell_type_raw'] ?? null,
+                registrationYearMonth: isset($raw['registration_year_month']) ? (int) $raw['registration_year_month'] : null,
+                insuranceCount:   isset($raw['insurance_count']) ? (int) $raw['insurance_count'] : null,
+                seatColor:        $raw['seat_color']    ?? null,
             );
         }
 

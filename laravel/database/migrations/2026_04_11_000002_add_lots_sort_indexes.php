@@ -28,7 +28,11 @@ return new class extends Migration
     {
         Schema::table('lots', function (Blueprint $table) {
             $table->dropIndex('lots_source_active_price_idx');
-            $table->dropIndex('lots_source_active_price_krw_idx');
+            // price_krw column may already be dropped by a later migration —
+            // MySQL removes indexes automatically when the column is dropped.
+            if (Schema::hasColumn('lots', 'price_krw')) {
+                $table->dropIndex('lots_source_active_price_krw_idx');
+            }
             $table->dropIndex('lots_source_active_fetched_idx');
             $table->dropIndex('lots_source_active_make_model_idx');
             $table->dropIndex('lots_updated_at_idx');

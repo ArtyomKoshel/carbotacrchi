@@ -12,6 +12,7 @@ from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser
+from .._shared import sell_type as _sell
 from .client import EncarClient, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
@@ -37,7 +38,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
     if price_man > 1_000_000_000:  # > 10 trillion KRW — clearly garbage data
         logger.warning(f"[encar] lot {item.get('Id')}: absurd price {price_man}만원, zeroing")
         price_man = 0
-    price_krw = norm.price_krw(price_man)
+    price_raw = norm.price_from_man(price_man)
     mileage   = int(item.get("Mileage") or 0)
 
     # Drive type: scan badge + model tokens for known keywords (e.g. "4WD", "AWD", "2WD")
@@ -54,6 +55,22 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
 
     location = item.get("OfficeCityState") or ""
 
+    conditions = item.get("Condition") or []
+    sell_type, sell_type_raw = _sell.normalize_encar(
+        item.get("SellType"), item.get("AdType"), conditions,
+    )
+
+    # FormYear is already an INT like 202006 (YYYYMM) — store as first-class col.
+    form_year = item.get("FormYear") or item.get("Year")
+    reg_ym: int | None = None
+    if form_year:
+        try:
+            s = str(int(form_year))  # drop possible ".0"
+            if len(s) == 6 and s.isdigit():
+                reg_ym = int(s)
+        except (TypeError, ValueError):
+            pass
+
     return CarLot(
         id=vid,
         source=_SOURCE,
@@ -61,9 +78,9 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         model=f"{model} {badge}".strip() if badge else model,
         trim=badge_detail or None,
         year=year,
-        price=price_krw,
-        price_krw=price_krw,
+        price=price_raw,
         mileage=mileage,
+        registration_year_month=reg_ym,
         fuel=norm.fuel(item.get("FuelType")),
         transmission=norm.transmission(item.get("Transmission")),
         color=item.get("Color") or None,
@@ -72,17 +89,19 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",
+        sell_type=sell_type,
+        sell_type_raw=sell_type_raw or None,
         raw_data={
             "manufacturer_kr":   make_kr,
             "model_kr":          model,
             "model_group_kr":    item.get("ModelGroup"),
             "badge_kr":          badge,
             "badge_detail_kr":   badge_detail,
-            "year_month":        item.get("Year"),
-            "sell_type":         item.get("SellType"),
+            # ad_type + condition[] are kept as debug context for sell_type
+            # normalization (the normalized result already lives in the
+            # lots.sell_type + lots.sell_type_raw columns).
             "ad_type":           item.get("AdType"),
-            "photo_path":        photo_path or None,
-            "condition":         item.get("Condition") or [],
+            "condition":         conditions,
         },
     )
 
@@ -141,9 +160,12 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if outer and not lot.image_url:
         lot.image_url = EncarClient.photo_url(outer[0])
 
+    # Photos go to the transit field `lot.photos` — LotRepository.upsert_batch
+    # will persist them into the `lot_photos` table. They are NOT serialized
+    # into raw_data (see CarLot._RAW_DATA_BLOCKLIST).
     all_photo_urls = [EncarClient.photo_url(p["path"]) for p in photos if p.get("path")]
     if all_photo_urls:
-        lot.raw_data["photos"] = all_photo_urls
+        lot.photos = all_photo_urls
 
     # Inspection uses an inner vehicle ID embedded in photo paths (e.g. /pic4097/40977911_004.jpg)
     # which can differ from the listing ID (lot.id).
@@ -156,14 +178,21 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if std_opts:
         lot.options = std_opts
 
+    # originPrice is MSRP in 만원 units — promote it to the first-class
+    # `retail_value` column (in KRW) so filter rules and UI can compare it.
+    origin_price_man = cat.get("originPrice")
+    if origin_price_man and not lot.retail_value:
+        try:
+            lot.retail_value = int(origin_price_man) * 10_000
+        except (TypeError, ValueError):
+            pass
+
     lot.raw_data.update({
         "grade_detail_kr": cat.get("gradeDetailName"),
         "grade_detail_en": cat.get("gradeDetailEnglishName"),
         "domestic":        cat.get("domestic"),
         "import_type":     cat.get("importType"),
         "ad_status":       adv.get("status"),
-        "origin_price":    cat.get("originPrice"),
-        "photo_count":     len(photos),
     })
 
 
@@ -781,10 +810,9 @@ class EncarParser(AbstractParser):
             stats["search_time"] += _time.monotonic() - _t_batch_start
 
             self.repo.upsert_batch(page_lots)
+            # Photos are auto-upserted by LotRepository.upsert_batch from
+            # lot.photos (see parser/models.py). No need to handle them here.
             for lot in page_lots:
-                photos = lot.raw_data.get("photos") or []
-                if photos:
-                    self.repo.upsert_photos(lot.id, photos)
                 is_new = lot.id not in existing_ids
                 if is_new:
                     stats["new"] += 1

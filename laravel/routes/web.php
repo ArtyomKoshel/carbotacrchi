@@ -28,10 +28,23 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::get('/jobs/{id}/detail',              [AdminController::class, 'jobDetail'])->name('jobs.detail');
     Route::get('/jobs/{id}/log',                 [AdminController::class, 'jobLog'])->name('jobs.log');
     Route::get('/schedules',                       [AdminController::class, 'schedules'])->name('schedules');
-    Route::get('/accuracy',                          [AdminController::class, 'fieldStats'])->name('accuracy');
-    Route::post('/accuracy/refresh',                 [AdminController::class, 'accuracyRefresh'])->name('accuracy.refresh');
-    Route::get('/proxy-balance',                     [AdminController::class, 'proxyBalance'])->name('proxy.balance');
+    Route::get('/proxy-balance',                 [AdminController::class, 'proxyBalance'])->name('proxy.balance');
     Route::post('/schedules/{source}',           [AdminController::class, 'updateSchedule'])->name('schedules.update');
+    Route::get('/filters',                       [AdminController::class, 'filters'])->name('filters');
+    Route::post('/filters',                      [AdminController::class, 'createFilter'])->name('filters.create');
+    Route::put('/filters/{id}',                  [AdminController::class, 'updateFilter'])->name('filters.update');
+    Route::delete('/filters/{id}',               [AdminController::class, 'deleteFilter'])->name('filters.delete');
+    Route::patch('/filters/{id}/toggle',         [AdminController::class, 'toggleFilter'])->name('filters.toggle');
+
+    // Fields: unified page — registry + source mappings + coverage stats.
+    // Replaces legacy `/admin/accuracy` and `/admin/field-mappings`.
+    Route::get('/fields',                        [AdminController::class, 'fields'])->name('fields');
+    Route::post('/fields/recompute',             [AdminController::class, 'fieldsRecompute'])->name('fields.recompute');
+    Route::get('/fields-schema.json',            [AdminController::class, 'fieldsSchema'])->name('fields.schema');
+
+    // Legacy redirects — keep old bookmarks working.
+    Route::get('/accuracy',       fn () => redirect()->route('admin.fields'))->name('accuracy');
+    Route::get('/field-mappings', fn () => redirect()->route('admin.fields'))->name('field.mappings');
 });
 
 Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function () {

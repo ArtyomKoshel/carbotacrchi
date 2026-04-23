@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\FieldCoverageStat;
 use App\Models\Lot;
 use App\Models\LotChange;
+use App\Models\ParseFilter;
 use App\Models\ParseJob;
 use App\Models\ParserSchedule;
 use App\Models\ReparseRequest;
+use App\Services\FieldMappingsService;
+use App\Services\FieldRegistryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Validation\Rule as ValidationRule;
 
 class AdminController extends Controller
 {
@@ -362,7 +368,7 @@ class AdminController extends Controller
             ->where('updated_at', '>=', $since)
             ->orderByDesc('updated_at')
             ->limit(200)
-            ->get(['id', 'make', 'model', 'year', 'price', 'price_krw', 'mileage', 'updated_at']);
+            ->get(['id', 'make', 'model', 'year', 'price', 'mileage', 'updated_at']);
 
         // Lots that had actual field changes
         $changedIds = DB::table('lot_changes')
@@ -562,7 +568,8 @@ class AdminController extends Controller
                     SUM(total_loss_history IS NOT NULL)                     AS total_loss_history,
                     SUM(registration_date IS NOT NULL)                      AS registration_date,
                     SUM(price > 0)                                          AS price,
-                    SUM(price_krw IS NOT NULL AND price_krw > 0)            AS price_krw,
+                    SUM(sell_type IS NOT NULL AND sell_type != '')           AS sell_type,
+                    SUM(registration_year_month IS NOT NULL AND registration_year_month > 0) AS registration_year_month,
                     SUM(lien_status IS NOT NULL AND lien_status != '')      AS lien_status,
                     SUM(lien_status IS NOT NULL AND lien_status <> 'clean' AND lien_status <> '') AS lien_not_clean,
                     SUM(seizure_status IS NOT NULL AND seizure_status != '') AS seizure_status,
@@ -777,5 +784,215 @@ class AdminController extends Controller
 
         fclose($fp);
         return [$results, $scanned, $fileSize];
+    }
+
+    // ── Filters ──────────────────────────────────────────────────────────
+
+    /** GET /admin/filters — list and manage parse_filters rules. */
+    public function filters(FieldRegistryService $registry)
+    {
+        $filters = ParseFilter::orderBy('priority')->orderBy('id')->get();
+
+        $recentHits = DB::table('lot_changes')
+            ->where('event', 'like', 'deactivated_filter%')
+            ->where('recorded_at', '>=', now()->subDay())
+            ->count();
+
+        return view('admin.filters', [
+            'filters'        => $filters,
+            'schema'         => $registry->schema(),
+            'groupedFields'  => $registry->groupedFilterable(),
+            'operators'      => ParseFilter::OPERATORS,
+            'operatorLabels' => ParseFilter::OPERATOR_LABELS,
+            'actions'        => ParseFilter::ACTIONS,
+            'actionLabels'   => ParseFilter::ACTION_LABELS,
+            'sources'        => ParseFilter::SOURCES,
+            'recentHits'     => $recentHits,
+        ]);
+    }
+
+    /** GET /admin/fields-schema.json — JSON export of the Python field registry (for UI JS). */
+    public function fieldsSchema(FieldRegistryService $registry): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($registry->schema())
+            ->header('Cache-Control', 'public, max-age=300');
+    }
+
+    /** GET /admin/fields — unified mapping catalogue + coverage stats. */
+    public function fields(FieldMappingsService $mappings, FieldRegistryService $registry)
+    {
+        $schema   = $mappings->schema();
+        $mappingByAttr = [];
+        foreach ($schema['mappings'] ?? [] as $m) {
+            $mappingByAttr[$m['attribute']] = $m;
+        }
+
+        $registrySchema = $registry->schema();
+        $registryByName = [];
+        foreach ($registrySchema['fields'] ?? [] as $f) {
+            $registryByName[$f['name']] = $f;
+        }
+
+        // Coverage stats — read from pre-computed table (fast)
+        $coverageRaw = FieldCoverageStat::orderBy('source')->orderBy('field_name')->get();
+        $coverageByField = [];
+        $sources = [];
+        $computedAt = null;
+        foreach ($coverageRaw as $stat) {
+            $coverageByField[$stat->field_name][$stat->source] = [
+                'filled'  => $stat->filled_lots,
+                'total'   => $stat->total_lots,
+                'pct'     => $stat->coverage_pct,
+            ];
+            $sources[$stat->source] = true;
+            if ($computedAt === null || $stat->computed_at->gt($computedAt)) {
+                $computedAt = $stat->computed_at;
+            }
+        }
+        $sources = array_keys($sources);
+        sort($sources);
+
+        // Build the unified rows: one per field, combining all three sources
+        $unified = [];
+        $allFieldNames = array_unique(array_merge(
+            array_keys($registryByName),
+            array_keys($mappingByAttr),
+            array_keys($coverageByField),
+        ));
+        foreach ($allFieldNames as $name) {
+            $reg = $registryByName[$name] ?? null;
+            $map = $mappingByAttr[$name] ?? null;
+            $unified[] = [
+                'name'         => $name,
+                'db_column'    => $map['db_column']   ?? $reg['column']     ?? $name,
+                'dtype'        => $reg['dtype']       ?? $map['dtype']      ?? '?',
+                'category'     => $reg['category']    ?? $map['category']   ?? 'other',
+                'filterable'   => (bool) ($reg['filterable'] ?? $map['filterable'] ?? false),
+                'tracked'      => (bool) ($reg['tracked']    ?? false),
+                'description'  => $reg['description'] ?? $map['notes'] ?? '',
+                'extractions'  => $map['extractions'] ?? [],
+                'coverage'     => $coverageByField[$name] ?? [],
+            ];
+        }
+
+        // Group by category, then sort by name within group
+        usort($unified, fn($a, $b) => [$a['category'], $a['name']] <=> [$b['category'], $b['name']]);
+        $grouped = [];
+        foreach ($unified as $u) {
+            $grouped[$u['category']][] = $u;
+        }
+        ksort($grouped);
+
+        $totals = [];
+        foreach ($sources as $src) {
+            $totals[$src] = (int) DB::table('lots')
+                ->where('source', $src)->where('is_active', 1)->count();
+        }
+
+        return view('admin.fields', [
+            'grouped'     => $grouped,
+            'sources'     => $sources,
+            'totals'      => $totals,
+            'totalFields' => count($unified),
+            'computedAt'  => $computedAt,
+            'version'     => $schema['version'] ?? 0,
+        ]);
+    }
+
+    /** POST /admin/fields/recompute — run coverage job synchronously. */
+    public function fieldsRecompute()
+    {
+        Artisan::call('fields:compute-coverage');
+        return redirect()->route('admin.fields')
+            ->with('success', 'Coverage stats recomputed.');
+    }
+
+    /** POST /admin/filters — create a new rule. */
+    public function createFilter(Request $request)
+    {
+        $data = $this->validateFilterPayload($request);
+        ParseFilter::create($data);
+        return redirect()->route('admin.filters')
+            ->with('success', "Rule '{$data['name']}' created — parser picks it up within 60s.");
+    }
+
+    /** PUT /admin/filters/{id} — update an existing rule. */
+    public function updateFilter(Request $request, int $id)
+    {
+        $filter = ParseFilter::findOrFail($id);
+        $data = $this->validateFilterPayload($request, $id);
+        $filter->update($data);
+        return redirect()->route('admin.filters')
+            ->with('success', "Rule '{$filter->name}' updated.");
+    }
+
+    /** DELETE /admin/filters/{id} — delete a rule. */
+    public function deleteFilter(int $id)
+    {
+        $filter = ParseFilter::findOrFail($id);
+        $name = $filter->name;
+        $filter->delete();
+        return redirect()->route('admin.filters')
+            ->with('success', "Rule '{$name}' deleted.");
+    }
+
+    /** PATCH /admin/filters/{id}/toggle — quickly flip enabled. */
+    public function toggleFilter(int $id)
+    {
+        $filter = ParseFilter::findOrFail($id);
+        $filter->enabled = !$filter->enabled;
+        $filter->save();
+        return redirect()->route('admin.filters')
+            ->with('success', "Rule '{$filter->name}' " . ($filter->enabled ? 'enabled' : 'disabled') . '.');
+    }
+
+
+    /**
+     * Validate and normalize the filter payload from the form.
+     * $ignoreId — the current rule id to exempt from the unique-name rule on edit.
+     */
+    private function validateFilterPayload(Request $request, ?int $ignoreId = null): array
+    {
+        $nameRule = ['required', 'string', 'max:64', 'regex:/^[a-z0-9_]+$/i'];
+        $nameRule[] = ValidationRule::unique('parse_filters', 'name')
+            ->ignore($ignoreId);
+
+        $validated = $request->validate([
+            'name'        => $nameRule,
+            'source'      => ['nullable', ValidationRule::in(ParseFilter::SOURCES)],
+            'field'       => ['required', 'string', 'max:64'],
+            'operator'    => ['required', ValidationRule::in(ParseFilter::OPERATORS)],
+            'value'       => ['nullable', 'string', 'max:4096'],
+            'action'      => ['required', ValidationRule::in(ParseFilter::ACTIONS)],
+            'priority'    => ['required', 'integer', 'min:0', 'max:10000'],
+            'enabled'     => ['nullable'],
+            'description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        // Normalize: enabled checkbox → bool; value → JSON-encoded when parseable
+        $validated['enabled'] = (bool) $request->input('enabled', false);
+        $validated['source'] = $validated['source'] ?: null;
+
+        // Accept either raw JSON in the textarea ("123", "\"rental\"", "[1,2]")
+        // or a plain scalar. Always store as JSON for unambiguous parsing by Python.
+        $raw = $validated['value'] ?? null;
+        if ($raw === null || $raw === '') {
+            $validated['value'] = null;
+        } elseif ($this->isJson($raw)) {
+            $validated['value'] = $raw;
+        } else {
+            // Plain string / number → wrap as JSON literal
+            $validated['value'] = json_encode($raw, JSON_UNESCAPED_UNICODE);
+        }
+
+        return $validated;
+    }
+
+    private function isJson(string $raw): bool
+    {
+        $raw = trim($raw);
+        if ($raw === '') return false;
+        json_decode($raw);
+        return json_last_error() === JSON_ERROR_NONE;
     }
 }

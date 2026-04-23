@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 
 @dataclass
@@ -11,9 +12,11 @@ class CarLot:
     make: str
     model: str
     year: int
-    price: int
-    price_krw: int = 0
+    price: int                    # Always in KRW (canonical)
     mileage: int = 0
+
+    # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
+    registration_year_month: int | None = None
 
     # Technical specs
     fuel: str | None = None
@@ -59,12 +62,14 @@ class CarLot:
     retail_value: int | None = None
     repair_cost: int | None = None
     new_car_price_ratio: int | None = None
-    ai_price_min: int | None = None
-    ai_price_max: int | None = None
 
     # Options
     options: list | None = None
     paid_options: list | None = None
+
+    # Sales model (sale|lease|rental|business|under_contract|insurance_hide|auction)
+    sell_type: str | None = None
+    sell_type_raw: str | None = None  # raw value from source for debugging
 
     # Dealer info
     dealer_name: str | None = None
@@ -74,11 +79,32 @@ class CarLot:
     dealer_description: str | None = None
     warranty_text: str | None = None
 
+    # Photos — transit field: repository upserts these into `lot_photos`
+    # after upsert_batch and does NOT serialize them into raw_data.
+    photos: list[str] | None = None
+
     # Raw data
     raw_data: dict = field(default_factory=dict)
 
+    # Fields that live in their own column / table and must NOT be serialized
+    # into raw_data JSON (otherwise each lot row carries kilobytes of duplicate
+    # data). Kept as a class-level constant for documentation.
+    _RAW_DATA_BLOCKLIST: ClassVar[frozenset[str]] = frozenset({
+        "photos",         # -> lot_photos table (via CarLot.photos field)
+        "photo_path",     # -> superseded by image_url column
+        "photo_count",    # -> COUNT(*) from lot_photos
+        "sell_type",      # -> lots.sell_type_raw column (P1)
+    })
+
+    def _clean_raw_data(self) -> dict:
+        """Return a copy of raw_data with duplicated/obsolete keys removed."""
+        if not self.raw_data:
+            return {}
+        return {k: v for k, v in self.raw_data.items() if k not in self._RAW_DATA_BLOCKLIST}
+
     def to_db_row(self) -> dict:
-        raw_json = json.dumps(self.raw_data, ensure_ascii=False, default=str) if self.raw_data else None
+        clean_raw = self._clean_raw_data()
+        raw_json = json.dumps(clean_raw, ensure_ascii=False, default=str) if clean_raw else None
         options_json = json.dumps(self.options, ensure_ascii=False) if self.options else None
         paid_options_json = json.dumps(self.paid_options, ensure_ascii=False) if self.paid_options else None
 
@@ -119,12 +145,10 @@ class CarLot:
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
             "new_car_price_ratio": self.new_car_price_ratio,
-            "ai_price_min": self.ai_price_min,
-            "ai_price_max": self.ai_price_max,
+            "registration_year_month": self.registration_year_month,
             "image_url": self.image_url,
             "lot_url": self.lot_url,
             "raw_data": raw_json,
-            "price_krw": self.price_krw,
             "plate_number": self.plate_number,
             "registration_date": self.registration_date,
             "options": options_json,
@@ -135,6 +159,8 @@ class CarLot:
             "dealer_phone": self.dealer_phone,
             "dealer_description": self.dealer_description,
             "warranty_text": self.warranty_text,
+            "sell_type": self.sell_type,
+            "sell_type_raw": self.sell_type_raw,
         }
 
     def merge_details(self, details: dict) -> None:

@@ -27,8 +27,9 @@
       ['route' => 'admin.logs',      'icon' => '≡', 'label' => 'Logs'],
       ['route' => 'admin.jobs',      'icon' => '▶', 'label' => 'Jobs'],
       ['route' => 'admin.schedules', 'icon' => '⏱', 'label' => 'Schedules'],
+      ['route' => 'admin.filters',   'icon' => '⚑', 'label' => 'Filters'],
+      ['route' => 'admin.fields',    'icon' => '◎', 'label' => 'Fields'],
       ['route' => 'admin.lots',      'icon' => '⟳', 'label' => 'Re-parse'],
-      ['route' => 'admin.accuracy',  'icon' => '◎', 'label' => 'Accuracy'],
     ] as $item)
       @php $active = request()->routeIs($item['route']) @endphp
       <a href="{{ route($item['route']) }}"

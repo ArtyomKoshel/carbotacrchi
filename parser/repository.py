@@ -16,8 +16,115 @@ logger = logging.getLogger(__name__)
 
 
 class LotRepository:
+    # Lazy-initialized shared FilterEngine. Rules are reloaded from DB every
+    # _FILTER_RELOAD_INTERVAL seconds so that admin changes take effect without
+    # restarting the parser.
+    _FILTER_RELOAD_INTERVAL = 60.0
+    _filter_engine = None
+    _filter_loaded_at: float = 0.0
+
     def __init__(self):
         self._conn: pymysql.Connection | None = None
+
+    def _get_filter_engine(self):
+        """Return a FilterEngine with rules from DB (cached, refreshed every 60s)."""
+        now = _time.monotonic()
+        if (LotRepository._filter_engine is None or
+                now - LotRepository._filter_loaded_at > self._FILTER_RELOAD_INTERVAL):
+            try:
+                from filters import FilterEngine, load_rules
+                rules = load_rules(conn=self._get_conn())
+                LotRepository._filter_engine = FilterEngine(rules)
+                LotRepository._filter_loaded_at = now
+                logger.info(f"[filter] engine (re)loaded: {len(rules.rules)} rules active")
+            except Exception as e:
+                logger.warning(f"[filter] cannot load rules: {type(e).__name__}: {e}")
+                if LotRepository._filter_engine is None:
+                    # Hard fallback: empty engine — nothing is filtered.
+                    from filters import FilterEngine
+                    LotRepository._filter_engine = FilterEngine([])
+        return LotRepository._filter_engine
+
+    def _apply_filters(self, lots: list[CarLot], stats: dict | None) -> list[CarLot]:
+        """Run FilterEngine over lots. Returns kept lots; mutates stats['filtered'].
+
+        Side-effect: any lot filtered out that is already active in DB is
+        immediately marked is_active=0 so it disappears from the listings
+        (otherwise it would live forever because the normal delist code
+        thinks it's still "seen").
+        """
+        if not lots:
+            return lots
+        engine = self._get_filter_engine()
+        kept: list[CarLot] = []
+        skipped_ids: list[str] = []
+        filtered_counts: dict[str, int] = {}
+        for lot in lots:
+            result = engine.evaluate(lot)
+            if result.should_skip:
+                for rule in result.matched_rules:
+                    if rule.action == "skip":
+                        filtered_counts[rule.name] = filtered_counts.get(rule.name, 0) + 1
+                skipped_ids.append(lot.id)
+                continue
+            if result.should_mark_inactive:
+                lot.raw_data["_filter_mark_inactive"] = True
+            kept.append(lot)
+
+        if skipped_ids:
+            self._deactivate_existing(skipped_ids, reason="filter")
+
+        if stats is not None and filtered_counts:
+            stats["filtered"] = stats.get("filtered", 0) + sum(filtered_counts.values())
+            stats.setdefault("filter_rules", {})
+            for name, n in filtered_counts.items():
+                stats["filter_rules"][name] = stats["filter_rules"].get(name, 0) + n
+        if filtered_counts:
+            rule_summary = ", ".join(f"{n}={c}" for n, c in sorted(filtered_counts.items(), key=lambda kv: -kv[1]))
+            logger.info(
+                f"[filter] skipped {sum(filtered_counts.values())}/{len(lots)} lots "
+                f"({rule_summary})"
+            )
+        return kept
+
+    def _deactivate_existing(self, lot_ids: list[str], reason: str = "filter") -> int:
+        """Mark is_active=0 for any of given ids that are currently active.
+
+        Returns count of rows affected. Used when filter rules newly exclude
+        lots that were previously stored as active.
+        """
+        if not lot_ids:
+            return 0
+        conn = self._get_conn()
+        placeholders = ",".join(["%s"] * len(lot_ids))
+        sql = (
+            f"UPDATE lots SET is_active = 0, updated_at = NOW() "
+            f"WHERE id IN ({placeholders}) AND is_active = 1"
+        )
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, list(lot_ids))
+                affected = cur.rowcount
+            conn.commit()
+            if affected > 0:
+                logger.info(
+                    f"[DB] {reason}: deactivated {affected} previously active lots"
+                )
+                # Also record history entries so the admin panel shows the transition
+                self._insert_lot_changes([
+                    {
+                        "lot_id": lid,
+                        "source": "",
+                        "event": f"deactivated_{reason}",
+                        "changes": {"is_active": {"old": True, "new": False}},
+                    }
+                    for lid in lot_ids[:affected]  # only log affected ones (can't distinguish which)
+                ])
+            return affected
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"[DB] _deactivate_existing failed: {type(e).__name__}: {e}")
+            return 0
 
     def _get_conn(self) -> pymysql.Connection:
         if self._conn is None or not self._conn.open:
@@ -37,14 +144,29 @@ class LotRepository:
         return self._conn
 
     # Fields compared on every upsert to detect meaningful changes.
-    _TRACKED_FIELDS: tuple[str, ...] = (
-        "price", "price_krw", "mileage",
-        "has_accident", "flood_history", "total_loss_history",
-        "lien_status", "seizure_status",
-        "owners_count", "insurance_count",
-        "trim", "color", "options",
-        "is_active",
-    )
+    # Derived from the FieldRegistry SSOT (parser/fields/registry.py) — see
+    # FieldSpec.tracked. `is_active` is appended manually because it is a
+    # repository-managed column, not a CarLot attribute.
+    @classmethod
+    def _get_tracked_fields(cls) -> tuple[str, ...]:
+        try:
+            from fields import TRACKED_FIELDS as _registry_tracked
+            names = tuple(f.name for f in _registry_tracked) + ("is_active",)
+            return names
+        except Exception:
+            # Fallback — registry unavailable (should not normally happen).
+            return (
+                "price", "mileage",
+                "has_accident", "flood_history", "total_loss_history",
+                "lien_status", "seizure_status",
+                "owners_count", "insurance_count",
+                "trim", "color", "options",
+                "sell_type",
+                "is_active",
+            )
+
+    # Cached at class-load; re-read on server restart (registry is static code).
+    _TRACKED_FIELDS: tuple[str, ...] = ()  # populated below
 
     def _fetch_tracked(self, lot_ids: list[str]) -> dict[str, dict]:
         """Return {lot_id: {field: value}} for all _TRACKED_FIELDS of existing lots."""
@@ -89,6 +211,14 @@ class LotRepository:
         if not lots:
             return 0
 
+        # ── Pre-upsert filter ────────────────────────────────────────────────
+        # Apply declarative rules (sell_type/mileage/year/price/...) before
+        # any DB write. Lots marked "skip" are dropped here; "mark_inactive"
+        # flag is handled below via is_active column override.
+        lots = self._apply_filters(lots, stats)
+        if not lots:
+            return 0
+
         conn = self._get_conn()
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -107,12 +237,13 @@ class LotRepository:
                 title, document,
                 location, color, seat_color, `trim`, `options`, paid_options, warranty_text,
                 retail_value, repair_cost,
-                new_car_price_ratio, ai_price_min, ai_price_max,
+                new_car_price_ratio, registration_year_month,
                 image_url, lot_url, raw_data,
-                fetched_at, price_krw, is_active, parsed_at,
+                fetched_at, is_active, parsed_at,
                 plate_number, registration_date,
                 dealer_name, dealer_company, dealer_location,
                 dealer_phone, dealer_description,
+                sell_type, sell_type_raw,
                 created_at, updated_at
             ) VALUES (
                 %(id)s, %(source)s, %(make)s, %(model)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
@@ -125,12 +256,13 @@ class LotRepository:
                 %(title)s, %(document)s,
                 %(location)s, %(color)s, %(seat_color)s, %(trim)s, %(options)s, %(paid_options)s, %(warranty_text)s,
                 %(retail_value)s, %(repair_cost)s,
-                %(new_car_price_ratio)s, %(ai_price_min)s, %(ai_price_max)s,
+                %(new_car_price_ratio)s, %(registration_year_month)s,
                 %(image_url)s, %(lot_url)s, %(raw_data)s,
-                %(now)s, %(price_krw)s, 1, %(now)s,
+                %(now)s, %(is_active)s, %(now)s,
                 %(plate_number)s, %(registration_date)s,
                 %(dealer_name)s, %(dealer_company)s, %(dealer_location)s,
                 %(dealer_phone)s, %(dealer_description)s,
+                %(sell_type)s, %(sell_type_raw)s,
                 %(now)s, %(now)s
             ) ON DUPLICATE KEY UPDATE
                 price=VALUES(price), mileage=VALUES(mileage),
@@ -151,7 +283,7 @@ class LotRepository:
                 image_url=COALESCE(VALUES(image_url), image_url),
                 lot_url=VALUES(lot_url),
                 raw_data=VALUES(raw_data),
-                price_krw=VALUES(price_krw), is_active=1,
+                is_active=VALUES(is_active),
                 lien_status=COALESCE(VALUES(lien_status), lien_status),
                 seizure_status=COALESCE(VALUES(seizure_status), seizure_status),
                 tax_paid=COALESCE(VALUES(tax_paid), tax_paid),
@@ -164,8 +296,7 @@ class LotRepository:
                 retail_value=COALESCE(VALUES(retail_value), retail_value),
                 repair_cost=COALESCE(VALUES(repair_cost), repair_cost),
                 new_car_price_ratio=COALESCE(VALUES(new_car_price_ratio), new_car_price_ratio),
-                ai_price_min=COALESCE(VALUES(ai_price_min), ai_price_min),
-                ai_price_max=COALESCE(VALUES(ai_price_max), ai_price_max),
+                registration_year_month=COALESCE(VALUES(registration_year_month), registration_year_month),
                 plate_number=COALESCE(VALUES(plate_number), plate_number),
                 registration_date=COALESCE(VALUES(registration_date), registration_date),
                 dealer_name=COALESCE(VALUES(dealer_name), dealer_name),
@@ -173,6 +304,8 @@ class LotRepository:
                 dealer_location=COALESCE(VALUES(dealer_location), dealer_location),
                 dealer_phone=COALESCE(VALUES(dealer_phone), dealer_phone),
                 dealer_description=COALESCE(VALUES(dealer_description), dealer_description),
+                sell_type=COALESCE(VALUES(sell_type), sell_type),
+                sell_type_raw=COALESCE(VALUES(sell_type_raw), sell_type_raw),
                 parsed_at=VALUES(parsed_at), updated_at=VALUES(updated_at)
         """
 
@@ -180,6 +313,8 @@ class LotRepository:
         for lot in lots:
             row = lot.to_db_row()
             row["now"] = now
+            # Respect filter-engine mark_inactive flag (default: active)
+            row["is_active"] = 0 if lot.raw_data.get("_filter_mark_inactive") else 1
             rows.append(row)
 
         try:
@@ -264,6 +399,16 @@ class LotRepository:
             self._insert_lot_changes(changes_to_insert)
             if stats is not None:
                 stats["updated"] = stats.get("updated", 0) + len(changes_to_insert)
+
+        # Auto-upsert photos from the transit field `lot.photos` into the
+        # `lot_photos` table. Parsers populate `lot.photos` during enrichment;
+        # storing them here keeps the raw_data column free of bulky arrays.
+        for lot in lots:
+            if lot.photos:
+                try:
+                    self.upsert_photos(lot.id, lot.photos)
+                except Exception as e:
+                    logger.warning(f"[DB] upsert_photos auto {lot.id}: {e}")
 
         return len(rows)
 
@@ -459,8 +604,8 @@ class LotRepository:
                         id=row["id"], source=row["source"],
                         make=row["make"] or "", model=row["model"] or "",
                         year=row["year"] or 0, price=row["price"] or 0,
-                        price_krw=row.get("price_krw") or 0,
                         mileage=row["mileage"] or 0,
+                        registration_year_month=row.get("registration_year_month"),
                         location=row.get("location"),
                         lot_url=row.get("lot_url") or "",
                         image_url=row.get("image_url"),
@@ -501,8 +646,6 @@ class LotRepository:
                         dealer_phone=row.get("dealer_phone"),
                         dealer_description=row.get("dealer_description"),
                         new_car_price_ratio=row.get("new_car_price_ratio"),
-                        ai_price_min=row.get("ai_price_min"),
-                        ai_price_max=row.get("ai_price_max"),
                     )
                     lots.append(lot)
                 except Exception as e:
@@ -518,3 +661,7 @@ class LotRepository:
             self._conn.close()
             self._conn = None
             logger.debug("[DB] Connection closed")
+
+
+# Populate tracked fields once, after class is fully defined, from the SSOT.
+LotRepository._TRACKED_FIELDS = LotRepository._get_tracked_fields()

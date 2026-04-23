@@ -49,8 +49,11 @@ readonly class LotDTO
         public ?bool   $taxPaid             = null,
         public ?string $mileageGrade        = null,
         public ?int    $newCarPriceRatio    = null,
-        public ?int    $aiPriceMin          = null,
-        public ?int    $aiPriceMax          = null,
+        public ?string $sellType            = null,
+        public ?string $sellTypeRaw         = null,
+        public ?int    $registrationYearMonth = null,
+        public ?int    $insuranceCount      = null,
+        public ?string $seatColor           = null,
     ) {}
 
     public function toArray(): array
@@ -100,8 +103,11 @@ readonly class LotDTO
             'taxPaid'          => $this->taxPaid,
             'mileageGrade'     => $this->mileageGrade,
             'newCarPriceRatio' => $this->newCarPriceRatio,
-            'aiPriceMin'       => $this->aiPriceMin,
-            'aiPriceMax'       => $this->aiPriceMax,
+            'sellType'         => $this->sellType,
+            'sellTypeRaw'      => $this->sellTypeRaw,
+            'registrationYearMonth' => $this->registrationYearMonth,
+            'insuranceCount'   => $this->insuranceCount,
+            'seatColor'        => $this->seatColor,
         ];
     }
 }

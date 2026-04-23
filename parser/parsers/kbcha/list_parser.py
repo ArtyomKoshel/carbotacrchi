@@ -68,6 +68,7 @@ class KBChaListParser:
         location = spans[2].get_text(strip=True) if len(spans) > 2 else ""
 
         year = self._norm.parse_year(year_text)
+        reg_ym = self._norm.parse_year_month(year_text)
         mileage = self._norm.parse_mileage(mileage_text)
 
         price_el = area.select_one("span.price")
@@ -92,8 +93,8 @@ class KBChaListParser:
             model=model,
             year=year,
             price=price_man * 10000,
-            price_krw=price_man * 10000,
             mileage=mileage,
+            registration_year_month=reg_ym,
             location=location,
             lot_url=f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}",
             image_url=image_url,

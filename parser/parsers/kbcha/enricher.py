@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
+from .._shared import sell_type as _sell
 from .client import KBChaClient, _generate_kbcha_proxies
 from .detail_parser import KBChaDetailParser
 from .external_inspection_parser import KBChaExternalInspectionParser, compare_report_vs_lot
@@ -21,8 +22,10 @@ _SPEC_FIELDS = {"fuel", "year", "mileage", "engine_volume", "color"}
 _RAW_DATA_KEYS = (
     "inspection_type", "inspection_no",
     "autocafe_url", "carmodoo_url", "moldeoncar_url", "mpark_url", "inspection_url",
-    "_ai_price_min", "_ai_price_max", "_original_msrp_man",
-    "photos",
+    "_original_msrp_man",
+    # NOTE: "photos" intentionally NOT in this list — they go to lot.photos
+    # transit field (see _apply_combined) and are auto-upserted by
+    # LotRepository.upsert_batch into the `lot_photos` table.
 )
 
 _PHOTO_ONLY_MARKER = "딜러가 사진으로 등록한 성능점검기록부입니다"
@@ -160,16 +163,12 @@ class KBChaEnricher:
                 f"{total_skipped} skipped, {stats.get('errors', 0)} errors"
             )
 
+        # Photos are auto-upserted into lot_photos by LotRepository.upsert_batch
+        # from the lot.photos transit field set in _apply_combined. We only
+        # need to log final stats here.
         for lot in all_valid_lots:
             if lot.raw_data.get("_db_skip"):
                 continue
-            photos = lot.raw_data.get("photos") or []
-            if photos:
-                try:
-                    self._repo.upsert_photos(lot.id, photos)
-                except Exception as e:
-                    etype = type(e).__name__
-                    self._inc_error(stats, etype, f"upsert photos {lot.id}: {etype}: {e}")
             stats["detail_fetched"] += 1
             self._log_lot_dump(lot)
 
@@ -285,6 +284,11 @@ class KBChaEnricher:
         raw_info = combined.pop("_raw_info", None)
         if raw_info:
             lot.raw_data["raw_info"] = raw_info
+
+        # Photos go to the transit field (auto-upserted into `lot_photos`).
+        photos = combined.pop("photos", None)
+        if photos:
+            lot.photos = list(photos)
 
         lot.merge_details(combined)
         for key in _RAW_DATA_KEYS:
@@ -477,6 +481,17 @@ class KBChaEnricher:
             logger.debug(f"[{self._source}] {lot.id}: transmission set from report: {lot.transmission}")
         if parsed.get("report_first_registered") and not lot.raw_data.get("first_registration"):
             lot.raw_data["first_registration"] = parsed["report_first_registered"]
+
+        # Sell type from inspection usage_change (rental / business / lease)
+        usage_change = (parsed.get("details") or {}).get("usage_change")
+        if usage_change and lot.sell_type in (None, _sell.SALE):
+            mapped, raw = _sell.normalize_kbcha_usage(
+                usage_change, title=lot.raw_data.get("title")
+            )
+            if mapped:
+                lot.sell_type = mapped
+                lot.sell_type_raw = raw
+                logger.debug(f"[{self._source}] {lot.id}: sell_type={mapped} (from {raw!r})")
 
         # ── Damaged panels ──────────────────────────────────────────────
         damaged = parsed.get("damaged_panels") or []
