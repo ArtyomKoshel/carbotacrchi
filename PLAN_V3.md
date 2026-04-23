@@ -341,6 +341,28 @@ class ParserLifecycle(Protocol):
 | `document` | **Удалить** (ни один источник) |
 | `title` (legal) | **Переименовать** в `condition_title` или **удалить** (всегда "Clean") |
 
+### 4.11 Удаление дилерской информации
+
+**Задача**: полностью убрать хранение и парсинг данных дилера.
+
+**Колонки для удаления** (миграция):
+- `dealer_name`
+- `dealer_company`
+- `dealer_location`
+- `dealer_phone`
+- `dealer_description`
+
+**Код для очистки**:
+- **Encar parser** (`__init__.py`): убрать маппинг `contact.userId` → `dealer_name`, `contact.no` → `dealer_phone`, `partnership` → `dealer_company`, `contact.address` → `dealer_location`
+- **KBCha detail_parser / enricher**: убрать парсинг 상사명, 주소, 전화번호, 판매자 설명
+- **CarLot** (`models.py`): удалить 5 полей `dealer_*`
+- **`to_db_row()`**: удалить 5 ключей
+- **`repository.py`**: убрать из INSERT/UPDATE SQL
+- **LotDTO.php**: удалить свойства `dealerName`, `dealerCompany`, `dealerLocation`, `dealerPhone`, `dealerDescription`
+- **Laravel admin views**: убрать отображение дилерских полей
+- **`fields/registry.py`**: удалить 5 FieldSpec записей (dealer category)
+- **Regenerate `fields.json`** после удаления
+
 ### 4.10 Баги маппинга (код есть, но не работает)
 
 | Поле | Источник | Баг |

@@ -69,7 +69,6 @@ class ComputeFieldCoverage extends Command
         ['field' => 'total_loss_history','pred' => "X IS NOT NULL"],
         ['field' => 'owners_count',      'pred' => "X IS NOT NULL"],
         ['field' => 'insurance_count',   'pred' => "X IS NOT NULL"],
-        ['field' => 'has_keys',          'pred' => "X IS NOT NULL"],
         ['field' => 'damage',            'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'secondary_damage',  'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'warranty_text',     'pred' => "X IS NOT NULL AND X <> ''"],

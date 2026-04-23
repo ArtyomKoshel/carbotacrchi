@@ -1,0 +1,1343 @@
+﻿{
+  "version": 1,
+  "fields": [
+    {
+      "name": "id",
+      "column": "id",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Primary key: unique lot identifier scoped by source",
+      "required": true,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Id (from search API)",
+        "kbcha": "carSeq prefixed with kbcha_"
+      }
+    },
+    {
+      "name": "source",
+      "column": "source",
+      "dtype": "enum",
+      "category": "identity",
+      "description": "Origin marketplace",
+      "required": true,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": [
+        "encar",
+        "kbcha"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "constant 'encar'",
+        "kbcha": "constant 'kbcha'"
+      }
+    },
+    {
+      "name": "make",
+      "column": "make",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Manufacturer (normalized English name)",
+      "required": true,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Manufacturer via MAKER_MAP",
+        "kbcha": "makerCode via MAKER_CODE"
+      }
+    },
+    {
+      "name": "model",
+      "column": "model",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Model name (parser-normalized)",
+      "required": true,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Model + Badge",
+        "kbcha": "classCode + title parsing"
+      }
+    },
+    {
+      "name": "trim",
+      "column": "trim",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Trim / grade",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "BadgeDetail",
+        "kbcha": "title trim-tokens"
+      }
+    },
+    {
+      "name": "year",
+      "column": "year",
+      "dtype": "int",
+      "category": "identity",
+      "description": "Model year (4-digit)",
+      "required": true,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "FormYear[:4]",
+        "kbcha": "ьЧ░ьЛЭ parsing via parse_year"
+      }
+    },
+    {
+      "name": "price",
+      "column": "price",
+      "dtype": "int",
+      "category": "price",
+      "description": "Displayed price (KRW)",
+      "required": true,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Price * 10000",
+        "kbcha": "price_man * 10000"
+      }
+    },
+    {
+      "name": "retail_value",
+      "column": "retail_value",
+      "dtype": "int",
+      "category": "price",
+      "description": "MSRP / new-car price in KRW (before depreciation)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "originPrice * 10000",
+        "kbcha": "detail retail cell"
+      }
+    },
+    {
+      "name": "repair_cost",
+      "column": "repair_cost",
+      "dtype": "int",
+      "category": "price",
+      "description": "Total insurance-claim repair cost in KRW",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "myAccidentCost + otherAccidentCost"
+      }
+    },
+    {
+      "name": "new_car_price_ratio",
+      "column": "new_car_price_ratio",
+      "dtype": "int",
+      "category": "price",
+      "description": "Ratio of current price to MSRP (%)",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "ьЛаь░и ыМАы╣Д % text"
+      }
+    },
+    {
+      "name": "mileage",
+      "column": "mileage",
+      "dtype": "int",
+      "category": "condition",
+      "description": "Odometer reading (km)",
+      "required": true,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Mileage",
+        "kbcha": "ьг╝эЦЙъ▒░ыжм parse_mileage"
+      }
+    },
+    {
+      "name": "mileage_grade",
+      "column": "mileage_grade",
+      "dtype": "enum",
+      "category": "condition",
+      "description": "KBCha mileage grade (ьГБ / ьдС / эХШ)",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": [
+        "low",
+        "average",
+        "high"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "detail table mileage_grade"
+      }
+    },
+    {
+      "name": "registration_date",
+      "column": "registration_date",
+      "dtype": "date",
+      "category": "identity",
+      "description": "First registration date",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "manage.registDateTime[:10] or record.firstDate",
+        "kbcha": "ьЧ░ьЛЭ reg portion"
+      }
+    },
+    {
+      "name": "registration_year_month",
+      "column": "registration_year_month",
+      "dtype": "int",
+      "category": "identity",
+      "description": "First registration year+month as int YYYYMM (e.g. 202006)",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "FormYear (already YYYYMM)",
+        "kbcha": "parse_year_month(ьЧ░ьЛЭ cell)"
+      }
+    },
+    {
+      "name": "fuel",
+      "column": "fuel",
+      "dtype": "enum",
+      "category": "specs",
+      "description": "Fuel type",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": [
+        "gasoline",
+        "diesel",
+        "hybrid",
+        "plugin_hybrid",
+        "electric",
+        "lpg",
+        "cng",
+        "hydrogen"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "FuelType via FUEL_MAP",
+        "kbcha": "ьЧ░ыгМ via FUEL dict"
+      }
+    },
+    {
+      "name": "transmission",
+      "column": "transmission",
+      "dtype": "enum",
+      "category": "specs",
+      "description": "Transmission type",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": [
+        "automatic",
+        "manual",
+        "cvt",
+        "dct"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Transmission via TRANSMISSION_MAP",
+        "kbcha": "ы│АьЖНъ╕░ via TRANSMISSION"
+      }
+    },
+    {
+      "name": "body_type",
+      "column": "body_type",
+      "dtype": "enum",
+      "category": "specs",
+      "description": "Body style",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": [
+        "sedan",
+        "suv",
+        "hatchback",
+        "coupe",
+        "convertible",
+        "pickup",
+        "van",
+        "minivan",
+        "wagon",
+        "cargo",
+        "truck",
+        "kei"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "spec.bodyName via BODY_MAP",
+        "kbcha": "ь░иьвЕ"
+      }
+    },
+    {
+      "name": "drive_type",
+      "column": "drive_type",
+      "dtype": "enum",
+      "category": "specs",
+      "description": "Drivetrain",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": [
+        "fwd",
+        "rwd",
+        "awd",
+        "4wd",
+        "2wd"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "spec.drivingMethodName / badge tokens",
+        "kbcha": "title drive tokens"
+      }
+    },
+    {
+      "name": "engine_volume",
+      "column": "engine_volume",
+      "dtype": "float",
+      "category": "specs",
+      "description": "Engine displacement (liters)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "spec.displacement / 1000",
+        "kbcha": "ы░░ъ╕░ыЯЙ in cc"
+      }
+    },
+    {
+      "name": "fuel_economy",
+      "column": "fuel_economy",
+      "dtype": "float",
+      "category": "specs",
+      "description": "Declared fuel economy (km/L)",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "ьЧ░ы╣Д detail table"
+      }
+    },
+    {
+      "name": "cylinders",
+      "column": "cylinders",
+      "dtype": "int",
+      "category": "specs",
+      "description": "Number of cylinders",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "engine_str parse_cylinders"
+      }
+    },
+    {
+      "name": "color",
+      "column": "color",
+      "dtype": "string",
+      "category": "specs",
+      "description": "Body color",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "Color / spec.colorName",
+        "kbcha": "ь░иыЯЙьГЙьГБ"
+      }
+    },
+    {
+      "name": "seat_color",
+      "column": "seat_color",
+      "dtype": "string",
+      "category": "specs",
+      "description": "Interior / seat color",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "SeatColor",
+        "kbcha": "ьЛЬэК╕ьГЙьГБ"
+      }
+    },
+    {
+      "name": "location",
+      "column": "location",
+      "dtype": "string",
+      "category": "dealer",
+      "description": "Dealer location / city",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "OfficeCityState or contact.address",
+        "kbcha": "dealer location"
+      }
+    },
+    {
+      "name": "lot_url",
+      "column": "lot_url",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Canonical listing URL",
+      "required": true,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "image_url",
+      "column": "image_url",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Primary listing photo",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "vin",
+      "column": "vin",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Vehicle Identification Number (17 chars)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "detail.vin / inspection.vin",
+        "kbcha": "external inspection report ь░иыМАы▓ИэШ╕"
+      }
+    },
+    {
+      "name": "plate_number",
+      "column": "plate_number",
+      "dtype": "string",
+      "category": "identity",
+      "description": "License plate (Korean format)",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "detail.vehicleNo",
+        "kbcha": "ь░иыЯЙы▓ИэШ╕"
+      }
+    },
+    {
+      "name": "title",
+      "column": "title",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Title / status label тАФ default 'Clean'",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "lien_status",
+      "column": "lien_status",
+      "dtype": "enum",
+      "category": "legal",
+      "description": "Lien / loan status (ьХХыеШ)",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": [
+        "clean",
+        "lien",
+        "has_loan"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "record.loan",
+        "kbcha": "detail ьХХыеШ"
+      }
+    },
+    {
+      "name": "seizure_status",
+      "column": "seizure_status",
+      "dtype": "enum",
+      "category": "legal",
+      "description": "Seizure status (ьаАыЛ╣)",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": [
+        "clean",
+        "seizure",
+        "seized"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "record.robberCnt",
+        "kbcha": "detail ьаАыЛ╣"
+      }
+    },
+    {
+      "name": "tax_paid",
+      "column": "tax_paid",
+      "dtype": "bool",
+      "category": "legal",
+      "description": "Whether taxes are paid (ьД╕ъ╕Иып╕ыВй)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "detail ьД╕ъ╕Иып╕ыВй"
+      }
+    },
+    {
+      "name": "damage",
+      "column": "damage",
+      "dtype": "text",
+      "category": "condition",
+      "description": "Structural / frame damage description",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "damaged_panels.structural from report"
+      }
+    },
+    {
+      "name": "secondary_damage",
+      "column": "secondary_damage",
+      "dtype": "text",
+      "category": "condition",
+      "description": "Non-structural outer damage",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "damaged_panels.outer from report"
+      }
+    },
+    {
+      "name": "has_accident",
+      "column": "has_accident",
+      "dtype": "bool",
+      "category": "condition",
+      "description": "Any accident history on record",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "myAccidentCnt + otherAccidentCnt > 0",
+        "kbcha": "report has_accident"
+      }
+    },
+    {
+      "name": "flood_history",
+      "column": "flood_history",
+      "dtype": "bool",
+      "category": "condition",
+      "description": "Flood / water damage history",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "record floodTotalLossCnt + floodPartLossCnt",
+        "kbcha": "report has_flood"
+      }
+    },
+    {
+      "name": "total_loss_history",
+      "column": "total_loss_history",
+      "dtype": "bool",
+      "category": "condition",
+      "description": "Declared total loss in the past",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "record totalLossCnt > 0"
+      }
+    },
+    {
+      "name": "owners_count",
+      "column": "owners_count",
+      "dtype": "int",
+      "category": "condition",
+      "description": "Number of previous owners",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "record.ownerChangeCnt",
+        "kbcha": "detail ьЖМьЬаьЮРы│Аъ▓╜"
+      }
+    },
+    {
+      "name": "insurance_count",
+      "column": "insurance_count",
+      "dtype": "int",
+      "category": "condition",
+      "description": "Number of insurance claims",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "record.accidentCnt"
+      }
+    },
+    {
+      "name": "seat_count",
+      "column": "seat_count",
+      "dtype": "int",
+      "category": "specs",
+      "description": "Number of seats",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "spec.seatCount"
+      }
+    },
+    {
+      "name": "is_domestic",
+      "column": "is_domestic",
+      "dtype": "bool",
+      "category": "identity",
+      "description": "Domestic (Korean) car",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "category.domestic"
+      }
+    },
+    {
+      "name": "import_type",
+      "column": "import_type",
+      "dtype": "string",
+      "category": "identity",
+      "description": "Import classification",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "category.importType"
+      }
+    },
+    {
+      "name": "sell_type",
+      "column": "sell_type",
+      "dtype": "enum",
+      "category": "sales",
+      "description": "Normalized sale category (sale/lease/rental/...)",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": [
+        "sale",
+        "auction",
+        "lease",
+        "rental",
+        "business",
+        "under_contract",
+        "insurance_hide"
+      ],
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "SellType + AdType + Condition[] via normalize_encar",
+        "kbcha": "usage_change from inspection via normalize_kbcha_usage"
+      }
+    },
+    {
+      "name": "sell_type_raw",
+      "column": "sell_type_raw",
+      "dtype": "string",
+      "category": "sales",
+      "description": "Raw source string used to derive sell_type (debug only)",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "options",
+      "column": "options",
+      "dtype": "json",
+      "category": "specs",
+      "description": "Factory option list",
+      "required": false,
+      "filterable": true,
+      "tracked": true,
+      "enum_values": null,
+      "operators": [
+        "contains",
+        "not_contains",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "options.standard",
+        "kbcha": "detail option list"
+      }
+    },
+    {
+      "name": "paid_options",
+      "column": "paid_options",
+      "dtype": "json",
+      "category": "specs",
+      "description": "Paid / optional extras",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "contains",
+        "not_contains",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "detail paid options"
+      }
+    },
+    {
+      "name": "warranty_text",
+      "column": "warranty_text",
+      "dtype": "string",
+      "category": "condition",
+      "description": "Warranty coverage text",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "kbcha": "warranty table"
+      }
+    },
+    {
+      "name": "dealer_name",
+      "column": "dealer_name",
+      "dtype": "string",
+      "category": "dealer",
+      "description": "Dealer or seller name",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "contact.userId",
+        "kbcha": "detail dealer"
+      }
+    },
+    {
+      "name": "dealer_company",
+      "column": "dealer_company",
+      "dtype": "string",
+      "category": "dealer",
+      "description": "Dealer company / firm",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {
+        "encar": "partnership.dealer.firm.name",
+        "kbcha": "detail dealer company"
+      }
+    },
+    {
+      "name": "dealer_location",
+      "column": "dealer_location",
+      "dtype": "string",
+      "category": "dealer",
+      "description": "Dealer geographic location",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "dealer_phone",
+      "column": "dealer_phone",
+      "dtype": "string",
+      "category": "dealer",
+      "description": "Dealer phone",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "in",
+        "not_in",
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "dealer_description",
+      "column": "dealer_description",
+      "dtype": "text",
+      "category": "dealer",
+      "description": "Free-form dealer comment",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "contains",
+        "not_contains",
+        "regex",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "raw_data",
+      "column": "raw_data",
+      "dtype": "json",
+      "category": "meta",
+      "description": "Source-specific extras (photos, conditions, engine_code, etc.)",
+      "required": false,
+      "filterable": false,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "contains",
+        "not_contains",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    }
+  ]
+}
