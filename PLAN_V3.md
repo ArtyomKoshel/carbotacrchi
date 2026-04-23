@@ -50,10 +50,10 @@ flowchart TD
 
 | Компонент | Статус | Главная проблема |
 |---|---|---|
-| Encar parser | **НЕРАБОЧИЙ** | Missing abstract methods `get_source_key`/`get_source_name` |
-| KBCha parser | Работает на ~12% | ConnectTimeout блокирует 87% брендов |
+| Encar parser | ✅ **Исправлен** | ~~Missing abstract methods~~ (P0 fix) |
+| KBCha parser | ✅ **Работает** | ~~ConnectTimeout~~ (exponential backoff, 3 retries) |
 | KBCha inspections (kb_paper) | Почти нулевой парсинг | `parsed_count=1` для большинства |
-| KBCha inspections (autocafe) | Частично работает | `cert_no="82"` баг |
+| KBCha inspections (autocafe) | ✅ **Исправлен** | ~~`cert_no="82"`~~ (skip short nums, OnCarNo) |
 | Dynamic filters | Работает, но ограничены | Нет AND-логики, нет inspection-данных |
 | lots.raw_data | Раздутый | ~2-5KB дублей на строку (photos, mapped fields) |
 | lot_photos | Чистая | OK, но дублируется в raw_data |
@@ -63,30 +63,31 @@ flowchart TD
 
 ## ЧАСТЬ 1: Критические баги и несогласованности
 
-### 1.1 `LotRepository._lot_to_row` не существует
+### 1.1 ✅ `LotRepository._lot_to_row` не существует
 В `parser/repository.py` при ошибке батча вызывается `_lot_to_row(l)`, но такого метода нет — будет `NameError`. Нужно заменить на `l.to_db_row()`.
 
-### 1.2 `get_lots_by_source` не загружает `sell_type` / `sell_type_raw`
+### 1.2 ✅ `get_lots_by_source` не загружает `sell_type` / `sell_type_raw`
 При реконструкции `CarLot` из строк БД пропущены `sell_type` и `sell_type_raw` — ломает `run_reenrich` и фильтры при перепарсинге.
 
-### 1.3 KBCha `retail_value` не маппится
+### 1.3 ✅ KBCha `retail_value` не маппится
 `parser/parsers/kbcha/detail_parser.py` парсит `_original_msrp_man`, но не присваивает `retail_value`. Документация (`fields/registry.py`) утверждает что KBCha заполняет это поле — но код этого не делает.
 
 ### 1.4 `tax_paid` зависит от несуществующего `tax_unpaid`
 В `parser/parsers/kbcha/field_mapper.py` `apply_raw_data` читает `tax_unpaid`, но ни один парсер его не устанавливает.
 
-### 1.5 Lien/seizure — разные форматы между источниками
+### 1.5 ✅ Lien/seizure — разные форматы между источниками
 - Encar: английские токены (`clean`, `lien`, `seizure`)
 - KBCha: корейский текст из HTML-таблиц
 - Фильтры и UI не могут корректно сравнивать across sources
 
-### 1.6 `body_type` не нормализован
+### 1.6 ✅ `body_type` не нормализован
 В данных: `sedan`, `suv` (английские), но также `스포츠카` (корейский). Нужно пропустить через `BaseNormalizer`.
 
-### 1.7 Порог делистинга расходится
+### 1.7 ✅ Порог делистинга расходится
 - Encar: 95% покрытия API total
 - KBCha: 80% от количества в БД
 - Разные denominators могут вести к ложным массовым делистингам
+- **Решено:** Оба парсера используют `delist_if_complete()` из base.py с настраиваемым `MIN_DELIST_COVERAGE`
 
 ---
 
@@ -435,7 +436,7 @@ _RAW_DATA_BLOCKLIST = {
 | `detail.condition` | Загружается но не используется | Использовать для `lot.condition` если нужно |
 | `InspectionRecord.outer_parts` → `lot.damage` | Не копируется | Скопировать summary при inspection enrich |
 
-### 4B.7 Добавить `has_recall` из inspection данных
+### 4B.7 ✅ Добавить `has_recall` из inspection данных
 
 Миграция:
 ```sql
@@ -511,8 +512,8 @@ SELECT COUNT(*) FROM lot_inspections WHERE cert_no = '82';
 
 ## ЧАСТЬ 5: Laravel Admin — улучшения
 
-### 5.1 Мёртвый код
-- `AdminController::fieldStats()` и `accuracyRefresh()` — мёртвые (роуты редиректят)
+### 5.1 ✅ Мёртвый код
+- `AdminController::fieldStats()` и `accuracyRefresh()` — **удалены**
 - `field-mappings.blade.php` — мёртвый view
 
 ### 5.2 LotDTO пропускает поля
@@ -540,20 +541,20 @@ SELECT COUNT(*) FROM lot_inspections WHERE cert_no = '82';
 
 ## ЧАСТЬ 6: Оптимизация `lot_inspections`
 
-### 6.1 Баг: autocafe `cert_no = "82"`
-Почти все autocafe-записи имеют `cert_no: "82"` — парсинг ошибочного элемента. Нужно исправить парсер.
+### 6.1 ✅ Баг: autocafe `cert_no = "82"`
+Почти все autocafe-записи имеют `cert_no: "82"` — **исправлено**: skip short nums, добавлен OnCarNo.
 
 ### 6.2 `kb_paper` — нулевой парсинг
 `parsed_count: 1`, `parsed_fields: ["cert_no"]` для большинства. Парсер не работает для checkpaper.iwsp.co.kr.
 
-### 6.3 Бойлерплейт в `notes`
-autocafe записи содержат одинаковый юридический текст (~600 символов) в каждой записи.
+### 6.3 ✅ Бойлерплейт в `notes`
+autocafe записи содержат одинаковый юридический текст — **добавлен фильтр _BOILERPLATE**.
 
-### 6.4 Encar `cert_no` — невалидные значения
-`202603030` (лишний 0), `20261136738` (мусор). Нет валидации формата.
+### 6.4 ✅ Encar `cert_no` — невалидные значения
+`202603030` (лишний 0), `20261136738` (мусор). **Добавлена валидация: только digits, len≥8**.
 
-### 6.5 Вынос данных из `raw_data` inspections
-Добавить колонки: `my_accident_cost BIGINT`, `other_accident_cost BIGINT`, `has_recall BOOLEAN`.
+### 6.5 ✅ Вынос данных из `raw_data` inspections
+Добавлены колонки: `my_accident_cost`, `other_accident_cost`, `has_recall` — миграция + парсер.
 
 ### 6.6 Comparison QA
 Нормализовать case при сравнении (fuel: `Diesel` vs `diesel`). Показывать расхождения accident/mileage в admin.
@@ -562,22 +563,17 @@ autocafe записи содержат одинаковый юридически
 
 ## ЧАСТЬ 7: Критические проблемы из `parse_jobs` (URGENT)
 
-### 7.1 EncarParser полностью нерабочий
-```
-TypeError: Can't instantiate abstract class EncarParser without an implementation
-for abstract methods 'get_source_key', 'get_source_name'
-```
+### 7.1 ✅ EncarParser полностью нерабочий
+~~TypeError: Can't instantiate abstract class~~ — добавлены abstract methods.
 
-### 7.2 KBCha `normalizer` NameError
-`NameError: name 'normalizer' is not defined` — переменная не инициализирована.
+### 7.2 ✅ KBCha `normalizer` NameError
+~~NameError: name 'normalizer' is not defined~~ — исправлено.
 
-### 7.3 KBCha ConnectTimeout — 87.6% брендов пропущено
-- 현대 (53,226), 기아 (49,062), 제네시스 (8,794), 한국GM (10,334) — 0 лотов
-- Логика: 1 попытка + 1 retry → пропуск бренда целиком
-- Нужен exponential backoff + proxy rotation + deferred retry queue
+### 7.3 ✅ KBCha ConnectTimeout — 87.6% брендов пропущено
+- **Решено**: exponential backoff (3 попытки), continue on failure вместо break
 
-### 7.4 Серия крашей (8 подряд)
-Нет checkpoint/resume — каждый рестарт начинает с нуля при 10-часовых прогонах.
+### 7.4 ✅ Серия крашей (8 подряд)
+**Решено**: checkpoint/resume в progress JSON, interrupted status, auto-resume.
 
 ### 7.5 Производительность
 21,883 лота за 9ч 56мин = 1.64 сек/лот. При полном покрытии (176K) = 80+ часов.
@@ -651,10 +647,10 @@ Encar: `upsert_batch` → ФИЛЬТРЫ (accident fields = NULL!) → `_enrich_
 
 **Решение**: Pre-filters (basic) + Post-filters (accident/inspection).
 
-### 8.3 Баги
-1. `_deactivate_existing` audit mismatch — `lot_ids[:affected]` не гарантирует правильные ID
-2. `not_in` + None → False (должно быть True)
-3. `is_allowed` возвращает True для `flag` — путаница с `allow`
+### 8.3 Баги (частично ✅)
+1. ✅ `_deactivate_existing` audit mismatch — теперь SELECT active_ids перед UPDATE
+2. ✅ `not_in` + None → True (исправлено)
+3. ✅ `is_allowed` → `is_kept` (новый property, `is_allowed` = только ACTION_ALLOW)
 4. UI не показывает `between`/`not_in` когда поле не выбрано
 
 ### 8.4 Целевая архитектура фильтров
@@ -773,17 +769,11 @@ flowchart TD
     worker --> issues
 ```
 
-### 9.1 `triggered_by` — два источника правды
+### 9.1 ✅ `triggered_by` — два источника правды
+Scheduler теперь записывает `triggered_by` в колонку.
 
-**Проблема**: Таблица `parse_jobs` имеет колонку `triggered_by` (default `'admin'`). Но scheduler записывает `triggered_by` **внутри JSON** `filters`, а колонку оставляет default. Admin UI читает из `filters.triggered_by` для бейджа — но SQL-запросы по колонке дадут неправильный результат.
-
-**Решение**: Scheduler должен записывать `triggered_by` в **колонку**, а не в JSON. Убрать дублирование.
-
-### 9.2 Pending jobs — нет live updates
-
-**Проблема**: В `jobs.blade.php` SSE подключается только к строкам с `data-status="running"`. Pending jobs **не получают live update** — пользователь не видит когда job стартовал, пока не обновит страницу.
-
-**Решение**: Подключать SSE ко всем non-terminal jobs (pending + running). Worker уже публикует status change в Redis.
+### 9.2 ✅ Pending jobs — нет live updates
+SSE теперь подключается ко всем non-terminal jobs (pending + running + interrupted).
 
 ### 9.3 Progress — "page" значит разное
 
@@ -791,26 +781,14 @@ flowchart TD
 
 **Решение**: Перейти на `ProgressUpdate` с `phase` + `total_progress` (0.0-1.0). UI показывает процентный прогресс-бар и текущую фазу, а не абстрактную "страницу".
 
-### 9.4 Stale jobs — неотличимы от реальных ошибок
+### 9.4 ✅ Stale jobs — неотличимы от реальных ошибок
+Статус `interrupted` + жёлтый badge в UI. Auto-resume при следующем поллинге.
 
-**Проблема**: При рестарте сервиса все `running` jobs ставятся в `error` с `"service restarted"`. В UI они выглядят как реальные failure. В дампе — 8 подряд таких "ошибок".
+### 9.5 ✅ Нет checkpoint/resume
+Checkpoint в `progress` JSON — completed_makers, auto-resume interrupted jobs.
 
-**Решение**: Ввести отдельный статус `interrupted` (или отдельное поле `interrupted_at`). UI показывает их жёлтым (warning), не красным (error).
-
-### 9.5 Нет checkpoint/resume
-
-**Проблема**: KBCha job длится 10+ часов. При рестарте всё начинается с нуля. Из-за этого 8 рестартов = 8 потерянных прогонов.
-
-**Решение**: Добавить checkpoint механизм:
-- При каждом page callback сохранять `checkpoint` в `parse_jobs.progress` (последний обработанный maker + page)
-- При рестарте `interrupted` job может быть **resumed** вместо рестарта
-- Admin UI: кнопка "Resume" рядом с "Retry"
-
-### 9.6 Schedules UI — вводящий в заблуждение текст
-
-**Проблема**: `schedules.blade.php` говорит "изменения вступят в силу после рестарта парсера". Но `scheduler.py` **перечитывает** `parser_schedules` из БД каждые 60 секунд и hot-reload'ит.
-
-**Решение**: Обновить текст на "Изменения применяются автоматически в течение 1 минуты".
+### 9.6 ✅ Schedules UI — вводящий в заблуждение текст
+Текст обновлён на "автоматически в течение 1 минуты".
 
 ### 9.7 Reparse — непрозрачен
 

@@ -97,20 +97,31 @@ class LotRepository:
             return 0
         conn = self._get_conn()
         placeholders = ",".join(["%s"] * len(lot_ids))
-        sql = (
-            f"UPDATE lots SET is_active = 0, updated_at = NOW() "
-            f"WHERE id IN ({placeholders}) AND is_active = 1"
-        )
         try:
+            # First identify which IDs are actually active (for accurate audit log)
             with conn.cursor() as cur:
-                cur.execute(sql, list(lot_ids))
+                cur.execute(
+                    f"SELECT id FROM lots WHERE id IN ({placeholders}) AND is_active = 1",
+                    list(lot_ids),
+                )
+                active_ids = [r["id"] for r in cur.fetchall()]
+
+            if not active_ids:
+                return 0
+
+            ph2 = ",".join(["%s"] * len(active_ids))
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE lots SET is_active = 0, updated_at = NOW() "
+                    f"WHERE id IN ({ph2})",
+                    active_ids,
+                )
                 affected = cur.rowcount
             conn.commit()
             if affected > 0:
                 logger.info(
                     f"[DB] {reason}: deactivated {affected} previously active lots"
                 )
-                # Also record history entries so the admin panel shows the transition
                 self._insert_lot_changes([
                     {
                         "lot_id": lid,
@@ -118,7 +129,7 @@ class LotRepository:
                         "event": f"deactivated_{reason}",
                         "changes": {"is_active": {"old": True, "new": False}},
                     }
-                    for lid in lot_ids[:affected]  # only log affected ones (can't distinguish which)
+                    for lid in active_ids
                 ])
             return affected
         except Exception as e:
@@ -570,6 +581,14 @@ class LotRepository:
                 cursor.execute(sql, row)
             conn.commit()
             logger.debug(f"[DB] Upserted inspection for {record.lot_id}")
+        except pymysql.err.IntegrityError as e:
+            conn.rollback()
+            # FK violation = lot doesn't exist (filtered/skipped) — not a crash-worthy error
+            if e.args and e.args[0] == 1452:
+                logger.debug(f"[DB] upsert_inspection skipped for {record.lot_id}: lot not in DB (filtered?)")
+            else:
+                logger.error(f"[DB] upsert_inspection FAILED for {record.lot_id}: {type(e).__name__}: {e}")
+                raise
         except Exception as e:
             conn.rollback()
             logger.error(f"[DB] upsert_inspection FAILED for {record.lot_id}: {type(e).__name__}: {e}")

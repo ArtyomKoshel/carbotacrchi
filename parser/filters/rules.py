@@ -57,10 +57,10 @@ def _op_in(a, b):
 
 
 def _op_not_in(a, b):
-    if a is None:
-        return False
     if not isinstance(b, (list, tuple, set, frozenset)):
         return False
+    if a is None:
+        return True  # None is never "in" the list
     return a not in b
 
 
@@ -211,6 +211,12 @@ class FilterResult:
 
     @property
     def is_allowed(self) -> bool:
+        """True when action is ALLOW (explicit short-circuit whitelist)."""
+        return self.action == ACTION_ALLOW
+
+    @property
+    def is_kept(self) -> bool:
+        """True when the lot should be upserted (allow or flag — not skip/mark_inactive)."""
         return self.action in (ACTION_ALLOW, ACTION_FLAG)
 
 
