@@ -186,6 +186,15 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if std_opts:
         lot.options = std_opts
 
+    # Paid/choice options — separate from standard options
+    _paid = []
+    for _key in ("choice", "paid", "color", "package"):
+        _group = opts.get(_key, [])
+        if _group:
+            _paid.extend(_group)
+    if _paid:
+        lot.paid_options = _paid
+
     # originPrice is MSRP in 만원 units — promote it to the first-class
     # `retail_value` column (in KRW) so filter rules and UI can compare it.
     origin_price_man = cat.get("originPrice")
