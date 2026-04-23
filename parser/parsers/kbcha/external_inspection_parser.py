@@ -213,11 +213,11 @@ class KBChaExternalInspectionParser:
             if m:
                 result["vin"] = m.group(0)
 
-        # Cert number
+        # Cert number from <span class="num"> — but skip short values (office numbers like "82")
         num_span = soup.find("span", class_="num")
         if num_span:
             m = _CERT_NUM_RE.search(num_span.get_text(strip=True))
-            if m:
+            if m and len(m.group(1)) >= 5:
                 result["cert_no"] = m.group(1)
 
         # Walk table rows for labeled fields
@@ -417,12 +417,26 @@ class KBChaExternalInspectionParser:
                 issues.append(label)
         return issues
 
+    # Common boilerplate phrases from autocafe legal disclaimers
+    _BOILERPLATE = (
+        "성능상태점검자가 발행한",
+        "자동차관리법 시행규칙",
+        "중고자동차 성능 상태점검",
+        "매수인에게 고지하여야",
+        "성능상태점검기록부의 내용이",
+        "매매계약을 해제할 수 있으며",
+        "손해배상을 청구할 수 있습니다",
+    )
+
     @staticmethod
     def _parse_notes(soup: BeautifulSoup) -> str | None:
-        """Extract inspector notes from 특기사항 td.wrap."""
+        """Extract inspector notes from 특기사항 td.wrap, stripping boilerplate."""
         for td in soup.select("td.wrap"):
             text = td.get_text(" ", strip=True)
             if len(text) > 10 and ("비금속" in text or "점검" in text or "이력" in text or "탈착" in text):
+                # Strip known boilerplate legal text
+                if any(bp in text for bp in KBChaExternalInspectionParser._BOILERPLATE):
+                    continue
                 return text[:500]
         return None
 
@@ -435,14 +449,16 @@ class KBChaExternalInspectionParser:
 
     @staticmethod
     def _parse_cert_no(url: str, html: str) -> str | None:
-        # From URL params
+        # From URL params (OnCarNo is autocafe's inspection ID)
         q = parse_qs(urlparse(url).query)
-        for key in ("checkNo", "checkNum", "certNo", "no"):
+        for key in ("OnCarNo", "checkNo", "checkNum", "certNo"):
             if q.get(key):
-                return str(q[key][0])
-        # From HTML span.num
+                val = str(q[key][0])
+                if len(val) >= 5:  # skip short IDs (office/assoc numbers)
+                    return val
+        # From HTML: look for 제 NNNNN 호 pattern but skip short numbers
         m = _CERT_NUM_RE.search(html)
-        if m:
+        if m and len(m.group(1)) >= 5:
             return m.group(1)
         return None
 

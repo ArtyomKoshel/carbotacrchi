@@ -307,7 +307,10 @@ def _enrich_from_inspection(
             lot.damage = outer_text
 
     if master.get("supplyNum"):
-        record.cert_no = str(master["supplyNum"])[:100]
+        _cert = str(master["supplyNum"]).strip()
+        # Valid cert numbers are typically 8-15 digits; skip short garbage
+        if _cert.isdigit() and len(_cert) >= 8:
+            record.cert_no = _cert
     if master.get("registrationDate"):
         record.inspection_date = master["registrationDate"][:10]
     record.report_url = (

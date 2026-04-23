@@ -874,6 +874,186 @@ stateDiagram-v2
 
 ---
 
+## ЧАСТЬ 10: Система логирования — анализ и улучшения
+
+### 10.0 Текущая архитектура логирования
+
+```mermaid
+flowchart TD
+    subgraph python [Python Parser]
+        MainSetup["main.py\n_setup_logging()"]
+        RootLogger["Root Logger"]
+        StdOut["StreamHandler\n(stdout)"]
+        MainFile["RotatingFileHandler\n/app/logs/parser.log\n20MB x 10 backups"]
+        JobFile["RotatingFileHandler\n/app/logs/jobs/job-N.log\n50MB x 1 backup"]
+        ImportantFilter["_ImportantOnly filter\n(WARNING+ / [STAT] / [job_worker])"]
+        RedisProgress["Redis Pub/Sub\nparse_progress:source"]
+        DBProgress["parse_jobs.progress\n(JSON column)"]
+    end
+    subgraph laravel [Laravel Admin]
+        LogsPage["GET /admin/logs\nlogs.blade.php"]
+        JobDetailPage["GET /admin/jobs/id/detail\njob-detail.blade.php"]
+        JobLogAPI["GET /admin/jobs/id/log\nJSON API"]
+        SSE["GET /admin/jobs/id/progress\nSSE (Redis subscribe)"]
+        TailReader["readFilteredTail()\n64KB chunk from EOF"]
+    end
+    subgraph storage [Shared Volume /app/logs]
+        ParserLog["parser.log"]
+        JobLogs["jobs/job-N.log"]
+    end
+
+    MainSetup --> RootLogger
+    RootLogger --> StdOut
+    RootLogger --> MainFile
+    RootLogger --> JobFile
+    MainFile -.->|"during job"| ImportantFilter
+    python -->|"progress events"| RedisProgress
+    python -->|"status updates"| DBProgress
+
+    ParserLog --> TailReader
+    TailReader --> LogsPage
+    JobLogs --> JobLogAPI
+    JobLogAPI --> JobDetailPage
+    RedisProgress --> SSE
+    SSE --> JobDetailPage
+```
+
+### 10.1 Проблемы Python-логирования
+
+**P1: Concurrent jobs пишут в чужие лог-файлы**
+Per-job `RotatingFileHandler` добавляется в **root logger**. Если одновременно работают два job-а (encar + kbcha), **все** записи root logger попадают в **оба** файла. Job-лог `job-42.log` будет содержать записи от `job-43.log` и наоборот.
+
+**P2: Дублированный `_UTC3Formatter`**
+Один и тот же класс определён и в `main.py`, и в `job_worker.py`. Если формат изменится — нужно менять в двух местах. Drift risk.
+
+**P3: `_ImportantOnly` — хрупкий string matching**
+Фильтр проверяет наличие `"[STAT]"` и `"[job_worker]"` в тексте сообщения. Переименование тега или опечатка — и фильтр перестаёт работать. Плюс scheduler.py тоже пишет `"[job_worker] polling..."` — попадает в main log по ошибке.
+
+**P4: Нет structured (JSON) логов**
+Все логи — plain text. Парсить для поиска/фильтрации сложно. Невозможно интегрировать с ELK/Datadog/Loki без промежуточного парсера.
+
+**P5: Thread safety root handler mutation**
+Добавление/удаление handlers и filters на root logger из daemon thread может race с основным потоком. При crash mid-job — cleanup в `finally` может не выполниться, filter останется навечно.
+
+**P6: Нет entry-point safety**
+Если `scheduler.py` запускается без `main._setup_logging()`, logging не настроен (default WARNING to stderr). Нет защиты от этого.
+
+### 10.2 Проблемы Laravel Logs UI
+
+**U1: Нет picker'а для job log файлов**
+`AdminController::logs()` собирает `jobFiles` через glob, но `logs.blade.php` **не рендерит** dropdown или список job-файлов. Чтобы открыть `job-42.log`, нужно вручную дописать `?job=job-42.log` в URL. Пользователи не знают про этот параметр.
+
+**U2: `source` фильтр без UI**
+Controller поддерживает `?source=encar`, но в форме нет элемента для выбора source. Нужно редактировать URL руками.
+
+**U3: Auto-refresh перезагружает всю страницу**
+`logs.blade.php` делает `fetch(current URL)` каждые 5 секунд и заменяет весь `#log-pre` innerHTML. Это тяжело для больших логов, ломает позицию скролла, вызывает мерцание.
+
+**U4: Newest-first порядок (нестандартный)**
+`readFilteredTail()` читает файл с конца и возвращает newest first. Для пользователя это контринтуитивно — привычный `tail -f` показывает oldest first внизу, newest внизу.
+
+**U5: `jobLog` читает весь файл в память**
+`file($path)` для non-incremental запроса загружает весь job-файл. При 50MB лог-файле — PHP memory_limit crash.
+
+**U6: Clear не удаляет job-логи**
+`logsClear()` очищает `parser.log` и rotation-файлы, но `jobs/job-*.log` остаются нетронутыми. Пользователь думает "всё очищено", но на диске 500MB job-логов.
+
+**U7: Laravel app logs не интегрированы**
+`storage/logs/laravel.log` (PHP ошибки, exceptions) нет в admin UI. Для отладки PHP нужен SSH.
+
+**U8: Два разных подхода к логам**
+Main log = серверный HTML рендеринг + полная перезагрузка. Job detail = JSON API + инкрементальный polling. Дублирование логики фильтрации в PHP (два разных метода). Непоследовательный UX.
+
+**U9: Пагинация ненадёжна**
+`totalLines` в `readFilteredTail` — heuristic (`scanRatio * fileSize / avgLineLen`). При фильтрации по level/search — количество страниц может быть неверным.
+
+**U10: XSS risk в search highlight**
+Job detail использует `innerHTML` с regex из пользовательского search по log lines. Если лог содержит `<script>` — потенциальная HTML injection.
+
+### 10.3 Решения
+
+#### A. Python — изолированные job-логгеры
+
+**Вместо** добавления handler в root logger — создавать **named logger per job**:
+
+```python
+job_logger = logging.getLogger(f"job.{job_id}")
+job_logger.addHandler(file_handler)
+job_logger.propagate = True  # still goes to stdout/main
+
+# Все вызовы в парсере используют self.logger
+# AbstractParser.__init__ принимает logger= kwarg
+```
+
+Это решает P1 (изоляция), P5 (нет мутации root).
+
+#### B. Python — единый logging module
+
+Перенести `_UTC3Formatter`, `_ImportantOnly`, setup в `parser/logging_config.py`:
+- Решает P2 (дублирование)
+- `_ImportantOnly` заменить на filter по logger name (не string matching): `record.name.startswith("job.")` → в main file; остальное — WARNING+
+- `scheduler.py` и `job_worker.py` импортируют `ensure_logging_configured()` — решает P6
+
+#### C. Python — optional JSON format
+
+Добавить env `LOG_FORMAT=json` → переключает formatter на `json.dumps({"ts":..., "level":..., "logger":..., "msg":..., "job_id":...})`. Для Docker/Railway — stdout JSON, для local dev — plain text. Решает P4.
+
+#### D. Laravel — Job log picker в Logs UI
+
+Добавить dropdown/sidebar с `jobFiles` на странице `/admin/logs`:
+- Текущий: `parser.log` (default)
+- Список job-файлов с датой и размером
+- Click → загружает лог конкретного job
+- Решает U1
+
+#### E. Laravel — Source фильтр в UI
+
+Добавить `<select>` для source (encar / kbcha / all) в toolbar формы логов. Решает U2.
+
+#### F. Laravel — легковесный log polling
+
+Заменить полную перезагрузку HTML на:
+1. JSON endpoint `GET /admin/logs/tail?since_byte=N&level=...&search=...`
+2. Клиент запоминает `last_byte`, запрашивает только новые строки
+3. Append в DOM (не replace)
+4. Порядок — chronological (oldest first), новые строки добавляются внизу
+5. Решает U3, U4, частично U9
+
+#### G. Laravel — streaming для больших файлов
+
+`jobLog()` и `logsDownload()` — использовать `fopen` + `fgets` с лимитом строк вместо `file()`. Или `SplFileObject`. Решает U5.
+
+#### H. Laravel — Clear all + retention
+
+- `logsClear()` должен удалять и `jobs/job-*.log` (с confirmation)
+- Добавить scheduled command `logs:cleanup` — удаляет job-логи старше 7 дней
+- Решает U6
+
+#### I. Laravel — интеграция app logs
+
+Добавить tab "App Log" на `/admin/logs` — читает `storage/logs/laravel.log`. Решает U7.
+
+#### J. XSS fix
+
+Использовать `textContent` вместо `innerHTML` при вставке log lines, или escape HTML entities перед highlight. Решает U10.
+
+### 10.4 Приоритеты
+
+| Приоритет | Задача | Решает |
+|---|---|---|
+| Высокий | A. Изолированные job-логгеры | P1, P5 (concurrent jobs в чужих файлах) |
+| Высокий | D. Job log picker в UI | U1 (основная проблема UX — файлы есть, но к ним нет доступа) |
+| Высокий | F. Легковесный log polling | U3, U4 (тяжёлый auto-refresh, неправильный порядок) |
+| Средний | B. Единый logging module | P2, P3, P6 (дублирование, хрупкость) |
+| Средний | G. Streaming больших файлов | U5 (memory crash) |
+| Средний | H. Clear all + retention | U6 (накопление файлов) |
+| Средний | E. Source фильтр | U2 (minor UX) |
+| Средний | J. XSS fix | U10 (security) |
+| Низкий | C. JSON format | P4 (нужен только для production monitoring) |
+| Низкий | I. App logs интеграция | U7 (нужен редко) |
+
+---
+
 ## Порядок выполнения
 
 ```mermaid
@@ -936,6 +1116,14 @@ gantt
     9.6_schedules_text          :1, 2
     9.7_reparse_unify           :9, 11
     9.10_admin_UI_phases        :7, 9
+    section Phase10_Logging
+    10A_isolated_job_loggers    :3, 5
+    10B_logging_module          :3, 4
+    10D_job_log_picker_UI       :4, 5
+    10F_lightweight_polling     :5, 7
+    10G_stream_large_files      :5, 6
+    10H_clear_retention         :5, 6
+    10J_xss_fix                 :4, 5
 ```
 
 ---
