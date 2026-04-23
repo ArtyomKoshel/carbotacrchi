@@ -80,7 +80,6 @@ class KBChachaProvider extends AbstractProvider
                 fuelEconomy:  isset($raw['fuel_economy'])  ? (float) $raw['fuel_economy']  : null,
                 cylinders:    isset($raw['cylinders'])     ? (int)   $raw['cylinders']     : null,
                 trim:         $raw['trim']          ?? null,
-                hasKeys:      isset($raw['has_keys'])   ? (bool) $raw['has_keys']   : null,
                 retailValue:  isset($raw['retail_value']) ? (int) $raw['retail_value'] : null,
                 repairCost:   isset($raw['repair_cost'])  ? (int) $raw['repair_cost']  : null,
                 hasAccident:      isset($raw['has_accident'])      ? (bool) $raw['has_accident']      : null,
@@ -102,6 +101,13 @@ class KBChachaProvider extends AbstractProvider
                 registrationYearMonth: isset($raw['registration_year_month']) ? (int) $raw['registration_year_month'] : null,
                 insuranceCount:   isset($raw['insurance_count']) ? (int) $raw['insurance_count'] : null,
                 seatColor:        $raw['seat_color']    ?? null,
+                seatCount:        isset($raw['seat_count'])      ? (int)  $raw['seat_count']      : null,
+                isDomestic:       isset($raw['is_domestic'])     ? (bool) $raw['is_domestic']     : null,
+                importType:       $raw['import_type']   ?? null,
+                dealerCompany:    $raw['dealer_company']    ?? null,
+                dealerLocation:   $raw['dealer_location']   ?? null,
+                dealerDescription: $raw['dealer_description'] ?? null,
+                registrationDate: $raw['registration_date'] ?? null,
             );
         }
 

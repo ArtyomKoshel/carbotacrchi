@@ -83,8 +83,8 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         registration_year_month=reg_ym,
         fuel=norm.fuel(item.get("FuelType")),
         transmission=norm.transmission(item.get("Transmission")),
-        color=item.get("Color") or None,
-        seat_color=item.get("SeatColor") or None,
+        color=norm.color(item.get("Color")),
+        seat_color=norm.color(item.get("SeatColor")),
         drive_type=drive_type,
         location=location or None,
         image_url=image_url,
@@ -123,7 +123,7 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if spec.get("fuelName"):
         lot.fuel = norm.fuel(spec["fuelName"])
     if spec.get("colorName"):
-        lot.color = spec["colorName"]
+        lot.color = norm.color(spec["colorName"])
     if spec.get("bodyName"):
         lot.body_type = norm.body(spec["bodyName"])
     if spec.get("displacement"):
@@ -131,7 +131,13 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if spec.get("drivingMethodName") and not lot.drive_type:
         lot.drive_type = norm.drive(spec["drivingMethodName"])
     if spec.get("seatCount"):
-        lot.raw_data["seat_count"] = spec["seatCount"]
+        lot.seat_count = int(spec["seatCount"])
+
+    # Domestic / import classification
+    if cat.get("domestic") is not None:
+        lot.is_domestic = bool(cat["domestic"])
+    if cat.get("importType"):
+        lot.import_type = cat["importType"]
 
     if detail.get("vin"):
         lot.vin = detail["vin"]
@@ -140,6 +146,8 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
 
     if contact.get("address"):
         lot.location = contact["address"]
+        if not lot.dealer_location:
+            lot.dealer_location = contact["address"]
     if contact.get("no"):
         lot.dealer_phone = contact["no"]
     if contact.get("userId"):
@@ -293,6 +301,8 @@ def _enrich_from_inspection(
     record.has_outer_damage = has_outer
     if outer_text:
         record.outer_detail = outer_text
+        if not lot.damage:
+            lot.damage = outer_text
 
     if master.get("supplyNum"):
         record.cert_no = str(master["supplyNum"])[:100]
@@ -838,9 +848,10 @@ class EncarParser(AbstractParser):
 
             _t_after_upsert = _time.monotonic()
             new_lots = [l for l in page_lots if l.id not in existing_ids]
-            if new_lots:
+            # Enrich ALL lots (not just new) so has_accident/damage stays current
+            if page_lots:
                 _t_enr = _time.monotonic()
-                self._enrich_accident_data(new_lots, stats)
+                self._enrich_accident_data(page_lots, stats)
                 stats["enrich_time"] += _time.monotonic() - _t_enr
 
             _t_total = _time.monotonic() - _t_page

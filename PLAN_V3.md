@@ -354,6 +354,161 @@ class ParserLifecycle(Protocol):
 
 ---
 
+## ЧАСТЬ 4B: Нормализация данных — план действий
+
+> Отдельный модуль на основе полного аудита 50 полей CarLot (ЧАСТЬ 4).
+
+### 4B.1 Исправить баги маппинга (7 штук)
+
+| # | Баг | Файл | Исправление |
+|---|---|---|---|
+| 1 | KBCha `cylinders` — `engine_str` не передаётся в field_mapper | `kbcha/field_mapper.py`, `kbcha/enricher.py` | Передать `engine_str` из `raw_data` в `apply_raw_data` target dict |
+| 2 | KBCha `registration_date` — ключ `"연식_reg"` не совпадает с `"연식"` | `kbcha/field_mapper.py` L75-87 | Исправить ключ маппинга или добавить `"연식"` → `registration_date` |
+| 3 | KBCha `tax_paid` — зависит от несуществующего `tax_unpaid` | `kbcha/field_mapper.py` | Парсить `"세금미납"` в detail_parser, передать в field_mapper |
+| 4 | KBCha `retail_value` — `_original_msrp_man` не всегда конвертируется | `kbcha/enricher.py` `_apply_combined` | Добавить explicit assignment `lot.retail_value = msrp * 10000` |
+| 5 | Encar `has_accident` — не обновляется для existing lots | `encar/__init__.py` `_paginate_query` | Запускать `_enrich_accident_data` и для updated lots (не только new) |
+| 6 | Encar `damage` — данные уходят в InspectionRecord, не в CarLot | `encar/__init__.py` | Копировать `outer_parts` summary в `lot.damage` при record/inspection enrich |
+| 7 | Encar `color` — `norm.color` не вызывается | `encar/__init__.py` `_lot_from_search` | Добавить `color=norm.color(item.get("Color", ""))` |
+
+### 4B.2 Удалить мёртвые колонки
+
+Миграция:
+```sql
+ALTER TABLE lots DROP COLUMN has_keys;
+ALTER TABLE lots DROP COLUMN document;
+-- title: переименовать или удалить после обсуждения
+```
+
+Обновить `CarLot` dataclass в `parser/models.py` — убрать поля.
+Обновить `LotDTO.php` — убрать свойства.
+
+### 4B.3 Вынести поля из raw_data в колонки
+
+Миграция:
+```sql
+ALTER TABLE lots ADD COLUMN seat_count TINYINT UNSIGNED NULL AFTER engine_volume;
+ALTER TABLE lots ADD COLUMN is_domestic BOOLEAN NULL AFTER sell_type_raw;
+ALTER TABLE lots ADD COLUMN import_type VARCHAR(30) NULL AFTER is_domestic;
+```
+
+Обновить парсеры:
+- Encar: `lot.seat_count = detail["spec"].get("seatCount")`
+- Encar: `lot.is_domestic = detail["category"].get("domestic")`
+- Encar: `lot.import_type = detail["category"].get("importType")`
+- KBCha: `lot.seat_count` из detail info table `"인승"` (если доступно)
+
+Обновить `CarLot` dataclass, `_RAW_DATA_BLOCKLIST`, `LotDTO`.
+
+### 4B.4 Расширить `_RAW_DATA_BLOCKLIST`
+
+В `parser/models.py` `CarLot._RAW_DATA_BLOCKLIST` добавить:
+```python
+_RAW_DATA_BLOCKLIST = {
+    "photos", "photo_path", "photo_count", "sell_type",  # уже есть
+    "manufacturer_kr", "model_kr", "badge_kr",            # дубль make/model/trim
+    "model_group_kr",                                      # дубль model
+    "year_month",                                          # дубль registration_year_month
+    "origin_price",                                        # дубль retail_value
+    "domestic",                                            # вынесено в is_domestic
+    "import_type",                                         # вынесено в колонку
+    "seat_count",                                          # вынесено в колонку
+}
+```
+
+### 4B.5 Нормализация значений между источниками
+
+| Поле | Проблема | Решение |
+|---|---|---|
+| `body_type` | Encar: иногда Korean (`스포츠카`) | Добавить в `ENCAR_BODY_MAP` в `vocabulary.py` |
+| `color` | Encar: raw Korean, KBCha: normalized | Вызвать `norm.color()` в Encar `_lot_from_search` |
+| `lien_status` | Оба: English after normalize | Проверить что оба дают `"clean"`/`"lien"` |
+| `seizure_status` | То же | Проверить что оба дают `"clean"`/`"seizure"` |
+| `options` | Encar: коды (`"001"`), KBCha: Korean labels | Добавить `option_definitions` справочник для UI |
+| `model` | Encar: raw Korean concat, KBCha: parsed | Long-term: единый model normalizer |
+
+### 4B.6 Использовать неиспользуемые данные Encar API
+
+| Данные | Текущее | Действие |
+|---|---|---|
+| `paid_options` (detail) | Читается только `standard` | Добавить чтение `choice`/`paid` groups |
+| `dealer_location` | Не маппится (только `lot.location`) | Маппить `contact.address` → `dealer_location` |
+| `detail.condition` | Загружается но не используется | Использовать для `lot.condition` если нужно |
+| `InspectionRecord.outer_parts` → `lot.damage` | Не копируется | Скопировать summary при inspection enrich |
+
+### 4B.7 Добавить `has_recall` из inspection данных
+
+Миграция:
+```sql
+ALTER TABLE lot_inspections ADD COLUMN has_recall BOOLEAN DEFAULT FALSE AFTER simple_repair;
+ALTER TABLE lot_inspections ADD COLUMN my_accident_cost BIGINT UNSIGNED NULL AFTER has_recall;
+ALTER TABLE lot_inspections ADD COLUMN other_accident_cost BIGINT UNSIGNED NULL AFTER my_accident_cost;
+```
+
+Encar: заполнять из `raw_data.recall` при `upsert_inspection`.
+
+### 4B.8 Порядок выполнения модуля
+
+```
+ 1. Phase 0    — починить EncarParser abstract methods + KBCha normalizer NameError
+ 2. 4B.1       — исправить 7 багов маппинга
+ 3. 4B.2       — удалить мёртвые колонки (миграция)
+ 4. 4B.3       — новые колонки (миграция)
+ 5. 4B.4       — расширить blocklist (models.py)
+ 6. 4B.5       — нормализация (vocabulary.py, парсеры)
+ 7. 4B.6       — использовать неиспользуемые данные Encar
+ 8. 4B.7       — has_recall + cost columns (миграция)
+ 9. TRUNCATE   — очистить таблицы
+10. DEPLOY     — запуск парсинга с нуля (оба источника)
+11. 4B.9       — POST-LAUNCH АУДИТ (см. ниже)
+```
+
+### 4B.9 Post-launch аудит целостности данных
+
+После первого полного прогона обоих парсеров — запустить аудит.
+
+**Шаг 1: Accuracy-отчёт через существующий инструмент**
+```bash
+php artisan fields:compute-coverage
+```
+Открыть `/admin/fields` — там уже есть breakdown по каждому полю и источнику (% заполнения, количество, виртуальные поля photos/inspections). Это основной инструмент.
+
+**Шаг 2: Проверить ожидаемые улучшения в accuracy-отчёте**
+
+| Поле | До фиксов | Ожидание после |
+|---|---|---|
+| KBCha `retail_value` | 0% | >50% |
+| KBCha `registration_date` | 0% | >30% |
+| KBCha `cylinders` | 0% | >20% |
+| Encar `damage` | 0% | >10% |
+| Encar `color` normalized | Korean text | English values |
+| `seat_count` (новая) | не было | >60% Encar |
+| `is_domestic` (новая) | не было | >80% Encar |
+| `has_keys` (удалена) | не должна быть | отсутствует |
+| `document` (удалена) | не должна быть | отсутствует |
+
+**Шаг 3: Точечные SQL-проверки нормализации (то, что accuracy-отчёт не покрывает)**
+```sql
+-- Korean в body_type (должно быть 0)
+SELECT body_type, COUNT(*) FROM lots WHERE body_type REGEXP '[가-힣]' GROUP BY body_type;
+
+-- Blocklisted ключи в raw_data (должно быть 0)
+SELECT source, SUM(JSON_CONTAINS_PATH(raw_data, 'one', '$.photos')) as photos_leak,
+  SUM(JSON_CONTAINS_PATH(raw_data, 'one', '$.manufacturer_kr')) as mfr_leak
+FROM lots GROUP BY source;
+
+-- Средний размер raw_data (ожидание: <2KB вместо 3-5KB)
+SELECT source, ROUND(AVG(LENGTH(raw_data))) as avg_bytes FROM lots GROUP BY source;
+
+-- autocafe cert_no='82' (если Phase 6 сделан)
+SELECT COUNT(*) FROM lot_inspections WHERE cert_no = '82';
+```
+
+**Шаг 4: Если отклонения — итерация**
+
+По результатам accuracy-отчёта и SQL-проверок решаем: фиксить и перепарсить отдельные поля, или двигаться к следующим фазам.
+
+---
+
 ## ЧАСТЬ 5: Laravel Admin — улучшения
 
 ### 5.1 Мёртвый код
@@ -690,8 +845,14 @@ gantt
     3.2_pipeline_base           :5, 7
     3.3_shared_enricher         :6, 8
     3.3_normalize_pipeline      :6, 8
-    section Phase4_Coverage
-    4.2_missing_fields          :8, 9
+    section Phase4B_Normalize
+    4B.1_fix_7_mapping_bugs     :1, 3
+    4B.2_drop_dead_columns      :3, 4
+    4B.3_new_columns_migration  :3, 4
+    4B.4_extend_blocklist       :3, 4
+    4B.5_normalize_values       :4, 5
+    4B.6_encar_unused_data      :5, 6
+    4B.7_has_recall_columns     :4, 5
     section Phase5_Laravel
     5.1_dead_code_cleanup       :9, 10
     5.2_dto_sync                :9, 10

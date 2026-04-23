@@ -259,10 +259,6 @@ FIELDS: list[FieldSpec] = [
         name="title", dtype=FieldType.STRING, category="identity",
         description="Title / status label — default 'Clean'",
     ),
-    FieldSpec(
-        name="document", dtype=FieldType.STRING, category="identity",
-        description="Document / paperwork status",
-    ),
 
     # ── Legal status ─────────────────────────────────────────────────────────
     FieldSpec(
@@ -323,10 +319,21 @@ FIELDS: list[FieldSpec] = [
         category="condition", description="Number of insurance claims",
         sources={"encar": "record.accidentCnt"},
     ),
+    # ── New first-class columns ──────────────────────────────────────────────
     FieldSpec(
-        name="has_keys", dtype=FieldType.BOOL, category="condition",
-        description="Number of keys > 0",
-        sources={"encar": "verification option 10"},
+        name="seat_count", dtype=FieldType.INT, category="specs",
+        description="Number of seats",
+        sources={"encar": "spec.seatCount"},
+    ),
+    FieldSpec(
+        name="is_domestic", dtype=FieldType.BOOL, filterable=True, category="identity",
+        description="Domestic (Korean) car",
+        sources={"encar": "category.domestic"},
+    ),
+    FieldSpec(
+        name="import_type", dtype=FieldType.STRING, filterable=True, category="identity",
+        description="Import classification",
+        sources={"encar": "category.importType"},
     ),
 
     # ── Sales model ──────────────────────────────────────────────────────────

@@ -78,12 +78,12 @@ class KBChaFieldMapper:
                     transformer=lambda x, norm=self.normalizer: norm.parse_year(x),
                     condition=lambda x: x and x != "information"
                 )
-                # Also store registration date
-                mappings[kr_key + "_reg"] = FieldMapping(
-                    kr_key, "registration_date",
-                    transformer=lambda x: x,
+                # Also store registration_year_month (YYYYMM int)
+                mappings[kr_key + "_ym"] = FieldMapping(
+                    kr_key, "registration_year_month",
+                    transformer=lambda x, norm=self.normalizer: norm.parse_year_month(x),
                     condition=lambda x: x and x != "information",
-                    overwrite=False  # Don't overwrite existing registration date
+                    overwrite=False
                 )
             elif method == "_parse_mileage":
                 mappings[kr_key] = FieldMapping(
@@ -141,8 +141,8 @@ class KBChaFieldMapper:
         """Store raw info data."""
         target["_raw_info"] = dict(source)
 
-        # Parse cylinders from engine string if present
-        engine_str = target.get("engine_str")
+        # Parse cylinders from engine_str in target or 배기량 raw value in source
+        engine_str = target.get("engine_str") or source.get("배기량") or ""
         if engine_str:
             cylinders = self.normalizer.parse_cylinders(engine_str)
             if cylinders:

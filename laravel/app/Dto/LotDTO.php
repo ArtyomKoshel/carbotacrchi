@@ -29,9 +29,7 @@ readonly class LotDTO
         public ?float  $engineVolume    = null,
         public ?float  $fuelEconomy     = null,
         public ?int    $cylinders       = null,
-        public ?bool   $hasKeys         = null,
         public ?string $secondaryDamage = null,
-        public ?string $document        = null,
         public ?int    $retailValue     = null,
         public ?int    $repairCost      = null,
         public ?string $trim            = null,
@@ -54,6 +52,13 @@ readonly class LotDTO
         public ?int    $registrationYearMonth = null,
         public ?int    $insuranceCount      = null,
         public ?string $seatColor           = null,
+        public ?int    $seatCount           = null,
+        public ?bool   $isDomestic          = null,
+        public ?string $importType          = null,
+        public ?string $dealerCompany       = null,
+        public ?string $dealerLocation      = null,
+        public ?string $dealerDescription   = null,
+        public ?string $registrationDate    = null,
     ) {}
 
     public function toArray(): array
@@ -83,9 +88,7 @@ readonly class LotDTO
             'engineVolume'    => $this->engineVolume,
             'fuelEconomy'     => $this->fuelEconomy,
             'cylinders'       => $this->cylinders,
-            'hasKeys'         => $this->hasKeys,
             'secondaryDamage' => $this->secondaryDamage,
-            'document'        => $this->document,
             'retailValue'     => $this->retailValue,
             'repairCost'      => $this->repairCost,
             'trim'            => $this->trim,
@@ -108,6 +111,13 @@ readonly class LotDTO
             'registrationYearMonth' => $this->registrationYearMonth,
             'insuranceCount'   => $this->insuranceCount,
             'seatColor'        => $this->seatColor,
+            'seatCount'        => $this->seatCount,
+            'isDomestic'       => $this->isDomestic,
+            'importType'       => $this->importType,
+            'dealerCompany'    => $this->dealerCompany,
+            'dealerLocation'   => $this->dealerLocation,
+            'dealerDescription' => $this->dealerDescription,
+            'registrationDate' => $this->registrationDate,
         ];
     }
 }

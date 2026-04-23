@@ -636,7 +636,6 @@ class LotRepository:
                         damage=row.get("damage"),
                         secondary_damage=row.get("secondary_damage"),
                         title=row.get("title") or "Clean",
-                        has_keys=row.get("has_keys"),
                         retail_value=row.get("retail_value"),
                         repair_cost=row.get("repair_cost"),
                         warranty_text=row.get("warranty_text"),
@@ -648,6 +647,9 @@ class LotRepository:
                         new_car_price_ratio=row.get("new_car_price_ratio"),
                         sell_type=row.get("sell_type"),
                         sell_type_raw=row.get("sell_type_raw"),
+                        seat_count=row.get("seat_count"),
+                        is_domestic=row.get("is_domestic"),
+                        import_type=row.get("import_type"),
                     )
                     lots.append(lot)
                 except Exception as e:

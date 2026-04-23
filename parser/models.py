@@ -35,12 +35,16 @@ class CarLot:
     lot_url: str = ""
     image_url: str | None = None
 
+    # New first-class columns (extracted from raw_data)
+    seat_count: int | None = None
+    is_domestic: bool | None = None
+    import_type: str | None = None
+
     # Registration & documents
     vin: str | None = None
     plate_number: str | None = None
     registration_date: str | None = None
     title: str = "Clean"
-    document: str | None = None
 
     # Legal / registration status
     lien_status: str | None = None
@@ -55,7 +59,6 @@ class CarLot:
     total_loss_history: bool | None = None
     owners_count: int | None = None
     insurance_count: int | None = None
-    has_keys: bool | None = None
     mileage_grade: str | None = None
 
     # Pricing
@@ -90,10 +93,19 @@ class CarLot:
     # into raw_data JSON (otherwise each lot row carries kilobytes of duplicate
     # data). Kept as a class-level constant for documentation.
     _RAW_DATA_BLOCKLIST: ClassVar[frozenset[str]] = frozenset({
-        "photos",         # -> lot_photos table (via CarLot.photos field)
-        "photo_path",     # -> superseded by image_url column
-        "photo_count",    # -> COUNT(*) from lot_photos
-        "sell_type",      # -> lots.sell_type_raw column (P1)
+        "photos",             # -> lot_photos table (via CarLot.photos field)
+        "photo_path",         # -> superseded by image_url column
+        "photo_count",        # -> COUNT(*) from lot_photos
+        "sell_type",          # -> lots.sell_type_raw column
+        "manufacturer_kr",    # -> duplicate of make
+        "model_kr",           # -> duplicate of model
+        "badge_kr",           # -> duplicate of trim
+        "model_group_kr",     # -> duplicate of model
+        "year_month",         # -> duplicate of registration_year_month
+        "origin_price",       # -> duplicate of retail_value
+        "domestic",           # -> extracted to is_domestic column
+        "import_type",        # -> extracted to import_type column
+        "seat_count",         # -> extracted to seat_count column
     })
 
     def _clean_raw_data(self) -> dict:
@@ -128,7 +140,6 @@ class CarLot:
             "owners_count": self.owners_count,
             "insurance_count": self.insurance_count,
             "title": self.title,
-            "document": self.document,
             "location": self.location,
             "color": self.color,
             "seat_color": self.seat_color,
@@ -141,7 +152,6 @@ class CarLot:
             "tax_paid": self.tax_paid,
             "total_loss_history": self.total_loss_history,
             "mileage_grade": self.mileage_grade,
-            "has_keys": self.has_keys,
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
             "new_car_price_ratio": self.new_car_price_ratio,
@@ -161,6 +171,9 @@ class CarLot:
             "warranty_text": self.warranty_text,
             "sell_type": self.sell_type,
             "sell_type_raw": self.sell_type_raw,
+            "seat_count": self.seat_count,
+            "is_domestic": self.is_domestic,
+            "import_type": self.import_type,
         }
 
     def merge_details(self, details: dict) -> None:
