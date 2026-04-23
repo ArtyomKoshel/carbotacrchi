@@ -255,6 +255,8 @@ def _enrich_from_record(lot: CarLot, rec: dict) -> InspectionRecord:
         first_registration=rec.get("firstDate"),
         has_accident=lot.has_accident,
         has_flood=lot.flood_history,
+        my_accident_cost=my_cost if my_cost else None,
+        other_accident_cost=other_cost if other_cost else None,
         accident_detail="\n".join(acc_lines) if acc_lines else None,
         details={
             "accidents":           accidents,
@@ -343,6 +345,7 @@ def _enrich_from_inspection(
     recall_flag = detail.get("recall")
     recall_types = [(r.get("title") or "") for r in (detail.get("recallFullFillTypes") or [])]
     if recall_flag:
+        record.has_recall = True
         lot.raw_data["recall"] = True
         lot.raw_data["recall_status"] = recall_types or ["미확인"]
 

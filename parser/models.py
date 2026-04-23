@@ -202,6 +202,10 @@ class InspectionRecord:
     has_flood: bool | None = None
     has_fire: bool | None = None
     has_tuning: bool | None = None
+    has_recall: bool = False
+
+    my_accident_cost: int | None = None
+    other_accident_cost: int | None = None
 
     accident_detail: str | None = None
     outer_detail: str | None = None
@@ -229,6 +233,9 @@ class InspectionRecord:
             "has_flood":          self.has_flood,
             "has_fire":           self.has_fire,
             "has_tuning":         self.has_tuning,
+            "has_recall":         self.has_recall,
+            "my_accident_cost":   self.my_accident_cost,
+            "other_accident_cost": self.other_accident_cost,
             "accident_detail":    self.accident_detail,
             "outer_detail":       self.outer_detail,
             "details":            details_json,
