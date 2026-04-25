@@ -2,6 +2,16 @@
 
 > Полный аудит парсеров, БД, фильтров и Laravel админки.
 > Предыдущие планы: PLAN.md, PLAN_FILTERS.md (выполнены), PLAN_V2.md (AI-поиск, погрешности).
+>
+> **✅ Выполненные задачи перенесены в [PLAN_V3_DONE.md](PLAN_V3_DONE.md)**
+>
+> **Оставшиеся задачи:**
+> - 3.x Unified Lifecycle Protocol (medium)
+> - 4.11 Удаление дилерской информации (medium)
+> - 6.2 kb_paper нулевой парсинг (medium, требует HTML примеры)
+> - 8.2 Virtual fields + pre/post filtering (medium, крупный рефакторинг)
+> - 9.x Job system improvements (low)
+> - 10.x Logging improvements (low)
 
 ---
 
