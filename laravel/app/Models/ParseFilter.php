@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string      $action
  * @property int         $priority
  * @property string|null $rule_group_id
+ * @property string      $phase
  * @property bool        $enabled
  * @property string|null $description
  */
@@ -26,7 +27,7 @@ class ParseFilter extends Model
 
     protected $fillable = [
         'name', 'source', 'field', 'operator', 'value',
-        'action', 'priority', 'rule_group_id', 'enabled', 'description',
+        'action', 'priority', 'rule_group_id', 'phase', 'enabled', 'description',
     ];
 
     protected $casts = [
@@ -44,6 +45,13 @@ class ParseFilter extends Model
     public const ACTIONS = ['allow', 'skip', 'flag', 'mark_inactive'];
 
     public const SOURCES = ['encar', 'kbcha'];
+
+    public const PHASES = ['pre', 'post'];
+
+    public const PHASE_LABELS = [
+        'pre'  => 'Pre-filter (before enrichment)',
+        'post' => 'Post-filter (after inspections)',
+    ];
 
     /** Human-friendly labels for UI. */
     public const OPERATOR_LABELS = [

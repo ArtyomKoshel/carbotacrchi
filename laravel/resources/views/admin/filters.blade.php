@@ -31,6 +31,7 @@
 <script>
   window.__FIELD_SCHEMA__ = @json($schema['fields'] ?? []);
   window.__OPERATOR_LABELS__ = @json($operatorLabels);
+  window.__PHASE_LABELS__ = @json($phaseLabels ?? {'pre': 'Pre-filter', 'post': 'Post-filter'});
 </script>
 
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6"
@@ -63,6 +64,7 @@
           <th class="px-4 py-2 text-left font-medium">Scope</th>
           <th class="px-4 py-2 text-left font-medium">Condition</th>
           <th class="px-4 py-2 text-left font-medium">Action</th>
+          <th class="px-4 py-2 text-left font-medium">Phase</th>
           <th class="px-4 py-2 text-center font-medium">Enabled</th>
           <th class="px-4 py-2 text-right font-medium">Manage</th>
         </tr>
@@ -110,6 +112,11 @@
               @endphp
               <span class="px-2 py-0.5 rounded text-xs {{ $actionClass }}">
                 {{ $filter->action }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded text-xs {{ ($filter->phase ?? 'pre') === 'post' ? 'bg-indigo-900/60 text-indigo-300' : 'bg-gray-800 text-gray-500' }}">
+                {{ $filter->phase ?? 'pre' }}
               </span>
             </td>
             <td class="px-4 py-3 text-center">
@@ -182,12 +189,23 @@
           <p class="text-xs text-gray-600 mt-1">Lower = evaluated first (0–10000).</p>
         </div>
 
-        <div class="col-span-2">
+        <div>
           <label class="text-xs text-gray-500 mb-1 block">AND-group</label>
           <input type="text" name="rule_group_id" x-model="form.rule_group_id"
                  pattern="[a-zA-Z0-9_]*" placeholder="e.g. old_expensive"
                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-          <p class="text-xs text-gray-600 mt-1">Rules with the same group ID use AND logic (all must match). Leave empty for independent OR rules.</p>
+          <p class="text-xs text-gray-600 mt-1">Same group = AND logic.</p>
+        </div>
+
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">Phase</label>
+          <select name="phase" x-model="form.phase"
+                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+            @foreach($phaseLabels as $val => $label)
+              <option value="{{ $val }}">{{ $label }}</option>
+            @endforeach
+          </select>
+          <p class="text-xs text-gray-600 mt-1">Post = after inspection data loaded.</p>
         </div>
 
         <div>
@@ -298,11 +316,11 @@ function filterForm() {
   return {
     open: false,
     editId: null,
-    form: { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, rule_group_id:'', enabled:true, description:'' },
+    form: { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, rule_group_id:'', phase:'pre', enabled:true, description:'' },
 
     openCreate() {
       this.editId = null;
-      this.form = { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, rule_group_id:'', enabled:true, description:'' };
+      this.form = { name:'', source:'', field:'', operator:'eq', value:'', action:'skip', priority:100, rule_group_id:'', phase:'pre', enabled:true, description:'' };
       this.open = true;
     },
     openEdit(filter) {
@@ -316,6 +334,7 @@ function filterForm() {
         action: filter.action,
         priority: filter.priority,
         rule_group_id: filter.rule_group_id || '',
+        phase: filter.phase || 'pre',
         enabled: !!filter.enabled,
         description: filter.description || '',
       };

@@ -50,8 +50,13 @@ class FilterEngine:
         self.by_rule: dict[str, int] = defaultdict(int)
         self._skip_log_buffer: list[dict] = []
 
-    def evaluate(self, lot) -> FilterResult:
+    def evaluate(self, lot, phase: str | None = None) -> FilterResult:
         """Evaluate all applicable rules and return the strongest resulting action.
+
+        Args:
+            lot: CarLot object to evaluate.
+            phase: if set, only evaluate rules matching this phase ('pre'/'post').
+                   If None, evaluates ALL rules (backward-compatible).
 
         Rules are partitioned into:
         - **Ungrouped** (group_id is None): each rule is independent (OR logic).
@@ -60,7 +65,10 @@ class FilterEngine:
           action among its member rules.
         """
         source = getattr(lot, "source", None) or ""
-        applicable = self._rules.for_source(source)
+        if phase is not None:
+            applicable = self._rules.for_source_phase(source, phase)
+        else:
+            applicable = self._rules.for_source(source)
 
         # ── Partition into ungrouped vs grouped ──────────────────────────────
         ungrouped: list[Rule] = []

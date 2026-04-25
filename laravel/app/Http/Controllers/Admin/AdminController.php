@@ -657,6 +657,8 @@ class AdminController extends Controller
             'actions'        => ParseFilter::ACTIONS,
             'actionLabels'   => ParseFilter::ACTION_LABELS,
             'sources'        => ParseFilter::SOURCES,
+            'phases'         => ParseFilter::PHASES,
+            'phaseLabels'    => ParseFilter::PHASE_LABELS,
             'recentHits'     => $recentHits,
         ]);
     }

@@ -46,13 +46,83 @@ class LotRepository:
         return LotRepository._filter_engine
 
     def _apply_filters(self, lots: list[CarLot], stats: dict | None) -> list[CarLot]:
-        """Run FilterEngine over lots. Returns kept lots; mutates stats['filtered'].
+        """Run FilterEngine PRE-phase over lots. Returns kept lots; mutates stats['filtered'].
+
+        This is the first filter pass — evaluates only rules with phase='pre'.
+        Rules with phase='post' are evaluated later via apply_post_filters()
+        after inspection data has been written.
 
         Side-effect: any lot filtered out that is already active in DB is
         immediately marked is_active=0 so it disappears from the listings
         (otherwise it would live forever because the normal delist code
         thinks it's still "seen").
         """
+        return self._run_filter_phase(lots, stats, phase="pre")
+
+    def apply_post_filters(self, lot_ids: list[str], stats: dict | None = None) -> int:
+        """Run FilterEngine POST-phase on lots already in DB (after inspections).
+
+        Populates virtual fields from lot_inspections, then evaluates
+        post-phase rules. Returns count of lots deactivated.
+
+        Args:
+            lot_ids: IDs of lots to evaluate (just upserted + enriched).
+            stats: optional stats dict to update.
+        """
+        if not lot_ids:
+            return 0
+
+        engine = self._get_filter_engine()
+        # Quick check: are there any post-phase rules at all?
+        has_post = any(
+            r.phase == "post" and r.enabled
+            for r in engine._rules.rules
+        )
+        if not has_post:
+            return 0
+
+        from filters.virtual_fields import populate_virtual_fields
+
+        # Reconstruct CarLots from DB for post-filter evaluation
+        lots = self._load_lots_for_post_filter(lot_ids)
+        if not lots:
+            return 0
+
+        # Populate virtual fields (inspection aggregates)
+        populate_virtual_fields(lots, self)
+
+        # Run post-phase filter
+        deactivated = 0
+        skipped_ids: list[str] = []
+        filtered_counts: dict[str, int] = {}
+
+        for lot in lots:
+            result = engine.evaluate(lot, phase="post")
+            if result.should_skip or result.should_mark_inactive:
+                skipped_ids.append(lot.id)
+                for rule in result.matched_rules:
+                    filtered_counts[rule.name] = filtered_counts.get(rule.name, 0) + 1
+
+        if skipped_ids:
+            deactivated = self._deactivate_existing(skipped_ids, reason="post_filter")
+
+        if stats is not None and filtered_counts:
+            stats["post_filtered"] = stats.get("post_filtered", 0) + sum(filtered_counts.values())
+            stats.setdefault("post_filter_rules", {})
+            for name, n in filtered_counts.items():
+                stats["post_filter_rules"][name] = stats["post_filter_rules"].get(name, 0) + n
+
+        if filtered_counts:
+            rule_summary = ", ".join(f"{n}={c}" for n, c in sorted(filtered_counts.items(), key=lambda kv: -kv[1]))
+            logger.info(f"[post_filter] deactivated {deactivated} lots: {rule_summary}")
+
+        engine.flush_skip_log(self)
+        return deactivated
+
+    def _run_filter_phase(
+        self, lots: list[CarLot], stats: dict | None, phase: str
+    ) -> list[CarLot]:
+        """Internal: evaluate a single filter phase on in-memory lots."""
         if not lots:
             return lots
         engine = self._get_filter_engine()
@@ -60,7 +130,7 @@ class LotRepository:
         skipped_ids: list[str] = []
         filtered_counts: dict[str, int] = {}
         for lot in lots:
-            result = engine.evaluate(lot)
+            result = engine.evaluate(lot, phase=phase)
             if result.should_skip:
                 for rule in result.matched_rules:
                     if rule.action == "skip":
@@ -82,13 +152,50 @@ class LotRepository:
         if filtered_counts:
             rule_summary = ", ".join(f"{n}={c}" for n, c in sorted(filtered_counts.items(), key=lambda kv: -kv[1]))
             logger.info(
-                f"[filter] skipped {len(skipped_ids)} lots by rules: {rule_summary}"
+                f"[filter:{phase}] skipped {len(skipped_ids)} lots by rules: {rule_summary}"
             )
 
         # Flush skip log to database
         engine.flush_skip_log(self)
 
         return kept
+
+    def _load_lots_for_post_filter(self, lot_ids: list[str]) -> list[CarLot]:
+        """Load minimal CarLot objects from DB for post-filter evaluation."""
+        if not lot_ids:
+            return []
+        conn = self._get_conn()
+        placeholders = ",".join(["%s"] * len(lot_ids))
+        sql = f"""
+            SELECT id, source, make, model, year, price, mileage,
+                   has_accident, flood_history, total_loss_history,
+                   owners_count, insurance_count, repair_cost,
+                   sell_type, damage, lot_url
+            FROM lots
+            WHERE id IN ({placeholders}) AND is_active = 1
+        """
+        try:
+            with conn.cursor() as cur:
+                cur.execute(sql, lot_ids)
+                rows = cur.fetchall()
+        except Exception as e:
+            logger.warning(f"[post_filter] load failed: {e}")
+            return []
+
+        lots = []
+        for row in rows:
+            lot = CarLot(
+                id=row[0], source=row[1], make=row[2] or "", model=row[3] or "",
+                year=row[4] or 0, price=row[5] or 0, mileage=row[6] or 0,
+                has_accident=bool(row[7]) if row[7] is not None else None,
+                flood_history=bool(row[8]) if row[8] is not None else None,
+                total_loss_history=bool(row[9]) if row[9] is not None else None,
+                owners_count=row[10], insurance_count=row[11],
+                repair_cost=row[12], sell_type=row[13],
+                damage=row[14], lot_url=row[15] or "",
+            )
+            lots.append(lot)
+        return lots
 
     def _deactivate_existing(self, lot_ids: list[str], reason: str = "filter") -> int:
         """Mark is_active=0 for any of given ids that are currently active.

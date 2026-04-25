@@ -1322,6 +1322,117 @@
       "sources": {}
     },
     {
+      "name": "inspection_count",
+      "column": "inspection_count",
+      "dtype": "int",
+      "category": "condition",
+      "description": "Number of inspection records (virtual, computed from lot_inspections)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "accident_max_cost",
+      "column": "accident_max_cost",
+      "dtype": "int",
+      "category": "condition",
+      "description": "Max single-accident cost in KRW (virtual, from inspections)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "total_accident_cost",
+      "column": "total_accident_cost",
+      "dtype": "int",
+      "category": "condition",
+      "description": "Sum of all accident costs in KRW (virtual, from inspections)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "in",
+        "not_in",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "inspection_has_accident",
+      "column": "inspection_has_accident",
+      "dtype": "bool",
+      "category": "condition",
+      "description": "Any inspection reports accident (virtual)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
+      "name": "inspection_has_flood",
+      "column": "inspection_has_flood",
+      "dtype": "bool",
+      "category": "condition",
+      "description": "Any inspection reports flood damage (virtual)",
+      "required": false,
+      "filterable": true,
+      "tracked": false,
+      "enum_values": null,
+      "operators": [
+        "eq",
+        "ne",
+        "is_null",
+        "is_not_null"
+      ],
+      "sources": {}
+    },
+    {
       "name": "raw_data",
       "column": "raw_data",
       "dtype": "json",

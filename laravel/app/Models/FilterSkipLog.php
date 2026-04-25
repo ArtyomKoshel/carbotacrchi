@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class FilterSkipLog extends Model
 {
     protected $table = 'filter_skip_log';
+    public $timestamps = false;
+
     protected $fillable = [
         'source',
         'source_id',

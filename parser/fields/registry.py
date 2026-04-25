@@ -391,6 +391,33 @@ FIELDS: list[FieldSpec] = [
         description="Free-form dealer comment",
     ),
 
+    # ── Virtual fields (computed from inspections, not stored in lots) ───────
+    FieldSpec(
+        name="inspection_count", dtype=FieldType.INT, filterable=True,
+        category="condition",
+        description="Number of inspection records (virtual, computed from lot_inspections)",
+    ),
+    FieldSpec(
+        name="accident_max_cost", dtype=FieldType.INT, filterable=True,
+        category="condition",
+        description="Max single-accident cost in KRW (virtual, from inspections)",
+    ),
+    FieldSpec(
+        name="total_accident_cost", dtype=FieldType.INT, filterable=True,
+        category="condition",
+        description="Sum of all accident costs in KRW (virtual, from inspections)",
+    ),
+    FieldSpec(
+        name="inspection_has_accident", dtype=FieldType.BOOL, filterable=True,
+        category="condition",
+        description="Any inspection reports accident (virtual)",
+    ),
+    FieldSpec(
+        name="inspection_has_flood", dtype=FieldType.BOOL, filterable=True,
+        category="condition",
+        description="Any inspection reports flood damage (virtual)",
+    ),
+
     # ── Opaque blob ──────────────────────────────────────────────────────────
     FieldSpec(
         name="raw_data", dtype=FieldType.JSON, category="meta",

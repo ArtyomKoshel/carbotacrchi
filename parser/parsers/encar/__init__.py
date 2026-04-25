@@ -1248,3 +1248,13 @@ class EncarParser(AbstractParser):
             f"[STAT] [{source}] enriched {len(results)} lots: "
             f"accident={n_accident}, flood={n_flood}, insp={n_insp}"
         )
+
+        # Post-filters: evaluate rules that depend on inspection data
+        enriched_ids = [lot.id for lot, _ in results]
+        if enriched_ids:
+            try:
+                post_deactivated = self.repo.apply_post_filters(enriched_ids, stats)
+                if post_deactivated:
+                    logger.info(f"[{source}] post-filter deactivated {post_deactivated} lots")
+            except Exception as e:
+                logger.warning(f"[{source}] post-filter error: {e}")

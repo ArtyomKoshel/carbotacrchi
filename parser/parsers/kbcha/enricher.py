@@ -419,6 +419,16 @@ class KBChaEnricher:
         logger.info(f"[STAT] [{self._source}]   panels:   {fill['panels']}/{len(lots)} ({fill['panels'] / total * 100:.0f}%)")
         logger.info(f"[STAT] [{self._source}]   mileage:  {fill['mileage']}/{len(lots)} ({fill['mileage'] / total * 100:.0f}%)")
 
+        # Post-filters: evaluate rules that depend on inspection data
+        enriched_ids = [lot.id for lot in lots]
+        if enriched_ids:
+            try:
+                post_deactivated = self._repo.apply_post_filters(enriched_ids, stats)
+                if post_deactivated:
+                    logger.info(f"[{self._source}] post-filter deactivated {post_deactivated} lots")
+            except Exception as e:
+                logger.warning(f"[{self._source}] post-filter error: {e}")
+
     @staticmethod
     def _bump_fill(fill: dict[str, int], lot: CarLot) -> None:
         if lot.vin:

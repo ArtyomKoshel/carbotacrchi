@@ -33,20 +33,27 @@ def load_db_rules(conn=None) -> list[Rule]:
 
     try:
         with conn.cursor() as cur:
-            # Try with rule_group_id column (AND-groups migration)
+            # Try with phase + rule_group_id columns (latest migration)
             try:
                 cur.execute(
                     "SELECT name, source, field, operator, value, action, priority, "
-                    "rule_group_id, enabled, description FROM parse_filters "
+                    "rule_group_id, phase, enabled, description FROM parse_filters "
                     "WHERE enabled = 1 ORDER BY priority ASC, id ASC"
                 )
             except Exception:
-                # Column doesn't exist yet — fall back without it
-                cur.execute(
-                    "SELECT name, source, field, operator, value, action, priority, "
-                    "enabled, description FROM parse_filters "
-                    "WHERE enabled = 1 ORDER BY priority ASC, id ASC"
-                )
+                # phase column may not exist yet — fall back
+                try:
+                    cur.execute(
+                        "SELECT name, source, field, operator, value, action, priority, "
+                        "rule_group_id, enabled, description FROM parse_filters "
+                        "WHERE enabled = 1 ORDER BY priority ASC, id ASC"
+                    )
+                except Exception:
+                    cur.execute(
+                        "SELECT name, source, field, operator, value, action, priority, "
+                        "enabled, description FROM parse_filters "
+                        "WHERE enabled = 1 ORDER BY priority ASC, id ASC"
+                    )
             rows = cur.fetchall()
     except Exception as e:
         # Table may not exist yet (migration not applied). Non-fatal.
@@ -71,6 +78,7 @@ def load_db_rules(conn=None) -> list[Rule]:
                 source=row.get("source") or None,
                 priority=int(row.get("priority") or 100),
                 group_id=row.get("rule_group_id") or None,
+                phase=row.get("phase") or "pre",
                 enabled=bool(row.get("enabled", 1)),
                 description=row.get("description") or "",
             )

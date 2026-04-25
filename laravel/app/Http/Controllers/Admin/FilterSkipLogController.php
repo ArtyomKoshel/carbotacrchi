@@ -31,7 +31,7 @@ class FilterSkipLogController extends Controller
         }
 
         // Order and paginate
-        $logs = $query->latest()->paginate(50)->withQueryString();
+        $logs = $query->orderBy('skipped_at', 'desc')->paginate(50)->withQueryString();
 
         // Get unique sources for filter dropdown
         $sources = FilterSkipLog::select('source')->distinct()->pluck('source');

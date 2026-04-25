@@ -133,6 +133,7 @@ class Rule:
     source: str | None = None  # None = applies to all parsers; "encar"/"kbcha" = scoped
     priority: int = 100      # lower = evaluated first; allow-rules should have low numbers
     group_id: str | None = None  # rules with same group_id use AND logic (all must match)
+    phase: str = "pre"           # "pre" = before enrichment, "post" = after inspections
     enabled: bool = True
     description: str = ""
 
@@ -229,6 +230,15 @@ class RuleSet:
     def for_source(self, source: str) -> list[Rule]:
         """Return active rules applicable to given source, ordered by priority."""
         applicable = [r for r in self.rules if r.enabled and r.applies_to(source)]
+        applicable.sort(key=lambda r: r.priority)
+        return applicable
+
+    def for_source_phase(self, source: str, phase: str) -> list[Rule]:
+        """Return active rules for a given source and phase, ordered by priority."""
+        applicable = [
+            r for r in self.rules
+            if r.enabled and r.applies_to(source) and r.phase == phase
+        ]
         applicable.sort(key=lambda r: r.priority)
         return applicable
 
