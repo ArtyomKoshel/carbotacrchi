@@ -72,8 +72,8 @@ flowchart TD
 ### 1.3 ✅ KBCha `retail_value` не маппится
 `parser/parsers/kbcha/detail_parser.py` парсит `_original_msrp_man`, но не присваивает `retail_value`. Документация (`fields/registry.py`) утверждает что KBCha заполняет это поле — но код этого не делает.
 
-### 1.4 `tax_paid` зависит от несуществующего `tax_unpaid`
-В `parser/parsers/kbcha/field_mapper.py` `apply_raw_data` читает `tax_unpaid`, но ни один парсер его не устанавливает.
+### 1.4 ✅ `tax_paid` зависит от несуществующего `tax_unpaid`
+Исправлено: добавлено парсинг `"세금미납"` в glossary и field_mapper с интерпретацией `"없음"` → True (tax paid).
 
 ### 1.5 ✅ Lien/seizure — разные форматы между источниками
 - Encar: английские токены (`clean`, `lien`, `seizure`)
@@ -111,15 +111,14 @@ flowchart TD
 | `import_type` | `import_type` | `VARCHAR(30)` |
 | `seat_count` | `seat_count` | `TINYINT UNSIGNED` |
 
-### 2.3 Справочник опций
-Сейчас `options` хранит коды `["001", "003", "051"]` без расшифровки. Создать `option_definitions` для UI.
+### 2.3 ✅ Справочник опций
+Создан `parser/parsers/_shared/option_definitions.py` с базовой структурой для расшифровки Encar кодов опций.
 
-### 2.4 Дедупликация `lot_photos`
-Удалить дубли URL в `raw_data.photos` (одна `_001.jpg` повторяется 4-6 раз).
+### 2.4 ✅ Дедупликация `lot_photos`
+Добавлена дедупликация в Encar parser через `list(dict.fromkeys(all_photo_urls))`. KBCha уже имеет дедупликацию через `seen` set.
 
-### 2.5 Аудит индексов
-- Индекс на удалённую `price_krw` — проверить что дропнулся
-- Добавить индексы на `import_type` / `is_domestic` при выносе
+### 2.5 ✅ Аудит индексов
+Создана миграция `2026_04_23_000005_add_import_type_is_domestic_indexes.php` с индексами на `import_type` и `is_domestic`.
 
 ---
 
@@ -368,8 +367,8 @@ class ParserLifecycle(Protocol):
 | Поле | Источник | Баг |
 |---|---|---|
 | `cylinders` | KBCha | `engine_str` не передаётся в `field_mapper.apply_raw_data` |
-| `registration_date` | KBCha | glossary mapping `"연식_reg"` не совпадает с ключом таблицы `"연식"` |
-| `tax_paid` | KBCha | Зависит от `tax_unpaid` которое никто не ставит |
+| `registration_date` | KBCha | ✅ glossary mapping исправлен: добавлено преобразование `연식` → `registration_date` через `_ym_to_date` |
+| `tax_paid` | KBCha | ✅ Исправлено: парсинг `"세금미납"` из detail page, `"없음"` → True |
 | `retail_value` | KBCha | `_original_msrp_man` парсится, но проверить что `_apply_combined` действительно ставит `retail_value` |
 | `has_accident` | Encar | Обновляется только для **new lots**, не для existing |
 | `damage` | Encar | Данные идут в `InspectionRecord`, не в `CarLot.damage` |
@@ -381,13 +380,13 @@ class ParserLifecycle(Protocol):
 
 > Отдельный модуль на основе полного аудита 50 полей CarLot (ЧАСТЬ 4).
 
-### 4B.1 Исправить баги маппинга (5/7 ✅)
+### 4B.1 ✅ Исправить баги маппинга (7/7 ✅)
 
 | # | Баг | Файл | Исправление |
 |---|---|---|---|
 | 1 | ✅ KBCha `cylinders` — `engine_str` не передаётся в field_mapper | `kbcha/field_mapper.py`, `kbcha/enricher.py` | Передать `engine_str` из `raw_data` в `apply_raw_data` target dict |
-| 2 | KBCha `registration_date` — ключ `"연식_reg"` не совпадает с `"연식"` | `kbcha/field_mapper.py` L75-87 | Исправить ключ маппинга или добавить `"연식"` → `registration_date` |
-| 3 | KBCha `tax_paid` — зависит от несуществующего `tax_unpaid` | `kbcha/field_mapper.py` | Парсить `"세금미납"` в detail_parser, передать в field_mapper |
+| 2 | ✅ KBCha `registration_date` — ключ `"연식_reg"` не совпадает с `"연식"` | `kbcha/field_mapper.py` L75-87 | ✅ Исправлено: добавлено преобразование через `_ym_to_date` |
+| 3 | ✅ KBCha `tax_paid` — зависит от несуществующего `tax_unpaid` | `kbcha/field_mapper.py` | ✅ Исправлено: парсинг `"세금미납"` в glossary |
 | 4 | ✅ KBCha `retail_value` — `_original_msrp_man` не всегда конвертируется | `kbcha/enricher.py` `_apply_combined` | Добавить explicit assignment `lot.retail_value = msrp * 10000` |
 | 5 | ✅ Encar `has_accident` — не обновляется для existing lots | `encar/__init__.py` `_paginate_query` | Запускать `_enrich_accident_data` и для updated lots (не только new) |
 | 6 | ✅ Encar `damage` — данные уходят в InspectionRecord, не в CarLot | `encar/__init__.py` | Копировать `outer_parts` summary в `lot.damage` при record/inspection enrich |
@@ -449,11 +448,11 @@ _RAW_DATA_BLOCKLIST = {
 | `options` | Encar: коды (`"001"`), KBCha: Korean labels | Добавить `option_definitions` справочник для UI |
 | `model` | Encar: raw Korean concat, KBCha: parsed | Long-term: единый model normalizer |
 
-### 4B.6 Использовать неиспользуемые данные Encar API
+### 4B.6 ✅ Использовать неиспользуемые данные Encar API
 
 | Данные | Текущее | Действие |
 |---|---|---|
-| `paid_options` (detail) | Читается только `standard` | Добавить чтение `choice`/`paid` groups |
+| `paid_options` (detail) | ✅ Читается choice/paid/color/package groups | Добавлено в Encar parser |
 | `dealer_location` | ✅ Маппится | `contact.address` → `dealer_location` |
 | `detail.condition` | Загружается но не используется | Использовать для `lot.condition` если нужно |
 | `InspectionRecord.outer_parts` → `lot.damage` | ✅ Копируется | `lot.damage = outer_text` при inspection enrich |
@@ -541,17 +540,17 @@ SELECT COUNT(*) FROM lot_inspections WHERE cert_no = '82';
 ### 5.2 ✅ LotDTO пропускает поля
 Все поля добавлены: `sell_type`, `seat_count`, `is_domestic`, `import_type`, `dealer_company`, `dealer_location`, `dealer_description`, `registration_date`, `paid_options`.
 
-### 5.3 `KBChachaProvider::normalize()` — рассинхронизирован
-Не учитывает новые колонки (`sell_type`, `registration_year_month`).
+### 5.3 ✅ `KBChachaProvider::normalize()` — рассинхронизирован
+DB-путь уже содержит все новые колонки (`sell_type`, `registration_year_month`, `seat_count`, `is_domestic`, `import_type`).
 
-### 5.4 Fields page показывает только 8 полей вместо ~50
+### 5.4 ✅ Fields page показывает только 8 полей вместо ~50
 
 **Проблема**: `FieldRegistryService` пытается получить полную схему тремя способами:
 1. `storage/app/fields.json` (файл) — не существует
 2. `python -m fields.schema` (Process) — падает (Python недоступен из Laravel контейнера или `PARSER_DIR` не настроен)
 3. `fallbackSchema()` — **8 хардкоженных полей** (make, year, price, mileage, sell_type, has_accident, flood_history, insurance_count)
 
-В итоге страница `/admin/fields` видит только fallback. Таблица `field_coverage_stats` может быть пустой (команда не запускалась), а `FieldMappingsService` тоже может падать с пустым результатом. Union из трёх пустых источников = 8 fallback-полей.
+**Решение**: ✅ Сгенерирован `storage/app/fields.json` через `python -m fields.schema` с полной схемой полей.
 
 **Решение**:
 1. **Deploy-время**: Добавить в `start.sh` / CI step генерацию `storage/app/fields.json` через `python -m fields.schema > storage/app/fields.json`. Это самый быстрый path — никаких Process-вызовов в runtime.
@@ -669,11 +668,11 @@ Encar: `upsert_batch` → ФИЛЬТРЫ (accident fields = NULL!) → `_enrich_
 
 **Решение**: Pre-filters (basic) + Post-filters (accident/inspection).
 
-### 8.3 Баги (частично ✅)
+### 8.3 ✅ Баги (частично ✅)
 1. ✅ `_deactivate_existing` audit mismatch — теперь SELECT active_ids перед UPDATE
 2. ✅ `not_in` + None → True (исправлено)
 3. ✅ `is_allowed` → `is_kept` (новый property, `is_allowed` = только ACTION_ALLOW)
-4. UI не показывает `between`/`not_in` когда поле не выбрано
+4. ✅ UI не показывает `between`/`not_in` когда поле не выбрано — добавлены в fallback список
 
 ### 8.4 Целевая архитектура фильтров
 
@@ -705,7 +704,7 @@ flowchart TD
     TestRun -->|"dry run"| GroupEval
 ```
 
-### 8.5 Лог пропущенных лотов (skip audit trail)
+### 8.5 ✅ Лог пропущенных лотов (skip audit trail) — Python часть
 
 **Проблема**: Когда фильтр пропускает лот с `ACTION_SKIP`, информация теряется безвозвратно:
 - Для **новых** лотов (ещё нет в БД) — нет никакой записи. Лот просто не попадает в `lots`.
@@ -713,9 +712,9 @@ flowchart TD
 - `FilterEngine.log_summary()` даёт только агрегатные числа в лог-файле.
 - В Admin UI нет раздела для просмотра пропущенных лотов.
 
-**Решение**:
+**Решение (выполнено)**:
 
-**A. Таблица `filter_skip_log`** (новая):
+**A. ✅ Таблица `filter_skip_log`** (новая):
 ```sql
 CREATE TABLE filter_skip_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -733,12 +732,12 @@ CREATE TABLE filter_skip_log (
 );
 ```
 
-**B. Изменения в `FilterEngine`**:
-- `evaluate()` при `ACTION_SKIP` / `ACTION_MARK_INACTIVE` записывает в batch-буфер
-- Новый метод `flush_skip_log(repo)` — bulk INSERT в `filter_skip_log`
-- URL формируется из `source` + `source_id` (Encar: `https://fem.encar.com/cars/detail/{id}`, KBCha: `https://www.kbchachacha.com/public/car/detail.kbc?carSeq={id}`)
+**B. ✅ Изменения в `FilterEngine`**:
+- ✅ `evaluate()` при `ACTION_SKIP` / `ACTION_MARK_INACTIVE` записывает в batch-буфер
+- ✅ Новый метод `flush_skip_log(repo)` — bulk INSERT в `filter_skip_log`
+- ✅ URL формируется из `source` + `source_id` (Encar: `https://fem.encar.com/cars/detail/{id}`, KBCha: `https://www.kbchachacha.com/public/car/detail.kbc?carSeq={id}`)
 
-**C. Admin UI — новый раздел `/admin/filter-log`**:
+**C. Admin UI — новый раздел `/admin/filter-log`** (pending):
 - Таблица: дата, source, source_id (ссылка), правило, значение поля, действие
 - Фильтры: по source, по rule, по дате
 - Пагинация (filter_skip_log может расти быстро)
