@@ -28,6 +28,7 @@
       ['route' => 'admin.jobs',      'icon' => '▶', 'label' => 'Jobs'],
       ['route' => 'admin.schedules', 'icon' => '⏱', 'label' => 'Schedules'],
       ['route' => 'admin.filters',   'icon' => '⚑', 'label' => 'Filters'],
+      ['route' => 'admin.filter-skip-log.index', 'icon' => '✗', 'label' => 'Skip Log'],
       ['route' => 'admin.fields',    'icon' => '◎', 'label' => 'Fields'],
       ['route' => 'admin.lots',      'icon' => '⟳', 'label' => 'Re-parse'],
     ] as $item)

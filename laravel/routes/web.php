@@ -36,6 +36,10 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::delete('/filters/{id}',               [AdminController::class, 'deleteFilter'])->name('filters.delete');
     Route::patch('/filters/{id}/toggle',         [AdminController::class, 'toggleFilter'])->name('filters.toggle');
 
+    // Filter Skip Log
+    Route::get('/filter-skip-log',              [App\Http\Controllers\Admin\FilterSkipLogController::class, 'index'])->name('filter-skip-log.index');
+    Route::post('/filter-skip-log/cleanup',     [App\Http\Controllers\Admin\FilterSkipLogController::class, 'cleanup'])->name('filter-skip-log.cleanup');
+
     // Fields: unified page — registry + source mappings + coverage stats.
     // Replaces legacy `/admin/accuracy` and `/admin/field-mappings`.
     Route::get('/fields',                        [AdminController::class, 'fields'])->name('fields');

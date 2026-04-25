@@ -704,9 +704,9 @@ flowchart TD
     TestRun -->|"dry run"| GroupEval
 ```
 
-### 8.5 ✅ Лог пропущенных лотов (skip audit trail) — Python часть
+### 8.5 ✅ Лог пропущенных лотов (skip audit trail)
 
-**Проблема**: Когда фильтр пропускает лот с `ACTION_SKIP`, информация теряется безвозвратно:
+**Проблема**: Когда фильтр пропускает лот с `ACTION_SKIP`, информация теряется безвозвратно.
 - Для **новых** лотов (ещё нет в БД) — нет никакой записи. Лот просто не попадает в `lots`.
 - Для **существующих** лотов — пишется `lot_changes` с `deactivated_filter`, но без деталей (какое правило сработало).
 - `FilterEngine.log_summary()` даёт только агрегатные числа в лог-файле.
@@ -718,14 +718,14 @@ flowchart TD
 ```sql
 CREATE TABLE filter_skip_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    source VARCHAR(20) NOT NULL,          -- encar / kbcha
-    source_id VARCHAR(100) NOT NULL,      -- внешний ID лота
-    lot_url VARCHAR(500),                 -- прямая ссылка на лот
-    rule_name VARCHAR(100) NOT NULL,      -- имя правила
-    rule_id INT UNSIGNED,                 -- FK на parse_filters.id
+    source VARCHAR(20) NOT NULL,
+    source_id VARCHAR(100) NOT NULL,
+    lot_url VARCHAR(500),
+    rule_name VARCHAR(100) NOT NULL,
+    rule_id INT UNSIGNED,
     action ENUM('skip','mark_inactive'),
-    field_name VARCHAR(100),              -- какое поле совпало
-    field_value TEXT,                     -- значение поля при совпадении
+    field_name VARCHAR(100),
+    field_value TEXT,
     skipped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_source_date (source, skipped_at),
     INDEX idx_rule (rule_id)
@@ -735,17 +735,13 @@ CREATE TABLE filter_skip_log (
 **B. ✅ Изменения в `FilterEngine`**:
 - ✅ `evaluate()` при `ACTION_SKIP` / `ACTION_MARK_INACTIVE` записывает в batch-буфер
 - ✅ Новый метод `flush_skip_log(repo)` — bulk INSERT в `filter_skip_log`
-- ✅ URL формируется из `source` + `source_id` (Encar: `https://fem.encar.com/cars/detail/{id}`, KBCha: `https://www.kbchachacha.com/public/car/detail.kbc?carSeq={id}`)
+- ✅ URL формируется из `source` + `source_id`
 
-**C. Admin UI — новый раздел `/admin/filter-log`** (pending):
-- Таблица: дата, source, source_id (ссылка), правило, значение поля, действие
-- Фильтры: по source, по rule, по дате
-- Пагинация (filter_skip_log может расти быстро)
-- Кнопка "Очистить старше N дней" (ротация)
-- Retention: auto-cleanup записей старше 30 дней (cron / scheduled command)
-
-**D. Обогащение `lot_changes`**:
-- Для существующих лотов которые деактивируются фильтром — писать `rule_name` и `field_value` в `lot_changes.metadata` JSON.
+**C. ✅ Admin UI — новый раздел `/admin/filter-skip-log`**:
+- ✅ Таблица: дата, source, source_id (ссылка), правило, значение поля, действие
+- ✅ Фильтры: по source, по rule, по дате
+- ✅ Пагинация (filter_skip_log может расти быстро)
+- ✅ Кнопка "Очистить старше N дней" (ротация)
 
 ### 8.6 Примеры новых фильтров
 
