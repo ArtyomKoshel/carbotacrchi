@@ -104,6 +104,7 @@ FIELDS: list[FieldSpec] = [
         name="id", dtype=FieldType.STRING, required=True, category="identity",
         description="Primary key: unique lot identifier scoped by source",
         sources={"encar": "Id (from search API)", "kbcha": "carSeq prefixed with kbcha_"},
+        filterable=False,  # Technical field, not useful for filtering
     ),
     FieldSpec(
         name="source", dtype=FieldType.ENUM, required=True, filterable=True,
@@ -163,7 +164,7 @@ FIELDS: list[FieldSpec] = [
     FieldSpec(
         name="mileage_grade", dtype=FieldType.ENUM,
         enum_values=("low", "average", "high"),
-        category="condition", description="KBCha mileage grade (상 / 중 / 하)",
+        filterable=True, category="condition", description="KBCha mileage grade (상 / 중 / 하)",
         sources={"kbcha": "detail table mileage_grade"},
     ),
     FieldSpec(
@@ -208,12 +209,12 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "spec.displacement / 1000", "kbcha": "배기량 in cc"},
     ),
     FieldSpec(
-        name="fuel_economy", dtype=FieldType.FLOAT, category="specs",
+        name="fuel_economy", dtype=FieldType.FLOAT, filterable=True, category="specs",
         description="Declared fuel economy (km/L)",
         sources={"kbcha": "연비 detail table"},
     ),
     FieldSpec(
-        name="cylinders", dtype=FieldType.INT, category="specs",
+        name="cylinders", dtype=FieldType.INT, filterable=True, category="specs",
         description="Number of cylinders",
         sources={"kbcha": "engine_str parse_cylinders"},
     ),
@@ -223,7 +224,7 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "Color / spec.colorName", "kbcha": "차량색상"},
     ),
     FieldSpec(
-        name="seat_color", dtype=FieldType.STRING, category="specs",
+        name="seat_color", dtype=FieldType.STRING, filterable=True, category="specs",
         description="Interior / seat color",
         sources={"encar": "SeatColor", "kbcha": "시트색상"},
     ),
@@ -251,12 +252,12 @@ FIELDS: list[FieldSpec] = [
                  "kbcha": "external inspection report 차대번호"},
     ),
     FieldSpec(
-        name="plate_number", dtype=FieldType.STRING, category="identity",
+        name="plate_number", dtype=FieldType.STRING, filterable=True, category="identity",
         description="License plate (Korean format)",
         sources={"encar": "detail.vehicleNo", "kbcha": "차량번호"},
     ),
     FieldSpec(
-        name="title", dtype=FieldType.STRING, category="identity",
+        name="title", dtype=FieldType.STRING, filterable=True, category="identity",
         description="Title / status label — default 'Clean'",
     ),
 
@@ -288,7 +289,7 @@ FIELDS: list[FieldSpec] = [
         sources={"kbcha": "damaged_panels.structural from report"},
     ),
     FieldSpec(
-        name="secondary_damage", dtype=FieldType.TEXT, category="condition",
+        name="secondary_damage", dtype=FieldType.TEXT, filterable=True, category="condition",
         description="Non-structural outer damage",
         sources={"kbcha": "damaged_panels.outer from report"},
     ),
@@ -321,7 +322,7 @@ FIELDS: list[FieldSpec] = [
     ),
     # ── New first-class columns ──────────────────────────────────────────────
     FieldSpec(
-        name="seat_count", dtype=FieldType.INT, category="specs",
+        name="seat_count", dtype=FieldType.INT, filterable=True, category="specs",
         description="Number of seats",
         sources={"encar": "spec.seatCount"},
     ),
@@ -356,12 +357,12 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "options.standard", "kbcha": "detail option list"},
     ),
     FieldSpec(
-        name="paid_options", dtype=FieldType.JSON, category="specs",
+        name="paid_options", dtype=FieldType.JSON, filterable=True, category="specs",
         description="Paid / optional extras",
         sources={"kbcha": "detail paid options"},
     ),
     FieldSpec(
-        name="warranty_text", dtype=FieldType.STRING, category="condition",
+        name="warranty_text", dtype=FieldType.STRING, filterable=True, category="condition",
         description="Warranty coverage text",
         sources={"kbcha": "warranty table"},
     ),
@@ -378,15 +379,15 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "partnership.dealer.firm.name", "kbcha": "detail dealer company"},
     ),
     FieldSpec(
-        name="dealer_location", dtype=FieldType.STRING, category="dealer",
+        name="dealer_location", dtype=FieldType.STRING, filterable=True, category="dealer",
         description="Dealer geographic location",
     ),
     FieldSpec(
-        name="dealer_phone", dtype=FieldType.STRING, category="dealer",
+        name="dealer_phone", dtype=FieldType.STRING, filterable=True, category="dealer",
         description="Dealer phone",
     ),
     FieldSpec(
-        name="dealer_description", dtype=FieldType.TEXT, category="dealer",
+        name="dealer_description", dtype=FieldType.TEXT, filterable=True, category="dealer",
         description="Free-form dealer comment",
     ),
 
@@ -394,7 +395,8 @@ FIELDS: list[FieldSpec] = [
     FieldSpec(
         name="raw_data", dtype=FieldType.JSON, category="meta",
         description="Source-specific extras (photos, conditions, engine_code, etc.)",
-    ),
+        filterable=False,  # Technical blob, not useful for filtering
+    )
 ]
 
 

@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 1,
   "fields": [
     {
@@ -156,7 +156,7 @@
       ],
       "sources": {
         "encar": "FormYear[:4]",
-        "kbcha": "ьЧ░ьЛЭ parsing via parse_year"
+        "kbcha": "연식 parsing via parse_year"
       }
     },
     {
@@ -266,7 +266,7 @@
         "is_not_null"
       ],
       "sources": {
-        "kbcha": "ьЛаь░и ыМАы╣Д % text"
+        "kbcha": "신차 대비 % text"
       }
     },
     {
@@ -294,7 +294,7 @@
       ],
       "sources": {
         "encar": "Mileage",
-        "kbcha": "ьг╝эЦЙъ▒░ыжм parse_mileage"
+        "kbcha": "주행거리 parse_mileage"
       }
     },
     {
@@ -302,9 +302,9 @@
       "column": "mileage_grade",
       "dtype": "enum",
       "category": "condition",
-      "description": "KBCha mileage grade (ьГБ / ьдС / эХШ)",
+      "description": "KBCha mileage grade (상 / 중 / 하)",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": [
         "low",
@@ -346,7 +346,7 @@
       ],
       "sources": {
         "encar": "manage.registDateTime[:10] or record.firstDate",
-        "kbcha": "ьЧ░ьЛЭ reg portion"
+        "kbcha": "연식 reg portion"
       }
     },
     {
@@ -374,7 +374,7 @@
       ],
       "sources": {
         "encar": "FormYear (already YYYYMM)",
-        "kbcha": "parse_year_month(ьЧ░ьЛЭ cell)"
+        "kbcha": "parse_year_month(연식 cell)"
       }
     },
     {
@@ -406,7 +406,7 @@
       ],
       "sources": {
         "encar": "FuelType via FUEL_MAP",
-        "kbcha": "ьЧ░ыгМ via FUEL dict"
+        "kbcha": "연료 via FUEL dict"
       }
     },
     {
@@ -434,7 +434,7 @@
       ],
       "sources": {
         "encar": "Transmission via TRANSMISSION_MAP",
-        "kbcha": "ы│АьЖНъ╕░ via TRANSMISSION"
+        "kbcha": "변속기 via TRANSMISSION"
       }
     },
     {
@@ -470,7 +470,7 @@
       ],
       "sources": {
         "encar": "spec.bodyName via BODY_MAP",
-        "kbcha": "ь░иьвЕ"
+        "kbcha": "차종"
       }
     },
     {
@@ -525,7 +525,7 @@
       ],
       "sources": {
         "encar": "spec.displacement / 1000",
-        "kbcha": "ы░░ъ╕░ыЯЙ in cc"
+        "kbcha": "배기량 in cc"
       }
     },
     {
@@ -535,7 +535,7 @@
       "category": "specs",
       "description": "Declared fuel economy (km/L)",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -550,7 +550,7 @@
         "is_not_null"
       ],
       "sources": {
-        "kbcha": "ьЧ░ы╣Д detail table"
+        "kbcha": "연비 detail table"
       }
     },
     {
@@ -560,7 +560,7 @@
       "category": "specs",
       "description": "Number of cylinders",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -603,7 +603,7 @@
       ],
       "sources": {
         "encar": "Color / spec.colorName",
-        "kbcha": "ь░иыЯЙьГЙьГБ"
+        "kbcha": "차량색상"
       }
     },
     {
@@ -613,7 +613,7 @@
       "category": "specs",
       "description": "Interior / seat color",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -629,7 +629,7 @@
       ],
       "sources": {
         "encar": "SeatColor",
-        "kbcha": "ьЛЬэК╕ьГЙьГБ"
+        "kbcha": "시트색상"
       }
     },
     {
@@ -727,7 +727,7 @@
       ],
       "sources": {
         "encar": "detail.vin / inspection.vin",
-        "kbcha": "external inspection report ь░иыМАы▓ИэШ╕"
+        "kbcha": "external inspection report 차대번호"
       }
     },
     {
@@ -737,7 +737,7 @@
       "category": "identity",
       "description": "License plate (Korean format)",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -753,7 +753,7 @@
       ],
       "sources": {
         "encar": "detail.vehicleNo",
-        "kbcha": "ь░иыЯЙы▓ИэШ╕"
+        "kbcha": "차량번호"
       }
     },
     {
@@ -761,9 +761,9 @@
       "column": "title",
       "dtype": "string",
       "category": "identity",
-      "description": "Title / status label тАФ default 'Clean'",
+      "description": "Title / status label — default 'Clean'",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -784,7 +784,7 @@
       "column": "lien_status",
       "dtype": "enum",
       "category": "legal",
-      "description": "Lien / loan status (ьХХыеШ)",
+      "description": "Lien / loan status (압류)",
       "required": false,
       "filterable": true,
       "tracked": true,
@@ -803,7 +803,7 @@
       ],
       "sources": {
         "encar": "record.loan",
-        "kbcha": "detail ьХХыеШ"
+        "kbcha": "detail 압류"
       }
     },
     {
@@ -811,7 +811,7 @@
       "column": "seizure_status",
       "dtype": "enum",
       "category": "legal",
-      "description": "Seizure status (ьаАыЛ╣)",
+      "description": "Seizure status (저당)",
       "required": false,
       "filterable": true,
       "tracked": true,
@@ -830,7 +830,7 @@
       ],
       "sources": {
         "encar": "record.robberCnt",
-        "kbcha": "detail ьаАыЛ╣"
+        "kbcha": "detail 저당"
       }
     },
     {
@@ -838,7 +838,7 @@
       "column": "tax_paid",
       "dtype": "bool",
       "category": "legal",
-      "description": "Whether taxes are paid (ьД╕ъ╕Иып╕ыВй)",
+      "description": "Whether taxes are paid (세금미납)",
       "required": false,
       "filterable": true,
       "tracked": false,
@@ -850,7 +850,7 @@
         "is_not_null"
       ],
       "sources": {
-        "kbcha": "detail ьД╕ъ╕Иып╕ыВй"
+        "kbcha": "detail 세금미납"
       }
     },
     {
@@ -881,7 +881,7 @@
       "category": "condition",
       "description": "Non-structural outer damage",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -982,7 +982,7 @@
       ],
       "sources": {
         "encar": "record.ownerChangeCnt",
-        "kbcha": "detail ьЖМьЬаьЮРы│Аъ▓╜"
+        "kbcha": "detail 소유자변경"
       }
     },
     {
@@ -1019,7 +1019,7 @@
       "category": "specs",
       "description": "Number of seats",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -1166,7 +1166,7 @@
       "category": "specs",
       "description": "Paid / optional extras",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -1186,7 +1186,7 @@
       "category": "condition",
       "description": "Warranty coverage text",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -1263,7 +1263,7 @@
       "category": "dealer",
       "description": "Dealer geographic location",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -1286,7 +1286,7 @@
       "category": "dealer",
       "description": "Dealer phone",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [
@@ -1309,7 +1309,7 @@
       "category": "dealer",
       "description": "Free-form dealer comment",
       "required": false,
-      "filterable": false,
+      "filterable": true,
       "tracked": false,
       "enum_values": null,
       "operators": [

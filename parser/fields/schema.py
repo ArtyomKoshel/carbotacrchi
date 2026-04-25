@@ -8,7 +8,9 @@ The Laravel admin panel can fetch this JSON to render the filter-rule form:
 
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from typing import Any
 
 from .registry import FIELDS, FieldSpec
@@ -44,5 +46,16 @@ def schema_json(indent: int | None = 2) -> str:
 
 
 if __name__ == "__main__":
-    # Allow `python -m fields.schema > fields.json` for quick export.
-    print(schema_json())
+    parser = argparse.ArgumentParser(description="Export field schema as JSON")
+    parser.add_argument("-o", "--output", help="Output file path (default: stdout)")
+    args = parser.parse_args()
+
+    json_str = schema_json()
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(json_str)
+    else:
+        # Write to stdout with UTF-8 encoding
+        sys.stdout.reconfigure(encoding="utf-8")
+        print(json_str)
