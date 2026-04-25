@@ -228,13 +228,15 @@ class ParserLifecycle(Protocol):
 
 ### 3.4 Конкретные рефакторинги
 
-- **`RunResult` dataclass** в `parsers/base.py` — оба парсера возвращают одинаковую структуру
-- **`PhaseResult`** — breakdown по фазам; admin UI может показать таймлайн
-- **`ProgressUpdate`** — единый формат прогресса с `phase` + `total_progress`; job_worker не интерпретирует "page" по-разному
-- **`ParallelFetcher`** в `_shared/` — общий ThreadPool + retry + backoff (сейчас дублируется)
-- **`NormalizationPipeline`** в `_shared/` — fuel → trans → body → drive → color → lien/seizure
-- **Вынести `upsert_batch`** из `kbcha/enricher.py` обратно в `kbcha/__init__.py`
-- **Единый delist порог** — настраиваемый per-source в конфиге (не хардкод 95% vs 80%)
+- ✅ **`RunResult` dataclass** в `parsers/base.py` — оба парсера возвращают одинаковую структуру
+- ✅ **`PhaseResult`** — breakdown по фазам; admin UI может показать таймлайн
+- ✅ **`ProgressUpdate`** — единый формат прогресса с `phase` + `total_progress`; job_worker не интерпретирует "page" по-разному
+- **`ParallelFetcher`** в `_shared/` — общий ThreadPool + retry + backoff (сейчас дублируется) *(deferred — low priority)*
+- **`NormalizationPipeline`** в `_shared/` — fuel → trans → body → drive → color → lien/seizure *(deferred — low priority)*
+- ✅ **`upsert_batch` в KBCha** — уже вызывается из main thread (не из ThreadPool workers); перенос не нужен
+- ✅ **Единый delist порог** — Config.ENCAR_DELIST_COVERAGE / KBCHA_DELIST_COVERAGE (env-var override)
+- ✅ **`init_stats()`** — оба парсера используют base-class init_stats() вместо ad-hoc dict
+- ✅ **Phase tracking** — search/inspect/delist phases tracked + logged в [STAT] summary
 
 ---
 

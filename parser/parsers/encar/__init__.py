@@ -691,7 +691,7 @@ def _enrich_from_sellingpoint(lot: CarLot, sp: dict, norm: EncarNormalizer) -> N
 
 
 class EncarParser(AbstractParser):
-    MIN_DELIST_COVERAGE = 95.0  # Encar API total is reliable → stricter threshold
+    MIN_DELIST_COVERAGE = Config.ENCAR_DELIST_COVERAGE
 
     def __init__(self, repo: LotRepository):
         super().__init__(repo)
@@ -893,17 +893,10 @@ class EncarParser(AbstractParser):
         maker_filter: str | None = None,
         on_page_callback: Callable | None = None,
         checkpoint: dict | None = None,
-    ) -> int:
+    ) -> dict:
         source = _SOURCE
         run_start = _time.monotonic()
-        stats = {
-            "total": 0, "new": 0, "updated": 0, "errors": 0,
-            "pause_time": 0.0,       # total seconds spent in sleeps/delays
-            "enrich_time": 0.0,      # total seconds in enrichment
-            "search_time": 0.0,      # total seconds in search/pagination
-            "error_types": {},       # { "410": 3, "ProxyError": 1, ... }
-            "error_log": [],         # last N error messages for display
-        }
+        stats = self.init_stats()
 
         pages = max_pages or 9999  # 0 / None = all pages
 
@@ -918,6 +911,8 @@ class EncarParser(AbstractParser):
         seen_ids: set[str] = set()
 
         api_total: int = 0  # total listings reported by Encar API
+
+        _search_phase = self.start_phase("search")
 
         if maker_filter or max_pages:
             query = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker_filter}.)" if maker_filter else "(And.Hidden.N._.CarType.A.)"
@@ -1045,20 +1040,24 @@ class EncarParser(AbstractParser):
                 f"Phase 1 API total: {api_total:,} | Processed so far: {stats['total']:,}"
             )
 
+        self.end_phase(_search_phase, lots_out=stats["total"], errors=stats.get("errors", 0))
+
         elapsed = _time.monotonic() - run_start
 
         db_count = self.repo.count_active(source)
 
-        # Use base-class delist (respects MIN_DELIST_COVERAGE = 95%)
+        # ── Delist phase ─────────────────────────────────────────────────
+        _delist_phase = self.start_phase("delist", lots_in=len(seen_ids))
         stale = self.delist_if_complete(seen_ids, reference_total=api_total, grace_hours=1)
+        self.end_phase(_delist_phase, lots_out=stale)
 
         self._client.close()
 
-        # Use base-class summary emitter (consistent [STAT] format + dict)
-        return self.finalize_summary(
+        result = self.finalize_summary(
             elapsed, stats, seen_ids,
             api_total=api_total, stale=stale, db_count=db_count,
         )
+        return result.to_dict()
 
     def _enrich_batch(self, lots: list[CarLot], stats: dict) -> None:
         if not lots:

@@ -45,3 +45,7 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
     REQUEST_DELAY = float(os.getenv("REQUEST_DELAY", "2.0"))
+
+    # Delist coverage thresholds (percent)
+    ENCAR_DELIST_COVERAGE = float(os.getenv("ENCAR_DELIST_COVERAGE", "95"))
+    KBCHA_DELIST_COVERAGE = float(os.getenv("KBCHA_DELIST_COVERAGE", "80"))

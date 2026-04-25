@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class KBChaParser(AbstractParser):
+    MIN_DELIST_COVERAGE = Config.KBCHA_DELIST_COVERAGE
+
     def __init__(self, repo: LotRepository):
         super().__init__(repo)
         self._client = KBChaClient()
@@ -125,19 +127,7 @@ class KBChaParser(AbstractParser):
     ) -> dict:
         source = self.get_source_key()
         run_start = _time.monotonic()
-        stats = {
-            "total": 0,
-            "new": 0,
-            "updated": 0,
-            "detail_fetched": 0,
-            "errors": 0,
-            "pause_time": 0.0,
-            "enrich_time": 0.0,
-            "search_time": 0.0,
-            "inspect_time": 0.0,
-            "error_types": {},
-            "error_log": [],
-        }
+        stats = self.init_stats(detail_fetched=0, inspect_time=0.0)
 
         effective_pages = max_pages or 9999  # 0 / None = all pages
 
@@ -189,6 +179,8 @@ class KBChaParser(AbstractParser):
         maker_stats: dict[str, int] = {}
         all_lots: list[CarLot] = []
         done_makers: list[str] = list(completed_makers)
+
+        _search_phase = self.start_phase("search", lots_in=site_api_total)
 
         for maker_code, maker_name in makers.items():
             if stats.get("_cancelled"):
@@ -244,13 +236,24 @@ class KBChaParser(AbstractParser):
             done_makers.append(maker_code)
             stats["_checkpoint"] = {"completed_makers": done_makers}
 
+        self.end_phase(_search_phase, lots_out=len(all_lots), errors=stats.get("errors", 0))
+
+        # ── Inspection phase ─────────────────────────────────────────────
+        _insp_phase = self.start_phase("inspect", lots_in=len(all_lots))
+        _t_insp = _time.monotonic()
+        self._enricher.enrich_inspections(all_lots, stats, on_page_callback=on_page_callback)
+        stats["inspect_time"] = stats.get("inspect_time", 0.0) + (_time.monotonic() - _t_insp)
+        self.end_phase(_insp_phase, lots_out=len(all_lots), errors=stats.get("errors", 0) - (_search_phase.errors or 0))
+
         elapsed = _time.monotonic() - run_start
         api_total = sum(c for (_, c) in maker_stats.values()) if maker_stats else 0
         db_count = self.repo.count_active(source)
 
-        # Use base-class delist (respects MIN_DELIST_COVERAGE = 80%)
+        # ── Delist phase ─────────────────────────────────────────────────
+        _delist_phase = self.start_phase("delist", lots_in=len(seen_ids))
         ref_total = api_total or len(existing_ids) or stats["total"]
         stale = self.delist_if_complete(seen_ids, reference_total=ref_total, grace_hours=1)
+        self.end_phase(_delist_phase, lots_out=stale)
 
         if maker_stats:
             logger.info(f"[STAT] [{source}] Per-maker breakdown:")
@@ -270,8 +273,8 @@ class KBChaParser(AbstractParser):
             elapsed, stats, seen_ids,
             api_total=api_total or ref_total, stale=stale, db_count=db_count,
         )
-        result["maker_breakdown"] = maker_stats
-        return result
+        result.extra["maker_breakdown"] = maker_stats
+        return result.to_dict()
 
     def _fetch_maker(
         self,
