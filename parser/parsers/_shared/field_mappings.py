@@ -369,28 +369,6 @@ FIELD_MAPPINGS: list[FieldMapping] = [
         },
     ),
 
-    # ── Dealer info ─────────────────────────────────────────────────────────
-    FieldMapping(
-        attribute="dealer_name", db_column="dealer_name",
-        extractions={
-            "encar": SourceExtraction("contact.userId",          "copy"),
-            "kbcha": SourceExtraction("dealer cell",             "copy"),
-        },
-    ),
-    FieldMapping(
-        attribute="dealer_company", db_column="dealer_company",
-        extractions={
-            "encar": SourceExtraction("partnership.dealer.firm.name", "copy"),
-            "kbcha": SourceExtraction("dealer company cell",     "copy"),
-        },
-    ),
-    FieldMapping(
-        attribute="dealer_phone", db_column="dealer_phone",
-        extractions={
-            "encar": SourceExtraction("contact.no",              "copy"),
-        },
-    ),
-
     # ── Opaque blob ─────────────────────────────────────────────────────────
     FieldMapping(
         attribute="raw_data", db_column="raw_data",

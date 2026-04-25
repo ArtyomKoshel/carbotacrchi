@@ -48,7 +48,6 @@ class KBChaDetailParser:
         self._parse_options(soup, result)
         self._parse_paid_options(soup, result)
         self._parse_warranty(soup, result)
-        self._parse_dealer(soup, result)
         self._parse_trim_from_title(soup, result)
         self._parse_inspection_button(soup, result)
         self._parse_photos(soup, result)
@@ -301,50 +300,7 @@ class KBChaDetailParser:
         if options:
             result["options"] = options
 
-    # ── Dealer (판매자정보) ─────────────────────────────────────────────────
-
-    def _parse_dealer(self, soup: BeautifulSoup, result: dict) -> None:
-        text = soup.get_text()
-
-        phone_match = re.search(r"(0507-\d{4}-\d{4}|0\d{1,2}-\d{3,4}-\d{4})", text)
-        if phone_match:
-            result["dealer_phone"] = phone_match.group(1)
-
-        dealer_el = soup.find(string=re.compile(r"딜러$"))
-        if dealer_el and dealer_el.parent:
-            name_text = dealer_el.parent.get_text(strip=True)
-            name = name_text.replace("딜러", "").strip()
-            if name and len(name) < 20:
-                result["dealer_name"] = name
-
-        company_el = soup.find(string=re.compile(r"상사명\s*:"))
-        if company_el:
-            m = re.search(r"상사명\s*:\s*(.+)", company_el.get_text(strip=True))
-            if m:
-                result["dealer_company"] = m.group(1).strip()
-
-        addr_el = soup.find(string=re.compile(r"주소\s*:"))
-        if addr_el:
-            m = re.search(r"주소\s*:\s*(.+)", addr_el.get_text(strip=True))
-            if m:
-                result["dealer_location"] = m.group(1).strip()
-
-        desc_el = soup.find(string=re.compile(r"판매자\s*설명"))
-        if desc_el:
-            node = desc_el.parent
-            for _ in range(5):
-                if not node:
-                    break
-                sibling = node.find_next_sibling()
-                if sibling:
-                    desc = sibling.get_text(strip=True)
-                    if desc and 5 < len(desc) < 500 and "KB차차차" not in desc:
-                        desc = re.sub(r"[？?]{2,}", " ", desc).strip()
-                        desc = re.sub(r"\s+", " ", desc).strip()
-                        if desc:
-                            result["dealer_description"] = desc
-                        break
-                node = node.parent
+    # ── Dealer (판매자정보) — REMOVED: dealer data no longer stored ────────
 
     # ── Inspection button (성능점검 vs-pill) ─────────────────────────────────
     # Three sub-types depending on data-link-url:

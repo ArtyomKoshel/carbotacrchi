@@ -81,11 +81,6 @@ class ComputeFieldCoverage extends Command
         ['field' => 'location',          'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'image_url',         'pred' => "X IS NOT NULL AND X <> ''"],
 
-        // Dealer
-        ['field' => 'dealer_name',       'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'dealer_company',    'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'dealer_phone',      'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'dealer_location',   'pred' => "X IS NOT NULL AND X <> ''"],
     ];
 
     /**

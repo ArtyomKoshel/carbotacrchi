@@ -74,12 +74,6 @@ class CarLot:
     sell_type: str | None = None
     sell_type_raw: str | None = None  # raw value from source for debugging
 
-    # Dealer info
-    dealer_name: str | None = None
-    dealer_company: str | None = None
-    dealer_location: str | None = None
-    dealer_phone: str | None = None
-    dealer_description: str | None = None
     warranty_text: str | None = None
 
     # Photos — transit field: repository upserts these into `lot_photos`
@@ -163,11 +157,6 @@ class CarLot:
             "registration_date": self.registration_date,
             "options": options_json,
             "paid_options": paid_options_json,
-            "dealer_name": self.dealer_name,
-            "dealer_company": self.dealer_company,
-            "dealer_location": self.dealer_location,
-            "dealer_phone": self.dealer_phone,
-            "dealer_description": self.dealer_description,
             "warranty_text": self.warranty_text,
             "sell_type": self.sell_type,
             "sell_type_raw": self.sell_type_raw,

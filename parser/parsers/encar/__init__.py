@@ -146,16 +146,6 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
 
     if contact.get("address"):
         lot.location = contact["address"]
-        if not lot.dealer_location:
-            lot.dealer_location = contact["address"]
-    if contact.get("no"):
-        lot.dealer_phone = contact["no"]
-    if contact.get("userId"):
-        lot.dealer_name = contact["userId"]
-    dealer = (partner or {}).get("dealer") or {}
-    firm = dealer.get("firm") or {}
-    if firm.get("name"):
-        lot.dealer_company = firm["name"]
 
     if manage.get("registDateTime"):
         lot.registration_date = manage["registDateTime"][:10]

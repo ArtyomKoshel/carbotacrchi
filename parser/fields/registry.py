@@ -367,30 +367,6 @@ FIELDS: list[FieldSpec] = [
         sources={"kbcha": "warranty table"},
     ),
 
-    # ── Dealer info ──────────────────────────────────────────────────────────
-    FieldSpec(
-        name="dealer_name", dtype=FieldType.STRING, filterable=True,
-        category="dealer", description="Dealer or seller name",
-        sources={"encar": "contact.userId", "kbcha": "detail dealer"},
-    ),
-    FieldSpec(
-        name="dealer_company", dtype=FieldType.STRING, filterable=True,
-        category="dealer", description="Dealer company / firm",
-        sources={"encar": "partnership.dealer.firm.name", "kbcha": "detail dealer company"},
-    ),
-    FieldSpec(
-        name="dealer_location", dtype=FieldType.STRING, filterable=True, category="dealer",
-        description="Dealer geographic location",
-    ),
-    FieldSpec(
-        name="dealer_phone", dtype=FieldType.STRING, filterable=True, category="dealer",
-        description="Dealer phone",
-    ),
-    FieldSpec(
-        name="dealer_description", dtype=FieldType.TEXT, filterable=True, category="dealer",
-        description="Free-form dealer comment",
-    ),
-
     # ── Virtual fields (computed from inspections, not stored in lots) ───────
     FieldSpec(
         name="inspection_count", dtype=FieldType.INT, filterable=True,

@@ -87,8 +87,6 @@ class KBChachaProvider extends AbstractProvider
                 totalLossHistory: isset($raw['total_loss_history']) ? (bool) $raw['total_loss_history'] : null,
                 ownersCount:      isset($raw['owners_count'])      ? (int)  $raw['owners_count']      : null,
                 plateNumber:      $raw['plate_number'] ?? null,
-                dealerName:       $raw['dealer_name']  ?? null,
-                dealerPhone:      $raw['dealer_phone'] ?? null,
                 warrantyText:     $raw['warranty_text']   ?? null,
                 paidOptions:      isset($raw['paid_options']) ? (is_array($raw['paid_options']) ? $raw['paid_options'] : json_decode($raw['paid_options'], true)) : null,
                 lienStatus:       $raw['lien_status']     ?? null,
@@ -104,9 +102,6 @@ class KBChachaProvider extends AbstractProvider
                 seatCount:        isset($raw['seat_count'])      ? (int)  $raw['seat_count']      : null,
                 isDomestic:       isset($raw['is_domestic'])     ? (bool) $raw['is_domestic']     : null,
                 importType:       $raw['import_type']   ?? null,
-                dealerCompany:    $raw['dealer_company']    ?? null,
-                dealerLocation:   $raw['dealer_location']   ?? null,
-                dealerDescription: $raw['dealer_description'] ?? null,
                 registrationDate: $raw['registration_date'] ?? null,
             );
         }

@@ -38,8 +38,6 @@ readonly class LotDTO
         public ?bool   $totalLossHistory    = null,
         public ?int    $ownersCount         = null,
         public ?string $plateNumber         = null,
-        public ?string $dealerName          = null,
-        public ?string $dealerPhone         = null,
         public ?string $warrantyText         = null,
         public ?array  $paidOptions          = null,
         public ?string $lienStatus          = null,
@@ -55,9 +53,6 @@ readonly class LotDTO
         public ?int    $seatCount           = null,
         public ?bool   $isDomestic          = null,
         public ?string $importType          = null,
-        public ?string $dealerCompany       = null,
-        public ?string $dealerLocation      = null,
-        public ?string $dealerDescription   = null,
         public ?string $registrationDate    = null,
     ) {}
 
@@ -97,8 +92,6 @@ readonly class LotDTO
             'totalLossHistory' => $this->totalLossHistory,
             'ownersCount'      => $this->ownersCount,
             'plateNumber'      => $this->plateNumber,
-            'dealerName'       => $this->dealerName,
-            'dealerPhone'      => $this->dealerPhone,
             'warrantyText'     => $this->warrantyText,
             'paidOptions'      => $this->paidOptions,
             'lienStatus'       => $this->lienStatus,
@@ -114,9 +107,6 @@ readonly class LotDTO
             'seatCount'        => $this->seatCount,
             'isDomestic'       => $this->isDomestic,
             'importType'       => $this->importType,
-            'dealerCompany'    => $this->dealerCompany,
-            'dealerLocation'   => $this->dealerLocation,
-            'dealerDescription' => $this->dealerDescription,
             'registrationDate' => $this->registrationDate,
         ];
     }

@@ -352,7 +352,7 @@ class ParserLifecycle(Protocol):
 | `document` | **Удалить** (ни один источник) |
 | `title` (legal) | **Переименовать** в `condition_title` или **удалить** (всегда "Clean") |
 
-### 4.11 Удаление дилерской информации
+### 4.11 ✅ Удаление дилерской информации
 
 **Задача**: полностью убрать хранение и парсинг данных дилера.
 
@@ -577,8 +577,8 @@ DB-путь уже содержит все новые колонки (`sell_type
 ### 6.1 ✅ Баг: autocafe `cert_no = "82"`
 Почти все autocafe-записи имеют `cert_no: "82"` — **исправлено**: skip short nums, добавлен OnCarNo.
 
-### 6.2 `kb_paper` — нулевой парсинг
-`parsed_count: 1`, `parsed_fields: ["cert_no"]` для большинства. Парсер не работает для checkpaper.iwsp.co.kr.
+### 6.2 ⏭️ `kb_paper` — нулевой парсинг (SKIPPED — low ROI)
+`parsed_count: 1`, `parsed_fields: ["cert_no"]` для большинства. Парсер не работает для checkpaper.iwsp.co.kr. Пропущено — основные данные приходят через carmon/autocafe.
 
 ### 6.3 ✅ Бойлерплейт в `notes`
 autocafe записи содержат одинаковый юридический текст — **добавлен фильтр _BOILERPLATE**.
