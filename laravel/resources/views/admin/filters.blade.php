@@ -31,7 +31,7 @@
 <script>
   window.__FIELD_SCHEMA__ = @json($schema['fields'] ?? []);
   window.__OPERATOR_LABELS__ = @json($operatorLabels);
-  window.__PHASE_LABELS__ = @json($phaseLabels ?? {'pre': 'Pre-filter', 'post': 'Post-filter'});
+  window.__PHASE_LABELS__ = @json($phaseLabels ?? ['pre' => 'Pre-filter', 'post' => 'Post-filter']);
 </script>
 
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6"

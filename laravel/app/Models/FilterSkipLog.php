@@ -30,8 +30,8 @@ class FilterSkipLog extends Model
      */
     public function getLotUrlAttribute(): string
     {
-        if ($this->lot_url) {
-            return $this->lot_url;
+        if (!empty($this->attributes['lot_url'])) {
+            return $this->attributes['lot_url'];
         }
 
         if ($this->source === 'encar') {
