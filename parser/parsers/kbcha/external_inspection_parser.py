@@ -470,6 +470,12 @@ def compare_report_vs_lot(report: dict, lot_data: dict) -> dict:
     """
     comparisons = {}
 
+    def _norm_str(val):
+        """Normalize string: lowercase and strip."""
+        if isinstance(val, str):
+            return val.lower().strip()
+        return val
+
     def _cmp(field: str, report_key: str, lot_key: str, normalize=None):
         rv = report.get(report_key)
         lv = lot_data.get(lot_key)
@@ -482,8 +488,8 @@ def compare_report_vs_lot(report: dict, lot_data: dict) -> dict:
 
     _cmp("vin", "vin", "vin", str.upper)
     _cmp("year", "report_year", "year")
-    _cmp("fuel", "report_fuel", "fuel")
-    _cmp("transmission", "report_transmission", "transmission")
+    _cmp("fuel", "report_fuel", "fuel", _norm_str)
+    _cmp("transmission", "report_transmission", "transmission", _norm_str)
     _cmp("plate", "report_plate", "plate_number")
     _cmp("accident", "has_accident", "has_accident")
     _cmp("flood", "has_flood", "flood_history")

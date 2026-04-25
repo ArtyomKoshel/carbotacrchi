@@ -577,8 +577,8 @@ autocafe записи содержат одинаковый юридически
 ### 6.5 ✅ Вынос данных из `raw_data` inspections
 Добавлены колонки: `my_accident_cost`, `other_accident_cost`, `has_recall` — миграция + парсер.
 
-### 6.6 Comparison QA
-Нормализовать case при сравнении (fuel: `Diesel` vs `diesel`). Показывать расхождения accident/mileage в admin.
+### 6.6 ✅ Comparison QA
+✅ Добавлена нормализация case для fuel/transmission в compare_report_vs_lot (lowercase + strip).
 
 ---
 
