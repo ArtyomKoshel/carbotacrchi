@@ -48,6 +48,7 @@ class FilterEngine:
             self._rules = RuleSet(rules=list(rules))
         self.stats: dict[str, int] = defaultdict(int)
         self.by_rule: dict[str, int] = defaultdict(int)
+        self._skip_log_buffer: list[dict] = []
 
     def evaluate(self, lot) -> FilterResult:
         """Evaluate all applicable rules and return the strongest resulting action.
@@ -78,6 +79,7 @@ class FilterEngine:
                 if rule.evaluate(lot):
                     matched.append(rule)
                     self.by_rule[rule.name] += 1
+                    self._log_skip_if_needed(lot, rule)
                     if rule.action == ACTION_ALLOW:
                         self.stats[ACTION_ALLOW] += 1
                         self._apply_flag_tags(lot, matched)
@@ -106,6 +108,7 @@ class FilterEngine:
                 matched.extend(group_rules)
                 for rule in group_rules:
                     self.by_rule[rule.name] += 1
+                    self._log_skip_if_needed(lot, rule)
                 # Check if any rule in the group is an allow — short-circuit
                 group_actions = [r.action for r in group_rules]
                 if ACTION_ALLOW in group_actions:
@@ -167,3 +170,41 @@ class FilterEngine:
     def reset_stats(self) -> None:
         self.stats.clear()
         self.by_rule.clear()
+        self._skip_log_buffer.clear()
+
+    def _log_skip_if_needed(self, lot, rule: Rule) -> None:
+        """If rule action is skip/mark_inactive, add to buffer for DB logging."""
+        if rule.action not in (ACTION_SKIP, ACTION_MARK_INACTIVE):
+            return
+        source = getattr(lot, "source", None) or ""
+        source_id = getattr(lot, "id", None) or ""
+        lot_url = getattr(lot, "lot_url", None) or ""
+        field_value = rule.extract(lot)
+        # Convert field_value to string for storage
+        if isinstance(field_value, (list, tuple, set)):
+            field_value_str = str(list(field_value))
+        else:
+            field_value_str = str(field_value) if field_value is not None else None
+
+        self._skip_log_buffer.append({
+            "source": source,
+            "source_id": source_id,
+            "lot_url": lot_url,
+            "rule_name": rule.name,
+            "rule_id": getattr(rule, "db_id", None),  # Set if loaded from DB
+            "action": rule.action,
+            "field_name": rule.field,
+            "field_value": field_value_str,
+        })
+
+    def flush_skip_log(self, repo) -> int:
+        """Bulk insert skip log entries to database."""
+        if not self._skip_log_buffer:
+            return 0
+        try:
+            count = repo.insert_filter_skip_log(self._skip_log_buffer)
+            self._skip_log_buffer.clear()
+            return count
+        except Exception as e:
+            logger.warning(f"[filter] flush_skip_log failed: {e}")
+            return 0

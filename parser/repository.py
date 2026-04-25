@@ -82,9 +82,12 @@ class LotRepository:
         if filtered_counts:
             rule_summary = ", ".join(f"{n}={c}" for n, c in sorted(filtered_counts.items(), key=lambda kv: -kv[1]))
             logger.info(
-                f"[filter] skipped {sum(filtered_counts.values())}/{len(lots)} lots "
-                f"({rule_summary})"
+                f"[filter] skipped {len(skipped_ids)} lots by rules: {rule_summary}"
             )
+
+        # Flush skip log to database
+        engine.flush_skip_log(self)
+
         return kept
 
     def _deactivate_existing(self, lot_ids: list[str], reason: str = "filter") -> int:
@@ -539,6 +542,30 @@ class LotRepository:
         except Exception as e:
             conn.rollback()
             logger.warning(f"[DB] upsert_photos failed for {lot_id}: {type(e).__name__}: {e}")
+            return 0
+
+    def insert_filter_skip_log(self, entries: list[dict]) -> int:
+        """Bulk insert filter skip log entries."""
+        if not entries:
+            return 0
+        conn = self._get_conn()
+        sql = """
+            INSERT INTO filter_skip_log (source, source_id, lot_url, rule_name, rule_id, action, field_name, field_value)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        rows = [
+            (e["source"], e["source_id"], e["lot_url"], e["rule_name"],
+             e["rule_id"], e["action"], e["field_name"], e["field_value"])
+            for e in entries
+        ]
+        try:
+            with conn.cursor() as cursor:
+                cursor.executemany(sql, rows)
+            conn.commit()
+            return len(rows)
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"[DB] insert_filter_skip_log failed: {type(e).__name__}: {e}")
             return 0
 
     def upsert_inspection(self, record: InspectionRecord) -> None:
