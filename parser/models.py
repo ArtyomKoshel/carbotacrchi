@@ -24,8 +24,6 @@ class CarLot:
     body_type: str | None = None
     drive_type: str | None = None
     engine_volume: float | None = None
-    fuel_economy: float | None = None
-    cylinders: int | None = None
     color: str | None = None
     seat_color: str | None = None
     trim: str | None = None
@@ -49,17 +47,13 @@ class CarLot:
     # Legal / registration status
     lien_status: str | None = None
     seizure_status: str | None = None
-    tax_paid: bool | None = None
 
     # Condition & history
-    damage: str | None = None
-    secondary_damage: str | None = None
     has_accident: bool | None = None
     flood_history: bool | None = None
     total_loss_history: bool | None = None
     owners_count: int | None = None
     insurance_count: int | None = None
-    mileage_grade: str | None = None
 
     # Pricing
     retail_value: int | None = None
@@ -73,8 +67,6 @@ class CarLot:
     # Sales model (sale|lease|rental|business|under_contract|insurance_hide|auction)
     sell_type: str | None = None
     sell_type_raw: str | None = None  # raw value from source for debugging
-
-    warranty_text: str | None = None
 
     # Photos — transit field: repository upserts these into `lot_photos`
     # after upsert_batch and does NOT serialize them into raw_data.
@@ -127,8 +119,6 @@ class CarLot:
             "transmission": self.transmission,
             "fuel": self.fuel,
             "drive_type": self.drive_type,
-            "damage": self.damage,
-            "secondary_damage": self.secondary_damage,
             "has_accident": self.has_accident,
             "flood_history": self.flood_history,
             "owners_count": self.owners_count,
@@ -138,14 +128,10 @@ class CarLot:
             "color": self.color,
             "seat_color": self.seat_color,
             "trim": self.trim,
-            "cylinders": self.cylinders,
             "engine_volume": self.engine_volume,
-            "fuel_economy": self.fuel_economy,
             "lien_status": self.lien_status,
             "seizure_status": self.seizure_status,
-            "tax_paid": self.tax_paid,
             "total_loss_history": self.total_loss_history,
-            "mileage_grade": self.mileage_grade,
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
             "new_car_price_ratio": self.new_car_price_ratio,
@@ -157,7 +143,6 @@ class CarLot:
             "registration_date": self.registration_date,
             "options": options_json,
             "paid_options": paid_options_json,
-            "warranty_text": self.warranty_text,
             "sell_type": self.sell_type,
             "sell_type_raw": self.sell_type_raw,
             "seat_count": self.seat_count,

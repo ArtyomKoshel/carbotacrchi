@@ -155,12 +155,6 @@ FIELD_MAPPINGS: list[FieldMapping] = [
             "kbcha": SourceExtraction("주행거리 cell",            "KBChaNormalizer.parse_mileage()"),
         },
     ),
-    FieldMapping(
-        attribute="mileage_grade", db_column="mileage_grade",
-        extractions={
-            "kbcha": SourceExtraction("mileage-grade regex",   "MILEAGE_GRADE_PATTERN"),
-        },
-    ),
 
     # ── Technical specs (unified via BaseNormalizer) ───────────────────────
     FieldMapping(
@@ -197,18 +191,6 @@ FIELD_MAPPINGS: list[FieldMapping] = [
         extractions={
             "encar": SourceExtraction("spec.displacement",     "round(cc / 1000, 1) — liters"),
             "kbcha": SourceExtraction("배기량 cell (cc)",         "KBChaNormalizer.parse_engine_cc() — liters"),
-        },
-    ),
-    FieldMapping(
-        attribute="fuel_economy", db_column="fuel_economy",
-        extractions={
-            "kbcha": SourceExtraction("연비 cell",               "KBChaNormalizer.parse_fuel_economy()"),
-        },
-    ),
-    FieldMapping(
-        attribute="cylinders", db_column="cylinders",
-        extractions={
-            "kbcha": SourceExtraction("engine_str (parsed)",   "KBChaNormalizer.parse_cylinders()"),
         },
     ),
     FieldMapping(
@@ -288,26 +270,8 @@ FIELD_MAPPINGS: list[FieldMapping] = [
             "kbcha": SourceExtraction("저당 cell",                "copy (Korean text)"),
         },
     ),
-    FieldMapping(
-        attribute="tax_paid", db_column="tax_paid",
-        extractions={
-            "kbcha": SourceExtraction("세금미납 cell",            "bool('없음')"),
-        },
-    ),
 
     # ── Condition & accident history ────────────────────────────────────────
-    FieldMapping(
-        attribute="damage", db_column="damage",
-        extractions={
-            "kbcha": SourceExtraction("structural panels in report", "comma-joined panel names"),
-        },
-    ),
-    FieldMapping(
-        attribute="secondary_damage", db_column="secondary_damage",
-        extractions={
-            "kbcha": SourceExtraction("outer panels in report",  "comma-joined"),
-        },
-    ),
     FieldMapping(
         attribute="has_accident", db_column="has_accident",
         extractions={
@@ -360,12 +324,6 @@ FIELD_MAPPINGS: list[FieldMapping] = [
         attribute="paid_options", db_column="paid_options",
         extractions={
             "kbcha": SourceExtraction("paid options section",    "regex + json array"),
-        },
-    ),
-    FieldMapping(
-        attribute="warranty_text", db_column="warranty_text",
-        extractions={
-            "kbcha": SourceExtraction("warranty regex",          "WARRANTY_PATTERN match"),
         },
     ),
 

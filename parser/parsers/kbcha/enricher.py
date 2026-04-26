@@ -333,7 +333,7 @@ class KBChaEnricher:
             "parsed": 0, "photo_only": 0, "no_button": 0,
             "url_saved": 0, "other": 0, "errors": 0,
         }
-        fill = {"vin": 0, "accident": 0, "flood": 0, "panels": 0, "mileage": 0}
+        fill = {"vin": 0, "accident": 0, "flood": 0, "mileage": 0}
 
         for i, lot in enumerate(lots):
             insp_type = lot.raw_data.get("inspection_type")
@@ -439,7 +439,6 @@ class KBChaEnricher:
         logger.info(f"[STAT] [{self._source}]   VIN:      {fill['vin']}/{len(lots)} ({fill['vin'] / total * 100:.0f}%)")
         logger.info(f"[STAT] [{self._source}]   accident: {fill['accident']}/{len(lots)} ({fill['accident'] / total * 100:.0f}%)")
         logger.info(f"[STAT] [{self._source}]   flood:    {fill['flood']}/{len(lots)} ({fill['flood'] / total * 100:.0f}%)")
-        logger.info(f"[STAT] [{self._source}]   panels:   {fill['panels']}/{len(lots)} ({fill['panels'] / total * 100:.0f}%)")
         logger.info(f"[STAT] [{self._source}]   mileage:  {fill['mileage']}/{len(lots)} ({fill['mileage'] / total * 100:.0f}%)")
 
         # Post-filters: evaluate rules that depend on inspection data
@@ -460,8 +459,6 @@ class KBChaEnricher:
             fill["accident"] += 1
         if lot.flood_history is not None:
             fill["flood"] += 1
-        if lot.damage or lot.secondary_damage:
-            fill["panels"] += 1
         if lot.raw_data.get("inspection_mileage"):
             fill["mileage"] += 1
 
@@ -538,10 +535,6 @@ class KBChaEnricher:
         damaged = parsed.get("damaged_panels") or []
         structural = [p["panel"] for p in damaged if p.get("rank") == "structural"]
         outer = [p["panel"] for p in damaged if p.get("rank") == "outer"]
-        if structural and not lot.damage:
-            lot.damage = ", ".join(structural)
-        if outer and not lot.secondary_damage:
-            lot.secondary_damage = ", ".join(outer)
 
         # ── Build InspectionRecord ──────────────────────────────────────
         details_payload = dict(parsed.get("details") or {"provider": insp_type})
@@ -626,14 +619,6 @@ class KBChaEnricher:
 
         structural = insp.get("damaged_structural_panels", [])
         outer = insp.get("damaged_outer_panels", [])
-
-        # Set damage fields on the lot
-        if structural:
-            lot.damage = ", ".join(structural)
-            pass  # damage from structural panels
-        if outer:
-            lot.secondary_damage = ", ".join(outer)
-            pass  # secondary_damage from outer panels
         kb_insp_url = (
             f"https://www.kbchachacha.com/public/layer/car/check/info.kbc"
             f"?layerId=layerCarCheckInfo&carSeq={car_seq}&diagCarYn=N&diagCarSeq=&premiumCarYn=N"

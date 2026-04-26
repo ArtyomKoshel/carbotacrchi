@@ -6,7 +6,7 @@ values are identical across parsers.
 
 Keeps KBCha-specific complex logic in this file:
   - `parse_title()` — extract model/generation/engine_str/trim/drive from Korean
-  - `parse_year()`, `parse_mileage()`, `parse_fuel_economy()`, `parse_cylinders()`
+  - `parse_year()`, `parse_mileage()`
 """
 
 from __future__ import annotations
@@ -273,35 +273,6 @@ class KBChaNormalizer(BaseNormalizer):
 
     def parse_mileage(self, text: str) -> int:
         return self.parse_int(text)
-
-    def parse_fuel_economy(self, value: str | None) -> float | None:
-        if not value:
-            return None
-        m = re.search(r"([\d.]+)", value)
-        if m:
-            try:
-                return float(m.group(1))
-            except ValueError:
-                return None
-        return None
-
-    def parse_cylinders(self, value: str | None) -> int | None:
-        """Parse cylinder count from Korean text like '4기통' or 'V6'."""
-        if not value:
-            return None
-        m = re.search(r"(\d+)\s*기통", value)
-        if m:
-            try:
-                return int(m.group(1))
-            except ValueError:
-                pass
-        m = re.search(r"V(\d+)", value, re.IGNORECASE)
-        if m:
-            try:
-                return int(m.group(1))
-            except ValueError:
-                pass
-        return None
 
     def parse_price_man(self, text: str) -> int:
         m = re.search(r"([\d,]+)", text)

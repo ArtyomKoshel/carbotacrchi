@@ -81,7 +81,7 @@ class KBChaParser(AbstractParser):
 
         # Step 2: capture key fields before detail re-fetch
         _DIFF_KEYS = ("inspection_type", "mpark_url", "autocafe_url", "inspection_url",
-                      "inspection_no", "mileage_grade")
+                      "inspection_no")
         before: dict[str, dict] = {
             lot.id: {
                 "model": lot.model,

@@ -41,7 +41,6 @@ class ComputeFieldCoverage extends Command
 
         // Odometer
         ['field' => 'mileage',           'pred' => "X IS NOT NULL AND X > 0"],
-        ['field' => 'mileage_grade',     'pred' => "X IS NOT NULL AND X <> ''"],
 
         // Technical specs
         ['field' => 'fuel',              'pred' => "X IS NOT NULL AND X <> ''"],
@@ -49,8 +48,6 @@ class ComputeFieldCoverage extends Command
         ['field' => 'body_type',         'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'drive_type',        'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'engine_volume',     'pred' => "X IS NOT NULL AND X > 0"],
-        ['field' => 'fuel_economy',      'pred' => "X IS NOT NULL AND X > 0"],
-        ['field' => 'cylinders',         'pred' => "X IS NOT NULL AND X > 0"],
         ['field' => 'color',             'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'seat_color',        'pred' => "X IS NOT NULL AND X <> ''"],
 
@@ -61,7 +58,6 @@ class ComputeFieldCoverage extends Command
         // Legal
         ['field' => 'lien_status',       'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'seizure_status',    'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'tax_paid',          'pred' => "X IS NOT NULL"],
 
         // Condition & history
         ['field' => 'has_accident',      'pred' => "X IS NOT NULL"],
@@ -69,9 +65,6 @@ class ComputeFieldCoverage extends Command
         ['field' => 'total_loss_history','pred' => "X IS NOT NULL"],
         ['field' => 'owners_count',      'pred' => "X IS NOT NULL"],
         ['field' => 'insurance_count',   'pred' => "X IS NOT NULL"],
-        ['field' => 'damage',            'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'secondary_damage',  'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'warranty_text',     'pred' => "X IS NOT NULL AND X <> ''"],
 
         // Options
         ['field' => 'options',           'pred' => "X IS NOT NULL AND JSON_LENGTH(X) > 0"],
@@ -99,6 +92,26 @@ class ComputeFieldCoverage extends Command
             ? [$only]
             : DB::table('lots')->where('is_active', 1)->distinct()->pluck('source')->all();
 
+        $hiddenFields = array_values(array_filter(
+            config('admin.fields_hidden', []),
+            fn ($f) => is_string($f) && $f !== ''
+        ));
+        $hiddenSet = array_fill_keys($hiddenFields, true);
+
+        $checks = array_values(array_filter(
+            self::CHECKS,
+            fn (array $c) => !isset($hiddenSet[$c['field']])
+        ));
+        $joinedChecks = array_filter(
+            self::JOINED_CHECKS,
+            fn ($joinTable, $name) => !isset($hiddenSet[$name]),
+            ARRAY_FILTER_USE_BOTH
+        );
+        $activeFieldNames = array_merge(
+            array_map(fn (array $c) => $c['field'], $checks),
+            array_keys($joinedChecks)
+        );
+
         if (empty($sources)) {
             $this->warn('No active sources found in `lots`.');
             return self::SUCCESS;
@@ -109,6 +122,14 @@ class ComputeFieldCoverage extends Command
 
         foreach ($sources as $source) {
             $this->info("Computing coverage for source={$source} ...");
+
+            if (!empty($activeFieldNames)) {
+                DB::table('field_coverage_stats')
+                    ->where('source', $source)
+                    ->whereNotIn('field_name', $activeFieldNames)
+                    ->delete();
+            }
+
             $totalLots = (int) DB::table('lots')
                 ->where('source', $source)
                 ->where('is_active', 1)
@@ -122,7 +143,7 @@ class ComputeFieldCoverage extends Command
             // Build a single aggregated SELECT with SUM(predicate) per field.
             // This is O(N) — ONE full table scan per source, not N separate ones.
             $selects = [];
-            foreach (self::CHECKS as $c) {
+            foreach ($checks as $c) {
                 $col = $c['field'];
                 $pred = str_replace('X', "`{$col}`", $c['pred']);
                 $alias = $this->safeAlias($col);
@@ -134,7 +155,7 @@ class ComputeFieldCoverage extends Command
 
             // Insert / update one row per field
             $rows = [];
-            foreach (self::CHECKS as $c) {
+            foreach ($checks as $c) {
                 $alias = $this->safeAlias($c['field']);
                 $filled = (int) ($row[$alias] ?? 0);
                 $rows[] = [
@@ -148,7 +169,7 @@ class ComputeFieldCoverage extends Command
             }
 
             // Virtual / joined fields — lot_photos, lot_inspections.
-            foreach (self::JOINED_CHECKS as $name => $joinTable) {
+            foreach ($joinedChecks as $name => $joinTable) {
                 $filled = (int) DB::selectOne(
                     "SELECT COUNT(DISTINCT lot_id) AS c FROM {$joinTable} "
                     . "WHERE lot_id IN (SELECT id FROM lots WHERE source = ? AND is_active = 1)",

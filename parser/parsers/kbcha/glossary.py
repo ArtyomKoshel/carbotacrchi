@@ -120,7 +120,6 @@ INFO_FIELDS: dict[str, tuple[str, str | None]] = {
     "배기량":  ("engine_volume", "parse_engine_cc"),
     "차량색상": ("color",        "normalize_color"),
     "구동":   ("drive_type",    "normalize_drive_type"),
-    "연비":   ("fuel_economy",  "parse_fuel_economy"),
     # Parsed with custom logic (handled separately in _parse_info_table_fields)
     "연식":   ("year",          "_parse_year"),          # also sets registration_date
     "주행거리": ("mileage",       "_parse_mileage"),
@@ -134,7 +133,6 @@ INFO_FIELDS: dict[str, tuple[str, str | None]] = {
     "시트색상": ("seat_color",    "normalize_color"),
     "저당":   ("lien_status",   "normalize_lien"),
     "압류":   ("seizure_status", "normalize_seizure"),
-    "세금미납": ("tax_paid",      "_parse_tax"),
 }
 
 # ── History-section labels ────────────────────────────────────────────────────
@@ -143,13 +141,6 @@ HISTORY_BOOL_LABELS: dict[str, str] = {
     "전손이력": "total_loss_history",
     "침수이력": "flood_history",
 }
-
-# ── Mileage grade values ──────────────────────────────────────────────────────
-MILEAGE_GRADE_PATTERN = r"주행거리.*?대비\s*(많이짧음|짧음|보통|긴|많이긴)"
-
-# ── Warranty remaining pattern ────────────────────────────────────────────────
-# Matches e.g. '42,990km / 1개월 남음' near '제조사 보증'
-WARRANTY_PATTERN = r"(\d[\d,]*\s*km\s*/\s*\d+개월\s*남음|만료)"
 
 # ── Paid optional packages pattern ───────────────────────────────────────────
 # Matches section header then list items with price '패키지 380만원'
@@ -190,6 +181,3 @@ INSP_LABEL_VALID_PERIOD  = "검사유효기간"
 INSP_LABEL_VALID_PERIOD_NUM = "④"
 INSP_LABEL_INSPECTOR     = "성능"          # part of "성능점검자" th
 INSP_LABEL_INSPECTOR2    = "점검자"
-
-# ── Cylinders hint pattern ────────────────────────────────────────────────────
-CYLINDERS_PATTERN = r"(\d+)\s*기통"

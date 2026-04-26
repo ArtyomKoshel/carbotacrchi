@@ -303,8 +303,6 @@ def _enrich_from_inspection(
     record.has_outer_damage = has_outer
     if outer_text:
         record.outer_detail = outer_text
-        if not lot.damage:
-            lot.damage = outer_text
 
     if master.get("supplyNum"):
         _cert = str(master["supplyNum"]).strip()

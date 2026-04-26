@@ -3,12 +3,10 @@ from __future__ import annotations
 import logging
 import re
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 from .glossary import (
     INFO_FIELDS, HISTORY_BOOL_LABELS,
-    MILEAGE_GRADE_PATTERN,
-    WARRANTY_PATTERN, PAID_OPTIONS_PATTERN,
 )
 from .normalizer import KBChaNormalizer
 from .field_mapper import KBChaFieldMapper, create_kbcha_history_mappings
@@ -43,11 +41,9 @@ class KBChaDetailParser:
 
         self._parse_info_table_fields(soup, result)
         self._parse_history_section(soup, result)
-        self._parse_mileage_analysis(soup, result)
         self._parse_pricing(soup, result)
         self._parse_options(soup, result)
         self._parse_paid_options(soup, result)
-        self._parse_warranty(soup, result)
         self._parse_trim_from_title(soup, result)
         self._parse_inspection_button(soup, result)
         self._parse_photos(soup, result)
@@ -187,41 +183,6 @@ class KBChaDetailParser:
         insurance_match = re.search(r"보험이력\s*(\d+)\s*건", text)
         if insurance_match:
             result["insurance_count"] = int(insurance_match.group(1))
-
-    # ── Mileage Analysis (주행거리분석) ─────────────────────────────────────
-    # Primary source: /public/layer/car/km/analysis/info.kbc popup
-    # Fallback: main detail page text (legacy)
-
-    _KM_GRADES = frozenset(["많이짧음", "짧음", "보통", "긴", "많이긴"])
-
-    def parse_km_analysis(self, html: str) -> dict:
-        soup = BeautifulSoup(html, "lxml")
-        result: dict = {}
-        compare = soup.find(class_="mileage-compare")
-        if compare:
-            for strong in compare.find_all("strong"):
-                text = strong.get_text(strip=True)
-                if text in self._KM_GRADES:
-                    result["mileage_grade"] = text
-                    break
-        return result
-
-    def _parse_mileage_analysis(self, soup: BeautifulSoup, result: dict) -> None:
-        if "mileage_grade" in result:
-            return
-        # Primary: .detail-info03 section — grade is in p.txt-1 inside a span
-        txt1 = soup.select_one(".detail-info03 p.txt-1, .detail-info03 .txt-1")
-        if txt1:
-            for span in txt1.find_all("span"):
-                text = span.get_text(strip=True)
-                if text in self._KM_GRADES:
-                    result["mileage_grade"] = text
-                    return
-        # Fallback: regex on full page text
-        text = soup.get_text()
-        m = re.search(MILEAGE_GRADE_PATTERN, text)
-        if m:
-            result["mileage_grade"] = m.group(1)
 
     # ── Pricing (AI 시세, 신차 대비) ────────────────────────────────────────
 
@@ -363,32 +324,6 @@ class KBChaDetailParser:
 
         if paid:
             result["paid_options"] = paid
-            pass
-
-    # ── Manufacturer warranty remaining (제조사 보증) ─────────────────────
-
-    def _parse_warranty(self, soup: BeautifulSoup, result: dict) -> None:
-        header = soup.find(string=re.compile(r"제조사\s*보증"))
-        if not header:
-            return
-
-        section = header.parent
-        for _ in range(5):
-            if not section:
-                break
-            sibling = section.find_next_sibling()
-            if sibling:
-                text = sibling.get_text(" ", strip=True)
-                m = re.search(r"([\d,]+\s*km\s*/\s*\d+개월\s*남음|만료)", text)
-                if m:
-                    result["warranty_text"] = m.group(1).strip()
-                    return
-            section = section.parent
-
-        text = soup.get_text()
-        m = re.search(r"제조사\s*보증[^。\n]{0,80}?([\d,]+\s*km\s*/\s*\d+개월\s*남음|만료)", text)
-        if m:
-            result["warranty_text"] = m.group(1).strip()
             pass
 
     # ── Photo gallery ──────────────────────────────────────────────────────

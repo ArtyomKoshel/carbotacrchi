@@ -32,6 +32,21 @@ class FieldMapping:
         if value is None or value == "information" or not self.condition(value):
             return False
         
+        # Dict target mode (used by detail parser intermediate result)
+        if isinstance(target, dict):
+            if not self.overwrite and self.target_field in target and target[self.target_field] is not None:
+                return False
+            if self.target_field == "vin" and target.get("vin"):
+                return False
+            try:
+                transformed_value = self.transformer(value)
+                if transformed_value is not None:
+                    target[self.target_field] = transformed_value
+                    return True
+            except Exception:
+                return False
+            return False
+
         # Don't overwrite existing values unless explicitly allowed
         if not self.overwrite and hasattr(target, self.target_field):
             current_value = getattr(target, self.target_field)
@@ -102,13 +117,6 @@ class KBChaFieldMapper:
                     condition=lambda x: x and x != "information",
                     overwrite=False
                 )
-            elif method == "_parse_tax":
-                # 세금미납: '없음' = no unpaid tax → tax_paid=True
-                mappings[kr_key] = FieldMapping(
-                    kr_key, field_name,
-                    transformer=lambda x: x.strip() == "없음",
-                    condition=lambda x: x and x != "information"
-                )
             elif method == "_parse_mileage":
                 mappings[kr_key] = FieldMapping(
                     kr_key, "mileage",
@@ -164,13 +172,6 @@ class KBChaFieldMapper:
     def apply_raw_data(self, source: Dict[str, Any], target: Dict[str, Any]) -> None:
         """Store raw info data."""
         target["_raw_info"] = dict(source)
-
-        # Parse cylinders from engine_str in target or 배기량 raw value in source
-        engine_str = target.get("engine_str") or source.get("배기량") or ""
-        if engine_str:
-            cylinders = self.normalizer.parse_cylinders(engine_str)
-            if cylinders:
-                target["cylinders"] = cylinders
 
 
 def create_kbcha_history_mappings() -> Dict[str, FieldMapping]:

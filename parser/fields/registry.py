@@ -162,12 +162,6 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "Mileage", "kbcha": "주행거리 parse_mileage"},
     ),
     FieldSpec(
-        name="mileage_grade", dtype=FieldType.ENUM,
-        enum_values=("low", "average", "high"),
-        filterable=True, category="condition", description="KBCha mileage grade (상 / 중 / 하)",
-        sources={"kbcha": "detail table mileage_grade"},
-    ),
-    FieldSpec(
         name="registration_date", dtype=FieldType.DATE, filterable=True,
         category="identity", description="First registration date",
         sources={"encar": "manage.registDateTime[:10] or record.firstDate",
@@ -207,16 +201,6 @@ FIELDS: list[FieldSpec] = [
         name="engine_volume", dtype=FieldType.FLOAT, filterable=True,
         category="specs", description="Engine displacement (liters)",
         sources={"encar": "spec.displacement / 1000", "kbcha": "배기량 in cc"},
-    ),
-    FieldSpec(
-        name="fuel_economy", dtype=FieldType.FLOAT, filterable=True, category="specs",
-        description="Declared fuel economy (km/L)",
-        sources={"kbcha": "연비 detail table"},
-    ),
-    FieldSpec(
-        name="cylinders", dtype=FieldType.INT, filterable=True, category="specs",
-        description="Number of cylinders",
-        sources={"kbcha": "engine_str parse_cylinders"},
     ),
     FieldSpec(
         name="color", dtype=FieldType.STRING, filterable=True, tracked=True,
@@ -276,23 +260,8 @@ FIELDS: list[FieldSpec] = [
         description="Seizure status (저당)",
         sources={"encar": "record.robberCnt", "kbcha": "detail 저당"},
     ),
-    FieldSpec(
-        name="tax_paid", dtype=FieldType.BOOL, filterable=True, category="legal",
-        description="Whether taxes are paid (세금미납)",
-        sources={"kbcha": "detail 세금미납"},
-    ),
 
     # ── Condition & history ──────────────────────────────────────────────────
-    FieldSpec(
-        name="damage", dtype=FieldType.TEXT, filterable=True, category="condition",
-        description="Structural / frame damage description",
-        sources={"kbcha": "damaged_panels.structural from report"},
-    ),
-    FieldSpec(
-        name="secondary_damage", dtype=FieldType.TEXT, filterable=True, category="condition",
-        description="Non-structural outer damage",
-        sources={"kbcha": "damaged_panels.outer from report"},
-    ),
     FieldSpec(
         name="has_accident", dtype=FieldType.BOOL, filterable=True, tracked=True,
         category="condition", description="Any accident history on record",
@@ -360,11 +329,6 @@ FIELDS: list[FieldSpec] = [
         name="paid_options", dtype=FieldType.JSON, filterable=True, category="specs",
         description="Paid / optional extras",
         sources={"kbcha": "detail paid options"},
-    ),
-    FieldSpec(
-        name="warranty_text", dtype=FieldType.STRING, filterable=True, category="condition",
-        description="Warranty coverage text",
-        sources={"kbcha": "warranty table"},
     ),
 
     # ── Virtual fields (computed from inspections, not stored in lots) ───────

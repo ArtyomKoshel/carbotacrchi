@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule as ValidationRule;
 
 class AdminController extends Controller
@@ -890,6 +891,14 @@ class AdminController extends Controller
         $sources = array_keys($sources);
         sort($sources);
 
+        $hiddenFields = array_values(array_filter(
+            config('admin.fields_hidden', []),
+            fn ($f) => is_string($f) && $f !== ''
+        ));
+        $hiddenSet = array_fill_keys($hiddenFields, true);
+        $lotColumns = array_fill_keys(Schema::getColumnListing('lots'), true);
+        $virtualFields = ['photos' => true, 'inspection_record' => true];
+
         // Build the unified rows: one per field, combining all three sources
         $unified = [];
         $allFieldNames = array_unique(array_merge(
@@ -898,11 +907,18 @@ class AdminController extends Controller
             array_keys($coverageByField),
         ));
         foreach ($allFieldNames as $name) {
+            if (isset($hiddenSet[$name])) {
+                continue;
+            }
             $reg = $registryByName[$name] ?? null;
             $map = $mappingByAttr[$name] ?? null;
+            $dbColumn = $map['db_column'] ?? $reg['column'] ?? $name;
+            if (!isset($lotColumns[$dbColumn]) && !isset($virtualFields[$name])) {
+                continue;
+            }
             $unified[] = [
                 'name'         => $name,
-                'db_column'    => $map['db_column']   ?? $reg['column']     ?? $name,
+                'db_column'    => $dbColumn,
                 'dtype'        => $reg['dtype']       ?? $map['dtype']      ?? '?',
                 'category'     => $reg['category']    ?? $map['category']   ?? 'other',
                 'filterable'   => (bool) ($reg['filterable'] ?? $map['filterable'] ?? false),
@@ -940,9 +956,20 @@ class AdminController extends Controller
     /** POST /admin/fields/recompute — run coverage job synchronously. */
     public function fieldsRecompute()
     {
-        Artisan::call('fields:compute-coverage');
+        $exportCode = Artisan::call('parser:export-fields');
+        if ($exportCode !== 0) {
+            return redirect()->route('admin.fields')
+                ->with('error', 'Failed to refresh field schema from parser. Check app logs.');
+        }
+
+        $coverageCode = Artisan::call('fields:compute-coverage');
+        if ($coverageCode !== 0) {
+            return redirect()->route('admin.fields')
+                ->with('error', 'Failed to recompute field coverage stats. Check app logs.');
+        }
+
         return redirect()->route('admin.fields')
-            ->with('success', 'Coverage stats recomputed.');
+            ->with('success', 'Field schema + coverage stats recomputed.');
     }
 
     /** POST /admin/filters — create a new rule. */

@@ -137,10 +137,6 @@ class KBChaExternalInspectionParser:
             usage = self._parse_usage(bc)
             if usage:
                 details["usage_change"] = usage
-            # Mileage grade
-            if "12" in bc:
-                grades = {"1": "많음", "2": "보통", "3": "적음"}
-                details["mileage_grade"] = grades.get(str(bc["12"]))
 
         # ── 7. Panel damage ───────────────────────────────────────────────
         panels = self._build_panel_damage(mac, acc_out, acc_bone)
