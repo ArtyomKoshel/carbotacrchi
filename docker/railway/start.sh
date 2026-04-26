@@ -42,6 +42,11 @@ if [ -n "$PARSER_LOG_FILE" ]; then
         && sed -i "s|^PARSER_LOG_FILE=.*|PARSER_LOG_FILE=${PARSER_LOG_FILE}|" "$APP_DIR/.env" \
         || echo "PARSER_LOG_FILE=${PARSER_LOG_FILE}" >> "$APP_DIR/.env"
 fi
+
+# Set PARSER_DIR to Railway mount point
+grep -q "^PARSER_DIR=" "$APP_DIR/.env" \
+    && sed -i "s|^PARSER_DIR=.*|PARSER_DIR=/app/parser|" "$APP_DIR/.env" \
+    || echo "PARSER_DIR=/app/parser" >> "$APP_DIR/.env"
 if [ -n "$PARSER_SOURCES" ]; then
     grep -q "^PARSER_SOURCES=" "$APP_DIR/.env" \
         && sed -i "s|^PARSER_SOURCES=.*|PARSER_SOURCES=${PARSER_SOURCES}|" "$APP_DIR/.env" \
