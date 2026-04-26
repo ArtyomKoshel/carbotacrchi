@@ -7,32 +7,19 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time as _time
-from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 import pymysql
 import redis
 
 from config import Config
+from logging_config import LOG_FMT, setup_logging
+from parsers.base import ProgressUpdate
 
 logger = logging.getLogger(__name__)
-
-class _UTC3Formatter(logging.Formatter):
-    """Logging formatter that stamps times in UTC+3 (Moscow/Railway default offset)."""
-    _tz = __import__("datetime").timezone(__import__("datetime").timedelta(hours=3))
-
-    def formatTime(self, record, datefmt=None):
-        import datetime
-        dt = datetime.datetime.fromtimestamp(record.created, tz=self._tz)
-        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
-
-
-_LOG_FMT = _UTC3Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 
 _CHANNEL_PREFIX = "parse_progress:"
 
@@ -41,16 +28,70 @@ class JobCancelledError(BaseException):
     pass
 
 
-class _ImportantOnly(logging.Filter):
-    """During a job, only pass WARNING+, [STAT], and job_worker messages to the main log."""
+class _JobLogRouterHandler(logging.Handler):
+    """Persistent root handler that routes records to per-job files.
 
-    def filter(self, record: logging.LogRecord) -> bool:
-        if record.levelno >= logging.WARNING:
-            return True
-        msg = record.getMessage()
-        if "[STAT]" in msg or "[job_worker]" in msg:
-            return True
-        return False
+    Installed once per process. Avoids per-job add/remove handler mutations on root.
+    """
+
+    def __init__(self, base_log_file: str):
+        super().__init__(level=logging.DEBUG)
+        self._job_dir = os.path.join(os.path.dirname(base_log_file), "jobs")
+        os.makedirs(self._job_dir, exist_ok=True)
+        self._handlers: dict[int, RotatingFileHandler] = {}
+        self._lock = threading.Lock()
+
+    def _resolve_job_id(self, record: logging.LogRecord) -> int | None:
+        rec_job_id = getattr(record, "job_id", None)
+        if isinstance(rec_job_id, int):
+            return rec_job_id
+
+        if record.name == "job_worker":
+            m = re.search(r"Job #(\d+)", record.getMessage())
+            if m:
+                return int(m.group(1))
+
+        with _RUNNING_LOCK:
+            running = tuple(_RUNNING_SOURCES.items())
+        matched = [job_id for src, job_id in running if src in record.name]
+        if len(matched) == 1:
+            return matched[0]
+        return None
+
+    def _handler_for(self, job_id: int) -> RotatingFileHandler:
+        with self._lock:
+            h = self._handlers.get(job_id)
+            if h is not None:
+                return h
+            path = os.path.join(self._job_dir, f"job-{job_id}.log")
+            h = RotatingFileHandler(path, maxBytes=50 * 1024 * 1024, backupCount=1, encoding="utf-8")
+            h.setFormatter(LOG_FMT)
+            h.setLevel(logging.DEBUG)
+            self._handlers[job_id] = h
+            return h
+
+    def close_job(self, job_id: int) -> None:
+        with self._lock:
+            h = self._handlers.pop(job_id, None)
+        if h is not None:
+            h.close()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        job_id = self._resolve_job_id(record)
+        if job_id is None:
+            return
+        try:
+            self._handler_for(job_id).emit(record)
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        with self._lock:
+            handlers = list(self._handlers.values())
+            self._handlers.clear()
+        for h in handlers:
+            h.close()
+        super().close()
 
 
 def _redis() -> redis.Redis:
@@ -67,6 +108,22 @@ PARSE_LOCK_TTL = 4 * 3600  # 4 hours max
 _RUNNING_THREADS: dict[int, threading.Thread] = {}
 _RUNNING_SOURCES: dict[str, int] = {}
 _RUNNING_LOCK = threading.Lock()
+_JOB_LOG_ROUTER: _JobLogRouterHandler | None = None
+_JOB_LOG_ROUTER_LOCK = threading.Lock()
+
+
+def _ensure_job_log_router() -> None:
+    global _JOB_LOG_ROUTER
+    if not Config.LOG_FILE:
+        return
+    if _JOB_LOG_ROUTER is not None:
+        return
+    with _JOB_LOG_ROUTER_LOCK:
+        if _JOB_LOG_ROUTER is not None:
+            return
+        router = _JobLogRouterHandler(Config.LOG_FILE)
+        logging.getLogger().addHandler(router)
+        _JOB_LOG_ROUTER = router
 
 
 def acquire_parse_lock(r: redis.Redis, source: str, owner: str) -> bool:
@@ -166,12 +223,12 @@ def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | Non
     conn = _get_conn()
     r: redis.Redis | None = None
     locked = False
-    job_handler: RotatingFileHandler | None = None
-    main_filter: _ImportantOnly | None = None
-    main_handler: logging.Handler | None = None
-    root = logging.getLogger()
     try:
+        _ensure_job_log_router()
         logger.info(f"[job_worker] Job #{job_id} starting: source={source} filters={filters}")
+        if Config.LOG_FILE:
+            job_log_path = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs", f"job-{job_id}.log")
+            logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
 
         r = _redis()
 
@@ -194,32 +251,6 @@ def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | Non
             return
 
         _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
-
-        if Config.LOG_FILE:
-            job_log_dir = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs")
-            os.makedirs(job_log_dir, exist_ok=True)
-            job_log_path = os.path.join(job_log_dir, f"job-{job_id}.log")
-            try:
-                job_handler = RotatingFileHandler(
-                    job_log_path, maxBytes=50 * 1024 * 1024, backupCount=1, encoding="utf-8"
-                )
-                job_handler.setFormatter(_LOG_FMT)
-                job_handler.setLevel(logging.DEBUG)
-                main_log_path = os.path.abspath(Config.LOG_FILE)
-                for h in root.handlers:
-                    if isinstance(h, RotatingFileHandler):
-                        base = os.path.abspath(getattr(h, "baseFilename", ""))
-                        if base == main_log_path:
-                            main_handler = h
-                            break
-                if main_handler:
-                    main_filter = _ImportantOnly()
-                    main_handler.addFilter(main_filter)
-                root.addHandler(job_handler)
-                logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
-            except Exception as lh_err:
-                logger.warning(f"[job_worker] Could not create job log file: {lh_err}")
-                job_handler = None
 
         _MAX_JOB_RETRIES = 3
         for attempt in range(1, _MAX_JOB_RETRIES + 1):
@@ -259,11 +290,8 @@ def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | Non
                 release_parse_lock(r, source)
             except Exception:
                 pass
-        if job_handler:
-            root.removeHandler(job_handler)
-            job_handler.close()
-        if main_handler and main_filter:
-            main_handler.removeFilter(main_filter)
+        if _JOB_LOG_ROUTER is not None:
+            _JOB_LOG_ROUTER.close_job(job_id)
         _unregister_running(job_id, source)
         conn.close()
 
@@ -273,6 +301,8 @@ def process_pending_job() -> None:
 
     Interrupted jobs are auto-resumed with their checkpoint data.
     """
+    setup_logging()
+    _ensure_job_log_router()
     _cleanup_finished_threads()
 
     conn = _get_conn()
@@ -376,22 +406,27 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
         _run_start = _time.monotonic()
         _checkpoint_ref: list[dict | None] = [None]
 
-        def _on_page(page: int, found: int, total_pages: int | None = None, stats: dict | None = None):
-            page_counts.append(found)
+        def _on_progress(update: ProgressUpdate) -> None:
+            """Unified progress handler — accepts ProgressUpdate from parsers."""
+            page_counts.append(update.lots_processed or 1)
             found_total = sum(page_counts)
-            if total_pages and total_pages > _api_total_ref[0]:
-                _api_total_ref[0] = total_pages
+            if update.lots_found and update.lots_found > _api_total_ref[0]:
+                _api_total_ref[0] = update.lots_found
             # Check cancel BEFORE overwriting status
             with conn.cursor() as _cur:
                 _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
                 row = _cur.fetchone()
             if row and row["status"] == "cancelled":
-                logger.info(f"[job_worker] Job #{job_id} cancel detected at page #{page}")
+                logger.info(f"[job_worker] Job #{job_id} cancel detected during {update.phase}")
                 raise JobCancelledError(f"Job #{job_id} cancelled by user")
-            pct = round(found_total / _api_total_ref[0] * 100, 1) if _api_total_ref[0] else 0
+
+            pct = round(update.total_progress * 100, 1) if update.total_progress else (
+                round(found_total / _api_total_ref[0] * 100, 1) if _api_total_ref[0] else 0
+            )
             elapsed = round(_time.monotonic() - _run_start, 1)
             avg_lot = round(elapsed / found_total, 2) if found_total else 0
 
+            stats = update.stats
             # Build checkpoint from stats (parser stores last_completed_maker there)
             if stats and stats.get("_checkpoint"):
                 _checkpoint_ref[0] = stats["_checkpoint"]
@@ -399,18 +434,22 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
             progress = {
                 "status": f"{pct}%",
                 "pct": pct,
-                "page": page,
+                "phase": update.phase,
+                "phase_progress": round(update.phase_progress, 3),
+                "total_progress": round(update.total_progress, 3),
                 "found_total": found_total,
                 "api_total": _api_total_ref[0],
                 "total": stats["total"] if stats else found_total,
-                "new": stats["new"] if stats else 0,
-                "updated": stats["updated"] if stats else 0,
-                "errors": stats["errors"] if stats else 0,
+                "new": stats.get("new", 0) if stats else 0,
+                "updated": stats.get("updated", 0) if stats else 0,
+                "errors": stats.get("errors", 0) if stats else 0,
                 "elapsed_s": elapsed,
                 "avg_per_lot_s": avg_lot,
-                "search_time_s": round(stats["search_time"], 1) if stats else 0,
-                "enrich_time_s": round(stats["enrich_time"], 1) if stats else 0,
-                "pause_time_s": round(stats["pause_time"], 1) if stats else 0,
+                "search_time_s": round(stats.get("search_time", 0), 1) if stats else 0,
+                "enrich_time_s": round(stats.get("enrich_time", 0), 1) if stats else 0,
+                "inspect_time_s": round(stats.get("inspect_time", 0), 1) if stats else 0,
+                "pause_time_s": round(stats.get("pause_time", 0), 1) if stats else 0,
+                "message": update.message,
             }
             if _checkpoint_ref[0]:
                 progress["checkpoint"] = _checkpoint_ref[0]
@@ -420,7 +459,7 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
         run_kwargs: dict = {
             "max_pages": max_pages,
             "maker_filter": maker_filter,
-            "on_page_callback": _on_page,
+            "on_page_callback": _on_progress,
         }
         if checkpoint:
             run_kwargs["checkpoint"] = checkpoint

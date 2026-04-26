@@ -43,6 +43,7 @@ class Config:
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    LOG_FORMAT = os.getenv("LOG_FORMAT", "plain").lower()
     BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
     REQUEST_DELAY = float(os.getenv("REQUEST_DELAY", "2.0"))
 

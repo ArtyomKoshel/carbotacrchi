@@ -323,7 +323,7 @@ class LotRepository:
             with conn.cursor() as cursor:
                 cursor.executemany(sql, rows)
             conn.commit()
-            logger.debug(f"[DB] Recorded {len(rows)} lot_changes entries")
+            pass  # lot_changes recorded silently
         except Exception as e:
             conn.rollback()
             logger.warning(f"[DB] _insert_lot_changes failed: {type(e).__name__}: {e}")
@@ -440,7 +440,8 @@ class LotRepository:
                 cursor.executemany(sql, rows)
             conn.commit()
             elapsed = _time.monotonic() - t0
-            logger.debug(f"[DB] Upserted {len(rows)} lots in {elapsed:.2f}s")
+            if elapsed > 5.0:
+                logger.info(f"[DB] Upserted {len(rows)} lots in {elapsed:.2f}s (slow)")
         except Exception as e:
             conn.rollback()
             logger.error(f"[DB] Batch upsert FAILED ({len(rows)} lots): {type(e).__name__}: {e}")
@@ -710,12 +711,12 @@ class LotRepository:
             with conn.cursor() as cursor:
                 cursor.execute(sql, row)
             conn.commit()
-            logger.debug(f"[DB] Upserted inspection for {record.lot_id}")
+            pass  # inspection upsert silently
         except pymysql.err.IntegrityError as e:
             conn.rollback()
             # FK violation = lot doesn't exist (filtered/skipped) — not a crash-worthy error
             if e.args and e.args[0] == 1452:
-                logger.debug(f"[DB] upsert_inspection skipped for {record.lot_id}: lot not in DB (filtered?)")
+                pass  # FK skip: lot not in DB (filtered)
             else:
                 logger.error(f"[DB] upsert_inspection FAILED for {record.lot_id}: {type(e).__name__}: {e}")
                 raise
@@ -808,7 +809,7 @@ class LotRepository:
         if self._conn and self._conn.open:
             self._conn.close()
             self._conn = None
-            logger.debug("[DB] Connection closed")
+            logger.info("[DB] Connection closed")
 
 
 # Populate tracked fields once, after class is fully defined, from the SSOT.

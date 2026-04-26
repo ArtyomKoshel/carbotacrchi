@@ -11,9 +11,9 @@ import httpx
 from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
-from ..base import AbstractParser
+from ..base import AbstractParser, ProgressUpdate
 from .._shared import sell_type as _sell
-from .client import EncarClient, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
+from .client import EncarClient, ProxyBudgetExhausted, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
 logger = logging.getLogger(__name__)
@@ -749,6 +749,10 @@ class EncarParser(AbstractParser):
                     stats["error_log"].append(f"p.{page+1}{label}: {stop_reason}")
                     logger.error(f"[{source}]{label} p.{page+1} error: {e}")
                     break
+            except ProxyBudgetExhausted as e:
+                logger.error(f"[{source}]{label} p.{page+1}: proxy budget exhausted — aborting. {e}")
+                self.inc_error(stats, "ProxyBudgetExhausted", f"proxy budget exhausted at p.{page+1}{label}")
+                return api_total
             except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout) as e:
                 etype = type(e).__name__
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
@@ -757,6 +761,10 @@ class EncarParser(AbstractParser):
                 _p = _time.monotonic(); _time.sleep(3); stats["pause_time"] += _time.monotonic() - _p
                 try:
                     data = self._client.search(query=query, offset=offset, count=_PAGE_SIZE)
+                except ProxyBudgetExhausted as e2:
+                    logger.error(f"[{source}]{label} p.{page+1}: proxy budget exhausted on retry — aborting. {e2}")
+                    self.inc_error(stats, "ProxyBudgetExhausted", f"proxy budget exhausted at p.{page+1}{label}")
+                    return api_total
                 except Exception as e2:
                     stop_reason = f"proxy retry failed: {e2}"
                     stats["error_log"].append(f"p.{page+1}{label}: {stop_reason}")
@@ -774,7 +782,7 @@ class EncarParser(AbstractParser):
 
             if total_count is None:
                 total_count = data.get("Count", 0)
-                logger.debug(f"[{source}]{label} total: {total_count}")
+                pass  # total_count captured
 
             items = data.get("SearchResults", [])
             if not items:
@@ -821,7 +829,7 @@ class EncarParser(AbstractParser):
                 continue
 
             consecutive_empty = 0  # reset on any page with new data
-            logger.debug(f"[{source}]{label} p.{page+1}: {len(page_lots)} lots from search")
+            pass  # page lots counted
 
             _t_batch_start = _time.monotonic()
             self._enrich_batch(page_lots, stats)
@@ -834,23 +842,23 @@ class EncarParser(AbstractParser):
                 is_new = lot.id not in existing_ids
                 if is_new:
                     stats["new"] += 1
-                    logger.debug(
-                        f"[{source}] NEW {lot.id} | "
-                        f"{lot.make} {lot.model} {lot.year} | "
-                        f"{lot.price // 10000:,}만원 | {lot.mileage:,}km | {lot.fuel or '-'}"
-                    )
+                    pass  # new lot
                 else:
                     stats["updated"] += 1
-                    logger.debug(f"[{source}] UPD {lot.id} | {lot.make} {lot.model} {lot.year}")
+                    pass  # updated lot
                 stats["total"] += 1
 
             if on_page_callback:
-                on_page_callback(
-                    page=stats["total"] // _PAGE_SIZE,
-                    found=len(page_lots),
-                    total_pages=total_count,
+                _progress = stats["total"] / total_count if total_count else 0
+                on_page_callback(ProgressUpdate(
+                    phase="search",
+                    phase_progress=min(_progress, 1.0),
+                    total_progress=min(_progress, 1.0),
+                    lots_found=total_count or 0,
+                    lots_processed=len(page_lots),
+                    message=f"p.{page+1}{label} {stats['total']:,}/{total_count or '?'}",
                     stats=stats,
-                )
+                ))
 
             _t_after_upsert = _time.monotonic()
             new_lots = [l for l in page_lots if l.id not in existing_ids]
@@ -936,6 +944,10 @@ class EncarParser(AbstractParser):
                     count_data = self._client.search(query=mq, offset=0, count=1)
                     maker_total = count_data.get("Count", 0)
                     consecutive_maker_errors = 0  # reset on success
+                except ProxyBudgetExhausted as e:
+                    logger.error(f"[{source}] [{maker}] proxy budget exhausted — aborting Phase 2. {e}")
+                    self.inc_error(stats, "ProxyBudgetExhausted", f"budget exhausted at maker {maker}")
+                    break
                 except Exception as e:
                     consecutive_maker_errors += 1
                     etype = str(e.response.status_code) if isinstance(e, httpx.HTTPStatusError) else type(e).__name__
@@ -1059,7 +1071,7 @@ class EncarParser(AbstractParser):
             chunk = ids[i: i + _BATCH_SIZE]
             try:
                 details = self._client.batch_details(chunk)
-                logger.debug(f"[encar] batch_details: API returned {len(details)} items for {len(chunk)} requested")
+                pass  # batch_details received
                 enriched = 0
                 for detail in details:
                     manage = detail.get("manage") or {}
@@ -1078,8 +1090,8 @@ class EncarParser(AbstractParser):
                         _enrich_from_detail(lot, detail, self._norm)
                         enriched += 1
                     else:
-                        logger.debug(f"[encar] batch_details: listing_id={listing_id!r} unmatched")
-                logger.debug(f"[encar] batch_details: enriched {enriched}/{len(chunk)} lots (API returned {len(details)})")
+                        pass  # unmatched listing
+                pass  # batch enrichment done
             except Exception as e:
                 logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
                 ok = 0
@@ -1124,7 +1136,7 @@ class EncarParser(AbstractParser):
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504) and attempt < _max_retries:
                         wait = 1 * (2 ** attempt)  # 1s, 2s, 4s
-                        logger.debug(f"[{source}] {e.response.status_code} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
+                        logger.warning(f"[{source}] {e.response.status_code} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
                         _time.sleep(wait)
                         client.rotate_proxy()
                         continue
@@ -1132,7 +1144,7 @@ class EncarParser(AbstractParser):
                 except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout) as e:
                     if attempt < _max_retries:
                         wait = 1 * (2 ** attempt)
-                        logger.debug(f"[{source}] {type(e).__name__} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
+                        logger.warning(f"[{source}] {type(e).__name__} on {lot.id} — retry {attempt+1}/{_max_retries} in {wait}s")
                         _time.sleep(wait)
                         client.rotate_proxy()
                         continue
@@ -1218,11 +1230,7 @@ class EncarParser(AbstractParser):
         for lot, insp_record in results:
             try:
                 self.repo.upsert_batch([lot], stats)
-                logger.debug(
-                    f"[{source}] ENRICHED {lot.id} | "
-                    f"vin={lot.vin or '-'} | accident={lot.has_accident} | "
-                    f"flood={lot.flood_history} | insp={'ok' if insp_record else 'none'}"
-                )
+                pass  # lot enriched
                 if lot.has_accident:    n_accident += 1
                 if lot.flood_history:   n_flood    += 1
             except Exception as e:

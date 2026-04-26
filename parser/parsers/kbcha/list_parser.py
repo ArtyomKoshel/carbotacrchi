@@ -57,10 +57,7 @@ class KBChaListParser:
                     f"{parsed['unknown_tokens']} | title={title!r}"
                 )
             else:
-                logger.debug(
-                    f"[kbcha:list] unclassified tokens: {parsed['unknown_tokens']} "
-                    f"| title={title!r}"
-                )
+                pass  # unclassified tokens — not actionable
 
         spans = area.select("div.data-line span")
         year_text = spans[0].get_text(strip=True) if len(spans) > 0 else ""

@@ -275,6 +275,10 @@ KBCHA_DRIVE: dict[str, str] = {
     "4WD":      DRIVE_AWD,  # KBCha uses 4WD/AWD interchangeably for AWD
     "AWD":      DRIVE_AWD,
     "2WD":      DRIVE_FWD,
+    "4Matic":   DRIVE_AWD,
+    "4Matic+":  DRIVE_AWD,
+    "xDrive":   DRIVE_AWD,
+    "sDrive":   DRIVE_RWD,
 }
 
 KBCHA_BODY: dict[str, str] = {

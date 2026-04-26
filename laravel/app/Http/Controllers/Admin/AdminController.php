@@ -135,6 +135,8 @@ class AdminController extends Controller
         $source   = trim($request->query('source', ''));
         $fileIdx  = (int) $request->query('file', 0);
         $page     = max(0, (int) $request->query('page', 0));
+        $appLog   = $request->query('app') === '1';
+        $appLogPath = storage_path('logs/laravel.log');
 
         // Collect available rotation files: parser.log, parser.log.1, ..., parser.log.N
         $rotationFiles = [];
@@ -164,7 +166,9 @@ class AdminController extends Controller
         }
 
         $logFile = $baseFile;
-        if ($jobFile) {
+        if ($appLog && file_exists($appLogPath)) {
+            $logFile = $appLogPath;
+        } elseif ($jobFile) {
             // Job file takes priority over rotation file index
             $logFile = dirname($baseFile) . '/jobs/' . basename($jobFile);
             if (!file_exists($logFile)) $logFile = $baseFile;
@@ -177,6 +181,7 @@ class AdminController extends Controller
         $error      = null;
         $totalLines = 0;
         $totalPages = 1;
+        $fileSize   = 0;
 
         if (!$logFile || !file_exists($logFile)) {
             $error = "Log file not found: {$logFile}";
@@ -195,7 +200,90 @@ class AdminController extends Controller
             $lines      = array_slice($filtered, $page * $maxLines, $maxLines);
         }
 
-        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile'));
+        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile', 'fileSize', 'appLog', 'appLogPath'));
+    }
+
+    public function logsTail(Request $request)
+    {
+        $baseFile = config('admin.log_file');
+        if (!$baseFile) {
+            return response()->json(['lines' => [], 'error' => 'Log file path not configured'], 400);
+        }
+
+        $level     = $request->query('level', '');
+        $search    = trim($request->query('search', ''));
+        $source    = trim($request->query('source', ''));
+        $fileIdx   = (int) $request->query('file', 0);
+        $jobFile   = trim($request->query('job', ''));
+        $appLog    = $request->query('app') === '1';
+        $appLogPath = storage_path('logs/laravel.log');
+        $sinceByte = max(0, (int) $request->query('since_byte', 0));
+        $limit     = min(max((int) $request->query('limit', 1500), 1), 5000);
+
+        $logFile = $baseFile;
+        if ($appLog && file_exists($appLogPath)) {
+            $logFile = $appLogPath;
+        } elseif ($jobFile) {
+            $candidate = dirname($baseFile) . '/jobs/' . basename($jobFile);
+            if (file_exists($candidate)) {
+                $logFile = $candidate;
+            }
+        } elseif ($fileIdx > 0) {
+            $candidate = $baseFile . '.' . $fileIdx;
+            if (file_exists($candidate)) {
+                $logFile = $candidate;
+            }
+        }
+
+        if (!file_exists($logFile)) {
+            return response()->json(['lines' => [], 'error' => "Log file not found: {$logFile}"], 404);
+        }
+
+        $fileSize = filesize($logFile) ?: 0;
+        if ($sinceByte > $fileSize) {
+            $sinceByte = 0;
+        }
+
+        $fp = @fopen($logFile, 'rb');
+        if (!$fp) {
+            return response()->json(['lines' => [], 'error' => 'Cannot read log file'], 500);
+        }
+
+        if ($sinceByte > 0) {
+            fseek($fp, $sinceByte);
+        }
+
+        $lines = [];
+        while (!feof($fp) && count($lines) < $limit) {
+            $line = fgets($fp);
+            if ($line === false) {
+                break;
+            }
+            $line = rtrim($line, "\r\n");
+            if ($line === '') {
+                continue;
+            }
+            if ($level && !str_contains($line, "[{$level}]")) {
+                continue;
+            }
+            if ($search && stripos($line, $search) === false) {
+                continue;
+            }
+            if ($source && stripos($line, $source) === false) {
+                continue;
+            }
+            $lines[] = $line;
+        }
+
+        $nextByte = ftell($fp);
+        fclose($fp);
+
+        return response()->json([
+            'lines'      => $lines,
+            'next_byte'  => is_int($nextByte) ? $nextByte : $fileSize,
+            'file_size'  => $fileSize,
+            'file'       => basename($logFile),
+        ]);
     }
 
     public function stats()
@@ -420,25 +508,40 @@ class AdminController extends Controller
         $search     = trim($request->query('search', ''));
         $page       = max(0, (int) $request->query('page', 0));
         $perPage    = min((int) $request->query('limit', 500), 5000);
-        $sinceRaw   = max(0, (int) $request->query('since_raw_line', 0));
+        $sinceByte  = max(0, (int) $request->query('since_byte', 0));
+        $fileSize   = filesize($jobLogPath) ?: 0;
 
-        // Read all lines (job logs are bounded — typically <50k lines)
-        $raw = @file($jobLogPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        if ($raw === false) {
+        $fp = @fopen($jobLogPath, 'rb');
+        if (!$fp) {
             return response()->json(['lines' => [], 'error' => 'Cannot read log file']);
         }
 
-        $totalRaw  = count($raw);
-        $fileSize  = filesize($jobLogPath);
-
-        // Incremental mode: only process lines added since last fetch
-        if ($sinceRaw > 0 && !$level && !$search && $page === 0) {
-            $newLines = array_slice($raw, $sinceRaw);
+        // Incremental mode (lightweight): only read bytes added since last fetch
+        if ($sinceByte > 0 && !$level && !$search && $page === 0) {
+            if ($sinceByte > $fileSize) {
+                $sinceByte = 0;
+            }
+            fseek($fp, $sinceByte);
+            $lines = [];
+            while (!feof($fp) && count($lines) < $perPage) {
+                $line = fgets($fp);
+                if ($line === false) {
+                    break;
+                }
+                $line = rtrim($line, "\r\n");
+                if ($line === '') {
+                    continue;
+                }
+                $lines[] = $line;
+            }
+            $nextByte = ftell($fp);
+            fclose($fp);
             return response()->json([
-                'lines'         => array_values($newLines),
-                'total'         => count($newLines),
-                'total_raw'     => $totalRaw,
-                'next_raw_line' => $totalRaw,
+                'lines'         => $lines,
+                'total'         => count($lines),
+                'total_raw'     => null,
+                'next_raw_line' => null,
+                'next_byte'     => is_int($nextByte) ? $nextByte : $fileSize,
                 'page'          => 0,
                 'total_pages'   => 1,
                 'per_page'      => $perPage,
@@ -446,25 +549,48 @@ class AdminController extends Controller
             ]);
         }
 
-        // Full mode — filter + paginate
-        $filtered = $raw;
-        if ($level) {
-            $filtered = array_values(array_filter($filtered, fn($l) => str_contains($l, "[{$level}]")));
-        }
-        if ($search) {
-            $filtered = array_values(array_filter($filtered, fn($l) => stripos($l, $search) !== false));
-        }
+        // Full mode — stream scan + filter + paginate in one pass
+        rewind($fp);
+        $totalRaw = 0;
+        $totalFiltered = 0;
+        $pageLines = [];
+        $start = $page * $perPage;
+        $end = $start + $perPage;
 
-        $totalFiltered = count($filtered);
+        while (!feof($fp)) {
+            $line = fgets($fp);
+            if ($line === false) {
+                break;
+            }
+            $line = rtrim($line, "\r\n");
+            if ($line === '') {
+                continue;
+            }
+            $totalRaw++;
+
+            if ($level && !str_contains($line, "[{$level}]")) {
+                continue;
+            }
+            if ($search && stripos($line, $search) === false) {
+                continue;
+            }
+
+            if ($totalFiltered >= $start && $totalFiltered < $end) {
+                $pageLines[] = $line;
+            }
+            $totalFiltered++;
+        }
+        fclose($fp);
+
         $totalPages = max(1, (int) ceil($totalFiltered / $perPage));
         $page = min($page, $totalPages - 1);
-        $pageLines = array_slice($filtered, $page * $perPage, $perPage);
 
         return response()->json([
             'lines'         => $pageLines,
             'total'         => $totalFiltered,
             'total_raw'     => $totalRaw,
             'next_raw_line' => $totalRaw,
+            'next_byte'     => $fileSize,
             'page'          => $page,
             'total_pages'   => $totalPages,
             'per_page'      => $perPage,
@@ -501,38 +627,98 @@ class AdminController extends Controller
         return redirect()->route('admin.logs')->with('success', "Log cleared ({$cleared} file(s) removed)");
     }
 
+    public function logsClearJobs(Request $request)
+    {
+        $baseFile = config('admin.log_file');
+        if (!$baseFile) {
+            return redirect()->route('admin.logs')->with('error', 'Log file path not configured');
+        }
+        $jobDir = dirname($baseFile) . '/jobs';
+        if (!is_dir($jobDir)) {
+            return redirect()->route('admin.logs')->with('error', 'No job logs directory');
+        }
+        try {
+            $files = glob($jobDir . '/job-*.log*');
+            $deleted = 0;
+            foreach ($files as $f) {
+                if (unlink($f)) $deleted++;
+            }
+        } catch (\Throwable $e) {
+            return redirect()->route('admin.logs')->with('error', 'Clear failed: ' . $e->getMessage());
+        }
+        return redirect()->route('admin.logs')->with('success', "Deleted {$deleted} job log file(s)");
+    }
+
     public function logsDownload(Request $request)
     {
-        $logFile = config('admin.log_file');
-        if (!file_exists($logFile)) {
+        $baseFile = config('admin.log_file');
+        if (!$baseFile || !file_exists($baseFile)) {
             abort(404, 'Log file not found');
         }
 
+        $fileIdx = (int) $request->query('file', 0);
+        $jobFile = trim($request->query('job', ''));
+        $appLog  = $request->query('app') === '1';
+        $appLogPath = storage_path('logs/laravel.log');
         $level  = $request->query('level', '');
         $search = trim($request->query('search', ''));
         $source = trim($request->query('source', ''));
 
-        // No filters — stream the raw file directly
-        if (!$level && !$search && !$source) {
-            return response()->download($logFile, 'parser-' . now()->format('Ymd-His') . '.log');
+        $logFile = $baseFile;
+        if ($appLog && file_exists($appLogPath)) {
+            $logFile = $appLogPath;
+        } elseif ($jobFile) {
+            $candidate = dirname($baseFile) . '/jobs/' . basename($jobFile);
+            if (file_exists($candidate)) {
+                $logFile = $candidate;
+            }
+        } elseif ($fileIdx > 0) {
+            $candidate = $baseFile . '.' . $fileIdx;
+            if (file_exists($candidate)) {
+                $logFile = $candidate;
+            }
         }
 
-        // Apply filters and return only matching lines
-        $all   = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-        $lines = [];
-        foreach ($all as $line) {
-            if ($level  && !str_contains($line, "[{$level}]"))  continue;
-            if ($search && !str_contains($line, $search))        continue;
-            if ($source && !str_contains($line, $source))        continue;
-            $lines[] = $line;
+        if (!file_exists($logFile)) {
+            abort(404, 'Selected log file not found');
+        }
+
+        // No filters — stream the raw file directly
+        if (!$level && !$search && !$source) {
+            return response()->download($logFile, basename($logFile));
         }
 
         $suffix = implode('-', array_filter([$level, $source, $search ? 'filtered' : '']));
-        $filename = 'parser-' . now()->format('Ymd-His') . ($suffix ? "-{$suffix}" : '') . '.log';
+        $filename = pathinfo($logFile, PATHINFO_FILENAME) . ($suffix ? "-{$suffix}" : '') . '-' . now()->format('Ymd-His') . '.log';
 
-        return response(implode("\n", $lines), 200, [
-            'Content-Type'        => 'text/plain; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        return response()->streamDownload(function () use ($logFile, $level, $search, $source) {
+            $fp = fopen($logFile, 'rb');
+            if (!$fp) {
+                return;
+            }
+            while (!feof($fp)) {
+                $line = fgets($fp);
+                if ($line === false) {
+                    break;
+                }
+                $line = rtrim($line, "\r\n");
+                if ($line === '') {
+                    continue;
+                }
+                if ($level && !str_contains($line, "[{$level}]")) {
+                    continue;
+                }
+                if ($search && stripos($line, $search) === false) {
+                    continue;
+                }
+                if ($source && stripos($line, $source) === false) {
+                    continue;
+                }
+                echo $line . PHP_EOL;
+            }
+            fclose($fp);
+        }, $filename, [
+            'Content-Type' => 'text/plain; charset=utf-8',
         ]);
     }
 

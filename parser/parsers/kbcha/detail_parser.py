@@ -52,17 +52,8 @@ class KBChaDetailParser:
         self._parse_inspection_button(soup, result)
         self._parse_photos(soup, result)
 
-        logger.debug(f"[kbcha:detail] Parsed {len(result)} fields from detail page: {sorted(result.keys())}")
         if not result:
-            logger.debug("[kbcha:detail] No fields from detail page (options/inspection expected here)")
-            return result
-
-        if logger.isEnabledFor(logging.DEBUG):
-            insp_type = result.get("inspection_type", "none")
-            logger.debug(f"[kbcha:detail] inspection_type={insp_type} "
-                         f"| inspection_no={result.get('inspection_no')} "
-                         f"| warranty={result.get('warranty_text')} "
-                         f"| paid_options={bool(result.get('paid_options'))}")
+            logger.warning("[kbcha:detail] No fields from detail page")
 
         return result
 
@@ -145,10 +136,6 @@ class KBChaDetailParser:
 
     def _apply_info_fields(self, info: dict[str, str], result: dict) -> None:
         """Apply INFO_FIELDS mapping using FieldMapper for cleaner code."""
-        if logger.isEnabledFor(logging.DEBUG) and info:
-            raw_dump = " | ".join(f"'{k}'='{v}'" for k, v in info.items())
-            logger.debug(f"[kbcha:info_raw] {raw_dump}")
-        
         # Use FieldMapper for consistent processing
         self._field_mapper.apply(info, result)
         self._field_mapper.apply_raw_data(info, result)
@@ -312,14 +299,12 @@ class KBChaDetailParser:
         btn = (soup.find(id="btnCarCheckView1") or
                soup.find(id="btnCarCheckView2"))
         if not btn:
-            logger.debug("[kbcha:detail] No inspection button found")
             return
 
         link = (btn.get("data-link-url") or "").strip()
 
         if not link:
             result["inspection_type"] = "kb_popup"
-            logger.debug("[kbcha:detail] inspection_type=kb_popup (KB's own popup)")
 
         elif "autocafe.co.kr" in link.lower():
             url = link if link.startswith("http") else f"http:{link}"
@@ -328,41 +313,33 @@ class KBChaDetailParser:
             m = re.search(r"OnCarNo=(\d+)", link, re.I)
             if m and "inspection_no" not in result:
                 result["inspection_no"] = m.group(1)
-            logger.debug(f"[kbcha:detail] inspection_type=autocafe url='{url}'")
 
         elif "moldeoncar.com" in link.lower():
             result["moldeoncar_url"] = link
             result["inspection_type"] = "moldeoncar"
-            logger.debug(f"[kbcha:detail] inspection_type=moldeoncar url='{link}'")
 
         elif "m-park.co.kr" in link.lower():
             result["mpark_url"] = link
             result["inspection_type"] = "mpark"
-            logger.debug(f"[kbcha:detail] inspection_type=mpark url='{link}'")
 
         elif link == "카모두":
             result["inspection_type"] = "moldeoncar"
-            logger.debug("[kbcha:detail] inspection_type=moldeoncar (카모두 marker)")
 
         elif "checkpaper.iwsp.co.kr" in link.lower():
             result["inspection_url"] = link
             result["inspection_type"] = "kb_paper"
-            logger.debug(f"[kbcha:detail] inspection_type=kb_paper url='{link}'")
 
         elif "encar.com" in link.lower():
             result["inspection_url"] = link
             result["inspection_type"] = "encar"
-            logger.debug(f"[kbcha:detail] inspection_type=encar url='{link}'")
 
         elif "carmon.co.kr" in link.lower():
             result["inspection_url"] = link
             result["inspection_type"] = "carmon"
-            logger.debug(f"[kbcha:detail] inspection_type=carmon url='{link}'")
 
         else:
             result["inspection_url"] = link
             result["inspection_type"] = "other"
-            logger.debug(f"[kbcha:detail] inspection_type=other url='{link}'")
 
     # ── Paid optional packages (선택옵션) ─────────────────────────────────
 
@@ -386,7 +363,7 @@ class KBChaDetailParser:
 
         if paid:
             result["paid_options"] = paid
-            logger.debug(f"[kbcha:detail] paid_options: {paid}")
+            pass
 
     # ── Manufacturer warranty remaining (제조사 보증) ─────────────────────
 
@@ -405,7 +382,6 @@ class KBChaDetailParser:
                 m = re.search(r"([\d,]+\s*km\s*/\s*\d+개월\s*남음|만료)", text)
                 if m:
                     result["warranty_text"] = m.group(1).strip()
-                    logger.debug(f"[kbcha:detail] warranty_text: '{result['warranty_text']}'")
                     return
             section = section.parent
 
@@ -413,7 +389,7 @@ class KBChaDetailParser:
         m = re.search(r"제조사\s*보증[^。\n]{0,80}?([\d,]+\s*km\s*/\s*\d+개월\s*남음|만료)", text)
         if m:
             result["warranty_text"] = m.group(1).strip()
-            logger.debug(f"[kbcha:detail] warranty_text (text): '{result['warranty_text']}'")
+            pass
 
     # ── Photo gallery ──────────────────────────────────────────────────────
 
@@ -443,7 +419,7 @@ class KBChaDetailParser:
 
         if photos:
             result["photos"] = photos
-            logger.debug(f"[kbcha:detail] photos: {len(photos)} images")
+            pass
 
     # ── Trim from title ────────────────────────────────────────────────────
 
@@ -458,5 +434,4 @@ class KBChaDetailParser:
                 trim = parsed.get("trim")
                 if trim:
                     result["trim"] = trim
-                    logger.debug(f"[kbcha:detail] trim: '{trim}'")
                 break

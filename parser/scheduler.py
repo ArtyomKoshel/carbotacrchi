@@ -9,6 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from config import Config
+from logging_config import setup_logging
 from reparse_worker import process_pending
 from job_worker import process_pending_job
 import parsers  # noqa: F401 — triggers parser registration
@@ -237,6 +238,7 @@ def _cleanup_stale_jobs() -> None:
 
 
 def start_scheduler():
+    setup_logging()
     scheduler = BlockingScheduler()
     registry  = get_all()
 

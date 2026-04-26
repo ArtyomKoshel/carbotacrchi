@@ -12,6 +12,10 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
+
+class ProxyBudgetExhausted(RuntimeError):
+    """Raised when the proxy provider returns 402 Payment Required (balance depleted)."""
+
 _SEARCH_URL  = "https://api.encar.com/search/car/list/mobile"
 _SEARCH_Q    = "(And.Hidden.N._.CarType.A.)"
 _DETAIL_URL  = "https://api.encar.com/v1/readside/vehicle/{id}"
@@ -213,6 +217,8 @@ class EncarClient:
             r = self._s.request(method, url, **kwargs)
             elapsed = time.monotonic() - t0
         except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+            if isinstance(e, httpx.ProxyError) and ("402" in str(e) or "Payment Required" in str(e)):
+                raise ProxyBudgetExhausted(f"Proxy balance depleted: {e}") from e
             self._error_count += 1
             if Config.PROXY_DEBUG:
                 logger.warning(

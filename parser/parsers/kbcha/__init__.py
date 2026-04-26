@@ -8,8 +8,8 @@ import httpx
 from config import Config
 from models import CarLot
 from repository import LotRepository
-from ..base import AbstractParser
-from .client import KBChaClient
+from ..base import AbstractParser, ProgressUpdate
+from .client import KBChaClient, ProxyBudgetExhausted
 from .detail_parser import KBChaDetailParser
 from .enricher import KBChaEnricher
 from .inspection_parser import CarmodooInspectionParser
@@ -201,17 +201,22 @@ class KBChaParser(AbstractParser):
                 self._enricher.enrich_details(page_lots, stats, on_page_callback=on_page_callback)
                 stats["enrich_time"] += _time.monotonic() - _t
 
-            maker_lots = self._fetch_maker(
-                maker_code,
-                maker_name,
-                seen_ids,
-                existing_ids,
-                stats,
-                max_pages=effective_pages,
-                on_page_callback=on_page_callback,
-                maker_count=maker_count,
-                enrich_callback=_enrich_page,
-            )
+            try:
+                maker_lots = self._fetch_maker(
+                    maker_code,
+                    maker_name,
+                    seen_ids,
+                    existing_ids,
+                    stats,
+                    max_pages=effective_pages,
+                    on_page_callback=on_page_callback,
+                    maker_count=maker_count,
+                    enrich_callback=_enrich_page,
+                )
+            except ProxyBudgetExhausted as e:
+                logger.error(f"[{source}] Proxy budget exhausted at maker {maker_name} — finishing run with partial data. {e}")
+                self.inc_error(stats, "ProxyBudgetExhausted", f"budget exhausted at maker {maker_name}")
+                break
 
             if maker_lots:
                 all_lots.extend(maker_lots)
@@ -310,6 +315,8 @@ class KBChaParser(AbstractParser):
                         )
                         lots.extend(class_lots)
                     return lots
+            except ProxyBudgetExhausted:
+                raise
             except Exception as e:
                 logger.warning(
                     f"[{source}] {maker_name} class fetch failed ({e}), falling back to maker pagination"
@@ -361,6 +368,8 @@ class KBChaParser(AbstractParser):
                         try:
                             html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
                             break
+                        except ProxyBudgetExhausted:
+                            raise
                         except Exception as e2:
                             etype2 = type(e2).__name__
                             stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
@@ -372,6 +381,10 @@ class KBChaParser(AbstractParser):
                 else:
                     logger.error(f"[{source}] {label} p.{page} HTTP {etype} (non-retryable)")
                     break
+            except ProxyBudgetExhausted as e:
+                logger.error(f"[{source}] {label} p.{page}: proxy budget exhausted — aborting pagination. {e}")
+                self.inc_error(stats, "ProxyBudgetExhausted", f"proxy budget exhausted during search at p.{page}")
+                return lots
             except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
                 etype = type(e).__name__
                 stats["error_types"][etype] = stats["error_types"].get(etype, 0) + 1
@@ -391,6 +404,8 @@ class KBChaParser(AbstractParser):
                     try:
                         html = self._client.fetch_list_page(maker_code, page, class_code=class_code)
                         break  # success
+                    except ProxyBudgetExhausted:
+                        raise
                     except Exception as e2:
                         etype2 = type(e2).__name__
                         stats["error_types"][etype2] = stats["error_types"].get(etype2, 0) + 1
@@ -432,11 +447,17 @@ class KBChaParser(AbstractParser):
 
             if on_page_callback:
                 try:
-                    on_page_callback(
-                        page=page, found=new_on_page,
-                        total_pages=stats.get("site_api_total") or len(seen_ids),
+                    _api_total = stats.get("site_api_total") or len(seen_ids) or 1
+                    _progress = stats["total"] / _api_total if _api_total else 0
+                    on_page_callback(ProgressUpdate(
+                        phase="search",
+                        phase_progress=min(_progress, 1.0),
+                        total_progress=min(_progress * 0.7, 0.7),  # search ≈ 70% of total
+                        lots_found=_api_total,
+                        lots_processed=new_on_page,
+                        message=f"{label} p.{page}: {stats['total']:,}/{_api_total:,}",
                         stats=stats,
-                    )
+                    ))
                 except BaseException as _cancel_exc:
                     logger.info(f"[{source}] {label}: cancel signal — stopping pagination, "
                                 f"returning {len(lots)} collected lots for enrichment")

@@ -179,11 +179,6 @@ class KBChaExternalInspectionParser:
         details["parsed_count"] = len(parsed)
         result["details"] = details
 
-        logger.debug(
-            f"[ext_insp] {provider} parsed {len(parsed)} fields: {parsed} | "
-            f"vin={result.get('vin')} mileage={result.get('inspection_mileage')} "
-            f"accident={result.get('has_accident')}"
-        )
         return result
 
     # ── Helpers ──────────────────────────────────────────────────────────

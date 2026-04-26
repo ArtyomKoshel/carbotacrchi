@@ -44,13 +44,11 @@ class CarmodooInspectionParser:
             candidate = vin_span.get_text(strip=True).replace(" ", "")
             if len(candidate) >= 10:
                 result["vin"] = candidate
-                logger.debug(f"[kbcha:inspection] vin (noBborder): '{candidate}'")
 
         if "vin" not in result:
             m = _VIN_RE.search(soup.get_text())
             if m:
                 result["vin"] = m.group(0)
-                logger.debug(f"[kbcha:inspection] vin (regex): '{result['vin']}'")
 
         # ── Certificate number ─────────────────────────────────────────────
         cert_span = soup.find("span", class_="num")
@@ -94,7 +92,6 @@ class CarmodooInspectionParser:
                     m = re.search(r"(\d{4}[-./]\d{2}[-./]\d{2})", val)
                     if m:
                         result["first_registration"] = m.group(1)
-                        logger.debug(f"[kbcha:inspection] first_registration: '{m.group(1)}'")
 
             # ── ④ 검사유효기간 ─────────────────────────────────────────────
             elif INSP_LABEL_VALID_PERIOD in label or label.startswith(INSP_LABEL_VALID_PERIOD_NUM):
@@ -106,7 +103,6 @@ class CarmodooInspectionParser:
                     if len(dates) >= 2:
                         result["inspection_valid_from"] = dates[0]
                         result["inspection_valid_until"] = dates[1]
-                        logger.debug(f"[kbcha:inspection] valid: {dates[0]} ~ {dates[1]}")
 
         # ── Mileage from <strong class="km"> ──────────────────────────────
         km_el = soup.find("strong", class_="km")
@@ -115,7 +111,6 @@ class CarmodooInspectionParser:
             if m:
                 try:
                     result["inspection_mileage"] = int(m.group(1).replace(",", ""))
-                    logger.debug(f"[kbcha:inspection] mileage: {result['inspection_mileage']}")
                 except ValueError:
                     pass
 
@@ -136,9 +131,6 @@ class CarmodooInspectionParser:
                             if nxt and hasattr(nxt, "strip"):
                                 checked_labels.append(nxt.strip())
                     result["inspection_accident"] = any("있음" in l for l in checked_labels)
-                    logger.debug(f"[kbcha:inspection] accident: {result['inspection_accident']} "
-                                 f"(checked: {checked_labels})")
-                break
 
         bc_data = self._extract_setdata(soup, "bc")
         if bc_data:
@@ -193,10 +185,8 @@ class CarmodooInspectionParser:
 
         if damaged_outer:
             result["damaged_outer_panels"] = damaged_outer
-            logger.debug(f"[kbcha:inspection] outer damage: {damaged_outer}")
         if damaged_structural:
             result["damaged_structural_panels"] = damaged_structural
-            logger.debug(f"[kbcha:inspection] structural damage: {damaged_structural}")
 
     # ── Component Conditions (자동차 세부상태) ────────────────────────────────
 
@@ -223,7 +213,6 @@ class CarmodooInspectionParser:
 
         if bad_components:
             result["bad_components"] = bad_components
-            logger.debug(f"[kbcha:inspection] bad components: {bad_components}")
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 

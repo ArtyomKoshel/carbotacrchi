@@ -54,6 +54,7 @@ MODEL_TRIM_STOP: frozenset[str] = frozenset({
 
 MODEL_DRIVE_STOP: frozenset[str] = frozenset({
     "AWD", "2WD", "4WD", "FWD", "RWD",
+    "4Matic", "4Matic+",
 })
 
 # Engine/powertrain descriptor tokens that legitimately appear between engine volume
@@ -79,6 +80,11 @@ ENGINE_DESC_TOKENS: frozenset[str] = frozenset({
     # Audi-specific tokens to reduce unknown warnings
     "quattro", "TFSI", "TDI", "e-tron", "g-tron", "S", "RS", "Audi",
     "Sportback", "Avant", "allroad", "plus", "matrix", "virtual",
+    # Mercedes-specific tokens
+    "AMG", "COUPE", "Coupe", "Cabriolet", "Sedan", "Limousine",
+    "BlueTEC", "EQ", "Guard", "Maybach",
+    # BMW-specific tokens
+    "xDrive", "sDrive", "Gran", "Touring",
 })
 
 # Tokens that look like trims on the site but are actually fuel/type descriptors

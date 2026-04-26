@@ -1,68 +1,19 @@
 import argparse
 import logging
-import os
-import sys
 import time
-from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from config import Config
+from logging_config import setup_logging
 from repository import LotRepository
 import parsers  # noqa: F401 — triggers parser registration
 from parsers.registry import get_enabled
 from scheduler import start_scheduler
 
 logger = logging.getLogger("parser")
-
-
-class _UTC3Formatter(logging.Formatter):
-    """Logging formatter that stamps times in UTC+3 (Moscow/Railway default offset)."""
-    _tz = __import__("datetime").timezone(__import__("datetime").timedelta(hours=3))
-
-    def formatTime(self, record, datefmt=None):
-        import datetime
-        dt = datetime.datetime.fromtimestamp(record.created, tz=self._tz)
-        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
-
-
-def _setup_logging(debug: bool = False) -> None:
-    level = logging.DEBUG if debug else getattr(logging, Config.LOG_LEVEL, logging.INFO)
-    fmt = _UTC3Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    root = logging.getLogger()
-    root.setLevel(level)
-    root.handlers.clear()
-
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setFormatter(fmt)
-    root.addHandler(ch)
-
-    # Suppress noisy low-level loggers
-    for _noisy in (
-        "httpcore", "httpcore.http11", "httpcore.connection", "httpcore.proxy",
-        "httpx",  # per-request URL lines
-        "apscheduler.scheduler", "apscheduler.executors", "apscheduler.executors.default",
-        "apscheduler.jobstores", "apscheduler.jobstores.default",
-    ):
-        logging.getLogger(_noisy).setLevel(logging.WARNING)
-
-    if Config.LOG_FILE:
-        os.makedirs(os.path.dirname(Config.LOG_FILE), exist_ok=True)
-        fh = RotatingFileHandler(
-            Config.LOG_FILE, maxBytes=20 * 1024 * 1024, backupCount=10, encoding="utf-8"
-        )
-        fh.setFormatter(fmt)
-        root.addHandler(fh)
-        try:
-            os.chmod(Config.LOG_FILE, 0o666)
-        except OSError:
-            pass
 
 
 def _parse_args() -> argparse.Namespace:
@@ -134,7 +85,7 @@ def run_reenrich(limit: int | None = None) -> None:
 
 def main() -> None:
     args = _parse_args()
-    _setup_logging(debug=args.debug)
+    setup_logging(debug=args.debug)
 
     logger.info("Parser service starting...")
     for key, reg in get_enabled().items():

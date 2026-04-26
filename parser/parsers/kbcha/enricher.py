@@ -9,8 +9,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
+from ..base import ProgressUpdate
 from .._shared import sell_type as _sell
-from .client import KBChaClient, _generate_kbcha_proxies
+from .client import KBChaClient, ProxyBudgetExhausted, _generate_kbcha_proxies
 from .detail_parser import KBChaDetailParser
 from .external_inspection_parser import KBChaExternalInspectionParser, compare_report_vs_lot
 from .inspection_parser import CarmodooInspectionParser
@@ -89,19 +90,22 @@ class KBChaEnricher:
                 _thread_local.proxy_idx = proxy_idx
             return _thread_local.client
 
-        def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, tuple | None, int]:
+        def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, tuple | None, int, str]:
             try:
                 client = _get_thread_client(idx % max(len(proxy_pool), 1) if proxy_pool else 0)
                 car_seq = lot.id.replace("kbcha_", "")
                 combined = self._fetch_combined_with(car_seq, lot, client, stats, _stats_lock, delay)
                 insp_raw = self._fetch_inspection_html(lot, combined, client, delay) if combined else None
-                return lot, combined, insp_raw, 0
+                return lot, combined, insp_raw, 0, ""
+            except ProxyBudgetExhausted:
+                raise  # fatal — must propagate to abort the entire run
             except Exception as e:
+                etype = type(e).__name__
                 logger.warning(
-                    f"[{self._source}] Detail fetch failed for {lot.id}: {type(e).__name__}: {e}\n"
+                    f"[{self._source}] Detail fetch failed for {lot.id}: {etype}: {e}\n"
                     + _tb.format_exc(limit=6)
                 )
-                return lot, {}, None, 1
+                return lot, {}, None, 1, etype
 
         FLUSH_EVERY = 1  # write each lot immediately as its detail fetch completes
         pending: list[CarLot] = []
@@ -115,13 +119,10 @@ class KBChaEnricher:
                 return
             if not force and len(pending) < FLUSH_EVERY:
                 return
-            logger.info(f"[{self._source}] Writing {len(pending)} lots to DB...")
             try:
                 self._repo.upsert_batch(pending, stats=stats)
                 saved = sum(1 for l in pending if not l.raw_data.get("_db_skip"))
                 total_saved += saved
-                logger.info(f"[{self._source}] DB write done: {saved}/{len(pending)} lots saved "
-                            f"(total so far: {total_saved})")
             except Exception as e:
                 etype = type(e).__name__
                 self._inc_error(stats, etype, f"batch upsert failed ({len(pending)} lots): {etype}: {e}")
@@ -131,10 +132,19 @@ class KBChaEnricher:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(lots)}
             for i, future in enumerate(as_completed(future_map)):
-                lot, combined, insp_raw, errors = future.result()
-                stats["errors"] += errors
+                try:
+                    lot, combined, insp_raw, errors, etype = future.result()
+                except ProxyBudgetExhausted as e:
+                    logger.error(f"[{self._source}] Proxy budget exhausted — aborting enrichment. "
+                                 f"Processed {i}/{len(lots)} lots so far. {e}")
+                    # Cancel remaining futures
+                    for f in future_map:
+                        f.cancel()
+                    self._inc_error(stats, "ProxyBudgetExhausted",
+                                    f"Proxy budget exhausted after {i}/{len(lots)} lots")
+                    break
                 if errors:
-                    self._inc_error(stats, "detail_fetch", f"detail fetch failed {lot.id}")
+                    self._inc_error(stats, etype or "detail_fetch", f"detail fetch failed {lot.id}: {etype}")
                 if combined:
                     self._apply_combined(lot, combined, enriched_fields)
                     pending.append(lot)
@@ -146,7 +156,16 @@ class KBChaEnricher:
                     total_skipped += 1
                 if on_page_callback:
                     try:
-                        on_page_callback(page=i + 1, found=1, total_pages=len(lots), stats=stats)
+                        _progress = (i + 1) / len(lots)
+                        on_page_callback(ProgressUpdate(
+                            phase="enrich",
+                            phase_progress=min(_progress, 1.0),
+                            total_progress=min(0.7 + _progress * 0.15, 0.85),  # enrich ≈ 70-85%
+                            lots_found=len(lots),
+                            lots_processed=1,
+                            message=f"enrich {i+1}/{len(lots)}",
+                            stats=stats,
+                        ))
                     except Exception:
                         pass
 
@@ -203,7 +222,7 @@ class KBChaEnricher:
 
         # 2. Fallback: basic-info popup if spec fields are missing
         if not any(f in combined for f in _SPEC_FIELDS):
-            logger.debug(f"[{self._source}] {lot.id}: missing specs, fetching basic_info popup")
+            pass  # fetching basic_info popup
             _time.sleep(delay)
             try:
                 basic_html = client.fetch_basic_info(car_seq)
@@ -304,22 +323,7 @@ class KBChaEnricher:
             lot.raw_data["_original_msrp_man"] = msrp_man
 
     def _log_lot_dump(self, lot: CarLot) -> None:
-        if not logger.isEnabledFor(logging.DEBUG):
-            return
-        title = lot.raw_data.get("title", "")
-        logger.debug(
-            f"[{self._source}] LOT_DUMP {lot.id} | title={title!r} | "
-            f"make={lot.make} | model={lot.model!r} | trim={lot.trim!r} | "
-            f"year={lot.year} | price={lot.price} | mileage={lot.mileage} | "
-            f"fuel={lot.fuel!r} | trans={lot.transmission!r} | body={lot.body_type!r} | "
-            f"drive={lot.drive_type!r} | engine_vol={lot.engine_volume} | "
-            f"color={lot.color!r} | seat_color={lot.seat_color!r} | "
-            f"owners={lot.owners_count} | vin={lot.vin!r} | plate={lot.plate_number!r} | "
-            f"insp_type={lot.raw_data.get('inspection_type')!r} | "
-            f"generation={lot.raw_data.get('generation')!r} | "
-            f"engine_str={lot.raw_data.get('engine_str')!r} | "
-            f"options_n={len(lot.options) if lot.options else 0}"
-        )
+        pass  # disabled: per-lot dumps removed in logging cleanup
 
     # ── Inspection enrichment ──────────────────────────────────────────────
 
@@ -346,6 +350,11 @@ class KBChaEnricher:
                             self._upsert_external_inspection(lot, insp_type, report_url, parsed, insp_stats, stats)
                             self._bump_fill(fill, lot)
                             parsed_external = True
+                    except ProxyBudgetExhausted as e:
+                        logger.error(f"[{self._source}] Proxy budget exhausted during inspection enrichment — aborting. {e}")
+                        self._inc_error(stats, "ProxyBudgetExhausted",
+                                        f"Proxy budget exhausted during inspections at lot {i+1}/{len(lots)}")
+                        return
                     except Exception as e:
                         etype = type(e).__name__
                         logger.warning(
@@ -364,11 +373,11 @@ class KBChaEnricher:
                 fetch_fn = lambda seq=car_seq: self._client.fetch_kb_inspection(seq)
             elif insp_type == "other":
                 insp_stats["other"] += 1
-                logger.debug(f"[{self._source}] {lot.id}: unknown inspection type, skipping")
+                pass  # unknown inspection type
                 continue
             else:
                 insp_stats["no_button"] += 1
-                logger.debug(f"[{self._source}] {lot.id}: no inspection button detected")
+                pass  # no inspection button
                 continue
 
             try:
@@ -382,7 +391,7 @@ class KBChaEnricher:
                     html = fetch_fn()
                 if _PHOTO_ONLY_MARKER in html:
                     insp_stats["photo_only"] += 1
-                    logger.debug(f"[{self._source}] {lot.id}: photo-only inspection report")
+                    pass  # photo-only inspection
                     continue
                 self._parse_and_save_inspection(lot, car_seq, html, insp_stats)
                 self._bump_fill(fill, lot)
@@ -390,6 +399,11 @@ class KBChaEnricher:
                 _p = _time.monotonic()
                 _time.sleep(delay)
                 stats["pause_time"] = stats.get("pause_time", 0.0) + (_time.monotonic() - _p)
+            except ProxyBudgetExhausted as e:
+                logger.error(f"[{self._source}] Proxy budget exhausted during inspection enrichment — aborting. {e}")
+                self._inc_error(stats, "ProxyBudgetExhausted",
+                                f"Proxy budget exhausted during inspections at lot {i+1}/{len(lots)}")
+                return
             except Exception as e:
                 insp_stats["errors"] += 1
                 logger.warning(f"[{self._source}] Inspection fetch failed for {lot.id}: {type(e).__name__}: {e}")
@@ -401,7 +415,16 @@ class KBChaEnricher:
 
             if on_page_callback:
                 try:
-                    on_page_callback(page=i + 1, found=1, total_pages=len(lots), stats=stats)
+                    _progress = (i + 1) / len(lots)
+                    on_page_callback(ProgressUpdate(
+                        phase="inspect",
+                        phase_progress=min(_progress, 1.0),
+                        total_progress=min(0.85 + _progress * 0.1, 0.95),  # inspect ≈ 85-95%
+                        lots_found=len(lots),
+                        lots_processed=1,
+                        message=f"inspect {i+1}/{len(lots)}",
+                        stats=stats,
+                    ))
                 except Exception:
                     pass
 
@@ -474,7 +497,7 @@ class KBChaEnricher:
         if parsed.get("vin"):
             if not lot.vin:
                 lot.vin = parsed["vin"]
-                logger.debug(f"[{self._source}] {lot.id}: VIN set from report")
+                pass  # VIN set from report
             elif lot.vin.upper() != parsed["vin"].upper():
                 logger.warning(
                     f"[{self._source}] {lot.id}: VIN override report={parsed['vin']!r} lot={lot.vin!r}"
@@ -493,10 +516,10 @@ class KBChaEnricher:
         # Fill missing lot fields from report (non-overriding)
         if parsed.get("report_fuel") and not lot.fuel:
             lot.fuel = parsed["report_fuel"]
-            logger.debug(f"[{self._source}] {lot.id}: fuel set from report: {lot.fuel}")
+            pass  # fuel set from report
         if parsed.get("report_transmission") and not lot.transmission:
             lot.transmission = parsed["report_transmission"]
-            logger.debug(f"[{self._source}] {lot.id}: transmission set from report: {lot.transmission}")
+            pass  # transmission set from report
         if parsed.get("report_first_registered") and not lot.raw_data.get("first_registration"):
             lot.raw_data["first_registration"] = parsed["report_first_registered"]
 
@@ -509,7 +532,7 @@ class KBChaEnricher:
             if mapped:
                 lot.sell_type = mapped
                 lot.sell_type_raw = raw
-                logger.debug(f"[{self._source}] {lot.id}: sell_type={mapped} (from {raw!r})")
+                pass  # sell_type mapped
 
         # ── Damaged panels ──────────────────────────────────────────────
         damaged = parsed.get("damaged_panels") or []
@@ -568,7 +591,7 @@ class KBChaEnricher:
             try:
                 self._repo.upsert_inspection(rec)
                 insp_stats["url_saved"] += 1
-                logger.debug(f"[{self._source}] {lot.id}: saved inspection URL type={insp_type}")
+                pass  # saved inspection URL
             except Exception as e:
                 insp_stats["errors"] += 1
                 logger.warning(f"[{self._source}] {lot.id}: upsert_inspection failed: {e}")
@@ -578,7 +601,7 @@ class KBChaEnricher:
                     f"inspection url save failed {lot.id}/{insp_type}: {type(e).__name__}: {e}",
                 )
         else:
-            logger.debug(f"[{self._source}] {lot.id}: {insp_type} — no URL in raw_data")
+            pass  # no URL in raw_data
 
     def _parse_and_save_inspection(
         self, lot: CarLot, car_seq: str, html: str, insp_stats: dict
@@ -587,13 +610,13 @@ class KBChaEnricher:
 
         if insp.get("vin"):
             lot.vin = insp["vin"]
-            logger.debug(f"[{self._source}] {lot.id}: VIN -> '{lot.vin}'")
+            pass  # VIN assigned
         elif not lot.vin:
             raw_info = lot.raw_data.get("raw_info") or {}
             fallback_vin = raw_info.get("차대번호") or raw_info.get("차시번호")
             if fallback_vin:
                 lot.vin = str(fallback_vin).strip()
-                logger.debug(f"[{self._source}] {lot.id}: VIN fallback from detail raw_info")
+                pass  # VIN fallback from raw_info
         if "inspection_accident" in insp:
             lot.has_accident = insp["inspection_accident"]
         if "inspection_flood" in insp:
@@ -607,10 +630,10 @@ class KBChaEnricher:
         # Set damage fields on the lot
         if structural:
             lot.damage = ", ".join(structural)
-            logger.debug(f"[{self._source}] {lot.id}: damage from structural panels")
+            pass  # damage from structural panels
         if outer:
             lot.secondary_damage = ", ".join(outer)
-            logger.debug(f"[{self._source}] {lot.id}: secondary_damage from outer panels")
+            pass  # secondary_damage from outer panels
         kb_insp_url = (
             f"https://www.kbchachacha.com/public/layer/car/check/info.kbc"
             f"?layerId=layerCarCheckInfo&carSeq={car_seq}&diagCarYn=N&diagCarSeq=&premiumCarYn=N"

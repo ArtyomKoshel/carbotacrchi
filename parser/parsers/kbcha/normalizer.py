@@ -27,7 +27,7 @@ _YEAR_RE       = re.compile(r'^\d{2,4}년?$')
 _GEN_PAREN_RE  = re.compile(r'\(([A-Z0-9]{2,5})\)')
 _GEN_PLAIN_RE  = re.compile(r'^[A-Z]{2,3}\d?$')
 _GEN_NUMGEN_RE = re.compile(r'^\d+세대$')  # e.g. 3세대, 4세대
-_DRIVE_RE      = re.compile(r'^(2WD|4WD|AWD|FWD|RWD)$', re.IGNORECASE)
+_DRIVE_RE      = re.compile(r'^(2WD|4WD|AWD|FWD|RWD|4Matic\+?|xDrive|sDrive)$', re.IGNORECASE)
 
 # Stop-set union for gen-code exclusion
 _ALL_STOPS: frozenset[str] = MODEL_FUEL_STOP | MODEL_TRIM_STOP | MODEL_DRIVE_STOP

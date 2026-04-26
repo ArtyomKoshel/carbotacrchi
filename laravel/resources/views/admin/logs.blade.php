@@ -3,65 +3,141 @@
 
 @section('content')
 
-{{-- Action bar — outside any form to avoid nested-form bug --}}
+<div id="logs-root" class="flex gap-4" data-file-size="{{ (int)($fileSize ?? 0) }}">
+
+{{-- ── Left sidebar: file picker ─────────────────────────────────────── --}}
+<div class="w-56 flex-shrink-0 space-y-3">
+
+  {{-- Main log files --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
+    <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Parser Logs</div>
+    @foreach($rotationFiles as $rf)
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $rf['idx'] ?: null])) }}"
+       class="block px-2 py-1.5 rounded text-xs font-mono truncate transition mb-0.5
+              {{ !$jobFile && !$appLog && $fileIdx === $rf['idx'] ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+      {{ $rf['label'] }}{{ $rf['idx'] === 0 ? ' (current)' : '' }}
+    </a>
+    @endforeach
+  </div>
+
+  {{-- Laravel app log (10I) --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
+    <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">App Log</div>
+    @if(file_exists($appLogPath ?? ''))
+    <a href="{{ route('admin.logs', array_filter(['app' => 1, 'level' => $level, 'search' => $search])) }}"
+       class="block px-2 py-1.5 rounded text-xs font-mono truncate transition
+              {{ $appLog ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+      laravel.log
+    </a>
+    @else
+    <div class="text-xs text-gray-600">storage/logs/laravel.log not found</div>
+    @endif
+  </div>
+
+  {{-- Job log files (10D) --}}
+  @if(count($jobFiles))
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Job Logs</span>
+      <span class="text-xs text-gray-600">{{ count($jobFiles) }}</span>
+    </div>
+    <div class="max-h-64 overflow-y-auto space-y-0.5">
+      @foreach($jobFiles as $jf)
+      @php
+        $isActive = $jobFile === $jf['label'];
+        $sizeMb = round($jf['size'] / 1024 / 1024, 1);
+        $sizeStr = $sizeMb >= 1 ? $sizeMb . ' MB' : round($jf['size'] / 1024) . ' KB';
+        // Extract job ID for linking
+        preg_match('/job-(\d+)/', $jf['label'], $m);
+        $jid = $m[1] ?? null;
+      @endphp
+      <div class="flex items-center gap-1 group">
+        <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jf['label']])) }}"
+           class="flex-1 px-2 py-1.5 rounded text-xs font-mono truncate transition
+                  {{ $isActive ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+          {{ $jf['label'] }}
+          <span class="text-gray-600 ml-1">{{ $sizeStr }}</span>
+        </a>
+        @if($jid)
+        <a href="{{ route('admin.jobs.detail', $jid) }}" title="View job #{{ $jid }}"
+           class="text-gray-600 hover:text-blue-400 text-xs opacity-0 group-hover:opacity-100 transition">→</a>
+        @endif
+      </div>
+      @endforeach
+    </div>
+    {{-- Clear job logs (10H) --}}
+    <form method="POST" action="{{ route('admin.logs.clear.jobs') }}" class="mt-2"
+          onsubmit="return confirm('Delete ALL job log files ({{ count($jobFiles) }} files)?')">
+      @csrf
+      <button type="submit"
+              class="w-full px-2 py-1 rounded text-xs bg-gray-800 text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition">
+        🗑 Clear all job logs
+      </button>
+    </form>
+  </div>
+  @endif
+
+</div>
+
+{{-- ── Main content area ─────────────────────────────────────────────── --}}
+<div class="flex-1 min-w-0">
+
+{{-- Action bar --}}
 <div class="flex items-center gap-2 flex-wrap mb-3">
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source])) }}"
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">
     ↻ Refresh
   </a>
   <button id="auto-refresh-btn" onclick="toggleAutoRefresh()"
           class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
-    ⏱ Auto-refresh: <span id="ar-state">OFF</span>
+    ⏱ Auto: <span id="ar-state">OFF</span>
   </button>
-  <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search, 'source' => $source])) }}"
+  <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
     ↓ Download
   </a>
+  @if(!$jobFile && !$appLog)
   <form method="POST" action="{{ route('admin.logs.clear') }}" class="inline"
-        onsubmit="return confirm('Clear the entire log file?')">
+        onsubmit="return confirm('Clear the main parser log?')">
     @csrf
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-red-400 transition">
-      🗑 Clear log
+      🗑 Clear
     </button>
   </form>
+  @endif
+
+  {{-- Source filter (10E) --}}
+  <select id="source-select" onchange="applySource(this.value)"
+          class="px-2 py-1 rounded-lg text-xs bg-gray-800 border border-gray-700 text-gray-300">
+    <option value="" {{ !$source ? 'selected' : '' }}>All sources</option>
+    <option value="encar" {{ $source === 'encar' ? 'selected' : '' }}>Encar</option>
+    <option value="kbcha" {{ $source === 'kbcha' ? 'selected' : '' }}>KBCha</option>
+  </select>
+
   <span class="text-xs text-gray-600 ml-auto mr-1">Lines:</span>
   @foreach([500, 1000, 3000, 10000] as $lim)
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'limit' => $lim])) }}"
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $lim])) }}"
      class="px-2 py-1 rounded text-xs transition
             {{ $maxLines == $lim ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-500 hover:text-white' }}">
     {{ number_format($lim) }}
   </a>
   @endforeach
-  <span class="text-xs text-gray-600 ml-2">{{ $jobFile ?: basename(config('admin.log_file')) . ($fileIdx > 0 ? '.'.$fileIdx : '') }}</span>
+  <span class="text-xs text-gray-600 ml-2 font-mono">{{ $appLog ? 'laravel.log' : ($jobFile ?: basename(config('admin.log_file')) . ($fileIdx > 0 ? '.'.$fileIdx : '')) }}</span>
 </div>
-
-{{-- Rotation file selector (only shown when backup files exist) --}}
-@if(count($rotationFiles) > 1)
-<div class="flex items-center gap-2 flex-wrap mb-3">
-  <span class="text-xs text-gray-600">File:</span>
-  @foreach($rotationFiles as $rf)
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $rf['idx'] ?: null])) }}"
-     class="px-3 py-1.5 rounded-lg text-xs font-mono transition
-            {{ !$jobFile && $fileIdx === $rf['idx'] ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-    {{ $rf['label'] }}{{ $rf['idx'] === 0 ? ' (current)' : '' }}
-  </a>
-  @endforeach
-</div>
-@endif
 
 {{-- Filters --}}
 <div class="mb-4 space-y-2">
-  {{-- Level filter (links, not form buttons) --}}
+  {{-- Level filter --}}
   <div class="flex items-center gap-2 flex-wrap">
     @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info', 'DEBUG' => 'Debug'] as $lv => $lbl)
-    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
       {{ $lbl }}
     </a>
     @endforeach
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'job' => $jobFile ?: null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
       📊 Stats
@@ -73,6 +149,7 @@
     <input type="hidden" name="level"  value="{{ $level }}">
     <input type="hidden" name="source" value="{{ $source }}">
     @if($jobFile)<input type="hidden" name="job" value="{{ $jobFile }}">@endif
+    @if($appLog)<input type="hidden" name="app" value="1">@endif
     @if($maxLines != 1000)<input type="hidden" name="limit" value="{{ $maxLines }}">@endif
     <input type="text" name="search" value="{{ $search }}" placeholder="Search text..."
            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
@@ -81,7 +158,7 @@
       Search
     </button>
     @if($search || $source || $level)
-    <a href="{{ route('admin.logs', array_filter(['job' => $jobFile ?: null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Reset</a>
     @endif
   </form>
@@ -113,7 +190,7 @@
       </span>
       @if($totalPages > 1)
       @php
-        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'job'=>$jobFile?:null,'limit'=>$maxLines!=1000?$maxLines:null]);
+        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'job'=>$jobFile?:null,'app'=>$appLog?1:null,'limit'=>$maxLines!=1000?$maxLines:null]);
       @endphp
       <div class="ml-auto flex items-center gap-1">
         @if($page > 0)
@@ -153,8 +230,38 @@
   </div>
 @endif
 
+</div>{{-- end main content --}}
+</div>{{-- end flex layout --}}
+
 <script>
 let _arTimer = null;
+let _sinceByte = Number((document.getElementById('logs-root')?.dataset.fileSize) || 0);
+
+function _lineClass(line) {
+    if (line.includes('[STAT]')) return 'log-stat';
+    if (line.includes('[ERROR]')) return 'log-error';
+    if (line.includes('[WARNING]')) return 'log-warning';
+    if (line.includes('[DEBUG]')) return 'log-debug';
+    return 'log-info';
+}
+
+function _appendLines(lines) {
+    if (!lines || !lines.length) return;
+    const pre = document.getElementById('log-pre');
+    if (!pre) return;
+    const atBottom = pre.scrollHeight - pre.scrollTop <= pre.clientHeight + 40;
+
+    lines.forEach((line) => {
+        const span = document.createElement('span');
+        span.className = _lineClass(line);
+        span.textContent = line;
+        pre.appendChild(span);
+        pre.appendChild(document.createTextNode('\n'));
+    });
+
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+}
+
 function toggleAutoRefresh() {
     const btn = document.getElementById('ar-state');
     if (_arTimer) {
@@ -171,19 +278,26 @@ function toggleAutoRefresh() {
     }
 }
 function refreshLogs() {
-    fetch(window.location.href)
-        .then(r => r.text())
-        .then(html => {
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            const newPre = doc.getElementById('log-pre');
-            const curPre = document.getElementById('log-pre');
-            if (newPre && curPre) {
-                const atBottom = curPre.scrollHeight - curPre.scrollTop <= curPre.clientHeight + 40;
-                curPre.innerHTML = newPre.innerHTML;
-                if (atBottom) curPre.scrollTop = curPre.scrollHeight;
+    const params = new URLSearchParams(window.location.search);
+    params.set('since_byte', String(_sinceByte));
+    params.set('limit', '1500');
+    fetch(`/admin/logs/tail?${params.toString()}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+            _appendLines(data.lines || []);
+            if (typeof data.next_byte === 'number') {
+                _sinceByte = data.next_byte;
             }
         })
         .catch(() => {});
+}
+function applySource(val) {
+    const url = new URL(window.location.href);
+    if (val) url.searchParams.set('source', val);
+    else url.searchParams.delete('source');
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
 }
 </script>
 

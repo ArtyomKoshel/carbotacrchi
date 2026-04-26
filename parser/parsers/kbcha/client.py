@@ -5,14 +5,17 @@ import random
 import re
 import string
 import time as _time
-from urllib.parse import urlparse
-
 import httpx
 from httpx import Timeout as _Timeout
 
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+
+class ProxyBudgetExhausted(RuntimeError):
+    """Raised when the proxy provider returns 402 Payment Required (balance depleted)."""
+
 
 _CACHED_PROXIES: list[str] | None = None
 
@@ -141,6 +144,21 @@ class KBChaClient:
 
         return False
 
+    def _fallback_to_direct(self) -> None:
+        """Drop all proxies and rebuild client with a direct connection.
+        KBCha site works without proxies; this is used when proxy budget is exhausted."""
+        if not any(self._proxies):
+            return  # already direct
+        logger.warning("[kbcha:proxy] Falling back to DIRECT connection (no proxy)")
+        self._proxies = [None]
+        self._proxy_idx = 0
+        try:
+            self._client.close()
+        except Exception:
+            pass
+        self._client = self._build_client(None)
+        self.warmup()
+
     def _rebuild_client(self) -> None:
         """Close and recreate the HTTP client with the current proxy (fresh connection pool)."""
         try:
@@ -155,6 +173,10 @@ class KBChaClient:
         try:
             return self._client.get(url, params=params, headers=headers)
         except httpx.ProxyError as e:
+            if "402" in str(e) or "Payment Required" in str(e):
+                logger.warning(f"[kbcha:proxy] Proxy budget exhausted ({e}) — switching to direct connection")
+                self._fallback_to_direct()
+                return self._client.get(url, params=params, headers=headers)
             logger.warning(f"[kbcha:proxy] ProxyError ({e}) — rotating and retrying...")
             self.rotate_proxy()
             _time.sleep(2)
@@ -188,7 +210,7 @@ class KBChaClient:
                 if referer:
                     h["Referer"] = referer
                 resp = self._client.get(url, headers=h)
-                logger.debug(f"[kbcha:warmup] {url} -> {resp.status_code} ({len(resp.content)} bytes)")
+                pass  # warmup OK
                 _time.sleep(1.2)
         except Exception as e:
             logger.warning(f"[kbcha:warmup] failed: {e}")
@@ -239,16 +261,9 @@ class KBChaClient:
         if class_code:
             params["classCode"] = class_code
 
-        t0 = _time.monotonic()
         resp = self._get(url, params=params)
-        elapsed = _time.monotonic() - t0
-
         resp.raise_for_status()
-        # Store the effective URL so detail page can use it as Referer
         self._last_list_url = str(resp.url)
-        label = f"maker={maker_code}" + (f" class={class_code}" if class_code else "")
-        logger.debug(f"[kbcha:http] list.empty {label} p={page} "
-                      f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def fetch_detail_page(self, car_seq: str) -> str:
@@ -258,13 +273,8 @@ class KBChaClient:
             **_PAGE_HEADERS,
             "Referer": self._last_list_url,
         }
-        t0 = _time.monotonic()
         resp = self._get(url, params=params, headers=headers)
-        elapsed = _time.monotonic() - t0
-
         resp.raise_for_status()
-        logger.debug(f"[kbcha:http] detail carSeq={car_seq} "
-                      f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def fetch_carmodoo(self, check_num: str) -> str:
@@ -276,36 +286,24 @@ class KBChaClient:
             "Accept-Language": "ko-KR,ko;q=0.9",
             "Referer": "https://www.kbchachacha.com/",
         }
-        t0 = _time.monotonic()
         resp = self._get(url, params=params, headers=headers)
-        elapsed = _time.monotonic() - t0
         resp.raise_for_status()
-        logger.debug(f"[kbcha:http] carmodoo checkNum={check_num} "
-                      f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def fetch_km_analysis(self, car_seq: str) -> str:
         url = f"{BASE_URL}/public/layer/car/km/analysis/info.kbc"
         params = {"carSeq": car_seq}
         headers = {"Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}"}
-        t0 = _time.monotonic()
         resp = self._get(url, params=params, headers=headers)
-        elapsed = _time.monotonic() - t0
         resp.raise_for_status()
-        logger.debug(f"[kbcha:http] km_analysis carSeq={car_seq} "
-                     f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def fetch_basic_info(self, car_seq: str) -> str:
         url = f"{BASE_URL}/public/layer/car/detail/basic/info/view.kbc"
         params = {"carSeq": car_seq}
         headers = {"Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}"}
-        t0 = _time.monotonic()
         resp = self._get(url, params=params, headers=headers)
-        elapsed = _time.monotonic() - t0
         resp.raise_for_status()
-        logger.debug(f"[kbcha:http] basic_info carSeq={car_seq} "
-                     f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def fetch_kb_inspection(self, car_seq: str) -> str:
@@ -323,12 +321,8 @@ class KBChaClient:
             "Accept-Language": "ko-KR,ko;q=0.9",
             "Referer": f"{BASE_URL}/public/car/detail.kbc?carSeq={car_seq}",
         }
-        t0 = _time.monotonic()
         resp = self._get(url, params=params, headers=headers)
-        elapsed = _time.monotonic() - t0
         resp.raise_for_status()
-        logger.debug(f"[kbcha:http] kb_inspection carSeq={car_seq} "
-                     f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)")
         return resp.text
 
     def fetch_external_report(self, report_url: str, referer: str | None = None) -> str:
@@ -347,16 +341,8 @@ class KBChaClient:
             "Referer": referer or f"{BASE_URL}/",
         }
 
-        t0 = _time.monotonic()
         resp = self._get(url, headers=headers)
-        elapsed = _time.monotonic() - t0
         resp.raise_for_status()
-
-        host = urlparse(url).netloc
-        logger.debug(
-            f"[kbcha:http] external host={host} "
-            f"-> {resp.status_code} in {elapsed:.2f}s ({len(resp.content)} bytes)"
-        )
         return resp.text
 
     def close(self):
