@@ -103,6 +103,7 @@ fi
 echo "[start] Preparing log & storage directories..."
 mkdir -p /app/logs
 mkdir -p "$APP_DIR/storage/logs" "$APP_DIR/storage/framework/cache" "$APP_DIR/storage/framework/sessions" "$APP_DIR/storage/framework/views" "$APP_DIR/bootstrap/cache"
+touch "$APP_DIR/storage/logs/laravel.log"
 chown -R www-data:www-data /app/logs "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 
