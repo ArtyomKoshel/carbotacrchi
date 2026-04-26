@@ -133,12 +133,6 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if spec.get("seatCount"):
         lot.seat_count = int(spec["seatCount"])
 
-    # Domestic / import classification
-    if cat.get("domestic") is not None:
-        lot.is_domestic = bool(cat["domestic"])
-    if cat.get("importType"):
-        lot.import_type = cat["importType"]
-
     if detail.get("vin"):
         lot.vin = detail["vin"]
     if detail.get("vehicleNo"):
@@ -198,8 +192,6 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     lot.raw_data.update({
         "grade_detail_kr": cat.get("gradeDetailName"),
         "grade_detail_en": cat.get("gradeDetailEnglishName"),
-        "domestic":        cat.get("domestic"),
-        "import_type":     cat.get("importType"),
         "ad_status":       adv.get("status"),
     })
 

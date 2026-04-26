@@ -295,16 +295,6 @@ FIELDS: list[FieldSpec] = [
         description="Number of seats",
         sources={"encar": "spec.seatCount"},
     ),
-    FieldSpec(
-        name="is_domestic", dtype=FieldType.BOOL, filterable=True, category="identity",
-        description="Domestic (Korean) car",
-        sources={"encar": "category.domestic"},
-    ),
-    FieldSpec(
-        name="import_type", dtype=FieldType.STRING, filterable=True, category="identity",
-        description="Import classification",
-        sources={"encar": "category.importType"},
-    ),
 
     # ── Sales model ──────────────────────────────────────────────────────────
     FieldSpec(

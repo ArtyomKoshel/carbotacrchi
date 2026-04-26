@@ -73,6 +73,12 @@ class ComputeFieldCoverage extends Command
         // Location & links
         ['field' => 'location',          'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'image_url',         'pred' => "X IS NOT NULL AND X <> ''"],
+        ['field' => 'lot_url',          'pred' => "X IS NOT NULL AND X <> ''"],
+
+        // Identity (always present)
+        ['field' => 'id',                'pred' => "X IS NOT NULL AND X <> ''"],
+        ['field' => 'source',           'pred' => "X IS NOT NULL AND X <> ''"],
+        ['field' => 'registration_year_month', 'pred' => "X IS NOT NULL AND X > 0"],
 
     ];
 

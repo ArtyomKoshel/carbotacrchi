@@ -35,8 +35,6 @@ class CarLot:
 
     # New first-class columns (extracted from raw_data)
     seat_count: int | None = None
-    is_domestic: bool | None = None
-    import_type: str | None = None
 
     # Registration & documents
     vin: str | None = None
@@ -89,8 +87,6 @@ class CarLot:
         "model_group_kr",     # -> duplicate of model
         "year_month",         # -> duplicate of registration_year_month
         "origin_price",       # -> duplicate of retail_value
-        "domestic",           # -> extracted to is_domestic column
-        "import_type",        # -> extracted to import_type column
         "seat_count",         # -> extracted to seat_count column
     })
 
@@ -146,8 +142,6 @@ class CarLot:
             "sell_type": self.sell_type,
             "sell_type_raw": self.sell_type_raw,
             "seat_count": self.seat_count,
-            "is_domestic": self.is_domestic,
-            "import_type": self.import_type,
         }
 
     def merge_details(self, details: dict) -> None:

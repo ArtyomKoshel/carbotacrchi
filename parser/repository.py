@@ -362,7 +362,7 @@ class LotRepository:
                 fetched_at, is_active, parsed_at,
                 plate_number, registration_date,
                 sell_type, sell_type_raw,
-                seat_count, is_domestic, import_type,
+                seat_count,
                 created_at, updated_at
             ) VALUES (
                 %(id)s, %(source)s, %(make)s, %(model)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
@@ -379,7 +379,7 @@ class LotRepository:
                 %(now)s, %(is_active)s, %(now)s,
                 %(plate_number)s, %(registration_date)s,
                 %(sell_type)s, %(sell_type_raw)s,
-                %(seat_count)s, %(is_domestic)s, %(import_type)s,
+                %(seat_count)s,
                 %(now)s, %(now)s
             ) ON DUPLICATE KEY UPDATE
                 price=VALUES(price), mileage=VALUES(mileage),
@@ -415,8 +415,6 @@ class LotRepository:
                 sell_type=COALESCE(VALUES(sell_type), sell_type),
                 sell_type_raw=COALESCE(VALUES(sell_type_raw), sell_type_raw),
                 seat_count=COALESCE(VALUES(seat_count), seat_count),
-                is_domestic=COALESCE(VALUES(is_domestic), is_domestic),
-                import_type=COALESCE(VALUES(import_type), import_type),
                 parsed_at=VALUES(parsed_at), updated_at=VALUES(updated_at)
         """
 
@@ -780,8 +778,6 @@ class LotRepository:
                         sell_type=row.get("sell_type"),
                         sell_type_raw=row.get("sell_type_raw"),
                         seat_count=row.get("seat_count"),
-                        is_domestic=row.get("is_domestic"),
-                        import_type=row.get("import_type"),
                     )
                     lots.append(lot)
                 except Exception as e:
