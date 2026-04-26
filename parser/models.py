@@ -40,7 +40,6 @@ class CarLot:
     vin: str | None = None
     plate_number: str | None = None
     registration_date: str | None = None
-    title: str = "Clean"
 
     # Legal / registration status
     lien_status: str | None = None
@@ -56,7 +55,6 @@ class CarLot:
     # Pricing
     retail_value: int | None = None
     repair_cost: int | None = None
-    new_car_price_ratio: int | None = None
 
     # Options
     options: list | None = None
@@ -119,7 +117,6 @@ class CarLot:
             "flood_history": self.flood_history,
             "owners_count": self.owners_count,
             "insurance_count": self.insurance_count,
-            "title": self.title,
             "location": self.location,
             "color": self.color,
             "seat_color": self.seat_color,
@@ -130,7 +127,6 @@ class CarLot:
             "total_loss_history": self.total_loss_history,
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
-            "new_car_price_ratio": self.new_car_price_ratio,
             "registration_year_month": self.registration_year_month,
             "image_url": self.image_url,
             "lot_url": self.lot_url,

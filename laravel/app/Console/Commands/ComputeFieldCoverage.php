@@ -50,6 +50,7 @@ class ComputeFieldCoverage extends Command
         ['field' => 'engine_volume',     'pred' => "X IS NOT NULL AND X > 0"],
         ['field' => 'color',             'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'seat_color',        'pred' => "X IS NOT NULL AND X <> ''"],
+        ['field' => 'seat_count',        'pred' => "X IS NOT NULL"],
 
         // Sales model (P1 + P2 filter)
         ['field' => 'sell_type',         'pred' => "X IS NOT NULL AND X <> ''"],

@@ -184,41 +184,13 @@ class KBChaDetailParser:
         if insurance_match:
             result["insurance_count"] = int(insurance_match.group(1))
 
-    # ── Pricing (AI 시세, 신차 대비) ────────────────────────────────────────
+    # ── Pricing (AI 시세) ───────────────────────────────────────────────────
 
     def _parse_pricing(self, soup: BeautifulSoup, result: dict) -> None:
-        text = soup.get_text()
-
-        ratio_match = re.search(r"신차\s*출고\s*가격\s*대비\s*(\d+)\s*%", text)
-        if ratio_match:
-            result["new_car_price_ratio"] = int(ratio_match.group(1))
-
-        # AI-suggested price range (적정범위) intentionally not parsed anymore —
+        # AI-suggested price range (적정범위) intentionally not parsed —
         # the ai_price_min / ai_price_max columns were dropped (not used by UI).
-
-        for script in soup.find_all("script"):
-            s = script.get_text()
-            if "신차" not in s or "가격" not in s:
-                continue
-            m = re.search(
-                r'category["\s:]+신차["\s,}]+[^}]*?value["\s:]+([\d]+)',
-                s, re.DOTALL
-            ) or re.search(
-                r'"신차"\s*,\s*value\s*:\s*([\d]+)',
-                s
-            ) or re.search(
-                r'sellAmt\s*=\s*"(\d+)".*?newCarSellAmt|newCarSellAmt\s*=\s*"(\d+)"',
-                s, re.DOTALL
-            )
-            if m:
-                raw = m.group(1) or m.group(2) if m.lastindex and m.lastindex >= 2 else m.group(1)
-                try:
-                    price_man = int(raw)
-                    if 500 < price_man < 50000:
-                        result["_original_msrp_man"] = price_man
-                except (ValueError, TypeError):
-                    pass
-                break
+        # New-car price ratio (신차 대비) also not parsed — column dropped.
+        pass
 
     # ── Options (주요옵션) ──────────────────────────────────────────────────
 

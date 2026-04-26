@@ -149,11 +149,6 @@ FIELDS: list[FieldSpec] = [
         description="Total insurance-claim repair cost in KRW",
         sources={"encar": "myAccidentCost + otherAccidentCost"},
     ),
-    FieldSpec(
-        name="new_car_price_ratio", dtype=FieldType.INT, category="price",
-        description="Ratio of current price to MSRP (%)",
-        sources={"kbcha": "신차 대비 % text"},
-    ),
 
     # ── Odometer / age ───────────────────────────────────────────────────────
     FieldSpec(
@@ -239,10 +234,6 @@ FIELDS: list[FieldSpec] = [
         name="plate_number", dtype=FieldType.STRING, filterable=True, category="identity",
         description="License plate (Korean format)",
         sources={"encar": "detail.vehicleNo", "kbcha": "차량번호"},
-    ),
-    FieldSpec(
-        name="title", dtype=FieldType.STRING, filterable=True, category="identity",
-        description="Title / status label — default 'Clean'",
     ),
 
     # ── Legal status ─────────────────────────────────────────────────────────

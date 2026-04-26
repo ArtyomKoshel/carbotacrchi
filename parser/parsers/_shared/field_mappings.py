@@ -140,12 +140,6 @@ FIELD_MAPPINGS: list[FieldMapping] = [
             "encar": SourceExtraction("record.myAccidentCost + otherAccidentCost", "sum"),
         },
     ),
-    FieldMapping(
-        attribute="new_car_price_ratio", db_column="new_car_price_ratio",
-        extractions={
-            "kbcha": SourceExtraction("신차 대비 X% regex in detail", "int(match.group(1))"),
-        },
-    ),
 
     # ── Odometer / age ──────────────────────────────────────────────────────
     FieldMapping(
