@@ -74,7 +74,11 @@ class ExportFieldsSchema extends Command
                 continue;
             }
 
-            Cache::forget($job['cacheKey']);
+            try {
+                Cache::forget($job['cacheKey']);
+            } catch (\Exception $e) {
+                $this->warn("  Cache forget failed (ignored): {$e->getMessage()}");
+            }
             $count = count($decoded[$job['rootKey']]);
             $this->info("  wrote {$target} — {$count} entries");
         }
