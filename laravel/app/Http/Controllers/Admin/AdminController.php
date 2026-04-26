@@ -958,14 +958,18 @@ class AdminController extends Controller
     {
         $exportCode = Artisan::call('parser:export-fields');
         if ($exportCode !== 0) {
+            $output = Artisan::output();
+            \Log::error('parser:export-fields failed', ['code' => $exportCode, 'output' => $output]);
             return redirect()->route('admin.fields')
-                ->with('error', 'Failed to refresh field schema from parser. Check app logs.');
+                ->with('error', "Failed to refresh field schema (exit code {$exportCode}). Output: " . substr($output, 0, 500));
         }
 
         $coverageCode = Artisan::call('fields:compute-coverage');
         if ($coverageCode !== 0) {
+            $output = Artisan::output();
+            \Log::error('fields:compute-coverage failed', ['code' => $coverageCode, 'output' => $output]);
             return redirect()->route('admin.fields')
-                ->with('error', 'Failed to recompute field coverage stats. Check app logs.');
+                ->with('error', "Failed to recompute field coverage (exit code {$coverageCode}). Output: " . substr($output, 0, 500));
         }
 
         return redirect()->route('admin.fields')
