@@ -29,7 +29,7 @@ return new class extends Migration
         // Clean up stale coverage stats for these removed fields
         if (Schema::hasTable('field_coverage_stats')) {
             DB::table('field_coverage_stats')
-                ->whereIn('field', ['title', 'new_car_price_ratio'])
+                ->whereIn('field_name', ['title', 'new_car_price_ratio'])
                 ->delete();
         }
     }

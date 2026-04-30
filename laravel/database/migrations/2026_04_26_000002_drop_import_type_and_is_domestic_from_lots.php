@@ -29,7 +29,7 @@ return new class extends Migration
         // Clean up stale coverage stats for these removed fields
         if (Schema::hasTable('field_coverage_stats')) {
             DB::table('field_coverage_stats')
-                ->whereIn('field', ['import_type', 'is_domestic'])
+                ->whereIn('field_name', ['import_type', 'is_domestic'])
                 ->delete();
         }
     }
