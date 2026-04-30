@@ -124,9 +124,35 @@ class ChatSearchService
             true
         ) ?: [];
 
+        // Map single digits to series names for BMW, Mercedes, etc.
+        $numericSeries = [
+            'bmw' => [
+                '1' => '1 Series', '2' => '2 Series', '3' => '3 Series',
+                '4' => '4 Series', '5' => '5 Series', '6' => '6 Series',
+                '7' => '7 Series', '8' => '8 Series',
+            ],
+            'mercedes-benz' => [
+                'a' => 'A-Class', 'b' => 'B-Class', 'c' => 'C-Class',
+                'e' => 'E-Class', 's' => 'S-Class', 'g' => 'G-Class',
+            ],
+        ];
+
         foreach ($makes as $make => $models) {
-            if (mb_stripos($text, mb_strtolower($make)) !== false) {
+            $makeLower = mb_strtolower($make);
+            if (mb_stripos($text, $makeLower) !== false) {
                 $result['make'] = $make;
+
+                // Check numeric series first
+                if (isset($numericSeries[$makeLower])) {
+                    foreach ($numericSeries[$makeLower] as $digit => $series) {
+                        if (mb_stripos($text, $digit) !== false) {
+                            $result['model'] = $series;
+                            break 2;
+                        }
+                    }
+                }
+
+                // Check regular models
                 foreach ($models as $model) {
                     if (mb_stripos($text, mb_strtolower($model)) !== false) {
                         $result['model'] = $model;
@@ -158,6 +184,13 @@ class ChatSearchService
         }
         if (preg_match('/(?:пробег|mileage).*?(?:до|to|max)\s*(\d+)/u', $text, $m)) {
             $result['mileageMax'] = (int) $m[1];
+        }
+        // Handle "10000 пробег" pattern without "от/from"
+        if (preg_match('/(\d+)\s*(?:пробег|mileage)/u', $text, $m)) {
+            $val = (int) $m[1];
+            if ($val > 100 && $val < 500000) {
+                $result['mileageMin'] = $val;
+            }
         }
 
         $fuelMap = [
