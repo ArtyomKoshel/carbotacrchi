@@ -2,11 +2,8 @@
 
 namespace App\Providers;
 
-use App\AuctionProviders\CopartProvider;
 use App\AuctionProviders\EncarProvider;
-use App\AuctionProviders\IAIProvider;
 use App\AuctionProviders\KBChachaProvider;
-use App\AuctionProviders\ManheimProvider;
 use App\Repositories\LotRepositoryInterface;
 use App\Repositories\MockLotRepository;
 use App\Services\ProviderAggregator;
@@ -23,9 +20,6 @@ class AuctionServiceProvider extends ServiceProvider
 
         $this->app->singleton(ProviderAggregator::class, function () {
             return (new ProviderAggregator())->register(
-                new CopartProvider(),
-                new IAIProvider(),
-                new ManheimProvider(),
                 new EncarProvider(),
                 new KBChachaProvider(),
             );

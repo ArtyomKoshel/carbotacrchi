@@ -58,7 +58,7 @@ class SearchQuery
 
     public string $vin = '';
     /** @var string[] */
-    public array $sources = ['copart', 'iai', 'manheim', 'encar', 'kbcha'];
+    public array $sources = ['encar', 'kbcha'];
     public string $sort = 'date';
     public int $limit = 20;
     public int $offset = 0;
@@ -274,7 +274,7 @@ class SearchQuery
         if ($this->damageTypes)   $data['damageTypes']   = $this->damageTypes;
         if ($this->titleTypes)    $data['titleTypes']    = $this->titleTypes;
         if ($this->vin)           $data['vin']           = $this->vin;
-        if ($this->sources !== ['copart', 'iai', 'manheim', 'encar', 'kbcha']) {
+        if ($this->sources !== ['encar', 'kbcha']) {
             $data['sources'] = $this->sources;
         }
         return $data;
