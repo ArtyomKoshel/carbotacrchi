@@ -11,6 +11,7 @@ use App\Services\SearchQuery;
 use App\Services\TelegramBot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
@@ -49,6 +50,13 @@ class WebhookController extends Controller
         $firstName = $message['from']['first_name'] ?? '';
 
         $this->upsertUser($message['from']);
+
+        Log::info('[bot] message', [
+            'user_id'  => $userId,
+            'username' => $message['from']['username'] ?? '',
+            'chat_id'  => $chatId,
+            'text'     => mb_substr($text, 0, 200),
+        ]);
 
         if ($text === '/start') {
             $this->handleStart($chatId, $firstName);
@@ -236,6 +244,16 @@ class WebhookController extends Controller
 
     private function handleTextSearch(int|string $chatId, int|string $userId, string $text): void
     {
+        try {
+            $this->doTextSearch($chatId, $userId, $text);
+        } catch (\Throwable $e) {
+            Log::error('[bot] search error', ['user_id' => $userId, 'text' => $text, 'error' => $e->getMessage()]);
+            $this->bot->sendMessage($chatId, '❌ Произошла ошибка при поиске. Попробуйте позже.');
+        }
+    }
+
+    private function doTextSearch(int|string $chatId, int|string $userId, string $text): void
+    {
         $chatSearch = new ChatSearchService();
         $parsed     = $chatSearch->parseAndSearch($text);
 
@@ -255,7 +273,17 @@ class WebhookController extends Controller
         $this->bot->sendMessage($chatId, $statusText);
 
         $aggregator = app(ProviderAggregator::class);
+        $t0         = microtime(true);
         $result     = $aggregator->search($tolerantQuery);
+        $ms         = (int) ((microtime(true) - $t0) * 1000);
+
+        Log::info('[bot] search', [
+            'user_id'  => $userId,
+            'username' => $message['from']['username'] ?? '',
+            'query'    => $description,
+            'total'    => $result->total,
+            'ms'       => $ms,
+        ]);
 
         if (empty($result->lots)) {
             $this->bot->sendMessage($chatId, "😕 Ничего не найдено. Попробуйте изменить запрос.");
