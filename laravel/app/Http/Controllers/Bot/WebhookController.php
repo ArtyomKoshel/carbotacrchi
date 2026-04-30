@@ -20,6 +20,16 @@ class WebhookController extends Controller
     public function handle(Request $request): Response
     {
         $update          = $request->all();
+
+        $updateId = $update['update_id'] ?? null;
+        if ($updateId) {
+            $cacheKey = 'tg_upd_' . $updateId;
+            if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                return response('ok', 200);
+            }
+            \Illuminate\Support\Facades\Cache::put($cacheKey, 1, 300);
+        }
+
         $this->bot       = new TelegramBot(config('auction.bot_token'));
         $this->miniAppUrl = config('auction.miniapp_url', '');
 
