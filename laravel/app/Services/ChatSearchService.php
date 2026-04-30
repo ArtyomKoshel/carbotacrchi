@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\BotFilterSetting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -36,7 +38,7 @@ class ChatSearchService
         $query = SearchQuery::fromArray($parsed);
         $query->limit = 50;
 
-        $tolerantQuery = $query->withTolerance();
+        $tolerantQuery = $query->withBotTolerance();
         $description   = $query->describeForChat();
         $toleranceNote = $this->buildToleranceNote($query, $tolerantQuery);
 
@@ -190,6 +192,46 @@ class ChatSearchService
             }
         }
 
+        if (preg_match('/(?:страхов|insurance).*?(?:до|max|<)\s*(\d+)/u', $text, $m)) {
+            $result['insuranceCountMax'] = (int) $m[1];
+        }
+        if (preg_match('/(?:без\s*страхов|0\s*страхов)/u', $text)) {
+            $result['insuranceCountMax'] = 0;
+        }
+
+        if (preg_match('/(\d+)\s*(?:владел|хозя|owner)/u', $text, $m)) {
+            $result['ownersCountMax'] = (int) $m[1];
+        }
+
+        if (preg_match('/без\s*(?:дтп|авар|accident)/ui', $text)) {
+            $result['hasAccident'] = false;
+        }
+        if (preg_match('/(?:с\s*дтп|были\s*авар|has.*accident)/ui', $text)) {
+            $result['hasAccident'] = true;
+        }
+
+        if (preg_match('/без\s*(?:затопл|утопл|flood)/ui', $text)) {
+            $result['floodHistory'] = false;
+        }
+
+        if (preg_match('/без\s*(?:залог|обременен|lien)/ui', $text)) {
+            $result['lienStatuses'] = ['clean'];
+        }
+
+        $colorMap = [
+            'белый' => 'White', 'белая' => 'White', 'white' => 'White',
+            'черный' => 'Black', 'черная' => 'Black', 'black' => 'Black',
+            'серый' => 'Gray', 'серая' => 'Gray', 'серебр' => 'Silver',
+            'красный' => 'Red', 'красная' => 'Red', 'red' => 'Red',
+            'синий' => 'Blue', 'синяя' => 'Blue', 'blue' => 'Blue',
+        ];
+        foreach ($colorMap as $keyword => $value) {
+            if (mb_stripos($text, $keyword) !== false) {
+                $result['colors'] = [$value];
+                break;
+            }
+        }
+
         return empty($result) ? null : $result;
     }
 
@@ -218,26 +260,68 @@ class ChatSearchService
             if ($parts) $notes[] = 'двигатель ' . implode('–', $parts);
         }
 
+        if ($original->yearFrom !== $tolerant->yearFrom || $original->yearTo !== $tolerant->yearTo) {
+            $parts = [];
+            if ($tolerant->yearFrom > 0) $parts[] = (string) $tolerant->yearFrom;
+            if ($tolerant->yearTo > 0) $parts[] = (string) $tolerant->yearTo;
+            if ($parts) $notes[] = 'год ' . implode('–', $parts);
+        }
+
+        if ($original->insuranceCountMin !== $tolerant->insuranceCountMin || $original->insuranceCountMax !== $tolerant->insuranceCountMax) {
+            $parts = [];
+            if ($tolerant->insuranceCountMin > 0) $parts[] = (string) $tolerant->insuranceCountMin;
+            if ($tolerant->insuranceCountMax > 0 || $original->insuranceCountMax === 0) $parts[] = (string) $tolerant->insuranceCountMax;
+            if ($parts) $notes[] = 'страховые ' . implode('–', $parts);
+        }
+
+        if ($original->ownersCountMin !== $tolerant->ownersCountMin || $original->ownersCountMax !== $tolerant->ownersCountMax) {
+            $parts = [];
+            if ($tolerant->ownersCountMin > 0) $parts[] = (string) $tolerant->ownersCountMin;
+            if ($tolerant->ownersCountMax > 0 || $original->ownersCountMax === 0) $parts[] = (string) $tolerant->ownersCountMax;
+            if ($parts) $notes[] = 'владельцы ' . implode('–', $parts);
+        }
+
         return $notes ? implode(', ', $notes) : '';
     }
 
     private function getSystemPrompt(): string
     {
-        return <<<'PROMPT'
+        return Cache::remember('bot_filter:system_prompt', 60, function () {
+            return $this->buildSystemPrompt();
+        });
+    }
+
+    private function buildSystemPrompt(): string
+    {
+        $enabledFields = BotFilterSetting::allEnabled();
+
+        $filterDescriptions = [];
+        foreach ($enabledFields as $setting) {
+            $filterDescriptions[] = $this->buildFieldPromptLine($setting);
+        }
+
+        if (!$filterDescriptions) {
+            $filterDescriptions = [
+                '- make (string) — марка',
+                '- model (string) — модель',
+                '- yearFrom, yearTo (int) — диапазон годов',
+                '- priceMin, priceMax (int) — цена в KRW',
+                '- mileageMin, mileageMax (int) — пробег в км',
+                '- engineMin, engineMax (float) — объем двигателя в литрах',
+                '- fuelTypes (string[])',
+                '- transmissions (string[])',
+                '- bodyTypes (string[])',
+                '- driveTypes (string[])',
+            ];
+        }
+
+        $filtersBlock = implode("\n", $filterDescriptions);
+
+        return <<<PROMPT
 Ты — парсер поисковых запросов для автомобилей. Пользователь пишет свободный текст, ты извлекаешь параметры поиска и возвращаешь JSON.
 
 Доступные фильтры:
-- make (string) — марка: BMW, Toyota, Honda, Hyundai, Kia, Mercedes-Benz, Ford, Chevrolet, Nissan, Lexus, Audi, Volkswagen, Subaru, Mazda, Dodge, Jeep, Tesla, Genesis, Porsche, Volvo, Ram, Land Rover, Jaguar, Infiniti, Acura, Cadillac, Lincoln, Buick, GMC, Chrysler, Mitsubishi
-- model (string) — модель: X3, Camry, Accord, Tucson, Civic, RAV4, F-150, Mustang, Model 3, Sportage, Elantra, Sonata, K5, Sorento, 3 Series, C-Class, Altima, Rogue, Silverado, Malibu, etc.
-- yearFrom, yearTo (int) — диапазон годов
-- priceMin, priceMax (int) — цена в USD
-- mileageMin, mileageMax (int) — пробег в км
-- engineMin, engineMax (float) — объём двигателя в литрах
-- fuelTypes (string[]) — допустимые: "Gasoline", "Diesel", "Hybrid", "Electric"
-- transmissions (string[]) — допустимые: "Automatic", "Manual", "CVT"
-- bodyTypes (string[]) — допустимые: "Sedan", "SUV", "Truck", "Coupe", "Hatchback", "Wagon", "Van", "Convertible", "Crossover"
-- driveTypes (string[]) — допустимые: "FWD", "RWD", "AWD", "4WD"
-- sources (string[]) — допустимые: "copart", "iai", "manheim", "encar", "kbcha"
+{$filtersBlock}
 
 Правила:
 1. Возвращай ТОЛЬКО JSON, без пояснений
@@ -254,8 +338,85 @@ class ChatSearchService
 12. Числа после марки/модели без контекста — скорее всего объём двигателя (2.0, 2.5, 3.0) → engineMin и engineMax
 13. "от X" → Min поле, "до X" → Max поле
 14. Пробег определяй по контексту: "пробег от 10000" → mileageMin: 10000
-15. Цену определяй по контексту: "до 15000$"/"до $15000" → priceMax: 15000
-16. Если текст не содержит параметров поиска авто — верни {"error": "not_a_search"}
+15. Цену определяй по контексту: "до 15000000₩"/"до 15000$" → priceMax
+16. "без ДТП"/"без аварий" → hasAccident: false; "с ДТП" → hasAccident: true
+17. "без залога"/"чистая" → lienStatuses: ["clean"]
+18. "1 владелец"/"один хозяин" → ownersCountMax: 1
+19. "без страховых"/"0 страховых" → insuranceCountMax: 0
+20. "не затоплена"/"без утоплений" → floodHistory: false
+21. Если текст не содержит параметров поиска авто — верни {"error": "not_a_search"}
 PROMPT;
+    }
+
+    private function buildFieldPromptLine(BotFilterSetting $setting): string
+    {
+        $name = $setting->field_name;
+        $desc = trim((string) ($setting->description ?: $setting->field_label ?: $name));
+
+        return match ($setting->dtype) {
+            'int', 'float', 'date' => $this->buildRangePromptLine($name, $setting->dtype, $desc),
+            'bool' => '- ' . $this->getFilterParamName($name) . ' (bool) — ' . $desc,
+            'enum' => $this->buildEnumPromptLine($name, $setting->enum_values ?? [], $desc),
+            default => '- ' . $this->getFilterParamName($name) . ' (string) — ' . $desc,
+        };
+    }
+
+    private function buildRangePromptLine(string $name, string $type, string $desc): string
+    {
+        [$min, $max] = $this->getRangeParamNames($name);
+        return "- {$min}, {$max} ({$type}) — {$desc}";
+    }
+
+    private function buildEnumPromptLine(string $name, array $values, string $desc): string
+    {
+        $paramName = $this->getFilterParamName($name);
+        $cleanValues = array_values(array_filter(array_map('strval', $values), fn ($v) => $v !== ''));
+        if (!$cleanValues) {
+            return "- {$paramName} (string[]) — {$desc}";
+        }
+
+        $valuesStr = implode('", "', $cleanValues);
+        return "- {$paramName} (string[]) — {$desc}. Допустимые: \"{$valuesStr}\"";
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function getRangeParamNames(string $name): array
+    {
+        return match ($name) {
+            'year' => ['yearFrom', 'yearTo'],
+            'engine_volume' => ['engineMin', 'engineMax'],
+            'insurance_count' => ['insuranceCountMin', 'insuranceCountMax'],
+            'owners_count' => ['ownersCountMin', 'ownersCountMax'],
+            'repair_cost' => ['repairCostMin', 'repairCostMax'],
+            'retail_value' => ['retailValueMin', 'retailValueMax'],
+            'seat_count' => ['seatCountMin', 'seatCountMax'],
+            'registration_year_month' => ['registrationYearMonthMin', 'registrationYearMonthMax'],
+            default => [$this->snakeToCamel($name) . 'Min', $this->snakeToCamel($name) . 'Max'],
+        };
+    }
+
+    private function getFilterParamName(string $name): string
+    {
+        return match ($name) {
+            'source' => 'sources',
+            'title' => 'titleTypes',
+            'fuel' => 'fuelTypes',
+            'transmission' => 'transmissions',
+            'body_type' => 'bodyTypes',
+            'drive_type' => 'driveTypes',
+            'lien_status' => 'lienStatuses',
+            'seizure_status' => 'seizureStatuses',
+            'sell_type' => 'sellTypes',
+            'color' => 'colors',
+            'has_accident' => 'hasAccident',
+            'flood_history' => 'floodHistory',
+            'total_loss_history' => 'totalLossHistory',
+            default => $this->snakeToCamel($name),
+        };
+    }
+
+    private function snakeToCamel(string $value): string
+    {
+        return lcfirst(str_replace('_', '', ucwords($value, '_')));
     }
 }

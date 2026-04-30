@@ -11,6 +11,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(BotFilterSettingsSeeder::class);
+
         $userId = (int) env('TEST_TELEGRAM_ID', 123456789);
 
         User::updateOrCreate(

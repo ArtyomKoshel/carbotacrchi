@@ -35,6 +35,9 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::put('/filters/{id}',                  [AdminController::class, 'updateFilter'])->name('filters.update');
     Route::delete('/filters/{id}',               [AdminController::class, 'deleteFilter'])->name('filters.delete');
     Route::patch('/filters/{id}/toggle',         [AdminController::class, 'toggleFilter'])->name('filters.toggle');
+    Route::get('/bot-filters',                   [AdminController::class, 'botFilters'])->name('bot-filters');
+    Route::post('/bot-filters',                  [AdminController::class, 'botFiltersUpdate'])->name('bot-filters.update');
+    Route::post('/bot-filters/reset',            [AdminController::class, 'botFiltersReset'])->name('bot-filters.reset');
 
     // Filter Skip Log
     Route::get('/filter-skip-log',              [App\Http\Controllers\Admin\FilterSkipLogController::class, 'index'])->name('filter-skip-log.index');

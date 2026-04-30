@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BotFilterSetting;
 use App\Models\FieldCoverageStat;
 use App\Models\Lot;
 use App\Models\LotChange;
@@ -844,6 +845,98 @@ class AdminController extends Controller
     }
 
     // ── Filters ──────────────────────────────────────────────────────────
+
+    /** GET /admin/bot-filters — manage bot filter/tolerance settings. */
+    public function botFilters()
+    {
+        if (!Schema::hasTable('bot_filter_settings')) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Table bot_filter_settings is missing. Run migrations first.');
+        }
+
+        if (BotFilterSetting::count() === 0) {
+            Artisan::call('db:seed', ['--class' => 'BotFilterSettingsSeeder', '--force' => true]);
+            BotFilterSetting::flushCache();
+        }
+
+        $settings = BotFilterSetting::orderBy('sort_order')->orderBy('field_name')->get();
+
+        return view('admin.bot-filters', [
+            'settings' => $settings,
+            'categories' => $settings->groupBy(fn ($s) => $s->category ?: 'other'),
+        ]);
+    }
+
+    /** POST /admin/bot-filters — save bot filter/tolerance settings. */
+    public function botFiltersUpdate(Request $request)
+    {
+        if (!Schema::hasTable('bot_filter_settings')) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Table bot_filter_settings is missing. Run migrations first.');
+        }
+
+        $fields = $request->input('fields', []);
+        $allowedTypes = ['none', 'absolute', 'percentage'];
+
+        foreach ($fields as $id => $data) {
+            $setting = BotFilterSetting::find((int) $id);
+            if (!$setting) {
+                continue;
+            }
+
+            $toleranceType = $data['tolerance_type'] ?? 'none';
+            if (!in_array($toleranceType, $allowedTypes, true)) {
+                $toleranceType = 'none';
+            }
+
+            $toleranceValue = null;
+            $rawValue = $data['tolerance_value'] ?? null;
+            if ($toleranceType !== 'none' && $rawValue !== null && $rawValue !== '' && is_numeric($rawValue)) {
+                $toleranceValue = (float) $rawValue;
+                if ($toleranceType === 'percentage') {
+                    if ($toleranceValue > 1) {
+                        $toleranceValue /= 100;
+                    }
+                    $toleranceValue = max(0, min(1, $toleranceValue));
+                } else {
+                    $toleranceValue = max(0, $toleranceValue);
+                }
+            }
+
+            if (!in_array($setting->dtype, ['int', 'float', 'date'], true)) {
+                $toleranceType = 'none';
+                $toleranceValue = null;
+            }
+
+            $setting->update([
+                'enabled' => !empty($data['enabled']),
+                'tolerance_type' => $toleranceType,
+                'tolerance_value' => $toleranceValue,
+                'display_in_card' => !empty($data['display_in_card']),
+            ]);
+        }
+
+        BotFilterSetting::flushCache();
+
+        return redirect()->route('admin.bot-filters')
+            ->with('success', 'Настройки бот-фильтров сохранены');
+    }
+
+    /** POST /admin/bot-filters/reset — reset bot filter settings to defaults. */
+    public function botFiltersReset()
+    {
+        if (!Schema::hasTable('bot_filter_settings')) {
+            return redirect()->route('admin.dashboard')
+                ->with('error', 'Table bot_filter_settings is missing. Run migrations first.');
+        }
+
+        BotFilterSetting::truncate();
+        Artisan::call('db:seed', ['--class' => 'BotFilterSettingsSeeder', '--force' => true]);
+        BotFilterSetting::flushCache();
+
+        return redirect()->route('admin.bot-filters')
+            ->with('success', 'Настройки сброшены к дефолтным');
+    }
 
     /** GET /admin/filters — list and manage parse_filters rules. */
     public function filters(FieldRegistryService $registry)

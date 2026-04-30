@@ -97,6 +97,51 @@ abstract class AbstractProvider implements ProviderInterface
             if ($query->engineMax > 0 && ($lot->engineVolume === null || $lot->engineVolume > $query->engineMax)) {
                 return false;
             }
+            if ($query->hasAccident !== null && $lot->hasAccident !== $query->hasAccident) {
+                return false;
+            }
+            if ($query->floodHistory !== null && $lot->floodHistory !== $query->floodHistory) {
+                return false;
+            }
+            if ($query->totalLossHistory !== null && $lot->totalLossHistory !== $query->totalLossHistory) {
+                return false;
+            }
+            if ($query->insuranceCountMin > 0 && ($lot->insuranceCount === null || $lot->insuranceCount < $query->insuranceCountMin)) {
+                return false;
+            }
+            if ($query->insuranceCountMax > 0 && ($lot->insuranceCount === null || $lot->insuranceCount > $query->insuranceCountMax)) {
+                return false;
+            }
+            if ($query->ownersCountMin > 0 && ($lot->ownersCount === null || $lot->ownersCount < $query->ownersCountMin)) {
+                return false;
+            }
+            if ($query->ownersCountMax > 0 && ($lot->ownersCount === null || $lot->ownersCount > $query->ownersCountMax)) {
+                return false;
+            }
+            if ($query->repairCostMin > 0 && ($lot->repairCost === null || $lot->repairCost < $query->repairCostMin)) {
+                return false;
+            }
+            if ($query->repairCostMax > 0 && ($lot->repairCost === null || $lot->repairCost > $query->repairCostMax)) {
+                return false;
+            }
+            if ($query->retailValueMin > 0 && ($lot->retailValue === null || $lot->retailValue < $query->retailValueMin)) {
+                return false;
+            }
+            if ($query->retailValueMax > 0 && ($lot->retailValue === null || $lot->retailValue > $query->retailValueMax)) {
+                return false;
+            }
+            if ($query->seatCountMin > 0 && ($lot->seatCount === null || $lot->seatCount < $query->seatCountMin)) {
+                return false;
+            }
+            if ($query->seatCountMax > 0 && ($lot->seatCount === null || $lot->seatCount > $query->seatCountMax)) {
+                return false;
+            }
+            if ($query->registrationYearMonthMin > 0 && ($lot->registrationYearMonth === null || $lot->registrationYearMonth < $query->registrationYearMonthMin)) {
+                return false;
+            }
+            if ($query->registrationYearMonthMax > 0 && ($lot->registrationYearMonth === null || $lot->registrationYearMonth > $query->registrationYearMonthMax)) {
+                return false;
+            }
             if (!empty($query->damageTypes)) {
                 $lotDamage = $lot->damage ? strtoupper(trim($lot->damage)) : '';
                 $match = false;
@@ -119,6 +164,28 @@ abstract class AbstractProvider implements ProviderInterface
             }
             if (!empty($query->driveTypes) && ($lot->driveType === null || !in_array($lot->driveType, $query->driveTypes, true))) {
                 return false;
+            }
+            if (!empty($query->lienStatuses) && ($lot->lienStatus === null || !in_array($lot->lienStatus, $query->lienStatuses, true))) {
+                return false;
+            }
+            if (!empty($query->seizureStatuses) && ($lot->seizureStatus === null || !in_array($lot->seizureStatus, $query->seizureStatuses, true))) {
+                return false;
+            }
+            if (!empty($query->sellTypes) && ($lot->sellType === null || !in_array($lot->sellType, $query->sellTypes, true))) {
+                return false;
+            }
+            if (!empty($query->colors)) {
+                $lotColor = $lot->color ? strtolower(trim($lot->color)) : '';
+                $match = false;
+                foreach ($query->colors as $color) {
+                    if (str_contains($lotColor, strtolower(trim($color)))) {
+                        $match = true;
+                        break;
+                    }
+                }
+                if (!$match) {
+                    return false;
+                }
             }
             if ($query->vin !== '' && ($lot->vin === null || !str_starts_with(strtoupper($lot->vin), strtoupper($query->vin)))) {
                 return false;

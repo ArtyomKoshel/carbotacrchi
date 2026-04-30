@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BotFilterSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -74,31 +75,7 @@ class TelegramBot
 
     public function sendLotCard(int|string $chatId, array $lot, ?array $inlineKeyboard = null): array
     {
-        $price = number_format((int) $lot['price'], 0, '.', ',');
-        $km    = number_format((int) $lot['mileage'], 0, '.', ',');
-        $date  = !empty($lot['auctionDate'])
-                 ? date('d M', strtotime($lot['auctionDate']))
-                 : '—';
-        $lotId = str_replace(($lot['source'] ?? '').'_', '', $lot['id'] ?? '');
-
-        $text = sprintf(
-            "🚗 <b>%s %s %d</b> · %s\n💰 <b>$%s</b> · Lot #%s\n📍 %s · 🗓 %s\n%s🛣 %s km",
-            htmlspecialchars($lot['make']       ?? ''),
-            htmlspecialchars($lot['model']      ?? ''),
-            (int) ($lot['year'] ?? 0),
-            htmlspecialchars($lot['sourceName'] ?? ''),
-            $price,
-            htmlspecialchars($lotId),
-            htmlspecialchars($lot['location']   ?? ''),
-            $date,
-            !empty($lot['damage']) ? '💥 '.htmlspecialchars($lot['damage']).' · ' : '',
-            $km,
-        );
-
-        $lotUrl = $lot['lotUrl'] ?? '#';
-        if ($lotUrl !== '#') {
-            $text .= sprintf("\n🔗 <a href=\"%s\">Открыть лот</a>", htmlspecialchars($lotUrl));
-        }
+        $text = $this->buildLotCardText($lot);
 
         $imageUrl = $lot['imageUrl'] ?? null;
 
@@ -117,6 +94,117 @@ class TelegramBot
         }
 
         return $this->sendMessage($chatId, $text);
+    }
+
+    private function buildLotCardText(array $lot): string
+    {
+        $cardFields = BotFilterSetting::getCardFields();
+        if (!$cardFields) {
+            $cardFields = ['fuel', 'transmission', 'engine_volume', 'insurance_count', 'has_accident', 'owners_count'];
+        }
+
+        $price = number_format((int) ($lot['price'] ?? 0), 0, '.', ',');
+        $km = number_format((int) ($lot['mileage'] ?? 0), 0, '.', ',');
+
+        $lines = [
+            sprintf(
+                '🚗 <b>%s %s %d</b> · %s',
+                htmlspecialchars((string) ($lot['make'] ?? '')),
+                htmlspecialchars((string) ($lot['model'] ?? '')),
+                (int) ($lot['year'] ?? 0),
+                htmlspecialchars((string) ($lot['sourceName'] ?? '')),
+            ),
+            sprintf('💰 <b>₩%s</b> · 🛣 %s km', $price, $km),
+        ];
+
+        $specs = [];
+        if (in_array('fuel', $cardFields, true) && !empty($lot['fuel'])) {
+            $specs[] = '⛽ ' . htmlspecialchars((string) $lot['fuel']);
+        }
+        if (in_array('transmission', $cardFields, true) && !empty($lot['transmission'])) {
+            $specs[] = '⚙️ ' . htmlspecialchars((string) $lot['transmission']);
+        }
+        if (in_array('engine_volume', $cardFields, true) && !empty($lot['engineVolume'])) {
+            $specs[] = htmlspecialchars((string) $lot['engineVolume']) . 'L';
+        }
+        if (in_array('drive_type', $cardFields, true) && !empty($lot['driveType'])) {
+            $specs[] = htmlspecialchars((string) $lot['driveType']);
+        }
+        if ($specs) {
+            $lines[] = implode(' · ', $specs);
+        }
+
+        $condition = [];
+        if (in_array('insurance_count', $cardFields, true)) {
+            $insuranceCount = $lot['insuranceCount'] ?? null;
+            if ($insuranceCount !== null && $insuranceCount !== '') {
+                $ic = (int) $insuranceCount;
+                $condition[] = "📋 {$ic} " . $this->ruInsurance($ic);
+            }
+        }
+        if (in_array('has_accident', $cardFields, true)) {
+            $hasAccident = $lot['hasAccident'] ?? null;
+            if ($hasAccident === true) {
+                $condition[] = '⚠️ Были ДТП';
+            } elseif ($hasAccident === false) {
+                $condition[] = '✅ Без ДТП';
+            }
+        }
+        if (in_array('owners_count', $cardFields, true)) {
+            $ownersCount = $lot['ownersCount'] ?? null;
+            if ($ownersCount !== null && $ownersCount !== '') {
+                $oc = (int) $ownersCount;
+                $condition[] = "👤 {$oc} " . $this->ruOwners($oc);
+            }
+        }
+        if (in_array('flood_history', $cardFields, true)) {
+            $floodHistory = $lot['floodHistory'] ?? null;
+            if ($floodHistory === true) {
+                $condition[] = '🌊 Затопление';
+            }
+        }
+        if ($condition) {
+            $lines[] = implode(' · ', $condition);
+        }
+
+        if (!empty($lot['location'])) {
+            $lines[] = '📍 ' . htmlspecialchars((string) $lot['location']);
+        }
+
+        $lotUrl = $lot['lotUrl'] ?? '#';
+        if ($lotUrl !== '#') {
+            $lines[] = sprintf('🔗 <a href="%s">Открыть лот</a>', htmlspecialchars((string) $lotUrl));
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function ruInsurance(int $n): string
+    {
+        $mod10 = $n % 10;
+        $mod100 = $n % 100;
+        if ($mod10 === 1 && $mod100 !== 11) {
+            return 'страховой';
+        }
+        if ($mod10 >= 2 && $mod10 <= 4 && ($mod100 < 10 || $mod100 >= 20)) {
+            return 'страховых';
+        }
+
+        return 'страховых';
+    }
+
+    private function ruOwners(int $n): string
+    {
+        $mod10 = $n % 10;
+        $mod100 = $n % 100;
+        if ($mod10 === 1 && $mod100 !== 11) {
+            return 'владелец';
+        }
+        if ($mod10 >= 2 && $mod10 <= 4 && ($mod100 < 10 || $mod100 >= 20)) {
+            return 'владельца';
+        }
+
+        return 'владельцев';
     }
 
     private function ruLots(int $n): string
