@@ -143,12 +143,26 @@ class SearchQuery
             $tolerance = $tolerances[$fieldName];
             $isFloat = $type === 'float';
 
-            if ($clone->$minProp > 0) {
-                $clone->$minProp = self::applyTolerance($clone->$minProp, $tolerance, true, $isFloat);
-            }
+            // When only one bound is set, tolerance creates a range around it
+            $hasMin = $clone->$minProp > 0;
+            $hasMax = $clone->$maxProp > 0;
 
-            if ($clone->$maxProp > 0) {
+            if ($hasMin && !$hasMax) {
+                // Only min set: create range [min-tol, min+tol]
+                $clone->$minProp = self::applyTolerance($clone->$minProp, $tolerance, true, $isFloat);
+                $clone->$maxProp = self::applyTolerance($clone->$minProp, $tolerance, false, $isFloat);
+            } elseif (!$hasMin && $hasMax) {
+                // Only max set: create range [max-tol, max+tol]
+                $clone->$minProp = self::applyTolerance($clone->$maxProp, $tolerance, true, $isFloat);
                 $clone->$maxProp = self::applyTolerance($clone->$maxProp, $tolerance, false, $isFloat);
+            } else {
+                // Both bounds set: apply tolerance to each
+                if ($hasMin) {
+                    $clone->$minProp = self::applyTolerance($clone->$minProp, $tolerance, true, $isFloat);
+                }
+                if ($hasMax) {
+                    $clone->$maxProp = self::applyTolerance($clone->$maxProp, $tolerance, false, $isFloat);
+                }
             }
         }
 
