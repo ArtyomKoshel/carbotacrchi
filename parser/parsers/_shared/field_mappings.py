@@ -73,6 +73,14 @@ FIELD_MAPPINGS: list[FieldMapping] = [
         },
     ),
     FieldMapping(
+        attribute="model_en", db_column="model_en",
+        extractions={
+            "encar": SourceExtraction("model (derived)",       "resolve_model_en(model_str) via korean_model_names"),
+            "kbcha": SourceExtraction("model (derived)",       "resolve_model_en(model) via korean_model_names"),
+        },
+        notes="Canonical English model name resolved from Korean. Used for search filtering.",
+    ),
+    FieldMapping(
         attribute="trim", db_column="trim",
         extractions={
             "encar": SourceExtraction("BadgeDetail",           "copy"),

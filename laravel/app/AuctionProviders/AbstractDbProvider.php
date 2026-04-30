@@ -44,8 +44,8 @@ abstract class AbstractDbProvider extends AbstractProvider
 
     private function applyDbFilters(Builder $builder, SearchQuery $query): void
     {
-        if ($query->make)  $builder->whereRaw('make LIKE ?',  [$query->make  . '%']);
-        if ($query->model) $builder->whereRaw('model LIKE ?', ['%' . $query->model . '%']);
+        if ($query->make)  $builder->whereRaw('make LIKE ?', [$query->make . '%']);
+        if ($query->model) $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
 
         if ($query->yearFrom)   $builder->where('year', '>=', $query->yearFrom);
         if ($query->yearTo)     $builder->where('year', '<=', $query->yearTo);

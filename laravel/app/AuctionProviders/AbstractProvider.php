@@ -70,8 +70,11 @@ abstract class AbstractProvider implements ProviderInterface
             if ($query->make !== '' && !str_contains(strtolower($lot->make), strtolower($query->make))) {
                 return false;
             }
-            if ($query->model !== '' && !str_contains(strtolower($lot->model), strtolower($query->model))) {
-                return false;
+            if ($query->model !== '') {
+                $haystack = $lot->modelEn ?? $lot->model;
+                if (!str_contains(strtolower($haystack), strtolower($query->model))) {
+                    return false;
+                }
             }
             if ($query->yearFrom > 0 && $lot->year < $query->yearFrom) {
                 return false;

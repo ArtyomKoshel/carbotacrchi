@@ -13,6 +13,7 @@ from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser, ProgressUpdate
 from .._shared import sell_type as _sell
+from .._shared.korean_model_names import resolve_model_en
 from .client import EncarClient, ProxyBudgetExhausted, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
@@ -71,11 +72,13 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         except (TypeError, ValueError):
             pass
 
+    _model_str = f"{model} {badge}".strip() if badge else model
     return CarLot(
         id=vid,
         source=_SOURCE,
         make=norm.make(make_kr),
-        model=f"{model} {badge}".strip() if badge else model,
+        model=_model_str,
+        model_en=resolve_model_en(_model_str),
         trim=badge_detail or None,
         year=year,
         price=price_raw,

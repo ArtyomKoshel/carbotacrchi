@@ -14,6 +14,7 @@ class CarLot:
     year: int
     price: int                    # Always in KRW (canonical)
     mileage: int = 0
+    model_en: str | None = None   # Canonical English model name (resolved from Korean)
 
     # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
     registration_year_month: int | None = None
@@ -80,6 +81,7 @@ class CarLot:
         "photo_count",        # -> COUNT(*) from lot_photos
         "sell_type",          # -> lots.sell_type_raw column
         "manufacturer_kr",    # -> duplicate of make
+        "model_en",           # -> first-class column
         "model_kr",           # -> duplicate of model
         "badge_kr",           # -> duplicate of trim
         "model_group_kr",     # -> duplicate of model
@@ -105,6 +107,7 @@ class CarLot:
             "source": self.source,
             "make": self.make,
             "model": self.model,
+            "model_en": self.model_en,
             "year": self.year,
             "price": self.price,
             "mileage": self.mileage,

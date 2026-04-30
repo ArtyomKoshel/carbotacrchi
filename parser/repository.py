@@ -348,7 +348,7 @@ class LotRepository:
 
         sql = """
             INSERT INTO lots (
-                id, source, make, model, year, price, mileage, vin,
+                id, source, make, model, model_en, year, price, mileage, vin,
                 body_type, transmission, fuel, drive_type,
                 engine_volume,
                 lien_status, seizure_status,
@@ -364,7 +364,7 @@ class LotRepository:
                 seat_count,
                 created_at, updated_at
             ) VALUES (
-                %(id)s, %(source)s, %(make)s, %(model)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
+                %(id)s, %(source)s, %(make)s, %(model)s, %(model_en)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
                 %(body_type)s, %(transmission)s, %(fuel)s, %(drive_type)s,
                 %(engine_volume)s,
                 %(lien_status)s, %(seizure_status)s,
@@ -381,7 +381,7 @@ class LotRepository:
                 %(now)s, %(now)s
             ) ON DUPLICATE KEY UPDATE
                 price=VALUES(price), mileage=VALUES(mileage),
-                make=VALUES(make), model=VALUES(model), year=VALUES(year),
+                make=VALUES(make), model=VALUES(model), model_en=COALESCE(VALUES(model_en), model_en), year=VALUES(year),
                 vin=COALESCE(VALUES(vin), vin),
                 body_type=COALESCE(VALUES(body_type), body_type),
                 transmission=COALESCE(VALUES(transmission), transmission),

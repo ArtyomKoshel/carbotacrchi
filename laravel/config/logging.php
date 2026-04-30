@@ -18,13 +18,13 @@ return [
         'single' => [
             'driver'               => 'single',
             'path'                 => storage_path('logs/laravel.log'),
-            'level'                => env('LOG_LEVEL', 'debug'),
+            'level'                => strtolower((string) env('LOG_LEVEL', 'debug')),
             'replace_placeholders' => true,
         ],
 
         'stderr' => [
             'driver'    => 'monolog',
-            'level'     => env('LOG_LEVEL', 'debug'),
+            'level'     => strtolower((string) env('LOG_LEVEL', 'debug')),
             'handler'   => Monolog\Handler\StreamHandler::class,
             'formatter' => env('LOG_STDERR_FORMATTER'),
             'with'      => ['stream' => 'php://stderr'],

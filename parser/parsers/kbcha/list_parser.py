@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from models import CarLot
 from .normalizer import KBChaNormalizer, MAKER_CODES
+from .._shared.korean_model_names import resolve_model_en
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ class KBChaListParser:
             source="kbcha",
             make=make,
             model=model,
+            model_en=resolve_model_en(model),
             year=year,
             price=price_man * 10000,
             mileage=mileage,
