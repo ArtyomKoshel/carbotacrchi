@@ -36,10 +36,6 @@ class SearchQuery
     public int $registrationYearMonthMax = 0;
 
     /** @var string[] */
-    public array $damageTypes = [];
-    /** @var string[] */
-    public array $titleTypes = [];
-    /** @var string[] */
     public array $bodyTypes = [];
     /** @var string[] */
     public array $transmissions = [];
@@ -97,7 +93,7 @@ class SearchQuery
 
         $q->vin = trim((string) ($data['vin'] ?? ''));
 
-        foreach (['damageTypes', 'titleTypes', 'bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors'] as $key) {
+        foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors'] as $key) {
             if (!empty($data[$key]) && is_array($data[$key])) {
                 $q->$key = array_map('strval', $data[$key]);
             }
@@ -271,8 +267,6 @@ class SearchQuery
         if ($this->seizureStatuses) $data['seizureStatuses'] = $this->seizureStatuses;
         if ($this->sellTypes)     $data['sellTypes']     = $this->sellTypes;
         if ($this->colors)        $data['colors']        = $this->colors;
-        if ($this->damageTypes)   $data['damageTypes']   = $this->damageTypes;
-        if ($this->titleTypes)    $data['titleTypes']    = $this->titleTypes;
         if ($this->vin)           $data['vin']           = $this->vin;
         if ($this->sources !== ['encar', 'kbcha']) {
             $data['sources'] = $this->sources;

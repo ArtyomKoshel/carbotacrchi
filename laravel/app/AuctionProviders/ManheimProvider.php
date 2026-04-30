@@ -31,8 +31,6 @@ class ManheimProvider extends AbstractProvider
             year:        (int) ($raw['year']    ?? 0),
             price:       (int) ($raw['price']   ?? 0),
             mileage:     (int) ($raw['mileage'] ?? 0),
-            damage:      null,
-            title:       'Grade '.($raw['conditionGrade'] ?? 'N/A'),
             location:    $raw['location'] ?? '',
             lotUrl:      'https://www.manheim.com/members/psSearch/run?itemId='.($raw['id'] ?? ''),
             imageUrl:    $raw['imageUrl'] ?? null,
@@ -45,7 +43,6 @@ class ManheimProvider extends AbstractProvider
             driveType:       self::mapValue($raw['drivetrain']   ?? null, self::$driveMap),
             color:           isset($raw['exteriorColor']) ? ucfirst(strtolower(trim($raw['exteriorColor']))) : null,
             engineVolume:    isset($raw['displacement'])  ? (float) $raw['displacement']                     : null,
-            cylinders:       isset($raw['cylinders'])     ? (int) $raw['cylinders']                          : null,
             trim:            $raw['trim']                 ?? null,
         );
     }

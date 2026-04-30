@@ -142,17 +142,6 @@ abstract class AbstractProvider implements ProviderInterface
             if ($query->registrationYearMonthMax > 0 && ($lot->registrationYearMonth === null || $lot->registrationYearMonth > $query->registrationYearMonthMax)) {
                 return false;
             }
-            if (!empty($query->damageTypes)) {
-                $lotDamage = $lot->damage ? strtoupper(trim($lot->damage)) : '';
-                $match = false;
-                foreach ($query->damageTypes as $dt) {
-                    if (strtoupper(trim($dt)) === $lotDamage) { $match = true; break; }
-                }
-                if (!$match) return false;
-            }
-            if (!empty($query->titleTypes) && !in_array($lot->title, $query->titleTypes, true)) {
-                return false;
-            }
             if (!empty($query->bodyTypes) && ($lot->bodyType === null || !in_array($lot->bodyType, $query->bodyTypes, true))) {
                 return false;
             }
