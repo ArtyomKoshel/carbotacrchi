@@ -314,9 +314,128 @@ CREATE TABLE filter_skip_log (
 
 ---
 
+## ЧАСТЬ 3: Унификация интерфейса парсеров (выполнено)
+
+### 3.4 ✅ Unified Lifecycle Protocol — основная часть
+- ✅ `RunResult` dataclass в `parsers/base.py` — оба парсера возвращают одинаковую структуру
+- ✅ `PhaseResult` — per-phase breakdown (search / enrich / inspect / delist)
+- ✅ `ProgressUpdate` — единый формат прогресса с `phase` + `total_progress` (0.0-1.0)
+- ✅ `upsert_batch` в KBCha вызывается из main thread (а не из ThreadPool workers)
+- ✅ Единый delist порог через `Config.ENCAR_DELIST_COVERAGE` / `KBCHA_DELIST_COVERAGE`
+- ✅ `init_stats()` — base-class init, оба парсера используют общий dict
+- ✅ Phase tracking — фазы трекаются и логируются в `[STAT]` summary
+
+> ParallelFetcher / NormalizationPipeline shared modules — deferred, low priority.
+
+---
+
+## ЧАСТЬ 4: Удаление мёртвых полей (выполнено)
+
+### 4.11 ✅ Удаление дилерской информации
+- ✅ Колонки удалены: `dealer_name`, `dealer_company`, `dealer_location`, `dealer_phone`, `dealer_description`
+- ✅ Encar parser очищен от маппинга `contact.userId`, `contact.no`, `partnership`, `contact.address`
+- ✅ KBCha detail_parser / enricher — убран парсинг 상사명, 주소, 전화번호, 판매자 설명
+- ✅ `CarLot` dataclass + `to_db_row()` очищены
+- ✅ `repository.py` SQL очищен
+- ✅ `LotDTO.php` очищен
+- ✅ `fields/registry.py` — 5 FieldSpec удалены
+
+### 4.12 ✅ Удаление title и new_car_price_ratio
+- ✅ Удалены из `CarLot` dataclass + `to_db_row()`
+- ✅ Удалены из `repository.py` SQL (insert / update / loader)
+- ✅ Удалены из `parser/fields/registry.py`
+- ✅ KBCha `detail_parser.py` перестал парсить `new_car_price_ratio`
+- ✅ `_shared/field_mappings.py` очищен
+- ✅ Миграция `2026_04_26_000003_drop_title_and_new_car_price_ratio_from_lots.php`
+
+### 4.13 ✅ KBCha VIN persistence fix
+- ✅ Fallback regex VIN extraction в `external_inspection_parser.py` (для kb_paper / carmon)
+- ✅ Split try-except в `_upsert_external_inspection` — `upsert_inspection` и `upsert_batch([lot])` независимы; ошибка в одном не блокирует другой
+- ✅ Split try-except в `_parse_and_save_inspection` — то же самое для kb_popup пути
+- ✅ Подтверждено: redirects следуются (`follow_redirects=True` в httpx.Client) — autocafe → carmodoo работает корректно
+
+### 4.14 ✅ Admin Fields recompute fix
+- ✅ Кнопка "Recompute" вызывает `parser:export-fields` → `fields:compute-coverage`
+- ✅ Exit code check + error output capture + flash сообщение
+- ✅ `seat_count` добавлен в `ComputeFieldCoverage` coverage checks
+- ✅ `Cache::forget` обёрнут в try-catch для среды без Redis
+
+### 4.15 ✅ Production verification на Railway
+Подтверждено на проде после изменений (drop columns, recompute fix, VIN persistence):
+- ✅ Миграция `drop_title_and_new_car_price_ratio_from_lots` применилась
+- ✅ Кнопка "Recompute" на `/admin/fields` обновляет схему и coverage без silent-fail
+- ✅ `seat_count` появился в coverage breakdown
+- ✅ VIN coverage начинает расти после следующего KBCha прогона
+
+### 4.16 ✅ KBCha VIN backfill — отложено на следующий прогон парсера
+**Решено**: код фикса (split try-except в `_upsert_external_inspection` / `_parse_and_save_inspection`) уже на месте и обеспечивает корректную запись VIN при новом парсинге. Существующие лоты с пустым VIN получат данные органически при следующем регулярном прогоне KBCha-парсера.
+
+**Если потребуется ускоренный backfill** — запустить целевой re-enrich:
+```sql
+SELECT id FROM lots
+WHERE source = 'kbcha' AND vin IS NULL
+  AND id IN (
+    SELECT lot_id FROM inspection_records
+    WHERE source IN ('autocafe','carmodoo','carmon','kb_paper','mpark')
+  );
+```
+Через `KBChaParser.run_reenrich(filter=missing_vin_only)`.
+
+---
+
+## ЧАСТЬ 9: Job System (частично выполнено)
+
+### 9.1 ✅ `triggered_by` — два источника правды
+Scheduler теперь записывает `triggered_by` в колонку.
+
+### 9.2 ✅ Pending jobs — live updates
+SSE подключается ко всем non-terminal jobs (pending + running + interrupted).
+
+### 9.4 ✅ Stale jobs — отдельный статус
+Статус `interrupted` + жёлтый badge в UI. Auto-resume при следующем поллинге.
+
+### 9.5 ✅ Checkpoint/resume
+Checkpoint в `progress` JSON — completed_makers, auto-resume interrupted jobs.
+
+### 9.6 ✅ Schedules UI — обновлённый текст
+"Автоматически в течение 1 минуты" вместо стэйл-описания.
+
+---
+
+## ЧАСТЬ 10: Logging (частично выполнено)
+
+### 10A ✅ Per-job log routing
+- Persistent `_JobLogRouterHandler` attached once (no per-job root add/remove mutations)
+- Per-job log routing via active source/job mapping и Job #id parsing
+- Решает P1 (concurrent jobs в чужих файлах) и P5 (root mutation race)
+
+### 10F ✅ Lightweight log polling
+- jobLog endpoint stream-scans + поддерживает byte-based incremental mode
+- Job-detail switched to `since_byte` incremental polling
+- Append в DOM (не replace), oldest first порядок
+
+### 10G ✅ Streaming больших файлов
+- `logsDownload` использует streaming (fopen/fgets) с поддержкой app/job/parser selection
+- Решает U5 (memory crash на больших файлах)
+
+### 10H ✅ Clear all + retention
+- Retention cleanup scheduled
+- `logsClear` включает `jobs/job-*.log` файлы
+
+### 10I ✅ App logs integration
+- Logs UI интегрирует parser / job / app логи единым view
+- `logsDownload` поддерживает выбор app/job/parser
+
+---
+
 ## Коммиты
 
 - `bd08bdc` - KBCha/Encar parser fixes, DB sync, UI improvements, indexing
 - `1f45bff` - filter_skip_log migration + FilterEngine buffering + repository insert
 - `74cd0f3` - mark completed tasks in PLAN_V3.md
 - `589e25f` - add case normalization for fuel/transmission in compare_report_vs_lot
+- KBCha VIN persistence — split try-except in _upsert_external_inspection / _parse_and_save_inspection
+- title / new_car_price_ratio fully removed (model, SQL, registry, parsers, migration)
+- dealer_* fields fully removed (5 columns + DTO + parsers + registry)
+- ComputeFieldCoverage adds seat_count check
+- recompute flow chains export-fields + compute-coverage with error capture

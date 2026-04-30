@@ -45,6 +45,64 @@ class KBChaParser(AbstractParser):
     def get_source_name(self) -> str:
         return "KBChacha"
 
+    def run_reparse(self, lot_ids: list[str], on_progress=None) -> dict:
+        """Re-enrich specific lots by ID (detail pages + inspection records)."""
+        source = self.get_source_key()
+        run_start = _time.monotonic()
+        stats: dict = {"total": 0, "detail_fetched": 0, "errors": 0,
+                       "error_types": {}, "error_log": []}
+
+        lots = self.repo.get_lots_by_source(source, ids=lot_ids)
+        if not lots:
+            msg = f"No lots found for ids={lot_ids}"
+            logger.warning(f"[{source}] Reparse: {msg}")
+            return {"total": 0, "errors": 1, "error_log": [msg], "error_types": {},
+                    "elapsed_s": 0.0, "time": "0m", "reparse": True}
+
+        total = len(lots)
+        logger.info(f"[{source}] Reparse: enriching {total} lot(s): {lot_ids}")
+
+        if on_progress:
+            on_progress(ProgressUpdate(
+                phase="enrich", phase_progress=0.0, total_progress=0.0,
+                lots_found=total, lots_processed=0,
+                message=f"Fetching details for {total} lot(s)...",
+            ))
+
+        self._enricher.enrich_details(lots, stats)
+
+        if on_progress:
+            on_progress(ProgressUpdate(
+                phase="inspect", phase_progress=0.0, total_progress=0.7,
+                lots_found=total, lots_processed=total,
+                message="Fetching inspection records...",
+            ))
+
+        self._enricher.enrich_inspections(lots, stats)
+
+        elapsed = _time.monotonic() - run_start
+        logger.info(
+            f"[{source}] Reparse done: {total} lot(s) in {elapsed:.1f}s "
+            f"(errors={stats.get('errors', 0)})"
+        )
+
+        if on_progress:
+            on_progress(ProgressUpdate(
+                phase="done", phase_progress=1.0, total_progress=1.0,
+                lots_found=total, lots_processed=total,
+                message=f"Reparse complete: {total} lot(s)",
+            ))
+
+        return {
+            "total": total,
+            "errors": stats.get("errors", 0),
+            "error_log": (stats.get("error_log") or [])[-20:],
+            "error_types": stats.get("error_types", {}),
+            "elapsed_s": round(elapsed, 1),
+            "time": self.format_elapsed(elapsed),
+            "reparse": True,
+        }
+
     def run_reenrich(self, limit: int | None = None) -> int:
         """Re-fetch detail pages for lots already in DB and update their fields."""
         source = self.get_source_key()

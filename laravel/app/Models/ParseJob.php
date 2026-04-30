@@ -8,11 +8,15 @@ class ParseJob extends Model
 {
     protected $table = 'parse_jobs';
 
-    protected $fillable = ['source', 'status', 'filters', 'progress', 'result', 'triggered_by'];
+    protected $fillable = [
+        'source', 'type', 'status', 'filters', 'target_lot_ids',
+        'progress', 'result', 'triggered_by',
+    ];
 
     protected $casts = [
-        'filters'  => 'array',
-        'progress' => 'array',
-        'result'   => 'array',
+        'filters'        => 'array',
+        'target_lot_ids' => 'array',
+        'progress'       => 'array',
+        'result'         => 'array',
     ];
 }

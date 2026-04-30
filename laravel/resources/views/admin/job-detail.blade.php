@@ -98,15 +98,74 @@
   </div>
 </div>
 
-{{-- Progress bar --}}
+{{-- Phase Timeline (M.2) --}}
+@php
+  $phases = ['search', 'enrich', 'inspect', 'delist'];
+  $currentPhase = $job->progress['phase'] ?? ($job->result['phase'] ?? null);
+  $jobDone      = $job->status === 'done';
+  $jobRunning   = $job->status === 'running';
+  $currentIdx   = array_search($currentPhase, $phases);
+@endphp
+<div id="phase-timeline" class="mb-6 bg-gray-900 border border-gray-800 rounded-xl px-6 py-4">
+  <div class="flex items-center">
+    @foreach($phases as $i => $ph)
+      @php
+        if ($jobDone) {
+          $state = 'done';
+        } elseif ($currentIdx === false || $currentIdx === null) {
+          $state = 'pending';
+        } elseif ($i < $currentIdx) {
+          $state = 'done';
+        } elseif ($i === $currentIdx) {
+          $state = $jobRunning ? 'running' : 'done';
+        } else {
+          $state = 'pending';
+        }
+        $phaseProgress = ($state === 'running') ? round(($job->progress['phase_progress'] ?? 0) * 100) : null;
+        $dotCls = match($state) {
+          'done'    => 'bg-green-900 border-green-600 text-green-400',
+          'running' => 'bg-blue-900 border-blue-500 text-blue-300',
+          default   => 'bg-gray-800 border-gray-700 text-gray-600',
+        };
+        $textCls = match($state) {
+          'done'    => 'text-green-500',
+          'running' => 'text-blue-400',
+          default   => 'text-gray-600',
+        };
+        $icon = match($state) {
+          'done'    => '&#10003;',
+          'running' => '&#9654;',
+          default   => '&ctdot;',
+        };
+      @endphp
+      @if($i > 0)
+        <div class="flex-1 h-px {{ $state !== 'pending' || $jobDone ? 'bg-green-700' : 'bg-gray-700' }} mx-1" style="min-width:16px"></div>
+      @endif
+      <div class="phase-node flex flex-col items-center flex-shrink-0" data-phase="{{ $ph }}" data-state="{{ $state }}">
+        <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold {{ $dotCls }}">{!! $icon !!}</div>
+        <div class="text-[10px] mt-1 capitalize font-medium {{ $textCls }}">{{ $ph }}</div>
+        <div class="text-[9px] text-gray-600 h-3" id="ph-pct-{{ $ph }}">{{ $phaseProgress !== null ? $phaseProgress.'%' : '' }}</div>
+      </div>
+    @endforeach
+  </div>
+</div>
+
+{{-- Progress bar (M.3: label shows phase + total_progress) --}}
 @if(in_array($job->status, ['running', 'interrupted']))
+@php
+  $initPhase = $job->progress['phase'] ?? '';
+  $initPct   = $job->progress['pct'] ?? 0;
+  $initTotal = $job->progress['total_progress'] ?? ($initPct / 100);
+  $initFoundTotal = $job->progress['found_total'] ?? 0;
+  $initApiTotal   = $job->progress['api_total'] ?? 0;
+@endphp
 <div class="mb-6">
   <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-    <span id="pb-label">{{ $job->progress['pct'] ?? 0 }}%</span>
-    <span id="pb-detail">{{ number_format($job->progress['found_total'] ?? 0) }} / {{ number_format($job->progress['api_total'] ?? 0) }}</span>
+    <span id="pb-label"><span id="pb-phase" class="text-gray-400 capitalize">{{ $initPhase }}</span>{{ $initPhase ? ': ' : '' }}<span id="pb-pct">{{ $initPct }}</span>%</span>
+    <span id="pb-detail">{{ number_format($initFoundTotal) }} / {{ number_format($initApiTotal) }}</span>
   </div>
   <div class="w-full bg-gray-800 rounded-full h-2">
-    <div id="pb-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: {{ $job->progress['pct'] ?? 0 }}%"></div>
+    <div id="pb-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: {{ round($initTotal * 100, 1) }}%"></div>
   </div>
 </div>
 @endif
@@ -220,11 +279,20 @@ function _renderLine(line, search) {
   else if (line.includes('[DEBUG]'))   cls = 'log-debug';
   if (line.includes('[STAT]'))         cls = 'log-stat';
   div.className = cls;
-  if (search) {
-    // Escape HTML first to prevent XSS, then apply highlight
-    const escaped = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    div.innerHTML = escaped.replace(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
-      '<mark class="bg-yellow-700/60 text-yellow-200 rounded px-0.5">$1</mark>');
+  if (search && search.trim()) {
+    // DOM-based highlight — no innerHTML, all text via textContent (XSS-safe)
+    const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    let last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(line)) !== null) {
+      if (m.index > last) div.appendChild(document.createTextNode(line.slice(last, m.index)));
+      const mark = document.createElement('mark');
+      mark.className = 'bg-yellow-700/60 text-yellow-200 rounded px-0.5';
+      mark.textContent = m[0];
+      div.appendChild(mark);
+      last = m.index + m[0].length;
+    }
+    div.appendChild(document.createTextNode(line.slice(last)));
   } else {
     div.textContent = line;
   }
@@ -339,13 +407,54 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
   es.onmessage = (e) => {
     const d = JSON.parse(e.data);
 
-    // Progress bar
-    if (d.pct !== undefined) {
-      const bar = document.getElementById('pb-bar');
-      const lbl = document.getElementById('pb-label');
-      const det = document.getElementById('pb-detail');
-      if (bar) bar.style.width = d.pct + '%';
-      if (lbl) lbl.textContent = d.pct + '%';
+    // Phase timeline update (M.2)
+    if (d.phase) {
+      const phases = ['search', 'enrich', 'inspect', 'delist'];
+      const curIdx = phases.indexOf(d.phase);
+      document.querySelectorAll('.phase-node').forEach((node, i) => {
+        const ph = node.dataset.phase;
+        const phIdx = phases.indexOf(ph);
+        let state = 'pending';
+        if (curIdx === -1) {
+          state = 'pending';
+        } else if (phIdx < curIdx) {
+          state = 'done';
+        } else if (phIdx === curIdx) {
+          state = ['done','error','cancelled'].includes(d.status) ? 'done' : 'running';
+        }
+        node.dataset.state = state;
+        const dot = node.querySelector('div:first-child');
+        const lbl = node.querySelector('div:nth-child(2)');
+        const pct = node.querySelector('div:nth-child(3)');
+        const dotMap = {
+          done:    'bg-green-900 border-green-600 text-green-400',
+          running: 'bg-blue-900 border-blue-500 text-blue-300',
+          pending: 'bg-gray-800 border-gray-700 text-gray-600',
+        };
+        const lblMap = { done: 'text-green-500', running: 'text-blue-400', pending: 'text-gray-600' };
+        const iconMap = { done: '✓', running: '▶', pending: '⋯' };
+        if (dot) dot.className = `w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${dotMap[state]}`;
+        if (dot) dot.textContent = iconMap[state];
+        if (lbl) lbl.className = `text-[10px] mt-1 capitalize font-medium ${lblMap[state]}`;
+        if (pct) pct.textContent = (state === 'running' && d.phase_progress !== undefined) ? Math.round(d.phase_progress * 100) + '%' : '';
+        // Update connector line before this node
+        if (i > 0) {
+          const connector = node.previousElementSibling;
+          if (connector) connector.className = `flex-1 h-px mx-1 ${state !== 'pending' ? 'bg-green-700' : 'bg-gray-700'}`;
+        }
+      });
+    }
+
+    // Progress bar (M.3: uses total_progress for bar width, shows phase label)
+    if (d.pct !== undefined || d.total_progress !== undefined) {
+      const bar  = document.getElementById('pb-bar');
+      const pctEl = document.getElementById('pb-pct');
+      const phEl = document.getElementById('pb-phase');
+      const det  = document.getElementById('pb-detail');
+      const barPct = d.total_progress !== undefined ? Math.round(d.total_progress * 100) : (d.pct ?? 0);
+      if (bar) bar.style.width = barPct + '%';
+      if (pctEl) pctEl.textContent = d.pct ?? barPct;
+      if (phEl && d.phase) { phEl.textContent = d.phase; phEl.nextSibling && (phEl.nextSibling.textContent = ': '); }
       if (det) det.textContent = `${fmt(d.found_total)} / ${fmt(d.api_total)}`;
     }
 

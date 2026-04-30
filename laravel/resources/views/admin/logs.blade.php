@@ -57,6 +57,7 @@
                   {{ $isActive ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
           {{ $jf['label'] }}
           <span class="text-gray-600 ml-1">{{ $sizeStr }}</span>
+          <span class="block text-[10px] text-gray-700">{{ \Carbon\Carbon::createFromTimestamp($jf['mtime'])->diffForHumans() }}</span>
         </a>
         @if($jid)
         <a href="{{ route('admin.jobs.detail', $jid) }}" title="View job #{{ $jid }}"

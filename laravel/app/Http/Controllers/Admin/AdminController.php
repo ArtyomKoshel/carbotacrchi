@@ -9,7 +9,6 @@ use App\Models\LotChange;
 use App\Models\ParseFilter;
 use App\Models\ParseJob;
 use App\Models\ParserSchedule;
-use App\Models\ReparseRequest;
 use App\Services\FieldMappingsService;
 use App\Services\FieldRegistryService;
 use Illuminate\Http\Request;
@@ -160,7 +159,7 @@ class AdminController extends Controller
                 if ($found) {
                     usort($found, fn($a, $b) => filemtime($b) - filemtime($a)); // newest first
                     foreach ($found as $jf) {
-                        $jobFiles[] = ['path' => $jf, 'label' => basename($jf), 'size' => filesize($jf)];
+                        $jobFiles[] = ['path' => $jf, 'label' => basename($jf), 'size' => filesize($jf), 'mtime' => filemtime($jf)];
                     }
                 }
             }
@@ -322,25 +321,44 @@ class AdminController extends Controller
                 ->get();
         }
 
-        $recent = ReparseRequest::orderByDesc('created_at')->limit(20)->get();
+        // Recent re-parse jobs (unified pipeline). Falls back to legacy reparse_requests
+        // if any rows still exist there during the migration window.
+        $recent = ParseJob::where('type', 'reparse')
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
 
         return view('admin.lots', compact('lots', 'q', 'recent'));
     }
 
     public function reparseLot(Request $request, string $lotId)
     {
-        $exists = DB::table('lots')->where('id', $lotId)->exists();
-        if (!$exists) {
+        $lot = DB::table('lots')->where('id', $lotId)->first(['id', 'source']);
+        if (!$lot) {
             return redirect()->route('admin.lots')
                 ->withErrors(['lot_id' => "Lot {$lotId} not found"]);
         }
 
-        $pending = ReparseRequest::where('lot_id', $lotId)
-            ->whereIn('status', ['pending', 'running'])
+        // Detect source: prefer the column, fallback to id prefix (kbcha_xxx / encar_xxx).
+        $source = $lot->source ?? null;
+        if (!$source && str_contains($lotId, '_')) {
+            $source = explode('_', $lotId, 2)[0];
+        }
+        $source = $source ?: 'kbcha';
+
+        $pending = ParseJob::where('type', 'reparse')
+            ->whereIn('status', ['pending', 'running', 'interrupted'])
+            ->whereJsonContains('target_lot_ids', $lotId)
             ->exists();
 
         if (!$pending) {
-            ReparseRequest::create(['lot_id' => $lotId, 'status' => 'pending']);
+            ParseJob::create([
+                'source'         => $source,
+                'type'           => 'reparse',
+                'status'         => 'pending',
+                'target_lot_ids' => [$lotId],
+                'triggered_by'   => 'admin',
+            ]);
         }
 
         return redirect()->route('admin.lots', ['q' => $lotId])
@@ -349,11 +367,13 @@ class AdminController extends Controller
 
     public function reparseStatus(string $id)
     {
-        $req = ReparseRequest::findOrFail($id);
+        $job = ParseJob::find($id);
+        if (!$job) abort(404);
+
         return response()->json([
-            'status' => $req->status,
-            'result' => $req->result,
-            'updated_at' => $req->updated_at?->toISOString(),
+            'status'     => $job->status,
+            'result'     => $job->result['error'] ?? ($job->status === 'done' ? 'OK' : null),
+            'updated_at' => $job->updated_at?->toISOString(),
         ]);
     }
 

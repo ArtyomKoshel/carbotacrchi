@@ -10,7 +10,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from config import Config
 from logging_config import setup_logging
-from reparse_worker import process_pending
 from job_worker import process_pending_job
 import parsers  # noqa: F401 — triggers parser registration
 from parsers.registry import get_all, get_enabled, ParserRegistration
@@ -256,14 +255,6 @@ def start_scheduler():
         max_instances=1,
         coalesce=True,
     )
-    scheduler.add_job(
-        process_pending,
-        IntervalTrigger(seconds=30),
-        id="reparse_worker",
-        name="Reparse Worker",
-        max_instances=1,
-        coalesce=True,
-    )
 
     _state = {"last": db_schedules}
     scheduler.add_job(
@@ -274,7 +265,12 @@ def start_scheduler():
         coalesce=True,
     )
 
-    logger.info("[job_worker] polling every 15s | [reparse_worker] polling every 30s")
-    logger.info("[schedule_reload] checking DB every 1 min for schedule changes")
+    logger.info("[job_worker] polling every 15s (handles full + reparse jobs)")
+    logger.info("[schedule_reload] checking DB every 1 min for schedule changes"
+                " | reparse jobs handled by job_worker pipeline")
     logger.info(f"Scheduler started with {len(scheduler.get_jobs())} job(s)")
     scheduler.start()
+
+
+if __name__ == "__main__":
+    start_scheduler()

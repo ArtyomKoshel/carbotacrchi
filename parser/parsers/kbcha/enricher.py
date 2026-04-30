@@ -564,17 +564,19 @@ class KBChaEnricher:
         )
         try:
             self._repo.upsert_inspection(rec)
+        except Exception as e:
+            etype = type(e).__name__
+            logger.warning(f"[{self._source}] {lot.id}: upsert_inspection failed: {etype}: {e}")
+            self._inc_error(stats, etype, f"inspection record save failed {lot.id}/{insp_type}: {etype}: {e}")
+
+        try:
             self._repo.upsert_batch([lot])
             insp_stats["parsed"] += 1
         except Exception as e:
             insp_stats["errors"] += 1
             etype = type(e).__name__
-            logger.warning(f"[{self._source}] {lot.id}: external upsert failed: {etype}: {e}")
-            self._inc_error(
-                stats,
-                etype,
-                f"external inspection upsert failed {lot.id}/{insp_type}: {etype}: {e}",
-            )
+            logger.warning(f"[{self._source}] {lot.id}: lot vin upsert failed: {etype}: {e}")
+            self._inc_error(stats, etype, f"lot update after inspection failed {lot.id}/{insp_type}: {etype}: {e}")
 
     def _save_inspection_url(self, lot: CarLot, insp_type: str, insp_stats: dict, stats: dict) -> None:
         url_key = _INSP_URL_KEYS[insp_type]
@@ -647,6 +649,11 @@ class KBChaEnricher:
                 "inspector_note": insp.get("inspector_note"),
             },
         )
-        self._repo.upsert_inspection(rec)
+        try:
+            self._repo.upsert_inspection(rec)
+        except Exception as e:
+            etype = type(e).__name__
+            logger.warning(f"[{self._source}] {lot.id}: kb_popup upsert_inspection failed: {etype}: {e}")
+            self._inc_error(stats, etype, f"kb_popup inspection save failed {lot.id}: {etype}: {e}")
         self._repo.upsert_batch([lot])
         insp_stats["parsed"] += 1

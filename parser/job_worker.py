@@ -219,40 +219,52 @@ def _unregister_running(job_id: int, source: str) -> None:
             _RUNNING_SOURCES.pop(source, None)
 
 
-def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | None = None) -> None:
+def _execute_job(
+    job_id: int,
+    source: str,
+    filters: dict,
+    checkpoint: dict | None = None,
+    job_type: str = "full",
+    target_lot_ids: list[str] | None = None,
+) -> None:
     conn = _get_conn()
     r: redis.Redis | None = None
     locked = False
+    is_reparse = job_type == "reparse"
     try:
         _ensure_job_log_router()
-        logger.info(f"[job_worker] Job #{job_id} starting: source={source} filters={filters}")
+        logger.info(
+            f"[job_worker] Job #{job_id} starting: source={source} type={job_type}"
+            + (f" lots={target_lot_ids}" if is_reparse else f" filters={filters}")
+        )
         if Config.LOG_FILE:
             job_log_path = os.path.join(os.path.dirname(Config.LOG_FILE), "jobs", f"job-{job_id}.log")
             logger.info(f"[job_worker] Job #{job_id} log: {job_log_path}")
 
         r = _redis()
 
-        try:
-            locked = acquire_parse_lock(r, source, f"job:{job_id}")
-        except Exception as e:
-            logger.error(f"[job_worker] Job #{job_id}: Redis lock failed ({type(e).__name__}): {e} — marking as error")
-            _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": f"Redis: {e}"})
-            return
+        if not is_reparse:
+            try:
+                locked = acquire_parse_lock(r, source, f"job:{job_id}")
+            except Exception as e:
+                logger.error(f"[job_worker] Job #{job_id}: Redis lock failed ({type(e).__name__}): {e} — marking as error")
+                _set_job(conn, job_id, "error", progress={"status": "error"}, result={"error": f"Redis: {e}"})
+                return
 
-        if not locked:
-            holder = r.get(f"parse_lock:{source}") or "unknown"
-            logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
-            with conn.cursor() as _cur:
-                _cur.execute(
-                    "UPDATE parse_jobs SET status='pending', updated_at=NOW() WHERE id=%s AND status='running'",
-                    (job_id,)
-                )
-            conn.commit()
-            return
+            if not locked:
+                holder = r.get(f"parse_lock:{source}") or "unknown"
+                logger.warning(f"[job_worker] Job #{job_id}: source '{source}' locked by '{holder}', requeueing")
+                with conn.cursor() as _cur:
+                    _cur.execute(
+                        "UPDATE parse_jobs SET status='pending', updated_at=NOW() WHERE id=%s AND status='running'",
+                        (job_id,)
+                    )
+                conn.commit()
+                return
 
         _publish(r, source, {"job_id": job_id, "status": "running", "page": 0, "found": 0})
 
-        _MAX_JOB_RETRIES = 3
+        _MAX_JOB_RETRIES = 1 if is_reparse else 3
         for attempt in range(1, _MAX_JOB_RETRIES + 1):
             try:
                 if attempt > 1:
@@ -266,9 +278,13 @@ def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | Non
                         pass
                     _time.sleep(10 * attempt)
 
-                result = _run_parse(source, filters, job_id, conn, r, checkpoint=checkpoint)
+                if is_reparse:
+                    result = _run_reparse(source, target_lot_ids or [], job_id, conn, r)
+                else:
+                    result = _run_parse(source, filters, job_id, conn, r, checkpoint=checkpoint)
                 _set_job(conn, job_id, "done", progress={"status": "done"}, result=result)
-                _save_job_stats(conn, job_id, source, result)
+                if not is_reparse:
+                    _save_job_stats(conn, job_id, source, result)
                 _publish(r, source, {"job_id": job_id, "status": "done", **result})
                 logger.info(f"[job_worker] Job #{job_id} done: {result}")
                 break
@@ -293,14 +309,10 @@ def _execute_job(job_id: int, source: str, filters: dict, checkpoint: dict | Non
         if _JOB_LOG_ROUTER is not None:
             _JOB_LOG_ROUTER.close_job(job_id)
         _unregister_running(job_id, source)
-        conn.close()
 
 
 def process_pending_job() -> None:
-    """Pick one pending or interrupted parse_job and dispatch it to a background thread.
-
-    Interrupted jobs are auto-resumed with their checkpoint data.
-    """
+    """Poll parse_jobs for pending/interrupted work and dispatch it in a background thread."""
     setup_logging()
     _ensure_job_log_router()
     _cleanup_finished_threads()
@@ -310,21 +322,41 @@ def process_pending_job() -> None:
         with _RUNNING_LOCK:
             busy_sources = set(_RUNNING_SOURCES.keys())
 
-        # Prioritize interrupted (resumable) jobs, then pending
+        # Prioritize interrupted (resumable) jobs, then pending.
+        # Reparse jobs are allowed through even when the source is busy (no lock needed).
         with conn.cursor() as cur:
             source_filter = ""
             params: list = []
             if busy_sources:
                 placeholders = ",".join(["%s"] * len(busy_sources))
-                source_filter = f"AND source NOT IN ({placeholders})"
+                source_filter = (
+                    f"AND (COALESCE(type, 'full') = 'reparse' "
+                    f"OR source NOT IN ({placeholders}))"
+                )
                 params = list(sorted(busy_sources))
-            cur.execute(
-                f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') "
-                f"{source_filter} "
-                f"ORDER BY FIELD(status, 'interrupted', 'pending'), created_at "
-                f"LIMIT 1 FOR UPDATE SKIP LOCKED",
-                params,
-            )
+            try:
+                cur.execute(
+                    f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') "
+                    f"{source_filter} "
+                    f"ORDER BY FIELD(status, 'interrupted', 'pending'), created_at "
+                    f"LIMIT 1 FOR UPDATE SKIP LOCKED",
+                    params,
+                )
+            except Exception:
+                # type column may not exist before migration — fall back to source-only filter
+                fallback_filter = ""
+                fallback_params: list = []
+                if busy_sources:
+                    placeholders = ",".join(["%s"] * len(busy_sources))
+                    fallback_filter = f"AND source NOT IN ({placeholders})"
+                    fallback_params = list(sorted(busy_sources))
+                cur.execute(
+                    f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') "
+                    f"{fallback_filter} "
+                    f"ORDER BY FIELD(status, 'interrupted', 'pending'), created_at "
+                    f"LIMIT 1 FOR UPDATE SKIP LOCKED",
+                    fallback_params,
+                )
             job = cur.fetchone()
         if not job:
             return
@@ -333,10 +365,19 @@ def process_pending_job() -> None:
         source = job["source"]
         old_status = job["status"]
         filters = json.loads(job["filters"]) if job["filters"] else {}
+        job_type = job.get("type") or "full"
+        try:
+            raw_ids = job.get("target_lot_ids")
+            target_lot_ids: list[str] = (
+                json.loads(raw_ids) if isinstance(raw_ids, str)
+                else (raw_ids or [])
+            )
+        except (json.JSONDecodeError, TypeError):
+            target_lot_ids = []
 
-        # Extract checkpoint from interrupted job's progress
+        # Extract checkpoint from interrupted job's progress (full jobs only)
         checkpoint = None
-        if old_status == "interrupted":
+        if old_status == "interrupted" and job_type != "reparse":
             try:
                 prev_progress = json.loads(job["progress"]) if job.get("progress") else {}
                 checkpoint = prev_progress.get("checkpoint")
@@ -363,13 +404,14 @@ def process_pending_job() -> None:
 
         thread = threading.Thread(
             target=_execute_job,
-            args=(job_id, source, filters, checkpoint),
+            args=(job_id, source, filters, checkpoint, job_type, target_lot_ids),
             name=f"parse-job-{job_id}",
             daemon=True,
         )
         with _RUNNING_LOCK:
             _RUNNING_THREADS[job_id] = thread
-            _RUNNING_SOURCES[source] = job_id
+            if job_type != "reparse":
+                _RUNNING_SOURCES[source] = job_id
         try:
             thread.start()
         except Exception as e:
@@ -378,9 +420,53 @@ def process_pending_job() -> None:
             logger.error(f"[job_worker] Job #{job_id} thread start failed: {e}")
             return
 
-        logger.info(f"[job_worker] Job #{job_id} dispatched to {thread.name}")
+        logger.info(f"[job_worker] Job #{job_id} ({job_type}) dispatched to {thread.name}")
     finally:
         conn.close()
+
+
+def _run_reparse(source: str, target_lot_ids: list[str], job_id: int, conn, r: redis.Redis) -> dict:
+    """Execute a reparse job for specific lot IDs, publishing progress to Redis."""
+    from repository import LotRepository
+    import parsers  # noqa: F401
+    from parsers.registry import get_all
+
+    registry = get_all()
+    if source not in registry:
+        raise ValueError(f"Unknown source: {source!r}")
+
+    repo = LotRepository()
+    try:
+        parser = registry[source].cls(repo)
+        _run_start = _time.monotonic()
+
+        def _on_progress(update: ProgressUpdate) -> None:
+            pct = round(update.total_progress * 100, 1)
+            elapsed = round(_time.monotonic() - _run_start, 1)
+            # Check cancel
+            with conn.cursor() as _cur:
+                _cur.execute("SELECT status FROM parse_jobs WHERE id=%s", (job_id,))
+                row = _cur.fetchone()
+            if row and row["status"] == "cancelled":
+                raise JobCancelledError(f"Job #{job_id} cancelled by user")
+            progress = {
+                "status": f"{pct}%",
+                "pct": pct,
+                "phase": update.phase,
+                "phase_progress": round(update.phase_progress, 3),
+                "total_progress": round(update.total_progress, 3),
+                "found_total": update.lots_processed or 0,
+                "api_total": update.lots_found or len(target_lot_ids),
+                "message": update.message,
+                "elapsed_s": elapsed,
+            }
+            _set_job(conn, job_id, "running", progress=progress)
+            _publish(r, source, {"job_id": job_id, **progress})
+
+        result = parser.run_reparse(target_lot_ids, on_progress=_on_progress)
+        return result
+    finally:
+        repo.close()
 
 
 def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,

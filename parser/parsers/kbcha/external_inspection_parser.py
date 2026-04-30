@@ -104,6 +104,16 @@ class KBChaExternalInspectionParser:
         # ── 2. Car basic info table ────────────────────────────────────────
         self._parse_basic_table(soup, result, details)
 
+        # ── 2b. VIN fallback — provider-agnostic regex over plain text ────
+        # _parse_basic_table uses carmodoo-specific <span class="noBborder">.
+        # Other providers (kb_paper, carmon, mpark, autocafe) have different
+        # markup, so scan the rendered text for any 17-char VIN pattern.
+        if not result.get("vin"):
+            text = soup.get_text(" ", strip=True)
+            m = _VIN_RE.search(text)
+            if m:
+                result["vin"] = m.group(0)
+
         # ── 3. Mileage ────────────────────────────────────────────────────
         km = self._parse_mileage(html, soup)
         if km is not None:

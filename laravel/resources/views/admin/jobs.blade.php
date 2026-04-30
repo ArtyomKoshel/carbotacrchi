@@ -88,8 +88,16 @@
         <td class="px-5 py-3 text-xs text-gray-400 progress-cell">
           @if($job->progress)
             @if(isset($job->progress['pct']))
+              @if(!empty($job->progress['phase']))
+                <span class="text-gray-500 capitalize mr-1">{{ $job->progress['phase'] }}:</span>
+              @endif
               <span class="text-white font-semibold">{{ $job->progress['pct'] }}%</span>
-              <span class="text-gray-600 ml-1">{{ number_format($job->progress['found_total'] ?? 0) }} / {{ number_format($job->progress['api_total'] ?? 0) }}</span>
+              @php
+                $barW = round(($job->progress['total_progress'] ?? $job->progress['pct'] / 100) * 100, 1);
+              @endphp
+              <div class="w-24 bg-gray-800 rounded-full h-1 mt-1">
+                <div class="bg-blue-500 h-1 rounded-full" style="width:{{ $barW }}%"></div>
+              </div>
             @else
               {{ $job->progress['status'] ?? '' }}
             @endif
@@ -167,7 +175,13 @@ function watchJobRow(id, source) {
       cancelled:'bg-gray-800 text-gray-500' };
     badge.className = `status-badge text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
     badge.textContent = d.status;
-    if (d.pct !== undefined) row.querySelector('.progress-cell').innerHTML = `<span class="text-white font-semibold">${d.pct}%</span> <span class="text-gray-600">${(d.found_total??0).toLocaleString()} / ${(d.api_total??0).toLocaleString()}</span>`;
+    if (d.pct !== undefined) {
+      const phase = d.phase ? `<span class="text-gray-500 capitalize mr-1">${d.phase}:</span>` : '';
+      const barW = d.total_progress !== undefined ? Math.round(d.total_progress * 100) : d.pct;
+      row.querySelector('.progress-cell').innerHTML =
+        `${phase}<span class="text-white font-semibold">${d.pct}%</span>` +
+        `<div class="w-24 bg-gray-800 rounded-full h-1 mt-1"><div class="bg-blue-500 h-1 rounded-full" style="width:${barW}%"></div></div>`;
+    }
     if (d.total !== undefined) {
       let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> lots`;
       if (d.new) r += ` <span class="text-gray-600">·</span> <span class="text-blue-400">+${d.new.toLocaleString()}</span>`;

@@ -188,6 +188,14 @@ class AbstractParser(ABC):
         """Re-fetch detail pages for existing lots. Override if supported."""
         raise NotImplementedError(f"{self.__class__.__name__} does not support run_reenrich")
 
+    def run_reparse(self, lot_ids: list[str], on_progress: "ProgressCallback | None" = None) -> dict:
+        """Re-enrich specific lots by ID (triggered from admin reparse queue).
+
+        Override in source parsers. Return a minimal result dict compatible
+        with RunResult.to_dict() (at minimum: total, errors, elapsed_s).
+        """
+        raise NotImplementedError(f"{self.__class__.__name__} does not support run_reparse")
+
     # ── Shared helpers ─────────────────────────────────────────────────────
     @staticmethod
     def init_stats(**extra) -> dict:

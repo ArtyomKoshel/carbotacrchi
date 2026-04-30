@@ -88,20 +88,35 @@
     </thead>
     <tbody class="divide-y divide-gray-800" id="reparse-table">
       @forelse($recent as $req)
+      @php
+        $lotId = is_array($req->target_lot_ids ?? null) && count($req->target_lot_ids)
+          ? $req->target_lot_ids[0]
+          : '?';
+        $resultText = '';
+        if (is_array($req->result ?? null)) {
+            $resultText = $req->result['error'] ?? ($req->status === 'done' ? 'OK' : '');
+        } elseif (is_string($req->result ?? null)) {
+            $resultText = $req->result;
+        }
+      @endphp
       <tr data-id="{{ $req->id }}" data-status="{{ $req->status }}">
-        <td class="px-5 py-3 font-mono text-xs text-gray-400">{{ $req->lot_id }}</td>
+        <td class="px-5 py-3 font-mono text-xs text-gray-400">
+          <a href="{{ route('admin.jobs.detail', $req->id) }}" class="hover:text-blue-400">{{ $lotId }}</a>
+        </td>
         <td class="px-5 py-3">
           @php
             $badge = match($req->status) {
-              'done'    => 'bg-green-900 text-green-400',
-              'error'   => 'bg-red-900 text-red-400',
-              'running' => 'bg-yellow-900 text-yellow-400',
-              default   => 'bg-gray-800 text-gray-400',
+              'done'        => 'bg-green-900 text-green-400',
+              'error'       => 'bg-red-900 text-red-400',
+              'running'     => 'bg-yellow-900 text-yellow-400',
+              'interrupted' => 'bg-orange-900 text-orange-400',
+              'cancelled'   => 'bg-gray-800 text-gray-500',
+              default       => 'bg-gray-800 text-gray-400',
             };
           @endphp
           <span class="status-badge text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $req->status }}</span>
         </td>
-        <td class="px-5 py-3 text-gray-400 text-xs result-cell">{{ $req->result ?? '' }}</td>
+        <td class="px-5 py-3 text-gray-400 text-xs result-cell">{{ $resultText }}</td>
         <td class="px-5 py-3 text-gray-500 text-xs">
           {{ $req->created_at->diffForHumans() }}
         </td>
