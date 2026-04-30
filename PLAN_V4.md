@@ -1011,6 +1011,130 @@ AI возвращает JSON с camelCase ключами (`insuranceCountMax`), 
 
 ---
 
+## Задача 9: AI-батч маппинг model_en (Korean → English)
+
+### Проблема
+
+В базе ~300-500 уникальных моделей с `model_en = NULL`. Текущий словарь `_KR_TO_EN` покрывает только
+корейские бренды. Не покрыты: BMW, Mercedes-Benz, Renault Korea, Land Rover, Lexus, Mini, Lincoln, Dodge и др.
+
+Готовых библиотек для этого маппинга не существует. Используем AI-батч: отправляем все уникальные
+`(make, model)` пары в LLM, получаем маппинг, сохраняем в словарь и обновляем БД.
+
+### Ограничение: данные на сервере (Railway)
+
+База данных доступна только на Railway. Локально подключиться к ней нельзя (или неудобно).
+Поэтому весь процесс выполняется через **artisan-команду на сервере**, а результат сохраняется
+в файл, доступный через HTTP (для скачивания).
+
+### План реализации
+
+#### 9.1 Artisan-команда `model:generate-en-mapping`
+
+**Файл:** `laravel/app/Console/Commands/GenerateModelEnMapping.php`
+
+Логика:
+1. `SELECT DISTINCT make, model FROM lots WHERE model_en IS NULL ORDER BY make, model`
+2. Группировать по make (для контекста)
+3. Отправить батчами по 50-100 моделей в AI (Groq/LLaMA — уже подключён в `config/ai.php`)
+4. System prompt:
+   ```
+   Ты — эксперт по автомобилям. Я дам тебе список моделей автомобилей в корейском формате.
+   Для каждой модели определи каноническое английское название.
+   
+   Правила:
+   - BMW "5시리즈 (G30) 520d xDrive" → "5 Series" (серия, без варианта)
+   - Mercedes "E-클래스 W213 E300" → "E-Class" (класс, без варианта)
+   - Renault "SM5 노바 RE" → "SM5" (извлечь латинский код)
+   - Lexus "LS460 슈프림" → "LS460" (извлечь латинский код)
+   - Mini "쿠퍼 D 클럽맨" → "Cooper Clubman"
+   - Land Rover "레인지로버 스포츠" → "Range Rover Sport"
+   - Если не можешь определить — верни null
+   
+   Верни JSON: {"results": [{"make": "...", "model_kr": "...", "model_en": "..."}]}
+   ```
+5. Собрать все результаты в один JSON
+6. Сохранить результат в `storage/app/model_en_mapping.json`
+7. Сделать файл доступным по HTTP через `/admin/model-en-mapping.json`
+
+#### 9.2 Artisan-команда `model:apply-en-mapping`
+
+**Файл:** тот же `GenerateModelEnMapping.php` с опцией `--apply`
+
+Или отдельная команда. Логика:
+1. Прочитать `storage/app/model_en_mapping.json`
+2. Для каждой пары `(make, model_kr) → model_en`:
+   ```sql
+   UPDATE lots SET model_en = '{model_en}' WHERE make = '{make}' AND model = '{model_kr}' AND model_en IS NULL
+   ```
+3. Вывести статистику: сколько обновлено, сколько осталось NULL
+
+#### 9.3 Роут для скачивания результата
+
+**Файл:** `laravel/routes/web.php`
+
+```php
+Route::get('/admin/model-en-mapping.json', function () {
+    $path = storage_path('app/model_en_mapping.json');
+    if (!file_exists($path)) {
+        abort(404, 'Mapping file not found. Run: php artisan model:generate-en-mapping');
+    }
+    return response()->file($path, ['Content-Type' => 'application/json']);
+})->middleware('admin.auth');
+```
+
+Это позволяет:
+- Запустить команду на Railway: `php artisan model:generate-en-mapping`
+- Открыть в браузере: `https://your-app.railway.app/admin/model-en-mapping.json`
+- Скачать файл, проверить маппинг вручную
+- Применить: `php artisan model:apply-en-mapping`
+
+#### 9.4 Обновить Python-словарь `_KR_TO_EN`
+
+После проверки JSON-файла — добавить новые маппинги в `parser/parsers/_shared/korean_model_names.py`.
+Это нужно чтобы новые лоты при парсинге сразу получали `model_en`.
+
+Можно автоматизировать: artisan-команда `model:export-to-python` генерирует Python-dict из JSON.
+
+#### 9.5 Исправить поиск — искать по model_en ИЛИ model
+
+**Файл:** `laravel/app/AuctionProviders/AbstractDbProvider.php`
+
+```php
+// Было:
+if ($query->model) $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
+
+// Стало:
+if ($query->model) {
+    $builder->where(function ($q) use ($query) {
+        $q->where('model_en', 'LIKE', '%' . $query->model . '%')
+          ->orWhere('model', 'LIKE', '%' . $query->model . '%');
+    });
+}
+```
+
+Это покрывает случай когда менеджер пишет "BMW 520d" — `model_en` = "5 Series" не совпадёт,
+но `model` = "5시리즈 (G30) 520d xDrive" — содержит "520d" и совпадёт.
+
+### Workflow (пошагово)
+
+```
+1. Задеплоить код на Railway (команда + роут)
+2. Запустить: railway run php artisan model:generate-en-mapping
+3. Подождать ~30-60 сек (AI батч)
+4. Открыть: https://app.railway.app/admin/model-en-mapping.json
+5. Проверить глазами (или скачать)
+6. Если ОК: railway run php artisan model:apply-en-mapping
+7. Скопировать маппинги в korean_model_names.py
+```
+
+### Стоимость
+
+~300-500 уникальных моделей × ~50 tokens/entry = ~25K tokens.
+На Groq (LLaMA 3.3 70B) — бесплатно (rate limit). На OpenAI — ~$0.05.
+
+---
+
 ## Вопросы / решения
 
 1. **Старый `config/search_tolerance.php`** — оставить как fallback или удалить?
