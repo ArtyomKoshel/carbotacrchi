@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  */
 class AiModelEnBackfill extends Command
 {
-    protected $signature = 'model-en:ai-backfill {--limit=100 : Maximum number of lots to process} {--batch=10 : Batch size for AI requests} {--dry-run : Show what would be done without making changes} {--source= : Only process specific source (kbcha/encar)} {--generate-mapping : Generate Python mapping entries}';
+    protected $signature = 'model-en:ai-backfill {--limit=100 : Maximum number of lots to process} {--batch=5 : Batch size for AI requests (default 5 to avoid rate limits)} {--dry-run : Show what would be done without making changes} {--source= : Only process specific source (kbcha/encar)} {--generate-mapping : Generate Python mapping entries}';
     protected $description = 'Use AI to backfill model_en from Korean model names';
 
     private string $apiKey;
@@ -155,6 +155,37 @@ class AiModelEnBackfill extends Command
      */
     private function translateBatch(array $batch): ?array
     {
+        $maxRetries = 5;
+        $attempt = 0;
+
+        while ($attempt < $maxRetries) {
+            $attempt++;
+            $result = $this->translateBatchAttempt($batch, $attempt);
+
+            if ($result !== null) {
+                return $result;
+            }
+
+            // Check if we should retry
+            if ($attempt < $maxRetries) {
+                $waitTime = pow(2, $attempt) * 2; // 4, 8, 16, 32 seconds
+                $this->warn("  Rate limit hit, waiting {$waitTime}s before retry {$attempt}/{$maxRetries}...");
+                sleep($waitTime);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Single attempt to translate a batch.
+     *
+     * @param array<array{id: int, model: string, source: string}> $batch
+     * @param int $attempt
+     * @return array<int, string>|null
+     */
+    private function translateBatchAttempt(array $batch, int $attempt): ?array
+    {
         // Build prompt with all models
         $modelsText = '';
         foreach ($batch as $item) {
@@ -192,8 +223,16 @@ PROMPT;
                 ]);
 
             if (!$response->successful()) {
-                Log::warning('[AiModelEnBackfill] API error: ' . $response->status() . ' ' . $response->body());
-                return null;
+                $status = $response->status();
+                $body = $response->body();
+
+                if ($status === 429) {
+                    Log::warning("[AiModelEnBackfill] Rate limit hit (attempt {$attempt}): {$body}");
+                    return null; // Signal to retry
+                }
+
+                Log::warning("[AiModelEnBackfill] API error: {$status} {$body}");
+                return null; // Don't retry on other errors
             }
 
             $content = $response->json('choices.0.message.content', '');
