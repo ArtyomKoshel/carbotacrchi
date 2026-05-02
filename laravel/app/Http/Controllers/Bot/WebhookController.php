@@ -69,7 +69,7 @@ class WebhookController extends Controller
         } elseif ($text === '/demo2') {
             $this->handleDemoSeed($chatId, $userId, $firstName);
         } elseif ($text !== '' && !str_starts_with($text, '/')) {
-            $this->handleTextSearch($chatId, $userId, $text);
+            $this->handleTextSearch($chatId, $userId, $message['from']['username'] ?? '', $text);
         }
 
         $webAppData = $message['web_app_data']['data'] ?? null;
@@ -242,22 +242,30 @@ class WebhookController extends Controller
         $this->bot->sendMessage($chatId, "✅ Готово! Отправлены уведомления по <b>{$sent}</b> подпискам.");
     }
 
-    private function handleTextSearch(int|string $chatId, int|string $userId, string $text): void
+    private function handleTextSearch(int|string $chatId, int|string $userId, string $username, string $text): void
     {
         try {
-            $this->doTextSearch($chatId, $userId, $text);
+            $this->doTextSearch($chatId, $userId, $username, $text);
         } catch (\Throwable $e) {
-            Log::error('[bot] search error', ['user_id' => $userId, 'text' => $text, 'error' => $e->getMessage()]);
+            Log::error('[bot] search error', ['user_id' => $userId, 'username' => $username, 'text' => $text, 'error' => $e->getMessage()]);
             $this->bot->sendMessage($chatId, '❌ Произошла ошибка при поиске. Попробуйте позже.');
         }
     }
 
-    private function doTextSearch(int|string $chatId, int|string $userId, string $text): void
+    private function doTextSearch(int|string $chatId, int|string $userId, string $username, string $text): void
     {
         $chatSearch = new ChatSearchService();
-        $parsed     = $chatSearch->parseAndSearch($text);
+
+        Log::info('[bot] chat query', [
+            'user_id'  => $userId,
+            'username' => $username,
+            'prompt'   => $text,
+        ]);
+
+        $parsed = $chatSearch->parseAndSearch($text);
 
         if ($parsed === null) {
+            Log::warning('[bot] parse returned null', ['user_id' => $userId, 'prompt' => $text]);
             return;
         }
 
@@ -266,6 +274,15 @@ class WebhookController extends Controller
         $description   = $parsed['description'];
         $toleranceNote = $parsed['toleranceNote'];
         $isAi          = $parsed['isAi'] ?? false;
+
+        Log::info('[bot] parsed filters', [
+            'user_id'  => $userId,
+            'username' => $username,
+            'mode'     => $isAi ? 'ai' : 'fallback',
+            'prompt'   => $text,
+            'filters'  => array_filter($query->toSearchArray()),
+            'tolerant' => array_filter($tolerantQuery->toSearchArray()),
+        ]);
 
         $modeTag    = $isAi ? '🤖' : '📋';
         $statusText = "{$modeTag} Ищу: <b>{$description}</b>";
@@ -279,10 +296,10 @@ class WebhookController extends Controller
         $result     = $aggregator->search($tolerantQuery);
         $ms         = (int) ((microtime(true) - $t0) * 1000);
 
-        Log::info('[bot] search', [
+        Log::info('[bot] search result', [
             'user_id'  => $userId,
-            'username' => $message['from']['username'] ?? '',
-            'query'    => $description,
+            'username' => $username,
+            'prompt'   => $text,
             'total'    => $result->total,
             'ms'       => $ms,
         ]);
