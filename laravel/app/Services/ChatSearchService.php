@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\BotFilterSetting;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -425,9 +424,7 @@ class ChatSearchService
 
     private function getSystemPrompt(): string
     {
-        return Cache::remember('bot_filter:system_prompt', 60, function () {
-            return $this->buildSystemPrompt();
-        });
+        return $this->buildSystemPrompt();
     }
 
     private function buildSystemPrompt(): string
