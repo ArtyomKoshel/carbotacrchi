@@ -12,6 +12,7 @@ class ChatSearchService
     private string $apiKey;
     private string $apiUrl;
     private string $model;
+    private bool $lastParseWasAi = false;
 
     public function __construct()
     {
@@ -26,7 +27,7 @@ class ChatSearchService
     }
 
     /**
-     * @return array{query: SearchQuery, tolerantQuery: SearchQuery, description: string, toleranceNote: string}|null
+     * @return array{query: SearchQuery, tolerantQuery: SearchQuery, description: string, toleranceNote: string, isAi: bool}|null
      */
     public function parseAndSearch(string $text): ?array
     {
@@ -47,12 +48,14 @@ class ChatSearchService
             'tolerantQuery' => $tolerantQuery,
             'description'   => $description,
             'toleranceNote' => $toleranceNote,
+            'isAi'          => $this->lastParseWasAi,
         ];
     }
 
     private function parseQuery(string $text): ?array
     {
         if (!$this->isAvailable()) {
+            $this->lastParseWasAi = false;
             return $this->fallbackParse($text);
         }
 
@@ -74,6 +77,7 @@ class ChatSearchService
 
             if (!$response->successful()) {
                 Log::warning('[ChatSearch] API error: ' . $response->status() . ' ' . $response->body());
+                $this->lastParseWasAi = false;
                 return $this->fallbackParse($text);
             }
 
@@ -84,9 +88,11 @@ class ChatSearchService
                 return null;
             }
 
+            $this->lastParseWasAi = true;
             return $json;
         } catch (\Throwable $e) {
             Log::error('[ChatSearch] ' . $e->getMessage());
+            $this->lastParseWasAi = false;
             return $this->fallbackParse($text);
         }
     }
@@ -119,80 +125,159 @@ class ChatSearchService
         $text   = mb_strtolower(trim($text));
         $result = [];
 
-        $makes = json_decode(
-            file_get_contents(storage_path('app/data/makes_models.json')),
-            true
-        ) ?: [];
+        // ── Brand aliases (Russian/transliterated names) ─────────────────────
+        $brandAliases = [
+            'мерседес' => 'Mercedes-Benz', 'мерс'   => 'Mercedes-Benz',
+            'бмв'      => 'BMW',
+            'хёндай'   => 'Hyundai',       'хундай' => 'Hyundai', 'хендай' => 'Hyundai',
+            'киа'      => 'Kia',
+            'тойота'   => 'Toyota',
+            'хонда'    => 'Honda',
+            'ниссан'   => 'Nissan',
+            'ауди'     => 'Audi',
+            'фольксваген' => 'Volkswagen', 'фольц'  => 'Volkswagen',
+            'вольво'   => 'Volvo',
+            'порше'    => 'Porsche',
+            'лексус'   => 'Lexus',
+            'субару'   => 'Subaru',
+            'мазда'    => 'Mazda',
+            'форд'     => 'Ford',
+            'дженезис' => 'Genesis', 'генезис' => 'Genesis',
+            'шевроле'  => 'Chevrolet',
+        ];
 
-        // Map single digits to series names for BMW, Mercedes, etc.
+        // ── Numeric BMW series shortcuts ──────────────────────────────────────
         $numericSeries = [
             'bmw' => [
                 '1' => '1 Series', '2' => '2 Series', '3' => '3 Series',
                 '4' => '4 Series', '5' => '5 Series', '6' => '6 Series',
                 '7' => '7 Series', '8' => '8 Series',
             ],
+        ];
+
+        // ── Russian model aliases ─────────────────────────────────────────────
+        $modelAliases = [
             'mercedes-benz' => [
-                'a' => 'A-Class', 'b' => 'B-Class', 'c' => 'C-Class',
-                'e' => 'E-Class', 's' => 'S-Class', 'g' => 'G-Class',
+                'е класс' => 'E-Class', 'е-класс' => 'E-Class',
+                'с класс' => 'C-Class', 'с-класс' => 'C-Class',
+                'а класс' => 'A-Class', 'а-класс' => 'A-Class',
+                'г класс' => 'G-Class', 'г-класс' => 'G-Class',
+                'сл класс' => 'SL', 'cls класс' => 'CLS',
+            ],
+            'bmw' => [
+                '1 серия' => '1 Series', '2 серия' => '2 Series',
+                '3 серия' => '3 Series', '4 серия' => '4 Series',
+                '5 серия' => '5 Series', '7 серия' => '7 Series',
             ],
         ];
 
-        foreach ($makes as $make => $models) {
-            $makeLower = mb_strtolower($make);
-            if (mb_stripos($text, $makeLower) !== false) {
-                $result['make'] = $make;
+        $makes = json_decode(
+            file_get_contents(storage_path('app/data/makes_models.json')),
+            true
+        ) ?: [];
 
-                // Check numeric series first
-                if (isset($numericSeries[$makeLower])) {
-                    foreach ($numericSeries[$makeLower] as $digit => $series) {
-                        if (mb_stripos($text, $digit) !== false) {
-                            $result['model'] = $series;
-                            break 2;
-                        }
-                    }
-                }
-
-                // Check regular models
-                foreach ($models as $model) {
-                    if (mb_stripos($text, mb_strtolower($model)) !== false) {
-                        $result['model'] = $model;
-                        break;
-                    }
-                }
+        // Detect make: try aliases first, then JSON names
+        $detectedMake = null;
+        foreach ($brandAliases as $alias => $canonical) {
+            if (mb_strpos($text, $alias) !== false) {
+                $detectedMake = $canonical;
                 break;
             }
         }
+        if (!$detectedMake) {
+            foreach ($makes as $make => $unused) {
+                if (mb_stripos($text, mb_strtolower($make)) !== false) {
+                    $detectedMake = $make;
+                    break;
+                }
+            }
+        }
 
+        if ($detectedMake) {
+            $result['make'] = $detectedMake;
+            $makeLower      = mb_strtolower($detectedMake);
+
+            // Russian model aliases
+            if (isset($modelAliases[$makeLower])) {
+                foreach ($modelAliases[$makeLower] as $alias => $series) {
+                    if (mb_strpos($text, $alias) !== false) {
+                        $result['model'] = $series;
+                        goto modelFound;
+                    }
+                }
+            }
+
+            // Numeric series (BMW 7 → 7 Series)
+            if (isset($numericSeries[$makeLower])) {
+                foreach ($numericSeries[$makeLower] as $digit => $series) {
+                    if (preg_match('/\b' . preg_quote($digit, '/') . '\b/', $text)) {
+                        $result['model'] = $series;
+                        goto modelFound;
+                    }
+                }
+            }
+
+            // English model names from JSON
+            foreach (($makes[$detectedMake] ?? []) as $model) {
+                if (mb_stripos($text, mb_strtolower($model)) !== false) {
+                    $result['model'] = $model;
+                    goto modelFound;
+                }
+            }
+
+            modelFound:
+        }
+
+        // ── Year ──────────────────────────────────────────────────────────────
         if (preg_match('/(\d{4})\s*[-–]\s*(\d{4})/', $text, $m)) {
             $result['yearFrom'] = (int) $m[1];
             $result['yearTo']   = (int) $m[2];
-        } elseif (preg_match('/(?:от|from)\s*(\d{4})\s*(?:г|год)?/u', $text, $m)) {
+        } elseif (preg_match('/(?:от|from|с)\s*(\d{4})\s*(?:г|год|года)?/u', $text, $m)) {
             $result['yearFrom'] = (int) $m[1];
-        } elseif (preg_match('/(?:до|to)\s*(\d{4})\s*(?:г|год)?/u', $text, $m)) {
+        } elseif (preg_match('/(?:до|по|to)\s*(\d{4})\s*(?:г|год|года)?/u', $text, $m)) {
             $result['yearTo'] = (int) $m[1];
-        }
-
-        if (preg_match('/(?:до|max|<)\s*\$?\s*(\d+)\s*\$?/u', $text, $m)) {
-            $val = (int) $m[1];
-            if ($val > 1000 && $val < 500000) {
-                $result['priceMax'] = $val;
+        } elseif (preg_match('/(\d{4})\s*(?:г|год|года)/u', $text, $m)) {
+            $yr = (int) $m[1];
+            if ($yr >= 1990 && $yr <= (int) date('Y') + 1) {
+                $result['yearFrom'] = $yr;
+                $result['yearTo']   = $yr;
             }
         }
 
-        if (preg_match('/(?:пробег|mileage).*?(?:от|from|min)\s*(\d+)/u', $text, $m)) {
-            $result['mileageMin'] = (int) $m[1];
+        // ── Price ─────────────────────────────────────────────────────────────
+        if (preg_match('/(?:цена?|price|стоим\w*)\s*до\s*[\$₩]?\s*([\d\s,]+)/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 1000) $result['priceMax'] = $val;
+        } elseif (preg_match('/до\s*[\$₩]?\s*([\d\s,]+)\s*(?:\$|₩|долл|usd|krw)/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 1000) $result['priceMax'] = $val;
         }
-        if (preg_match('/(?:пробег|mileage).*?(?:до|to|max)\s*(\d+)/u', $text, $m)) {
-            $result['mileageMax'] = (int) $m[1];
-        }
-        // Handle "10000 пробег" pattern without "от/from"
-        if (preg_match('/(\d+)\s*(?:пробег|mileage)/u', $text, $m)) {
-            $val = (int) $m[1];
-            if ($val > 100 && $val < 500000) {
-                $result['mileageMin'] = $val;
-            }
+        if (preg_match('/(?:цена?|price|стоим\w*)\s*от\s*[\$₩]?\s*([\d\s,]+)/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 1000) $result['priceMin'] = $val;
         }
 
+        // ── Mileage ───────────────────────────────────────────────────────────
+        // "пробег от 100 000" / "пробег 100000 км" / "100 000 пробег"
+        if (preg_match('/(?:пробег|mileage)[^\d]*([\d\s,]+)\s*[-–]\s*([\d\s,]+)/ui', $text, $m)) {
+            $result['mileageMin'] = (int) preg_replace('/[\s,]/', '', $m[1]);
+            $result['mileageMax'] = (int) preg_replace('/[\s,]/', '', $m[2]);
+        } elseif (preg_match('/(?:пробег|mileage)\s*(?:от|from|min)\s*([\d\s,]+)/ui', $text, $m)) {
+            $result['mileageMin'] = (int) preg_replace('/[\s,]/', '', $m[1]);
+        } elseif (preg_match('/(?:пробег|mileage)\s*(?:до|to|max)\s*([\d\s,]+)/ui', $text, $m)) {
+            $result['mileageMax'] = (int) preg_replace('/[\s,]/', '', $m[1]);
+        } elseif (preg_match('/(?:пробег|mileage)\s*([\d][\d\s,]*)/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 100 && $val < 1000000) $result['mileageMin'] = $val;
+        } elseif (preg_match('/([\d][\d\s,]*)\s*(?:пробег|км|km)\s*пробег/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 100 && $val < 1000000) $result['mileageMin'] = $val;
+        } elseif (preg_match('/([\d][\d\s,]+)\s*(?:пробег)/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 100 && $val < 1000000) $result['mileageMin'] = $val;
+        }
+
+        // ── Fuel ─────────────────────────────────────────────────────────────
         $fuelMap = [
             'бензин' => 'Gasoline', 'бенз' => 'Gasoline', 'gasoline' => 'Gasoline', 'petrol' => 'Gasoline',
             'дизель' => 'Diesel', 'diesel' => 'Diesel',
@@ -206,6 +291,7 @@ class ChatSearchService
             }
         }
 
+        // ── Transmission ─────────────────────────────────────────────────────
         $transMap = [
             'автомат' => 'Automatic', 'акпп' => 'Automatic', 'automatic' => 'Automatic',
             'механик' => 'Manual', 'мкпп' => 'Manual', 'manual' => 'Manual',
@@ -217,9 +303,16 @@ class ChatSearchService
             }
         }
 
-        if (preg_match('/(\d+\.\d+)\s*(?:л|l|литр)?/u', $text, $m)) {
+        // ── Engine volume ─────────────────────────────────────────────────────
+        if (preg_match('/(\d+[.,]\d+)\s*(?:л|l|литр|litr)?/ui', $text, $m)) {
+            $vol = (float) str_replace(',', '.', $m[1]);
+            if ($vol >= 0.5 && $vol <= 9.0) {
+                $result['engineMin'] = $vol;
+                $result['engineMax'] = $vol;
+            }
+        } elseif (preg_match('/(?:двигатель|объём|объем|мотор|engine)[\s:]+(\d+)/ui', $text, $m)) {
             $vol = (float) $m[1];
-            if ($vol >= 0.5 && $vol <= 8.0) {
+            if ($vol >= 1 && $vol <= 9) {
                 $result['engineMin'] = $vol;
                 $result['engineMax'] = $vol;
             }
@@ -272,49 +365,62 @@ class ChatSearchService
     {
         $notes = [];
 
+        // Mileage: show actual range, e.g. "пробег: 90,000–110,000 км"
         if ($original->mileageMin !== $tolerant->mileageMin || $original->mileageMax !== $tolerant->mileageMax) {
-            $parts = [];
-            if ($tolerant->mileageMin > 0) $parts[] = number_format($tolerant->mileageMin);
-            if ($tolerant->mileageMax > 0) $parts[] = number_format($tolerant->mileageMax);
-            if ($parts) $notes[] = 'пробег ' . implode('–', $parts) . ' км';
+            $lo = $tolerant->mileageMin > 0 ? number_format($tolerant->mileageMin, 0, '.', ',') : null;
+            $hi = $tolerant->mileageMax > 0 ? number_format($tolerant->mileageMax, 0, '.', ',') : null;
+            $notes[] = 'пробег: ' . $this->fmtRange($lo, $hi, 'км');
         }
 
+        // Price
         if ($original->priceMin !== $tolerant->priceMin || $original->priceMax !== $tolerant->priceMax) {
-            $parts = [];
-            if ($tolerant->priceMin > 0) $parts[] = '$' . number_format($tolerant->priceMin);
-            if ($tolerant->priceMax > 0) $parts[] = '$' . number_format($tolerant->priceMax);
-            if ($parts) $notes[] = 'цена ' . implode('–', $parts);
+            $lo = $tolerant->priceMin > 0 ? '₩' . number_format($tolerant->priceMin, 0, '.', ',') : null;
+            $hi = $tolerant->priceMax > 0 ? '₩' . number_format($tolerant->priceMax, 0, '.', ',') : null;
+            $notes[] = 'цена: ' . $this->fmtRange($lo, $hi);
         }
 
+        // Engine
         if ($original->engineMin !== $tolerant->engineMin || $original->engineMax !== $tolerant->engineMax) {
-            $parts = [];
-            if ($tolerant->engineMin > 0) $parts[] = $tolerant->engineMin . 'л';
-            if ($tolerant->engineMax > 0) $parts[] = $tolerant->engineMax . 'л';
-            if ($parts) $notes[] = 'двигатель ' . implode('–', $parts);
+            $lo = $tolerant->engineMin > 0 ? (string) $tolerant->engineMin : null;
+            $hi = $tolerant->engineMax > 0 ? (string) $tolerant->engineMax : null;
+            $notes[] = 'двигатель: ' . $this->fmtRange($lo, $hi, 'л');
         }
 
+        // Year
         if ($original->yearFrom !== $tolerant->yearFrom || $original->yearTo !== $tolerant->yearTo) {
-            $parts = [];
-            if ($tolerant->yearFrom > 0) $parts[] = (string) $tolerant->yearFrom;
-            if ($tolerant->yearTo > 0) $parts[] = (string) $tolerant->yearTo;
-            if ($parts) $notes[] = 'год ' . implode('–', $parts);
+            $lo = $tolerant->yearFrom > 0 ? (string) $tolerant->yearFrom : null;
+            $hi = $tolerant->yearTo   > 0 ? (string) $tolerant->yearTo   : null;
+            $notes[] = 'год: ' . $this->fmtRange($lo, $hi);
         }
 
+        // Insurance
         if ($original->insuranceCountMin !== $tolerant->insuranceCountMin || $original->insuranceCountMax !== $tolerant->insuranceCountMax) {
-            $parts = [];
-            if ($tolerant->insuranceCountMin > 0) $parts[] = (string) $tolerant->insuranceCountMin;
-            if ($tolerant->insuranceCountMax > 0 || $original->insuranceCountMax === 0) $parts[] = (string) $tolerant->insuranceCountMax;
-            if ($parts) $notes[] = 'страховые ' . implode('–', $parts);
+            $lo = $tolerant->insuranceCountMin > 0 ? (string) $tolerant->insuranceCountMin : null;
+            $hi = ($tolerant->insuranceCountMax > 0 || $original->insuranceCountMax === 0)
+                ? (string) $tolerant->insuranceCountMax : null;
+            $notes[] = 'страховых: ' . $this->fmtRange($lo, $hi);
         }
 
+        // Owners
         if ($original->ownersCountMin !== $tolerant->ownersCountMin || $original->ownersCountMax !== $tolerant->ownersCountMax) {
-            $parts = [];
-            if ($tolerant->ownersCountMin > 0) $parts[] = (string) $tolerant->ownersCountMin;
-            if ($tolerant->ownersCountMax > 0 || $original->ownersCountMax === 0) $parts[] = (string) $tolerant->ownersCountMax;
-            if ($parts) $notes[] = 'владельцы ' . implode('–', $parts);
+            $lo = $tolerant->ownersCountMin > 0 ? (string) $tolerant->ownersCountMin : null;
+            $hi = ($tolerant->ownersCountMax > 0 || $original->ownersCountMax === 0)
+                ? (string) $tolerant->ownersCountMax : null;
+            $notes[] = 'владельцев: ' . $this->fmtRange($lo, $hi);
         }
 
         return $notes ? implode(', ', $notes) : '';
+    }
+
+    private function fmtRange(?string $lo, ?string $hi, string $unit = ''): string
+    {
+        $suffix = $unit ? ' ' . $unit : '';
+        if ($lo !== null && $hi !== null && $lo !== $hi) {
+            return $lo . '–' . $hi . $suffix;
+        }
+        if ($lo !== null) return $lo . $suffix;
+        if ($hi !== null) return $hi . $suffix;
+        return '?';
     }
 
     private function getSystemPrompt(): string

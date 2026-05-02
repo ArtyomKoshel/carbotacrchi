@@ -265,10 +265,12 @@ class WebhookController extends Controller
         $tolerantQuery = $parsed['tolerantQuery'];
         $description   = $parsed['description'];
         $toleranceNote = $parsed['toleranceNote'];
+        $isAi          = $parsed['isAi'] ?? false;
 
-        $statusText = "🔍 Ищу: <b>{$description}</b>";
+        $modeTag    = $isAi ? '🤖' : '📋';
+        $statusText = "{$modeTag} Ищу: <b>{$description}</b>";
         if ($toleranceNote) {
-            $statusText .= "\n📊 С учётом погрешности: {$toleranceNote}";
+            $statusText .= "\n📊 Диапазон поиска: {$toleranceNote}";
         }
         $this->bot->sendMessage($chatId, $statusText);
 
