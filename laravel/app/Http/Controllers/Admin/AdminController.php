@@ -136,8 +136,16 @@ class AdminController extends Controller
         $source   = trim($request->query('source', ''));
         $fileIdx  = (int) $request->query('file', 0);
         $page     = max(0, (int) $request->query('page', 0));
-        $appLog   = $request->query('app') === '1';
+        $appLog     = $request->query('app') === '1';
+        $appFile    = trim($request->query('appfile', ''));
         $appLogPath = storage_path('logs/laravel.log');
+        $appLogFiles = $this->scanAppLogFiles();
+        // Resolve which app log file is selected
+        if ($appLog && $appFile) {
+            $appLogPath = storage_path('logs/' . basename($appFile));
+        } elseif ($appLog && !$appFile && !empty($appLogFiles)) {
+            $appLogPath = $appLogFiles[0]['path']; // default to newest
+        }
 
         // Collect available rotation files: parser.log, parser.log.1, ..., parser.log.N
         $rotationFiles = [];
@@ -201,7 +209,7 @@ class AdminController extends Controller
             $lines      = array_slice($filtered, $page * $maxLines, $maxLines);
         }
 
-        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile', 'fileSize', 'appLog', 'appLogPath'));
+        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile', 'fileSize', 'appLog', 'appLogPath', 'appLogFiles', 'appFile'));
     }
 
     public function logsTail(Request $request)
@@ -216,8 +224,15 @@ class AdminController extends Controller
         $source    = trim($request->query('source', ''));
         $fileIdx   = (int) $request->query('file', 0);
         $jobFile   = trim($request->query('job', ''));
-        $appLog    = $request->query('app') === '1';
+        $appLog     = $request->query('app') === '1';
+        $appFile    = trim($request->query('appfile', ''));
         $appLogPath = storage_path('logs/laravel.log');
+        if ($appLog && $appFile) {
+            $appLogPath = storage_path('logs/' . basename($appFile));
+        } elseif ($appLog) {
+            $appLogFiles = $this->scanAppLogFiles();
+            if (!empty($appLogFiles)) $appLogPath = $appLogFiles[0]['path'];
+        }
         $sinceByte = max(0, (int) $request->query('since_byte', 0));
         $limit     = min(max((int) $request->query('limit', 1500), 1), 5000);
 
@@ -787,6 +802,29 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 502);
         }
+    }
+
+    /**
+     * Scan storage/logs/ for all laravel*.log files, sorted newest-first.
+     * Returns array of ['path', 'label', 'size', 'mtime'].
+     */
+    private function scanAppLogFiles(): array
+    {
+        $dir   = storage_path('logs');
+        $found = array_merge(
+            glob($dir . '/laravel.log')   ?: [],
+            glob($dir . '/laravel-*.log') ?: [],
+        );
+        if (!$found) return [];
+
+        usort($found, fn ($a, $b) => filemtime($b) - filemtime($a));
+
+        return array_map(fn ($path) => [
+            'path'  => $path,
+            'label' => basename($path),
+            'size'  => filesize($path) ?: 0,
+            'mtime' => filemtime($path) ?: 0,
+        ], $found);
     }
 
     /**

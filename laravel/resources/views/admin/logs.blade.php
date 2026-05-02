@@ -20,18 +20,30 @@
     @endforeach
   </div>
 
-  {{-- Laravel app log (10I) --}}
+  {{-- Laravel app logs (dynamic scan) --}}
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
-    <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">App Log</div>
-    @if(file_exists($appLogPath ?? ''))
-    <a href="{{ route('admin.logs', array_filter(['app' => 1, 'level' => $level, 'search' => $search])) }}"
-       class="block px-2 py-1.5 rounded text-xs font-mono truncate transition
-              {{ $appLog ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
-      laravel.log
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">App Log</span>
+      @if(!empty($appLogFiles))
+      <span class="text-xs text-gray-600">{{ count($appLogFiles) }}</span>
+      @endif
+    </div>
+    @forelse($appLogFiles ?? [] as $alf)
+    @php
+      $isActive = $appLog && basename($appLogPath ?? '') === $alf['label'];
+      $sizeStr  = $alf['size'] >= 1048576
+        ? round($alf['size'] / 1048576, 1) . ' MB'
+        : round($alf['size'] / 1024) . ' KB';
+    @endphp
+    <a href="{{ route('admin.logs', array_filter(['app' => 1, 'appfile' => $alf['label'], 'level' => $level, 'search' => $search])) }}"
+       class="block px-2 py-1.5 rounded text-xs font-mono truncate transition mb-0.5
+              {{ $isActive ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+      {{ $alf['label'] }}
+      <span class="text-gray-600 ml-1">{{ $sizeStr }}</span>
     </a>
-    @else
-    <div class="text-xs text-gray-600">storage/logs/laravel.log not found</div>
-    @endif
+    @empty
+    <div class="text-xs text-gray-600">Нет файлов логов</div>
+    @endforelse
   </div>
 
   {{-- Job log files (10D) --}}
