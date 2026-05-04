@@ -2,9 +2,12 @@ const TG = (() => {
   const twa = window.Telegram?.WebApp;
 
   function init() {
-    if (twa) {
-      twa.ready();
-      twa.expand();
+    if (!twa) return;
+    twa.ready();
+    twa.expand();
+    // Bot API 8.0+: true fullscreen (hides header bar)
+    if (typeof twa.requestFullscreen === 'function') {
+      twa.requestFullscreen();
     }
   }
 

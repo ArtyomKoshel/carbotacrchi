@@ -24,10 +24,10 @@ class FiltersController extends Controller
 
         $cardFields = BotFilterSetting::getCardFields();
 
-        $bodyTypes = ['Sedan','SUV','Truck','Coupe','Hatchback','Wagon','Van','Convertible','Crossover'];
-        $transmissions = ['Automatic','Manual','CVT'];
-        $fuelTypes = ['Gasoline','Diesel','Hybrid','Electric'];
-        $driveTypes = ['FWD','RWD','AWD','4WD'];
+        $bodyTypes = [];
+        $transmissions = [];
+        $fuelTypes = [];
+        $driveTypes = [];
         $filterFields = [];
 
         try {
