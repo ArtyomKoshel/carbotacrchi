@@ -128,12 +128,14 @@ _CLIENT_MAX_AGE = 30 * 60  # rebuild httpx.Client every 30 minutes
 class EncarClient:
     def __init__(self, proxy: str | None = None):
         if Config.FLOPPYDATA_API_KEY:
-            proxy_list = _generate_floppy_proxies(count=max(Config.ENCAR_WORKERS, 20))
+            proxy_pool = _generate_floppy_proxies(count=max(Config.ENCAR_WORKERS, 20))
         else:
-            proxy_list = [proxy] if proxy else []
-        self._proxies: list[str | None] = proxy_list if proxy_list else [None]
+            proxy_pool = [proxy] if proxy else []
+        self._proxy_pool: list[str] = proxy_pool
+        self._proxy_active: bool = False
+        self._proxies: list[str | None] = [None]  # start direct; proxy activated on first block
         self._proxy_idx: int = 0
-        self._s = self._build_client(self._proxies[0])
+        self._s = self._build_client(None)
         self._request_count: int = 0
         self._error_count: int = 0
         self._client_created_at: float = time.monotonic()
@@ -166,6 +168,35 @@ class EncarClient:
         new_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
         result, n = re.subn(r'(-session-)([^-:@]+)', rf'\g<1>{new_id}', proxy_url)
         return result if n else None
+
+    def _activate_proxy(self) -> bool:
+        """Switch from direct to proxy pool on first block (403/429). No-op if already active."""
+        if self._proxy_active or not self._proxy_pool:
+            return False
+        self._proxy_active = True
+        self._proxies = list(self._proxy_pool)
+        self._proxy_idx = 0
+        self._s.close()
+        self._s = self._build_client(self._proxies[0])
+        self._client_created_at = time.monotonic()
+        self._request_count = 0
+        self._error_count = 0
+        logger.info(f"[encar:proxy] Direct blocked — activated proxy pool ({len(self._proxies)} proxies)")
+        return True
+
+    def _fallback_to_direct(self) -> None:
+        """Drop proxy and revert to direct connection (called on 402 budget exhausted)."""
+        if not self._proxy_active:
+            return
+        logger.warning("[encar:proxy] Proxy budget exhausted — falling back to direct connection")
+        self._proxy_active = False
+        self._proxies = [None]
+        self._proxy_idx = 0
+        self._s.close()
+        self._s = self._build_client(None)
+        self._client_created_at = time.monotonic()
+        self._request_count = 0
+        self._error_count = 0
 
     def rotate_proxy(self) -> bool:
         """Rotate to next proxy or bump session ID on rotating proxy."""
@@ -205,7 +236,21 @@ class EncarClient:
         return str(proxy_info)
 
     def _request(self, method: str, url: str, context: str = "", **kwargs) -> httpx.Response:
-        """Execute HTTP request with comprehensive logging on errors."""
+        """Execute HTTP request; on first block (403/429) activates proxy and retries once."""
+        try:
+            return self._do_request(method, url, context, **kwargs)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (403, 429) and self._activate_proxy():
+                logger.info(f"[encar:proxy] {e.response.status_code} on direct — retrying via proxy | {context}")
+                time.sleep(1)
+                return self._do_request(method, url, context, **kwargs)
+            raise
+        except ProxyBudgetExhausted:
+            self._fallback_to_direct()
+            return self._do_request(method, url, context, **kwargs)
+
+    def _do_request(self, method: str, url: str, context: str = "", **kwargs) -> httpx.Response:
+        """Low-level HTTP request with logging and proxy error handling."""
         self._maybe_rebuild_client()
         self._request_count += 1
         proxy_masked = self._masked_proxy()

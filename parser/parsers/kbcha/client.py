@@ -88,13 +88,15 @@ _PAGE_HEADERS = {
 class KBChaClient:
     def __init__(self, proxy: str | None = _SENTINEL):
         if proxy is _SENTINEL:
-            proxy_list = _generate_kbcha_proxies()
-            self._proxies: list[str | None] = proxy_list if proxy_list else [None]
+            proxy_pool = _generate_kbcha_proxies()
         else:
-            self._proxies = [proxy]
+            proxy_pool = [proxy] if proxy else []
+        self._proxy_pool: list[str] = proxy_pool
+        self._proxy_active: bool = False
+        self._proxies: list[str | None] = [None]  # start direct; proxy activated on first block
         self._proxy_idx: int = 0
         self._last_list_url: str = f"{BASE_URL}/public/search/main.kbc"
-        self._client = self._build_client(self._proxies[0])
+        self._client = self._build_client(None)
 
     def _build_client(self, proxy: str | None) -> httpx.Client:
         transport = httpx.HTTPTransport(proxy=proxy) if proxy else None
@@ -144,12 +146,28 @@ class KBChaClient:
 
         return False
 
+    def _activate_proxy(self) -> bool:
+        """Switch from direct to proxy pool on first block (403/429). No-op if already active."""
+        if self._proxy_active or not self._proxy_pool:
+            return False
+        self._proxy_active = True
+        self._proxies = list(self._proxy_pool)
+        self._proxy_idx = 0
+        try:
+            self._client.close()
+        except Exception:
+            pass
+        self._client = self._build_client(self._proxies[0])
+        logger.info(f"[kbcha:proxy] Direct blocked — activated proxy pool ({len(self._proxies)} proxies)")
+        return True
+
     def _fallback_to_direct(self) -> None:
         """Drop all proxies and rebuild client with a direct connection.
         KBCha site works without proxies; this is used when proxy budget is exhausted."""
         if not any(self._proxies):
             return  # already direct
         logger.warning("[kbcha:proxy] Falling back to DIRECT connection (no proxy)")
+        self._proxy_active = False
         self._proxies = [None]
         self._proxy_idx = 0
         try:
@@ -169,9 +187,14 @@ class KBChaClient:
 
     def _get(self, url: str, params: dict | None = None,
              headers: dict | None = None) -> httpx.Response:
-        """Wrapper around client.get that handles network/proxy errors with retry."""
+        """Wrapper around client.get; on first block (403/429) activates proxy and retries once."""
         try:
-            return self._client.get(url, params=params, headers=headers)
+            r = self._client.get(url, params=params, headers=headers)
+            if r.status_code in (403, 429) and self._activate_proxy():
+                logger.info(f"[kbcha:proxy] {r.status_code} on direct — retrying via proxy")
+                _time.sleep(1)
+                return self._client.get(url, params=params, headers=headers)
+            return r
         except httpx.ProxyError as e:
             if "402" in str(e) or "Payment Required" in str(e):
                 logger.warning(f"[kbcha:proxy] Proxy budget exhausted ({e}) — switching to direct connection")
