@@ -6,6 +6,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class BotFilterSetting extends Model
 {
+    private const DEFAULT_CARD_FIELDS = [
+        'source',
+        'make',
+        'model',
+        'year',
+        'price',
+        'mileage',
+        'fuel',
+        'transmission',
+        'engine_volume',
+        'drive_type',
+        'body_type',
+        'insurance_count',
+        'has_accident',
+        'owners_count',
+        'flood_history',
+        'lot_url',
+    ];
+
     protected $fillable = [
         'field_name',
         'field_label',
@@ -77,7 +96,15 @@ class BotFilterSetting extends Model
                 ->pluck('field_name')
                 ->toArray();
         } catch (\Throwable) {
-            return [];
+            return self::defaultCardFields();
         }
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function defaultCardFields(): array
+    {
+        return self::DEFAULT_CARD_FIELDS;
     }
 }

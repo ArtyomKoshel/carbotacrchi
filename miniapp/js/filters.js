@@ -2,7 +2,7 @@ const Filters = (() => {
   let filtersData = null;
 
   const state = {
-    sources:       ['copart', 'iai', 'manheim', 'encar', 'kbcha'],
+    sources:       ['encar', 'kbcha'],
     make:          '',
     model:         '',
     yearFrom:      '',
@@ -26,6 +26,10 @@ const Filters = (() => {
   async function init() {
     try {
       filtersData = await API.getFilters();
+      const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
+      if (sourceKeys.length) {
+        state.sources = sourceKeys;
+      }
       render();
     } catch (e) {
       console.error('Filters load failed', e);
@@ -48,6 +52,21 @@ const Filters = (() => {
   function renderChipGroup(containerId, items, stateKey) {
     const container = document.getElementById(containerId);
     if (!container) return;
+
+    const section = container.closest('.filter-section');
+    const divider = section && section.nextElementSibling?.classList?.contains('filter-divider')
+      ? section.nextElementSibling
+      : null;
+    const visible = Array.isArray(items) && items.length > 0;
+
+    if (section) section.style.display = visible ? '' : 'none';
+    if (divider) divider.style.display = visible ? '' : 'none';
+    if (!visible) {
+      state[stateKey] = [];
+      container.innerHTML = '';
+      return;
+    }
+
     container.innerHTML = items.map(item => `
       <button class="filter-chip${state[stateKey].includes(item) ? ' selected' : ''}"
               data-value="${item}">${item}</button>
@@ -70,7 +89,6 @@ const Filters = (() => {
     const container = document.getElementById('source-chips');
     if (!container) return;
     const sources = filtersData?.sources ?? [
-      {key:'copart',name:'Copart'},{key:'iai',name:'IAAI'},{key:'manheim',name:'Manheim'},
       {key:'encar',name:'Encar'},{key:'kbcha',name:'KBChacha'},
     ];
     container.innerHTML = sources.map(s => `
@@ -151,5 +169,13 @@ const Filters = (() => {
     };
   }
 
-  return { init, getQuery };
+  function getCardFields() {
+    return Array.isArray(filtersData?.cardFields) ? filtersData.cardFields : [];
+  }
+
+  function setSort(sort) {
+    state.sort = ['date', 'price_asc', 'price_desc'].includes(sort) ? sort : 'date';
+  }
+
+  return { init, getQuery, getCardFields, setSort };
 })();

@@ -7,8 +7,11 @@ const App = (() => {
     await Filters.init();
 
     document.getElementById('search-btn').addEventListener('click', runSearch);
-    document.getElementById('sort-select')?.addEventListener('change', e => {
-      /* re-render with new sort — results already in DOM; server-side re-sort on next search */
+    document.getElementById('sort-select')?.addEventListener('change', async e => {
+      Filters.setSort(e.target.value);
+      if (currentTab === 'results') {
+        await runSearch();
+      }
     });
 
     document.getElementById('sheet-overlay').addEventListener('click', e => {

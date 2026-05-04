@@ -8,6 +8,7 @@ use Illuminate\Database\Seeder;
 class BotFilterSettingsSeeder extends Seeder
 {
     private const DEFAULTS = [
+        'source' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
         'make' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
         'model' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
         'year' => ['enabled' => true, 'tolerance_type' => 'absolute', 'tolerance_value' => 1, 'display_in_card' => true],
@@ -36,15 +37,8 @@ class BotFilterSettingsSeeder extends Seeder
     public function run(): void
     {
         $path = storage_path('app/fields.json');
-        if (!is_file($path)) {
-            return;
-        }
-
-        $decoded = json_decode((string) file_get_contents($path), true);
+        $decoded = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
         $fields = is_array($decoded['fields'] ?? null) ? $decoded['fields'] : [];
-        if (!$fields) {
-            return;
-        }
 
         $existing = BotFilterSetting::pluck('id', 'field_name')->all();
         $isEmpty = empty($existing);
@@ -86,6 +80,71 @@ class BotFilterSettingsSeeder extends Seeder
             $sort++;
         }
 
+        $this->ensureVirtualField(
+            existing: $existing,
+            isEmpty: $isEmpty,
+            sort: $sort,
+            name: 'lot_url',
+            label: 'Lot Url',
+            dtype: 'string',
+            category: 'links',
+            description: 'Ссылка на лот',
+            defaults: [
+                'enabled' => false,
+                'tolerance_type' => 'none',
+                'tolerance_value' => null,
+                'display_in_card' => true,
+            ],
+        );
+
+        $this->ensureVirtualField(
+            existing: $existing,
+            isEmpty: $isEmpty,
+            sort: $sort + 1,
+            name: 'location',
+            label: 'Location',
+            dtype: 'string',
+            category: 'identification',
+            description: 'Местоположение лота',
+            defaults: [
+                'enabled' => false,
+                'tolerance_type' => 'none',
+                'tolerance_value' => null,
+                'display_in_card' => false,
+            ],
+        );
+
+    }
+
+    /** @param array<string, int> $existing */
+    private function ensureVirtualField(
+        array $existing,
+        bool $isEmpty,
+        int $sort,
+        string $name,
+        string $label,
+        string $dtype,
+        string $category,
+        string $description,
+        array $defaults
+    ): void {
+        if (!$isEmpty && isset($existing[$name])) {
+            return;
+        }
+
+        BotFilterSetting::create([
+            'field_name' => $name,
+            'field_label' => $label,
+            'dtype' => $dtype,
+            'category' => $category,
+            'enabled' => (bool) ($defaults['enabled'] ?? false),
+            'tolerance_type' => (string) ($defaults['tolerance_type'] ?? 'none'),
+            'tolerance_value' => $defaults['tolerance_value'] ?? null,
+            'display_in_card' => (bool) ($defaults['display_in_card'] ?? false),
+            'enum_values' => null,
+            'description' => $description,
+            'sort_order' => $sort,
+        ]);
     }
 
     private function humanize(string $name): string

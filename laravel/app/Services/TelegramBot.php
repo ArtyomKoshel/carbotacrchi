@@ -99,23 +99,50 @@ class TelegramBot
     private function buildLotCardText(array $lot): string
     {
         $cardFields = BotFilterSetting::getCardFields();
-        if (!$cardFields) {
-            $cardFields = ['fuel', 'transmission', 'engine_volume', 'insurance_count', 'has_accident', 'owners_count'];
+
+        $lines = [];
+
+        $titleParts = [];
+        if (in_array('make', $cardFields, true) && !empty($lot['make'])) {
+            $titleParts[] = htmlspecialchars((string) $lot['make']);
+        }
+        if (in_array('model', $cardFields, true) && !empty($lot['model'])) {
+            $titleParts[] = htmlspecialchars((string) $lot['model']);
+        }
+        if (in_array('year', $cardFields, true) && !empty($lot['year'])) {
+            $titleParts[] = (string) ((int) $lot['year']);
+        }
+        $title = trim(implode(' ', $titleParts));
+        $source = in_array('source', $cardFields, true) && !empty($lot['sourceName'])
+            ? htmlspecialchars((string) $lot['sourceName'])
+            : '';
+
+        if ($title !== '' && $source !== '') {
+            $lines[] = sprintf('🚗 <b>%s</b> · %s', $title, $source);
+        } elseif ($title !== '') {
+            $lines[] = sprintf('🚗 <b>%s</b>', $title);
+        } elseif ($source !== '') {
+            $lines[] = sprintf('🚗 %s', $source);
         }
 
-        $price = number_format((int) ($lot['price'] ?? 0), 0, '.', ',');
-        $km = number_format((int) ($lot['mileage'] ?? 0), 0, '.', ',');
-
-        $lines = [
-            sprintf(
-                '🚗 <b>%s %s %d</b> · %s',
-                htmlspecialchars((string) ($lot['make'] ?? '')),
-                htmlspecialchars((string) ($lot['model'] ?? '')),
-                (int) ($lot['year'] ?? 0),
-                htmlspecialchars((string) ($lot['sourceName'] ?? '')),
-            ),
-            sprintf('💰 <b>₩%s</b> · 🛣 %s km', $price, $km),
-        ];
+        $priceMileageParts = [];
+        if (in_array('price', $cardFields, true)) {
+            $priceRaw = $lot['price'] ?? null;
+            if ($priceRaw !== null && $priceRaw !== '') {
+                $price = number_format((int) $priceRaw, 0, '.', ',');
+                $priceMileageParts[] = sprintf('💰 <b>₩%s</b>', $price);
+            }
+        }
+        if (in_array('mileage', $cardFields, true)) {
+            $kmRaw = $lot['mileage'] ?? null;
+            if ($kmRaw !== null && $kmRaw !== '') {
+                $km = number_format((int) $kmRaw, 0, '.', ',');
+                $priceMileageParts[] = sprintf('🛣 %s km', $km);
+            }
+        }
+        if ($priceMileageParts) {
+            $lines[] = implode(' · ', $priceMileageParts);
+        }
 
         $specs = [];
         if (in_array('fuel', $cardFields, true) && !empty($lot['fuel'])) {
@@ -129,6 +156,9 @@ class TelegramBot
         }
         if (in_array('drive_type', $cardFields, true) && !empty($lot['driveType'])) {
             $specs[] = htmlspecialchars((string) $lot['driveType']);
+        }
+        if (in_array('body_type', $cardFields, true) && !empty($lot['bodyType'])) {
+            $specs[] = htmlspecialchars((string) $lot['bodyType']);
         }
         if ($specs) {
             $lines[] = implode(' · ', $specs);
@@ -167,16 +197,16 @@ class TelegramBot
             $lines[] = implode(' · ', $condition);
         }
 
-        if (!empty($lot['location'])) {
+        if (in_array('location', $cardFields, true) && !empty($lot['location'])) {
             $lines[] = '📍 ' . htmlspecialchars((string) $lot['location']);
         }
 
         $lotUrl = $lot['lotUrl'] ?? '#';
-        if ($lotUrl !== '#') {
+        if (in_array('lot_url', $cardFields, true) && $lotUrl !== '#') {
             $lines[] = sprintf('🔗 <a href="%s">Открыть лот</a>', htmlspecialchars((string) $lotUrl));
         }
 
-        return implode("\n", $lines);
+        return $lines ? implode("\n", $lines) : "\u{200B}";
     }
 
     private function ruInsurance(int $n): string

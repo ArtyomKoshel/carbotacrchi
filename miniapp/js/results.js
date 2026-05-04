@@ -49,6 +49,7 @@ const Results = (() => {
     const km     = Number(lot.mileage).toLocaleString() + ' km';
     const isFav  = favorites.has(lot.id);
     const imgSrc = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
+    const cardFields = new Set(Filters.getCardFields());
 
     return `
       <div class="lot-card" data-idx="${i}">
@@ -74,13 +75,13 @@ const Results = (() => {
           </div>
           ${lot.damage ? `<div class="lot-card__damage">⚡ ${escHtml(lot.damage)}</div>` : ''}
           <div class="lot-card__tags">
-            ${lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`    : ''}
-            ${lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>`  : ''}
-            ${lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`        : ''}
-            ${lot.bodyType     ? `<span class="lot-card__tag">${escHtml(lot.bodyType)}</span>`        : ''}
-            ${lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>`   : ''}
-            ${lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`            : ''}
-            ${lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`       : ''}
+            ${cardFields.has('has_accident') && lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`   : ''}
+            ${cardFields.has('flood_history') && lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>` : ''}
+            ${cardFields.has('owners_count') && lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`       : ''}
+            ${cardFields.has('body_type') && lot.bodyType     ? `<span class="lot-card__tag">${escHtml(lot.bodyType)}</span>`       : ''}
+            ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>`  : ''}
+            ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`           : ''}
+            ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`      : ''}
           </div>
         </div>
       </div>`;
