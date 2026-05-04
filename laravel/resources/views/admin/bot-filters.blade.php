@@ -99,6 +99,20 @@
         </button>
       </div>
     </div>
+
+    <div class="mt-4 p-3 rounded-lg border border-gray-800 bg-gray-950/60">
+      <div class="text-xs text-gray-500 mb-2 uppercase tracking-wider">Тест парсинга запроса</div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input id="bf-preview-text" type="text"
+               placeholder="Например: BMW 5 2020 пробег 100000 дизель"
+               class="flex-1 min-w-[320px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+        <button type="button" id="bf-preview-run"
+                class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm transition">
+          Проверить
+        </button>
+      </div>
+      <div id="bf-preview-result" class="mt-3 text-xs text-gray-300 whitespace-pre-wrap"></div>
+    </div>
   </div>
 
   <form id="bot-filters-form" method="POST" action="{{ route('admin.bot-filters.update') }}">
@@ -218,6 +232,9 @@
   const onlyEnabled = document.getElementById('bf-only-enabled');
   const enableAllBtn = document.getElementById('bf-enable-all');
   const disableAllBtn = document.getElementById('bf-disable-all');
+  const previewInput = document.getElementById('bf-preview-text');
+  const previewRunBtn = document.getElementById('bf-preview-run');
+  const previewResult = document.getElementById('bf-preview-result');
 
   function normalize(value) {
     return (value || '').toString().toLowerCase();
@@ -367,6 +384,63 @@
         if (enabledInput) enabledInput.checked = false;
       });
       applyFilters();
+    });
+  }
+
+  async function runPreview() {
+    if (!previewInput || !previewResult) return;
+    const text = (previewInput.value || '').trim();
+    if (!text) {
+      previewResult.textContent = 'Введите текст запроса';
+      return;
+    }
+
+    previewResult.textContent = 'Проверяю...';
+
+    try {
+      const res = await fetch("{{ route('admin.bot-filters.preview') }}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': "{{ csrf_token() }}",
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json?.ok) {
+        previewResult.textContent = `Ошибка: ${json?.error || 'неизвестная ошибка'}`;
+        return;
+      }
+
+      const d = json.data || {};
+      const pretty = [
+        `mode: ${d.mode || 'unknown'}`,
+        `description: ${d.description || '-'}`,
+        `tolerance: ${d.toleranceNote || '-'}`,
+        '',
+        'parsed:',
+        JSON.stringify(d.parsed || {}, null, 2),
+        '',
+        'tolerant:',
+        JSON.stringify(d.tolerant || {}, null, 2),
+      ].join('\n');
+
+      previewResult.textContent = pretty;
+    } catch (e) {
+      previewResult.textContent = `Ошибка сети: ${e?.message || e}`;
+    }
+  }
+
+  if (previewRunBtn) {
+    previewRunBtn.addEventListener('click', runPreview);
+  }
+  if (previewInput) {
+    previewInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runPreview();
+      }
     });
   }
 

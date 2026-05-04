@@ -10,6 +10,7 @@ use App\Models\LotChange;
 use App\Models\ParseFilter;
 use App\Models\ParseJob;
 use App\Models\ParserSchedule;
+use App\Services\ChatSearchService;
 use App\Services\FieldMappingsService;
 use App\Services\FieldRegistryService;
 use Illuminate\Http\Request;
@@ -970,6 +971,38 @@ class AdminController extends Controller
 
         return redirect()->route('admin.bot-filters')
             ->with('success', 'Настройки сброшены к дефолтным');
+    }
+
+    /** POST /admin/bot-filters/preview — preview bot parsing/tolerance on free text. */
+    public function botFiltersPreview(Request $request)
+    {
+        $text = trim((string) $request->input('text', ''));
+        if ($text === '') {
+            return response()->json(['ok' => false, 'error' => 'Введите текст запроса'], 422);
+        }
+
+        $chatSearch = new ChatSearchService();
+        $parsed = $chatSearch->parseAndSearch($text);
+
+        if ($parsed === null) {
+            return response()->json(['ok' => false, 'error' => 'Не удалось распарсить запрос'], 422);
+        }
+
+        /** @var \App\Services\SearchQuery $query */
+        $query = $parsed['query'];
+        /** @var \App\Services\SearchQuery $tolerantQuery */
+        $tolerantQuery = $parsed['tolerantQuery'];
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'mode' => ($parsed['isAi'] ?? false) ? 'ai' : 'fallback',
+                'description' => (string) ($parsed['description'] ?? ''),
+                'toleranceNote' => (string) ($parsed['toleranceNote'] ?? ''),
+                'parsed' => $query->toSearchArray(),
+                'tolerant' => $tolerantQuery->toSearchArray(),
+            ],
+        ]);
     }
 
     /** GET /admin/filters — list and manage parse_filters rules. */
