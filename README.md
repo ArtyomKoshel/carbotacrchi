@@ -1,14 +1,11 @@
 # CarBot — Telegram Auction Mini App
 
-A Telegram Mini App for searching cars across 5 auction platforms, built with **Laravel 11** + Docker.
+A Telegram Mini App for searching cars across Korean auction platforms, built with **Laravel 11** + Docker.
 
 ## Supported Sources
 
 | Key       | Platform     | Region |
 |-----------|-------------|--------|
-| `copart`  | Copart      | 🇺🇸 USA |
-| `iai`     | IAAI        | 🇺🇸 USA |
-| `manheim` | Manheim     | 🇺🇸 USA |
 | `encar`   | Encar       | 🇰🇷 Korea |
 | `kbcha`   | KBChacha    | 🇰🇷 Korea |
 
@@ -45,12 +42,12 @@ carbot/
 │       └── php.ini
 ├── laravel/                     # Laravel 11 app
 │   ├── app/
-│   │   ├── AuctionProviders/    # 5 auction source adapters
+│   │   ├── AuctionProviders/    # Encar + KBChacha adapters
 │   │   ├── Dto/LotDTO.php
 │   │   ├── Http/
 │   │   │   ├── Controllers/Api/ # Search, Filters, Favorites
 │   │   │   ├── Controllers/Bot/ # Webhook
-│   │   │   └── Middleware/      # ValidateTelegramAuth
+│   │   │   └── Middleware/      # ValidateTelegramAuth + ValidateTelegramWebhookSecret
 │   │   ├── Models/              # User, Search, Favorite
 │   │   ├── Providers/           # AppServiceProvider, AuctionServiceProvider
 │   │   └── Services/            # ProviderAggregator, SearchQuery, SearchResult, TelegramBot
@@ -58,7 +55,7 @@ carbot/
 │   ├── database/migrations/     # users, searches, favorites
 │   ├── routes/api.php           # /api/search, /api/filters, /api/favorites
 │   ├── routes/web.php           # /bot/webhook
-│   └── storage/app/data/        # Mock JSON data (5 files)
+│   └── storage/app/data/        # Parser/lookup data
 ├── miniapp/                     # Telegram Mini App (static)
 │   ├── index.html
 │   ├── css/                     # app.css, cards.css, filters.css
@@ -84,11 +81,12 @@ carbot/
 ## Telegram Setup
 
 1. Create a bot via [@BotFather](https://t.me/BotFather)
-2. Set `TELEGRAM_BOT_TOKEN` in `.env`
+2. Set `TELEGRAM_BOT_TOKEN` and optional `TELEGRAM_WEBHOOK_SECRET` in `.env`
 3. Register webhook:
    ```bash
    curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-        -d "url=https://your-domain.com/bot/webhook"
+        -d "url=https://your-domain.com/bot/webhook" \
+        -d "secret_token=<YOUR_SECRET>"
    ```
 4. Set Mini App URL in BotFather: `https://your-domain.com/miniapp/`
 
@@ -106,7 +104,6 @@ make fresh     Drop + re-migrate all tables
 make status    Container status
 ```
 
-## Mock Data
+## Data Source
 
-In `local` environment, all 5 providers read from `laravel/storage/app/data/mock_*.json`.
-To add more test lots, edit those files — no restart required.
+Lots are loaded from your parser-populated database (`lots` table), currently for `encar` and `kbcha` sources.

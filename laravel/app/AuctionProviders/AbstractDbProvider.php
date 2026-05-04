@@ -61,10 +61,10 @@ abstract class AbstractDbProvider extends AbstractProvider
         if ($query->retailValueMin) $builder->where('retail_value', '>=', $query->retailValueMin);
         if ($query->retailValueMax) $builder->where('retail_value', '<=', $query->retailValueMax);
 
-        if ($query->ownersCountMin)    $builder->where('owners_count', '>=', $query->ownersCountMin);
-        if ($query->ownersCountMax)    $builder->where('owners_count', '<=', $query->ownersCountMax);
-        if ($query->insuranceCountMin) $builder->where('insurance_count', '>=', $query->insuranceCountMin);
-        if ($query->insuranceCountMax) $builder->where('insurance_count', '<=', $query->insuranceCountMax);
+        if ($query->ownersCountMin !== null)    $builder->where('owners_count', '>=', $query->ownersCountMin);
+        if ($query->ownersCountMax !== null)    $builder->where('owners_count', '<=', $query->ownersCountMax);
+        if ($query->insuranceCountMin !== null) $builder->where('insurance_count', '>=', $query->insuranceCountMin);
+        if ($query->insuranceCountMax !== null) $builder->where('insurance_count', '<=', $query->insuranceCountMax);
 
         if ($query->seatCountMin) $builder->where('seat_count', '>=', $query->seatCountMin);
         if ($query->seatCountMax) $builder->where('seat_count', '<=', $query->seatCountMax);

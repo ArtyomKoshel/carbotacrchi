@@ -4,8 +4,6 @@ namespace App\Providers;
 
 use App\AuctionProviders\EncarProvider;
 use App\AuctionProviders\KBChachaProvider;
-use App\Repositories\LotRepositoryInterface;
-use App\Repositories\MockLotRepository;
 use App\Services\ProviderAggregator;
 use App\Services\TelegramBot;
 use Illuminate\Support\ServiceProvider;
@@ -23,14 +21,6 @@ class AuctionServiceProvider extends ServiceProvider
                 new EncarProvider(),
                 new KBChachaProvider(),
             );
-        });
-
-        $this->app->singleton(LotRepositoryInterface::class, function ($app) {
-            $driver = config('auction.lot_repository', 'mock');
-
-            return match ($driver) {
-                default => new MockLotRepository($app->make(ProviderAggregator::class)),
-            };
         });
     }
 

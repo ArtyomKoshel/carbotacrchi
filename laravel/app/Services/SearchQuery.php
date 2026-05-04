@@ -17,10 +17,10 @@ class SearchQuery
     public float $engineMin = 0;
     public float $engineMax = 0;
 
-    public int $insuranceCountMin = 0;
-    public int $insuranceCountMax = 0;
-    public int $ownersCountMin = 0;
-    public int $ownersCountMax = 0;
+    public ?int $insuranceCountMin = null;
+    public ?int $insuranceCountMax = null;
+    public ?int $ownersCountMin = null;
+    public ?int $ownersCountMax = null;
     public ?bool $hasAccident = null;
     public ?bool $floodHistory = null;
     public ?bool $totalLossHistory = null;
@@ -74,10 +74,10 @@ class SearchQuery
         $q->engineMin = (float) ($data['engineMin'] ?? 0);
         $q->engineMax = (float) ($data['engineMax'] ?? 0);
 
-        $q->insuranceCountMin = (int) ($data['insuranceCountMin'] ?? 0);
-        $q->insuranceCountMax = (int) ($data['insuranceCountMax'] ?? 0);
-        $q->ownersCountMin = (int) ($data['ownersCountMin'] ?? 0);
-        $q->ownersCountMax = (int) ($data['ownersCountMax'] ?? 0);
+        $q->insuranceCountMin = self::toNullableInt($data['insuranceCountMin'] ?? null);
+        $q->insuranceCountMax = self::toNullableInt($data['insuranceCountMax'] ?? null);
+        $q->ownersCountMin = self::toNullableInt($data['ownersCountMin'] ?? null);
+        $q->ownersCountMax = self::toNullableInt($data['ownersCountMax'] ?? null);
         $q->repairCostMin = (int) ($data['repairCostMin'] ?? 0);
         $q->repairCostMax = (int) ($data['repairCostMax'] ?? 0);
         $q->retailValueMin = (int) ($data['retailValueMin'] ?? 0);
@@ -114,6 +114,10 @@ class SearchQuery
 
     public function withBotTolerance(): self
     {
+        if (!config('search_tolerance.enabled', true)) {
+            return $this;
+        }
+
         $tolerances = BotFilterSetting::getTolerances();
 
         if (empty($tolerances)) {
@@ -143,68 +147,30 @@ class SearchQuery
             $tolerance = $tolerances[$fieldName];
             $isFloat = $type === 'float';
 
-            // When only one bound is set, tolerance creates a range around it
-            $hasMin = $clone->$minProp > 0;
-            $hasMax = $clone->$maxProp > 0;
+            // When only one bound is set, tolerance creates a range around that value.
+            // Save originals first to avoid double-applying tolerance.
+            $hasMin  = $clone->$minProp !== null && $clone->$minProp > 0;
+            $hasMax  = $clone->$maxProp !== null && $clone->$maxProp > 0;
+            $origMin = $clone->$minProp;
+            $origMax = $clone->$maxProp;
+
+            if (!$hasMin && !$hasMax) {
+                continue;
+            }
 
             if ($hasMin && !$hasMax) {
-                // Only min set: create range [min-tol, min+tol]
-                $clone->$minProp = self::applyTolerance($clone->$minProp, $tolerance, true, $isFloat);
-                $clone->$maxProp = self::applyTolerance($clone->$minProp, $tolerance, false, $isFloat);
+                // "пробег 100 000" → range [100 000-tol, 100 000+tol]
+                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
+                $clone->$maxProp = self::applyTolerance($origMin, $tolerance, false, $isFloat);
             } elseif (!$hasMin && $hasMax) {
-                // Only max set: create range [max-tol, max+tol]
-                $clone->$minProp = self::applyTolerance($clone->$maxProp, $tolerance, true, $isFloat);
-                $clone->$maxProp = self::applyTolerance($clone->$maxProp, $tolerance, false, $isFloat);
+                // "пробег до 100 000" → range [100 000-tol, 100 000+tol]
+                $clone->$minProp = self::applyTolerance($origMax, $tolerance, true,  $isFloat);
+                $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             } else {
-                // Both bounds set: apply tolerance to each
-                if ($hasMin) {
-                    $clone->$minProp = self::applyTolerance($clone->$minProp, $tolerance, true, $isFloat);
-                }
-                if ($hasMax) {
-                    $clone->$maxProp = self::applyTolerance($clone->$maxProp, $tolerance, false, $isFloat);
-                }
+                // Both bounds set: widen the range outward
+                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
+                $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             }
-        }
-
-        return $clone;
-    }
-
-    public function withTolerance(): self
-    {
-        $config = config('search_tolerance');
-        if (!$config['enabled']) {
-            return $this;
-        }
-
-        $clone = clone $this;
-        $t     = $config['tolerances'];
-
-        if ($clone->mileageMin > 0) {
-            $clone->mileageMin = (int) round($clone->mileageMin * (1 - $t['mileage']));
-        }
-        if ($clone->mileageMax > 0) {
-            $clone->mileageMax = (int) round($clone->mileageMax * (1 + $t['mileage']));
-        }
-
-        if ($clone->priceMin > 0) {
-            $clone->priceMin = (int) round($clone->priceMin * (1 - $t['price']));
-        }
-        if ($clone->priceMax > 0) {
-            $clone->priceMax = (int) round($clone->priceMax * (1 + $t['price']));
-        }
-
-        if ($clone->engineMin > 0) {
-            $clone->engineMin = round($clone->engineMin * (1 - $t['engine']), 1);
-        }
-        if ($clone->engineMax > 0) {
-            $clone->engineMax = round($clone->engineMax * (1 + $t['engine']), 1);
-        }
-
-        if ($clone->yearFrom > 0) {
-            $clone->yearFrom -= $t['year'];
-        }
-        if ($clone->yearTo > 0) {
-            $clone->yearTo += $t['year'];
         }
 
         return $clone;
@@ -228,10 +194,10 @@ class SearchQuery
         if ($this->mileageMax) $parts[] = "пробег до " . number_format($this->mileageMax) . " км";
         if ($this->engineMin)  $parts[] = "двигатель от {$this->engineMin} л";
         if ($this->engineMax)  $parts[] = "двигатель до {$this->engineMax} л";
-        if ($this->insuranceCountMin) $parts[] = "страховых от {$this->insuranceCountMin}";
-        if ($this->insuranceCountMax) $parts[] = "страховых до {$this->insuranceCountMax}";
-        if ($this->ownersCountMin) $parts[] = "владельцев от {$this->ownersCountMin}";
-        if ($this->ownersCountMax) $parts[] = "владельцев до {$this->ownersCountMax}";
+        if ($this->insuranceCountMin !== null) $parts[] = "страховых от {$this->insuranceCountMin}";
+        if ($this->insuranceCountMax !== null) $parts[] = "страховых до {$this->insuranceCountMax}";
+        if ($this->ownersCountMin !== null) $parts[] = "владельцев от {$this->ownersCountMin}";
+        if ($this->ownersCountMax !== null) $parts[] = "владельцев до {$this->ownersCountMax}";
         if ($this->hasAccident !== null) $parts[] = $this->hasAccident ? 'с ДТП' : 'без ДТП';
         if ($this->floodHistory !== null) $parts[] = $this->floodHistory ? 'с затоплением' : 'без затоплений';
         if ($this->lienStatuses) $parts[] = 'залог: ' . implode('/', $this->lienStatuses);
@@ -258,10 +224,10 @@ class SearchQuery
         if ($this->mileageMax)    $data['mileageMax']    = $this->mileageMax;
         if ($this->engineMin)     $data['engineMin']     = $this->engineMin;
         if ($this->engineMax)     $data['engineMax']     = $this->engineMax;
-        if ($this->insuranceCountMin) $data['insuranceCountMin'] = $this->insuranceCountMin;
-        if ($this->insuranceCountMax) $data['insuranceCountMax'] = $this->insuranceCountMax;
-        if ($this->ownersCountMin) $data['ownersCountMin'] = $this->ownersCountMin;
-        if ($this->ownersCountMax) $data['ownersCountMax'] = $this->ownersCountMax;
+        if ($this->insuranceCountMin !== null) $data['insuranceCountMin'] = $this->insuranceCountMin;
+        if ($this->insuranceCountMax !== null) $data['insuranceCountMax'] = $this->insuranceCountMax;
+        if ($this->ownersCountMin !== null) $data['ownersCountMin'] = $this->ownersCountMin;
+        if ($this->ownersCountMax !== null) $data['ownersCountMax'] = $this->ownersCountMax;
         if ($this->repairCostMin) $data['repairCostMin'] = $this->repairCostMin;
         if ($this->repairCostMax) $data['repairCostMax'] = $this->repairCostMax;
         if ($this->retailValueMin) $data['retailValueMin'] = $this->retailValueMin;
@@ -312,6 +278,23 @@ class SearchQuery
         }
 
         return (int) round($result);
+    }
+
+    private static function toNullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_float($value) || is_string($value)) {
+            return is_numeric($value) ? (int) $value : null;
+        }
+
+        return null;
     }
 
     private static function toNullableBool(mixed $value): ?bool

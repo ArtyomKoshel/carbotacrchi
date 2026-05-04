@@ -80,6 +80,4 @@ class BotFilterSetting extends Model
             return [];
         }
     }
-
-    public static function flushCache(): void {}
 }

@@ -86,7 +86,6 @@ class BotFilterSettingsSeeder extends Seeder
             $sort++;
         }
 
-        BotFilterSetting::flushCache();
     }
 
     private function humanize(string $name): string

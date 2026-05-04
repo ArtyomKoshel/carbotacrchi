@@ -4,7 +4,8 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Bot\WebhookController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/bot/webhook', [WebhookController::class, 'handle']);
+Route::post('/bot/webhook', [WebhookController::class, 'handle'])
+    ->middleware(['throttle:120,1', 'telegram.webhook']);
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/login',  [AdminController::class, 'showLogin'])->name('login');

@@ -201,30 +201,30 @@ class ChatSearchService
                 foreach ($modelAliases[$makeLower] as $alias => $series) {
                     if (mb_strpos($text, $alias) !== false) {
                         $result['model'] = $series;
-                        goto modelFound;
+                        break;
                     }
                 }
             }
 
             // Numeric series (BMW 7 → 7 Series)
-            if (isset($numericSeries[$makeLower])) {
+            if (empty($result['model']) && isset($numericSeries[$makeLower])) {
                 foreach ($numericSeries[$makeLower] as $digit => $series) {
                     if (preg_match('/\b' . preg_quote($digit, '/') . '\b/', $text)) {
                         $result['model'] = $series;
-                        goto modelFound;
+                        break;
                     }
                 }
             }
 
             // English model names from JSON
-            foreach (($makes[$detectedMake] ?? []) as $model) {
-                if (mb_stripos($text, mb_strtolower($model)) !== false) {
-                    $result['model'] = $model;
-                    goto modelFound;
+            if (empty($result['model'])) {
+                foreach (($makes[$detectedMake] ?? []) as $model) {
+                    if (mb_stripos($text, mb_strtolower($model)) !== false) {
+                        $result['model'] = $model;
+                        break;
+                    }
                 }
             }
-
-            modelFound:
         }
 
         // ── Year ──────────────────────────────────────────────────────────────
@@ -254,6 +254,12 @@ class ChatSearchService
         if (preg_match('/(?:цена?|price|стоим\w*)\s*от\s*[\$₩]?\s*([\d\s,]+)/ui', $text, $m)) {
             $val = (int) preg_replace('/[\s,]/', '', $m[1]);
             if ($val > 1000) $result['priceMin'] = $val;
+        } elseif (preg_match('/(?:цена?|price|стоим\w*)\s*[\$₩]?\s*([\d\s,]+)\s*(?:\$|₩|долл|usd|krw)?/ui', $text, $m)) {
+            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
+            if ($val > 1000) {
+                $result['priceMin'] = $val;
+                $result['priceMax'] = $val;
+            }
         }
 
         // ── Mileage ───────────────────────────────────────────────────────────
@@ -267,13 +273,22 @@ class ChatSearchService
             $result['mileageMax'] = (int) preg_replace('/[\s,]/', '', $m[1]);
         } elseif (preg_match('/(?:пробег|mileage)\s*([\d][\d\s,]*)/ui', $text, $m)) {
             $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 100 && $val < 1000000) $result['mileageMin'] = $val;
+            if ($val > 100 && $val < 1000000) {
+                $result['mileageMin'] = $val;
+                $result['mileageMax'] = $val;
+            }
         } elseif (preg_match('/([\d][\d\s,]*)\s*(?:пробег|км|km)\s*пробег/ui', $text, $m)) {
             $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 100 && $val < 1000000) $result['mileageMin'] = $val;
+            if ($val > 100 && $val < 1000000) {
+                $result['mileageMin'] = $val;
+                $result['mileageMax'] = $val;
+            }
         } elseif (preg_match('/([\d][\d\s,]+)\s*(?:пробег)/ui', $text, $m)) {
             $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 100 && $val < 1000000) $result['mileageMin'] = $val;
+            if ($val > 100 && $val < 1000000) {
+                $result['mileageMin'] = $val;
+                $result['mileageMax'] = $val;
+            }
         }
 
         // ── Fuel ─────────────────────────────────────────────────────────────
@@ -480,7 +495,8 @@ class ChatSearchService
 18. "1 владелец"/"один хозяин" → ownersCountMax: 1
 19. "без страховых"/"0 страховых" → insuranceCountMax: 0
 20. "не затоплена"/"без утоплений" → floodHistory: false
-21. Если текст не содержит параметров поиска авто — верни {"error": "not_a_search"}
+21. Если указано точное число без слов "от/до" для range-поля (пробег, цена, год, объем), ставь Min и Max равными
+22. Если текст не содержит параметров поиска авто — верни {"error": "not_a_search"}
 PROMPT;
     }
 

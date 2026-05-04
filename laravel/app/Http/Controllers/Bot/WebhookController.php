@@ -86,8 +86,7 @@ class WebhookController extends Controller
 
         $text = "👋 Привет, <b>{$name}</b>!\n\n"
             ."Я — бот для поиска авто на аукционах:\n\n"
-            ."🇺🇸 <b>Copart</b> · <b>IAAI</b> · <b>Manheim</b>\n"
-            ."🇰🇷 <b>Encar</b> · <b>KBChacha</b>\n\n"
+            ."🇷 <b>Encar</b> · <b>KBChacha</b>\n\n"
             ."🔍 <b>Что я умею:</b>\n"
             ."• Поиск по 200+ маркам и моделям\n"
             ."• 13 фильтров: цена, пробег, кузов, КПП, привод…\n"
@@ -280,8 +279,8 @@ class WebhookController extends Controller
             'username' => $username,
             'mode'     => $isAi ? 'ai' : 'fallback',
             'prompt'   => $text,
-            'filters'  => array_filter($query->toSearchArray()),
-            'tolerant' => array_filter($tolerantQuery->toSearchArray()),
+            'filters'  => array_filter($query->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []),
+            'tolerant' => array_filter($tolerantQuery->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []),
         ]);
 
         $modeTag    = $isAi ? '🤖' : '📋';
@@ -322,7 +321,7 @@ class WebhookController extends Controller
             $this->bot->sendLotCard($chatId, $lotData, $buttons);
         }
 
-        $queryArray    = array_filter($parsed['query']->toSearchArray());
+        $queryArray    = array_filter($parsed['query']->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []);
         $footerButtons = [];
 
         if ($this->miniAppUrl) {

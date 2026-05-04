@@ -109,16 +109,16 @@ abstract class AbstractProvider implements ProviderInterface
             if ($query->totalLossHistory !== null && $lot->totalLossHistory !== $query->totalLossHistory) {
                 return false;
             }
-            if ($query->insuranceCountMin > 0 && ($lot->insuranceCount === null || $lot->insuranceCount < $query->insuranceCountMin)) {
+            if ($query->insuranceCountMin !== null && ($lot->insuranceCount === null || $lot->insuranceCount < $query->insuranceCountMin)) {
                 return false;
             }
-            if ($query->insuranceCountMax > 0 && ($lot->insuranceCount === null || $lot->insuranceCount > $query->insuranceCountMax)) {
+            if ($query->insuranceCountMax !== null && ($lot->insuranceCount === null || $lot->insuranceCount > $query->insuranceCountMax)) {
                 return false;
             }
-            if ($query->ownersCountMin > 0 && ($lot->ownersCount === null || $lot->ownersCount < $query->ownersCountMin)) {
+            if ($query->ownersCountMin !== null && ($lot->ownersCount === null || $lot->ownersCount < $query->ownersCountMin)) {
                 return false;
             }
-            if ($query->ownersCountMax > 0 && ($lot->ownersCount === null || $lot->ownersCount > $query->ownersCountMax)) {
+            if ($query->ownersCountMax !== null && ($lot->ownersCount === null || $lot->ownersCount > $query->ownersCountMax)) {
                 return false;
             }
             if ($query->repairCostMin > 0 && ($lot->repairCost === null || $lot->repairCost < $query->repairCostMin)) {

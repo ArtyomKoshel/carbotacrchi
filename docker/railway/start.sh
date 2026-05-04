@@ -32,6 +32,11 @@ fi
 if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
     sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}|" "$APP_DIR/.env"
 fi
+if [ -n "$TELEGRAM_WEBHOOK_SECRET" ]; then
+    grep -q "^TELEGRAM_WEBHOOK_SECRET=" "$APP_DIR/.env" \
+        && sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}|" "$APP_DIR/.env" \
+        || echo "TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}" >> "$APP_DIR/.env"
+fi
 if [ -n "$ADMIN_TOKEN" ]; then
     grep -q "^ADMIN_TOKEN=" "$APP_DIR/.env" \
         && sed -i "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${ADMIN_TOKEN}|" "$APP_DIR/.env" \

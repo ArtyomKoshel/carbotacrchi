@@ -894,7 +894,6 @@ class AdminController extends Controller
 
         if (BotFilterSetting::count() === 0) {
             Artisan::call('db:seed', ['--class' => 'BotFilterSettingsSeeder', '--force' => true]);
-            BotFilterSetting::flushCache();
         }
 
         $settings = BotFilterSetting::orderBy('sort_order')->orderBy('field_name')->get();
@@ -954,8 +953,6 @@ class AdminController extends Controller
             ]);
         }
 
-        BotFilterSetting::flushCache();
-
         return redirect()->route('admin.bot-filters')
             ->with('success', 'Настройки бот-фильтров сохранены');
     }
@@ -970,7 +967,6 @@ class AdminController extends Controller
 
         BotFilterSetting::truncate();
         Artisan::call('db:seed', ['--class' => 'BotFilterSettingsSeeder', '--force' => true]);
-        BotFilterSetting::flushCache();
 
         return redirect()->route('admin.bot-filters')
             ->with('success', 'Настройки сброшены к дефолтным');

@@ -47,7 +47,7 @@
 
 <p class="text-sm text-gray-500 mb-6">
   Тут настраивается, какие поля бот использует в поиске и как расширяет диапазон значений.
-  Изменения применяются с кэшем до 60 секунд.
+  Изменения применяются сразу после сохранения.
 </p>
 
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -56,6 +56,7 @@
       <div>
         <div class="text-sm font-semibold text-white">Настройки фильтров бота</div>
         <div class="text-xs text-gray-500 mt-1">Поля, допуски и отображение в карточке</div>
+        <div class="text-[11px] text-gray-600 mt-1">"В поиске" = участвует и в AI-парсинге, и в фильтрации БД</div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -134,6 +135,8 @@
 
           <div class="px-5 py-3 grid grid-cols-12 gap-3 items-center text-sm"
                data-filter-row
+               data-field-name="{{ $setting->field_name }}"
+               data-dtype="{{ $setting->dtype }}"
                data-search="{{ e($searchText) }}">
             <div class="col-span-4 min-w-0">
               <div class="text-white font-medium truncate">{{ $setting->field_label ?: $setting->field_name }}</div>
@@ -175,6 +178,7 @@
                        class="w-28 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white"
                        placeholder="значение">
                 <span class="text-[11px] text-gray-600" data-tolerance-help></span>
+                <span class="text-[11px] text-blue-300" data-tolerance-preview></span>
               @else
                 <input type="hidden" name="fields[{{ $setting->id }}][tolerance_type]" value="none">
                 <input type="hidden" name="fields[{{ $setting->id }}][tolerance_value]" value="">
@@ -223,6 +227,7 @@
     const typeEl = row.querySelector('[data-tolerance-type]');
     const valueEl = row.querySelector('[data-tolerance-value]');
     const helpEl = row.querySelector('[data-tolerance-help]');
+    const previewEl = row.querySelector('[data-tolerance-preview]');
     if (!typeEl || !valueEl) return;
 
     const type = typeEl.value;
@@ -235,6 +240,7 @@
       valueEl.value = '';
       valueEl.placeholder = '—';
       if (helpEl) helpEl.textContent = 'допуск отключен';
+      if (previewEl) previewEl.textContent = '';
       return;
     }
 
@@ -247,6 +253,68 @@
       valueEl.placeholder = 'например 10000';
       if (helpEl) helpEl.textContent = 'абсолютное значение';
     }
+
+    updateTolerancePreview(row);
+  }
+
+  function getSampleValue(row) {
+    const field = normalize(row.dataset.fieldName);
+    const dtype = normalize(row.dataset.dtype);
+
+    if (field === 'mileage') return 100000;
+    if (field === 'price') return 20000000;
+    if (field === 'year') return 2020;
+    if (field === 'engine_volume') return 2.0;
+    if (field === 'insurance_count' || field === 'owners_count') return 1;
+
+    if (dtype === 'float') return 1.0;
+    if (dtype === 'int' || dtype === 'date') return 100;
+    return null;
+  }
+
+  function formatNum(value, dtype) {
+    if (dtype === 'float') {
+      return Number(value).toFixed(2).replace(/\.00$/, '');
+    }
+    return Math.round(value).toLocaleString('ru-RU');
+  }
+
+  function updateTolerancePreview(row) {
+    const typeEl = row.querySelector('[data-tolerance-type]');
+    const valueEl = row.querySelector('[data-tolerance-value]');
+    const previewEl = row.querySelector('[data-tolerance-preview]');
+    if (!typeEl || !valueEl || !previewEl) return;
+
+    const type = typeEl.value;
+    const dtype = normalize(row.dataset.dtype);
+    const sample = getSampleValue(row);
+    const raw = Number(valueEl.value);
+
+    if (type === 'none' || sample === null || Number.isNaN(raw) || raw < 0) {
+      previewEl.textContent = '';
+      return;
+    }
+
+    let delta = raw;
+    if (type === 'percentage') {
+      delta = delta > 1 ? delta / 100 : delta;
+    }
+
+    let minValue;
+    let maxValue;
+
+    if (type === 'absolute') {
+      minValue = Math.max(0, sample - delta);
+      maxValue = sample + delta;
+    } else {
+      minValue = Math.max(0, sample * (1 - delta));
+      maxValue = sample * (1 + delta);
+    }
+
+    const from = formatNum(minValue, dtype);
+    const to = formatNum(maxValue, dtype);
+    const sampleText = formatNum(sample, dtype);
+    previewEl.textContent = `пример: ${sampleText} → ${from}–${to}`;
   }
 
   function applyFilters() {
@@ -269,6 +337,10 @@
     if (typeEl) {
       typeEl.addEventListener('change', () => syncTolerance(row));
       syncTolerance(row);
+    }
+    const valueEl = row.querySelector('[data-tolerance-value]');
+    if (valueEl) {
+      valueEl.addEventListener('input', () => updateTolerancePreview(row));
     }
     if (enabledInput) {
       enabledInput.addEventListener('change', applyFilters);
