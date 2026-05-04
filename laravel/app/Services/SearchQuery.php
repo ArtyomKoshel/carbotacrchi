@@ -118,34 +118,34 @@ class SearchQuery
             return $this;
         }
 
-        $tolerances = BotFilterSetting::getTolerances();
-
-        if (empty($tolerances)) {
+        $settings = BotFilterSetting::allEnabled();
+        if (empty($settings)) {
             return $this;
         }
 
         $clone = clone $this;
 
-        $rangeFields = [
-            'mileage' => ['mileageMin', 'mileageMax', 'int'],
-            'price' => ['priceMin', 'priceMax', 'int'],
-            'engine_volume' => ['engineMin', 'engineMax', 'float'],
-            'year' => ['yearFrom', 'yearTo', 'int'],
-            'insurance_count' => ['insuranceCountMin', 'insuranceCountMax', 'int'],
-            'owners_count' => ['ownersCountMin', 'ownersCountMax', 'int'],
-            'repair_cost' => ['repairCostMin', 'repairCostMax', 'int'],
-            'retail_value' => ['retailValueMin', 'retailValueMax', 'int'],
-            'seat_count' => ['seatCountMin', 'seatCountMax', 'int'],
-            'registration_year_month' => ['registrationYearMonthMin', 'registrationYearMonthMax', 'int'],
-        ];
-
-        foreach ($rangeFields as $fieldName => [$minProp, $maxProp, $type]) {
-            if (!isset($tolerances[$fieldName])) {
+        foreach ($settings as $setting) {
+            if (!in_array($setting->dtype, ['int', 'float', 'date'], true)) {
+                continue;
+            }
+            if (!in_array($setting->tolerance_type, ['absolute', 'percentage'], true)) {
+                continue;
+            }
+            if ($setting->tolerance_value === null) {
                 continue;
             }
 
-            $tolerance = $tolerances[$fieldName];
-            $isFloat = $type === 'float';
+            [$minProp, $maxProp] = self::getRangeProps($setting->field_name);
+            if (!property_exists($clone, $minProp) || !property_exists($clone, $maxProp)) {
+                continue;
+            }
+
+            $tolerance = [
+                'type' => (string) $setting->tolerance_type,
+                'value' => (float) $setting->tolerance_value,
+            ];
+            $isFloat = $setting->dtype === 'float';
 
             // When only one bound is set, tolerance creates a range around that value.
             // Save originals first to avoid double-applying tolerance.
@@ -174,6 +174,21 @@ class SearchQuery
         }
 
         return $clone;
+    }
+
+    /** @return array{0: string, 1: string} */
+    private static function getRangeProps(string $fieldName): array
+    {
+        return match ($fieldName) {
+            'year' => ['yearFrom', 'yearTo'],
+            'engine_volume' => ['engineMin', 'engineMax'],
+            default => [self::snakeToCamel($fieldName) . 'Min', self::snakeToCamel($fieldName) . 'Max'],
+        };
+    }
+
+    private static function snakeToCamel(string $value): string
+    {
+        return lcfirst(str_replace('_', '', ucwords($value, '_')));
     }
 
     public function describeForChat(): string

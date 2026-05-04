@@ -30,9 +30,15 @@ abstract class AbstractDbProvider extends AbstractProvider
                 ->where('is_active', true);
 
             $this->applyDbFilters($builder, $query);
+            $this->applyDbSort($builder, $query->sort);
+
+            $limit = min(
+                self::MAX_ROWS,
+                max(50, $query->offset + $query->limit + 50)
+            );
 
             return $builder
-                ->limit(self::MAX_ROWS)
+                ->limit($limit)
                 ->get()
                 ->map(fn ($row) => $this->normalize((array) $row))
                 ->toArray();
@@ -40,6 +46,15 @@ abstract class AbstractDbProvider extends AbstractProvider
             Log::error("[{$this->getKey()}] DB search error: " . $e->getMessage());
             return [];
         }
+    }
+
+    private function applyDbSort(Builder $builder, string $sort): void
+    {
+        match ($sort) {
+            'price_asc' => $builder->orderBy('price', 'asc'),
+            'price_desc' => $builder->orderBy('price', 'desc'),
+            default => $builder->orderBy('registration_date', 'desc')->orderBy('id', 'desc'),
+        };
     }
 
     private function applyDbFilters(Builder $builder, SearchQuery $query): void

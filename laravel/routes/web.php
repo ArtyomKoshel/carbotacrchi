@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\BotFiltersController;
 use App\Http\Controllers\Bot\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,10 +37,10 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::put('/filters/{id}',                  [AdminController::class, 'updateFilter'])->name('filters.update');
     Route::delete('/filters/{id}',               [AdminController::class, 'deleteFilter'])->name('filters.delete');
     Route::patch('/filters/{id}/toggle',         [AdminController::class, 'toggleFilter'])->name('filters.toggle');
-    Route::get('/bot-filters',                   [AdminController::class, 'botFilters'])->name('bot-filters');
-    Route::post('/bot-filters',                  [AdminController::class, 'botFiltersUpdate'])->name('bot-filters.update');
-    Route::post('/bot-filters/reset',            [AdminController::class, 'botFiltersReset'])->name('bot-filters.reset');
-    Route::post('/bot-filters/preview',          [AdminController::class, 'botFiltersPreview'])->name('bot-filters.preview');
+    Route::get('/bot-filters',                   [BotFiltersController::class, 'index'])->name('bot-filters');
+    Route::post('/bot-filters',                  [BotFiltersController::class, 'update'])->name('bot-filters.update');
+    Route::post('/bot-filters/reset',            [BotFiltersController::class, 'reset'])->name('bot-filters.reset');
+    Route::post('/bot-filters/preview',          [BotFiltersController::class, 'preview'])->name('bot-filters.preview');
 
     // Filter Skip Log
     Route::get('/filter-skip-log',              [App\Http\Controllers\Admin\FilterSkipLogController::class, 'index'])->name('filter-skip-log.index');
