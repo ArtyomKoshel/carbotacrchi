@@ -274,7 +274,12 @@ class SearchQuery
         $result = max(0, $result);
 
         if ($isFloat) {
-            return round($result, 2);
+            $step = 10.0;
+            $result = $isMin
+                ? floor($result * $step) / $step
+                : ceil($result * $step) / $step;
+
+            return round($result, 1);
         }
 
         return (int) round($result);

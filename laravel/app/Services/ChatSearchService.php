@@ -12,6 +12,8 @@ class ChatSearchService
     private string $apiUrl;
     private string $model;
     private bool $lastParseWasAi = false;
+    /** @var array<string, array<int, string>>|null */
+    private static ?array $makesModels = null;
 
     public function __construct()
     {
@@ -170,10 +172,7 @@ class ChatSearchService
             ],
         ];
 
-        $makes = json_decode(
-            file_get_contents(storage_path('app/data/makes_models.json')),
-            true
-        ) ?: [];
+        $makes = $this->getMakesModels();
 
         // Detect make: try aliases first, then JSON names
         $detectedMake = null;
@@ -570,5 +569,24 @@ PROMPT;
     private function snakeToCamel(string $value): string
     {
         return lcfirst(str_replace('_', '', ucwords($value, '_')));
+    }
+
+    /** @return array<string, array<int, string>> */
+    private function getMakesModels(): array
+    {
+        if (self::$makesModels !== null) {
+            return self::$makesModels;
+        }
+
+        $path = storage_path('app/data/makes_models.json');
+        if (!is_file($path) || !is_readable($path)) {
+            self::$makesModels = [];
+            return self::$makesModels;
+        }
+
+        $decoded = json_decode((string) file_get_contents($path), true);
+        self::$makesModels = is_array($decoded) ? $decoded : [];
+
+        return self::$makesModels;
     }
 }
