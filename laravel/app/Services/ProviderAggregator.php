@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use App\AuctionProviders\ProviderInterface;
-use App\Dto\LotDTO;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
 
 class ProviderAggregator
 {
@@ -22,18 +23,50 @@ class ProviderAggregator
     public function search(SearchQuery $query): SearchResult
     {
         $errors = [];
-        $lots   = [];
-
-        foreach ($this->getActiveProviders($query->sources) as $provider) {
-            array_push($lots, ...$provider->search($query));
-            if (!$provider->isAvailable()) {
-                $errors[] = $provider->getKey();
+        foreach ($query->sources as $sourceKey) {
+            $provider = $this->providers[$sourceKey] ?? null;
+            if ($provider === null || !$provider->isAvailable()) {
+                $errors[] = (string) $sourceKey;
             }
         }
+        $errors = array_values(array_unique($errors));
 
-        $lots  = $this->sort($lots, $query->sort);
-        $total = count($lots);
-        $lots  = array_slice($lots, $query->offset, $query->limit);
+        $activeProviders = $this->getActiveProviders($query->sources);
+        $providersByKey = [];
+        foreach ($activeProviders as $provider) {
+            $providersByKey[$provider->getKey()] = $provider;
+        }
+
+        if ($providersByKey === []) {
+            return new SearchResult([], 0, $errors);
+        }
+
+        $builder = DB::table('lots')
+            ->where('is_active', true)
+            ->whereIn('source', array_keys($providersByKey));
+
+        $this->applyDbFilters($builder, $query);
+
+        $total = (clone $builder)->count();
+
+        $this->applyDbSort($builder, $query->sort);
+
+        $rows = $builder
+            ->offset($query->offset)
+            ->limit($query->limit)
+            ->get();
+
+        $lots = [];
+        foreach ($rows as $row) {
+            $raw = (array) $row;
+            $source = (string) ($raw['source'] ?? '');
+            $provider = $providersByKey[$source] ?? null;
+            if ($provider === null) {
+                continue;
+            }
+
+            $lots[] = $provider->normalize($raw);
+        }
 
         return new SearchResult($lots, $total, $errors);
     }
@@ -47,15 +80,125 @@ class ProviderAggregator
         ));
     }
 
-    /** @param LotDTO[] $lots */
-    private function sort(array $lots, string $by): array
+    private function applyDbSort(Builder $builder, string $sort): void
     {
-        usort($lots, fn (LotDTO $a, LotDTO $b) => match ($by) {
-            'price_asc'  => $a->price <=> $b->price,
-            'price_desc' => $b->price <=> $a->price,
-            default      => strcmp($b->auctionDate ?? '', $a->auctionDate ?? ''),
-        });
+        match ($sort) {
+            'price_asc' => $builder->orderBy('price', 'asc'),
+            'price_desc' => $builder->orderBy('price', 'desc'),
+            default => $builder->orderBy('registration_date', 'desc')->orderBy('id', 'desc'),
+        };
+    }
 
-        return $lots;
+    private function applyDbFilters(Builder $builder, SearchQuery $query): void
+    {
+        if ($query->make) {
+            $builder->whereRaw('make LIKE ?', [$query->make . '%']);
+        }
+        if ($query->model) {
+            $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
+        }
+
+        if ($query->yearFrom) {
+            $builder->where('year', '>=', $query->yearFrom);
+        }
+        if ($query->yearTo) {
+            $builder->where('year', '<=', $query->yearTo);
+        }
+        if ($query->priceMin) {
+            $builder->where('price', '>=', $query->priceMin);
+        }
+        if ($query->priceMax) {
+            $builder->where('price', '<=', $query->priceMax);
+        }
+        if ($query->mileageMin) {
+            $builder->where('mileage', '>=', $query->mileageMin);
+        }
+        if ($query->mileageMax) {
+            $builder->where('mileage', '<=', $query->mileageMax);
+        }
+        if ($query->engineMin) {
+            $builder->where('engine_volume', '>=', $query->engineMin);
+        }
+        if ($query->engineMax) {
+            $builder->where('engine_volume', '<=', $query->engineMax);
+        }
+
+        if ($query->repairCostMin) {
+            $builder->where('repair_cost', '>=', $query->repairCostMin);
+        }
+        if ($query->repairCostMax) {
+            $builder->where('repair_cost', '<=', $query->repairCostMax);
+        }
+        if ($query->retailValueMin) {
+            $builder->where('retail_value', '>=', $query->retailValueMin);
+        }
+        if ($query->retailValueMax) {
+            $builder->where('retail_value', '<=', $query->retailValueMax);
+        }
+
+        if ($query->ownersCountMin !== null) {
+            $builder->where('owners_count', '>=', $query->ownersCountMin);
+        }
+        if ($query->ownersCountMax !== null) {
+            $builder->where('owners_count', '<=', $query->ownersCountMax);
+        }
+        if ($query->insuranceCountMin !== null) {
+            $builder->where('insurance_count', '>=', $query->insuranceCountMin);
+        }
+        if ($query->insuranceCountMax !== null) {
+            $builder->where('insurance_count', '<=', $query->insuranceCountMax);
+        }
+
+        if ($query->seatCountMin) {
+            $builder->where('seat_count', '>=', $query->seatCountMin);
+        }
+        if ($query->seatCountMax) {
+            $builder->where('seat_count', '<=', $query->seatCountMax);
+        }
+        if ($query->registrationYearMonthMin) {
+            $builder->where('registration_year_month', '>=', $query->registrationYearMonthMin);
+        }
+        if ($query->registrationYearMonthMax) {
+            $builder->where('registration_year_month', '<=', $query->registrationYearMonthMax);
+        }
+
+        if ($query->hasAccident !== null) {
+            $builder->where('has_accident', $query->hasAccident);
+        }
+        if ($query->floodHistory !== null) {
+            $builder->where('flood_history', $query->floodHistory);
+        }
+        if ($query->totalLossHistory !== null) {
+            $builder->where('total_loss_history', $query->totalLossHistory);
+        }
+
+        if ($query->transmissions) {
+            $builder->whereIn('transmission', $query->transmissions);
+        }
+        if ($query->fuelTypes) {
+            $builder->whereIn('fuel', $query->fuelTypes);
+        }
+        if ($query->bodyTypes) {
+            $builder->whereIn('body_type', $query->bodyTypes);
+        }
+        if ($query->driveTypes) {
+            $builder->whereIn('drive_type', $query->driveTypes);
+        }
+        if ($query->colors) {
+            $builder->whereIn('color', $query->colors);
+        }
+        if ($query->lienStatuses) {
+            $builder->whereIn('lien_status', $query->lienStatuses);
+        }
+        if ($query->seizureStatuses) {
+            $builder->whereIn('seizure_status', $query->seizureStatuses);
+        }
+        if ($query->sellTypes) {
+            $builder->whereIn('sell_type', $query->sellTypes);
+        }
+
+        if ($query->vin) {
+            $builder->where('vin', $query->vin);
+        }
     }
 }

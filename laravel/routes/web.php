@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BotFiltersController;
+use App\Http\Controllers\Admin\FieldsController;
+use App\Http\Controllers\Admin\LogsController;
+use App\Http\Controllers\Admin\ParseFiltersController;
+use App\Http\Controllers\Admin\ParserJobsController;
 use App\Http\Controllers\Bot\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,25 +22,25 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::get('/',                              [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/changes',                       [AdminController::class, 'changes'])->name('changes');
     Route::get('/stats',                         [AdminController::class, 'stats'])->name('stats');
-    Route::get('/logs',                          [AdminController::class, 'logs'])->name('logs');
-    Route::get('/lots',                          [AdminController::class, 'lots'])->name('lots');
-    Route::post('/lots/{lotId}/reparse',         [AdminController::class, 'reparseLot'])->name('lots.reparse');
-    Route::get('/reparse/{id}/status',           [AdminController::class, 'reparseStatus'])->name('reparse.status');
-    Route::get('/jobs',                          [AdminController::class, 'jobs'])->name('jobs');
-    Route::post('/jobs',                         [AdminController::class, 'launchJob'])->name('jobs.launch');
-    Route::post('/jobs/{id}/cancel',             [AdminController::class, 'cancelJob'])->name('jobs.cancel');
-    Route::get('/jobs/{id}/progress',            [AdminController::class, 'jobProgress'])->name('jobs.progress');
-    Route::get('/jobs/{id}/events',             [AdminController::class, 'jobEvents'])->name('jobs.events');
-    Route::get('/jobs/{id}/detail',              [AdminController::class, 'jobDetail'])->name('jobs.detail');
-    Route::get('/jobs/{id}/log',                 [AdminController::class, 'jobLog'])->name('jobs.log');
-    Route::get('/schedules',                       [AdminController::class, 'schedules'])->name('schedules');
-    Route::get('/proxy-balance',                 [AdminController::class, 'proxyBalance'])->name('proxy.balance');
-    Route::post('/schedules/{source}',           [AdminController::class, 'updateSchedule'])->name('schedules.update');
-    Route::get('/filters',                       [AdminController::class, 'filters'])->name('filters');
-    Route::post('/filters',                      [AdminController::class, 'createFilter'])->name('filters.create');
-    Route::put('/filters/{id}',                  [AdminController::class, 'updateFilter'])->name('filters.update');
-    Route::delete('/filters/{id}',               [AdminController::class, 'deleteFilter'])->name('filters.delete');
-    Route::patch('/filters/{id}/toggle',         [AdminController::class, 'toggleFilter'])->name('filters.toggle');
+    Route::get('/logs',                          [LogsController::class, 'logs'])->name('logs');
+    Route::get('/lots',                          [ParserJobsController::class, 'lots'])->name('lots');
+    Route::post('/lots/{lotId}/reparse',         [ParserJobsController::class, 'reparseLot'])->name('lots.reparse');
+    Route::get('/reparse/{id}/status',           [ParserJobsController::class, 'reparseStatus'])->name('reparse.status');
+    Route::get('/jobs',                          [ParserJobsController::class, 'jobs'])->name('jobs');
+    Route::post('/jobs',                         [ParserJobsController::class, 'launchJob'])->name('jobs.launch');
+    Route::post('/jobs/{id}/cancel',             [ParserJobsController::class, 'cancelJob'])->name('jobs.cancel');
+    Route::get('/jobs/{id}/progress',            [ParserJobsController::class, 'jobProgress'])->name('jobs.progress');
+    Route::get('/jobs/{id}/events',              [ParserJobsController::class, 'jobEvents'])->name('jobs.events');
+    Route::get('/jobs/{id}/detail',              [ParserJobsController::class, 'jobDetail'])->name('jobs.detail');
+    Route::get('/jobs/{id}/log',                 [ParserJobsController::class, 'jobLog'])->name('jobs.log');
+    Route::get('/schedules',                     [ParserJobsController::class, 'schedules'])->name('schedules');
+    Route::get('/proxy-balance',                 [ParserJobsController::class, 'proxyBalance'])->name('proxy.balance');
+    Route::post('/schedules/{source}',           [ParserJobsController::class, 'updateSchedule'])->name('schedules.update');
+    Route::get('/filters',                       [ParseFiltersController::class, 'index'])->name('filters');
+    Route::post('/filters',                      [ParseFiltersController::class, 'create'])->name('filters.create');
+    Route::put('/filters/{id}',                  [ParseFiltersController::class, 'update'])->name('filters.update');
+    Route::delete('/filters/{id}',               [ParseFiltersController::class, 'delete'])->name('filters.delete');
+    Route::patch('/filters/{id}/toggle',         [ParseFiltersController::class, 'toggle'])->name('filters.toggle');
     Route::get('/bot-filters',                   [BotFiltersController::class, 'index'])->name('bot-filters');
     Route::post('/bot-filters',                  [BotFiltersController::class, 'update'])->name('bot-filters.update');
     Route::post('/bot-filters/reset',            [BotFiltersController::class, 'reset'])->name('bot-filters.reset');
@@ -48,9 +52,9 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
 
     // Fields: unified page — registry + source mappings + coverage stats.
     // Replaces legacy `/admin/accuracy` and `/admin/field-mappings`.
-    Route::get('/fields',                        [AdminController::class, 'fields'])->name('fields');
-    Route::post('/fields/recompute',             [AdminController::class, 'fieldsRecompute'])->name('fields.recompute');
-    Route::get('/fields-schema.json',            [AdminController::class, 'fieldsSchema'])->name('fields.schema');
+    Route::get('/fields',                        [FieldsController::class, 'index'])->name('fields');
+    Route::post('/fields/recompute',             [FieldsController::class, 'recompute'])->name('fields.recompute');
+    Route::get('/fields-schema.json',            [FieldsController::class, 'schema'])->name('fields.schema');
 
     // Legacy redirects — keep old bookmarks working.
     Route::get('/accuracy',       fn () => redirect()->route('admin.fields'))->name('accuracy');
@@ -58,10 +62,10 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
 });
 
 Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/logs/tail', [AdminController::class, 'logsTail'])->name('logs.tail');
-    Route::get('/logs/download', [AdminController::class, 'logsDownload'])->name('logs.download');
-    Route::post('/logs/clear',   [AdminController::class, 'logsClear'])->name('logs.clear');
-    Route::post('/logs/clear-jobs', [AdminController::class, 'logsClearJobs'])->name('logs.clear.jobs');
+    Route::get('/logs/tail', [LogsController::class, 'logsTail'])->name('logs.tail');
+    Route::get('/logs/download', [LogsController::class, 'logsDownload'])->name('logs.download');
+    Route::post('/logs/clear',   [LogsController::class, 'logsClear'])->name('logs.clear');
+    Route::post('/logs/clear-jobs', [LogsController::class, 'logsClearJobs'])->name('logs.clear.jobs');
 });
 
 Route::get('/up', fn() => response('OK'));

@@ -136,10 +136,11 @@ class SearchQuery
                 continue;
             }
 
-            [$minProp, $maxProp] = self::getRangeProps($setting->field_name);
-            if (!property_exists($clone, $minProp) || !property_exists($clone, $maxProp)) {
+            $rangeProps = self::getRangeProps((string) $setting->field_name, $clone);
+            if ($rangeProps === null) {
                 continue;
             }
+            [$minProp, $maxProp] = $rangeProps;
 
             $tolerance = [
                 'type' => (string) $setting->tolerance_type,
@@ -176,14 +177,49 @@ class SearchQuery
         return $clone;
     }
 
-    /** @return array{0: string, 1: string} */
-    private static function getRangeProps(string $fieldName): array
+    /** @return array{0: string, 1: string}|null */
+    private static function getRangeProps(string $fieldName, self $query): ?array
     {
-        return match ($fieldName) {
-            'year' => ['yearFrom', 'yearTo'],
-            'engine_volume' => ['engineMin', 'engineMax'],
-            default => [self::snakeToCamel($fieldName) . 'Min', self::snakeToCamel($fieldName) . 'Max'],
-        };
+        $candidates = self::buildRangePropCandidates($fieldName);
+        foreach ($candidates as [$minProp, $maxProp]) {
+            if (property_exists($query, $minProp) && property_exists($query, $maxProp)) {
+                return [$minProp, $maxProp];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array{0: string, 1: string}>
+     */
+    private static function buildRangePropCandidates(string $fieldName): array
+    {
+        $parts = array_values(array_filter(explode('_', trim($fieldName)), static fn (string $part) => $part !== ''));
+        if ($parts === []) {
+            return [];
+        }
+
+        $candidates = [];
+        for ($length = count($parts); $length >= 1; $length--) {
+            $base = self::snakeToCamel(implode('_', array_slice($parts, 0, $length)));
+            $candidates[] = [$base . 'Min', $base . 'Max'];
+            $candidates[] = [$base . 'From', $base . 'To'];
+        }
+
+        $unique = [];
+        $seen = [];
+        foreach ($candidates as [$minProp, $maxProp]) {
+            $key = $minProp . '|' . $maxProp;
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $unique[] = [$minProp, $maxProp];
+        }
+
+        return $unique;
     }
 
     private static function snakeToCamel(string $value): string
