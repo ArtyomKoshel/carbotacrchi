@@ -81,7 +81,7 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
         session = _generate_random_session()
         proxy_url = (
             f"http://{base_creds}-type-residential-session-{session}"
-            f"-country-US-city-New_York-rotation-15:{password}@geo.g-w.info:10080"
+            f"-country-KR-rotation-15:{password}@geo.g-w.info:10080"
         )
         proxies.append(proxy_url)
 
@@ -240,7 +240,7 @@ class EncarClient:
         try:
             return self._do_request(method, url, context, **kwargs)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code in (403, 429) and self._activate_proxy():
+            if e.response.status_code in (403, 407, 429) and self._activate_proxy():
                 logger.info(f"[encar:proxy] {e.response.status_code} on direct — retrying via proxy | {context}")
                 time.sleep(1)
                 return self._do_request(method, url, context, **kwargs)
