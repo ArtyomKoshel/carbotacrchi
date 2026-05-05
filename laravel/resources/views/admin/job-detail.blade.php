@@ -101,13 +101,13 @@
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
     <div class="text-[10px] text-gray-500 uppercase tracking-wider">Proxy Traffic</div>
     <div class="text-lg font-mono {{ $proxyMb > 0 ? 'text-amber-400' : 'text-gray-600' }} mt-1" id="t-proxy-mb">{{ $proxyMb > 0 ? $proxyMb.' MB' : '--' }}</div>
-    <div class="text-[10px] text-gray-600 mt-0.5">{{ $proxyBytes > 0 ? number_format($proxyBytes / 1024).' KB' : 'direct only' }}</div>
+    <div class="text-[10px] text-gray-600 mt-0.5" id="t-proxy-kb">{{ $proxyBytes > 0 ? number_format($proxyBytes / 1024).' KB' : 'direct only' }}</div>
   </div>
 </div>
 
 {{-- Phase Timeline (M.2) --}}
 @php
-  $phases = ['search', 'inspect', 'delist'];
+  $phases = $job->source === 'encar' ? ['search', 'delist'] : ['search', 'inspect', 'delist'];
   $currentPhase = $job->progress['phase'] ?? ($job->result['phase'] ?? null);
   $jobDone      = $job->status === 'done';
   $jobRunning   = $job->status === 'running';
@@ -416,7 +416,7 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
 
     // Phase timeline update (M.2)
     if (d.phase) {
-      const phases = ['search', 'inspect', 'delist'];
+      const phases = JOB_SOURCE === 'encar' ? ['search', 'delist'] : ['search', 'inspect', 'delist'];
       const curIdx = phases.indexOf(d.phase);
       document.querySelectorAll('.phase-node').forEach((node, i) => {
         const ph = node.dataset.phase;
@@ -491,6 +491,14 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
     if (d.search_time_s !== undefined) document.getElementById('t-search').textContent = d.search_time_s + 's';
     if (d.enrich_time_s !== undefined) document.getElementById('t-enrich').textContent = d.enrich_time_s + 's';
     if (d.pause_time_s !== undefined) document.getElementById('t-pause').textContent = d.pause_time_s + 's';
+    if (d.proxy_bytes !== undefined && d.proxy_bytes > 0) {
+      const mb = (d.proxy_bytes / 1024 / 1024).toFixed(2);
+      const kb = Math.round(d.proxy_bytes / 1024).toLocaleString();
+      const el = document.getElementById('t-proxy-mb');
+      const elKb = document.getElementById('t-proxy-kb');
+      if (el) { el.textContent = mb + ' MB'; el.className = el.className.replace('text-gray-600','text-amber-400'); }
+      if (elKb) elKb.textContent = kb + ' KB';
+    }
 
     // API total sub-label
     if (d.api_total) document.querySelector('#s-total + div')?.remove(),

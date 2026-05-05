@@ -507,6 +507,7 @@ class KBChaParser(AbstractParser):
 
             if on_page_callback:
                 try:
+                    stats["proxy_bytes"] = self._client.proxy_bytes
                     _api_total = stats.get("site_api_total") or len(seen_ids) or 1
                     _progress = stats["total"] / _api_total if _api_total else 0
                     on_page_callback(ProgressUpdate(

@@ -842,6 +842,7 @@ class EncarParser(AbstractParser):
                 stats["total"] += 1
 
             if on_page_callback:
+                stats["proxy_bytes"] = self._client.proxy_bytes
                 _progress = stats["total"] / total_count if total_count else 0
                 on_page_callback(ProgressUpdate(
                     phase="search",

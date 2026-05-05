@@ -535,6 +535,7 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
                 "enrich_time_s": round(stats.get("enrich_time", 0), 1) if stats else 0,
                 "inspect_time_s": round(stats.get("inspect_time", 0), 1) if stats else 0,
                 "pause_time_s": round(stats.get("pause_time", 0), 1) if stats else 0,
+                "proxy_bytes": stats.get("proxy_bytes", 0) if stats else 0,
                 "message": update.message,
             }
             if _checkpoint_ref[0]:
