@@ -138,6 +138,7 @@ class EncarClient:
         self._s = self._build_client(None)
         self._request_count: int = 0
         self._error_count: int = 0
+        self._proxy_bytes: int = 0
         self._client_created_at: float = time.monotonic()
 
     def _build_client(self, proxy: str | None) -> httpx.Client:
@@ -249,6 +250,11 @@ class EncarClient:
             self._fallback_to_direct()
             return self._do_request(method, url, context, **kwargs)
 
+    @property
+    def proxy_bytes(self) -> int:
+        """Total response bytes routed through proxy during this client's lifetime."""
+        return self._proxy_bytes
+
     def _do_request(self, method: str, url: str, context: str = "", **kwargs) -> httpx.Response:
         """Low-level HTTP request with logging and proxy error handling."""
         self._maybe_rebuild_client()
@@ -261,6 +267,8 @@ class EncarClient:
             t0 = time.monotonic()
             r = self._s.request(method, url, **kwargs)
             elapsed = time.monotonic() - t0
+            if self._proxy_active:
+                self._proxy_bytes += len(r.content)
         except (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as e:
             if isinstance(e, httpx.ProxyError) and ("402" in str(e) or "Payment Required" in str(e)):
                 raise ProxyBudgetExhausted(f"Proxy balance depleted: {e}") from e

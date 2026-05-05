@@ -328,6 +328,7 @@ class KBChaParser(AbstractParser):
                     else:
                         logger.info(f"[STAT] [{source}]   {name}: {collected:,}")
 
+        _proxy_bytes = self._client.proxy_bytes
         self._client.close()
         if stats.get("_cancel_exc") is not None:
             raise stats["_cancel_exc"]
@@ -336,6 +337,7 @@ class KBChaParser(AbstractParser):
             elapsed, stats, seen_ids,
             api_total=api_total or ref_total, stale=stale, db_count=db_count,
         )
+        result.extra["proxy_bytes"] = _proxy_bytes
         result.extra["maker_breakdown"] = maker_stats
         return result.to_dict()
 

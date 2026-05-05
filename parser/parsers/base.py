@@ -69,6 +69,7 @@ class RunResult:
     pause_time_s: float = 0.0
     avg_per_lot_s: float = 0.0
     pages: int = 0
+    proxy_bytes: int = 0
 
     def to_dict(self) -> dict:
         """Serialize to dict for JSON storage (job_stats, Redis pub, etc.)."""
@@ -98,6 +99,7 @@ class RunResult:
             "error_types": self.error_types,
             "error_log": self.error_log[-50:],
             "filter_rules": self.filter_rules,
+            "proxy_bytes": self.extra.get("proxy_bytes", self.proxy_bytes),
             **self.extra,
         }
 

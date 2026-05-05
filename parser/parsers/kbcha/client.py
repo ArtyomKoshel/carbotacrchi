@@ -95,6 +95,7 @@ class KBChaClient:
         self._proxy_active: bool = False
         self._proxies: list[str | None] = [None]  # start direct; proxy activated on first block
         self._proxy_idx: int = 0
+        self._proxy_bytes: int = 0
         self._last_list_url: str = f"{BASE_URL}/public/search/main.kbc"
         self._client = self._build_client(None)
 
@@ -185,6 +186,11 @@ class KBChaClient:
             pass
         self._client = self._build_client(self._proxies[self._proxy_idx] if self._proxies else None)
 
+    @property
+    def proxy_bytes(self) -> int:
+        """Total response bytes routed through proxy during this client's lifetime."""
+        return self._proxy_bytes
+
     def _get(self, url: str, params: dict | None = None,
              headers: dict | None = None) -> httpx.Response:
         """Wrapper around client.get; on first block (403/429) activates proxy and retries once."""
@@ -193,7 +199,11 @@ class KBChaClient:
             if r.status_code in (403, 429) and self._activate_proxy():
                 logger.info(f"[kbcha:proxy] {r.status_code} on direct — retrying via proxy")
                 _time.sleep(1)
-                return self._client.get(url, params=params, headers=headers)
+                r = self._client.get(url, params=params, headers=headers)
+                self._proxy_bytes += len(r.content)
+                return r
+            if self._proxy_active:
+                self._proxy_bytes += len(r.content)
             return r
         except httpx.ProxyError as e:
             if "402" in str(e) or "Payment Required" in str(e):

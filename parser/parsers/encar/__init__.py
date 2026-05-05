@@ -1094,12 +1094,14 @@ class EncarParser(AbstractParser):
         stale = self.delist_if_complete(seen_ids, reference_total=api_total, grace_hours=1)
         self.end_phase(_delist_phase, lots_out=stale)
 
+        _proxy_bytes = self._client.proxy_bytes
         self._client.close()
 
         result = self.finalize_summary(
             elapsed, stats, seen_ids,
             api_total=api_total, stale=stale, db_count=db_count,
         )
+        result.extra["proxy_bytes"] = _proxy_bytes
         return result.to_dict()
 
     def _enrich_batch(self, lots: list[CarLot], stats: dict) -> None:

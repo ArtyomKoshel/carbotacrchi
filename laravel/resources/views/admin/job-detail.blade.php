@@ -43,6 +43,8 @@
   $timeStr   = $r['time'] ?? '--';
   $errTypes  = $stat ? json_decode($stat->error_types ?? '{}', true) : ($r['error_types'] ?? []);
   $errLog    = $stat ? json_decode($stat->error_log ?? '[]', true) : ($r['error_log'] ?? []);
+  $proxyBytes = (int) ($r['proxy_bytes'] ?? 0);
+  $proxyMb    = $proxyBytes > 0 ? round($proxyBytes / 1024 / 1024, 2) : 0;
 @endphp
 
 {{-- Stats grid --}}
@@ -96,11 +98,16 @@
     <div class="text-[10px] text-gray-500 uppercase tracking-wider">Pauses</div>
     <div class="text-lg font-mono {{ $pauseT > 10 ? 'text-yellow-400' : 'text-gray-500' }} mt-1" id="t-pause">{{ $pauseT . 's' }}</div>
   </div>
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Proxy Traffic</div>
+    <div class="text-lg font-mono {{ $proxyMb > 0 ? 'text-amber-400' : 'text-gray-600' }} mt-1" id="t-proxy-mb">{{ $proxyMb > 0 ? $proxyMb.' MB' : '--' }}</div>
+    <div class="text-[10px] text-gray-600 mt-0.5">{{ $proxyBytes > 0 ? number_format($proxyBytes / 1024).' KB' : 'direct only' }}</div>
+  </div>
 </div>
 
 {{-- Phase Timeline (M.2) --}}
 @php
-  $phases = ['search', 'enrich', 'inspect', 'delist'];
+  $phases = ['search', 'inspect', 'delist'];
   $currentPhase = $job->progress['phase'] ?? ($job->result['phase'] ?? null);
   $jobDone      = $job->status === 'done';
   $jobRunning   = $job->status === 'running';
@@ -409,7 +416,7 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
 
     // Phase timeline update (M.2)
     if (d.phase) {
-      const phases = ['search', 'enrich', 'inspect', 'delist'];
+      const phases = ['search', 'inspect', 'delist'];
       const curIdx = phases.indexOf(d.phase);
       document.querySelectorAll('.phase-node').forEach((node, i) => {
         const ph = node.dataset.phase;
