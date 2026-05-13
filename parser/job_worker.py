@@ -494,7 +494,10 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
 
         def _on_progress(update: ProgressUpdate) -> None:
             """Unified progress handler — accepts ProgressUpdate from parsers."""
-            page_counts.append(update.lots_processed or 1)
+            # Only count search-phase lots in the running total; enrich/inspect
+            # use phase_progress directly so must not pollute the search counter.
+            if update.phase not in ('enrich', 'inspect'):
+                page_counts.append(update.lots_processed or 1)
             found_total = sum(page_counts)
             if update.lots_found and update.lots_found > _api_total_ref[0]:
                 _api_total_ref[0] = update.lots_found
