@@ -321,18 +321,18 @@ class WebhookController extends Controller
             $this->bot->sendLotCard($chatId, $lotData, $buttons);
         }
 
-        $queryArray = array_filter($parsed['query']->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []);
+        $queryArray    = array_filter($parsed['query']->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []);
+        $footerButtons = [];
 
-        if ($this->miniAppUrl && $result->total > 5) {
+        if ($this->miniAppUrl) {
             $deepLink = $this->miniAppUrl . '?search=' . urlencode(json_encode($queryArray));
-            $this->bot->sendMessage($chatId,
-                "📱 <a href=\"{$deepLink}\">Показать все {$result->total} результатов</a>"
-            );
+            $footerButtons[] = [['text' => '📱 Все результаты (' . $result->total . ')', 'web_app' => ['url' => $deepLink]]];
         }
+        $footerButtons[] = [['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . base64_encode(json_encode($queryArray))]];
 
         $this->bot->sendMessageWithKeyboard($chatId,
-            "🔔 Подпишитесь, чтобы получать уведомления о новых лотах.",
-            [[['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . base64_encode(json_encode($queryArray))]]]
+            "Показаны 5 из {$result->total}. Подпишитесь, чтобы получать уведомления о новых лотах.",
+            $footerButtons
         );
     }
 

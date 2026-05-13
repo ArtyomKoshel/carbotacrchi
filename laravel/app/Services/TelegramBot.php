@@ -300,7 +300,13 @@ class TelegramBot
             $response = Http::timeout(10)
                 ->post($this->apiBase.$this->token.'/'.$method, $params);
 
-            return $response->json() ?? [];
+            $json = $response->json() ?? [];
+            if (empty($json['ok'])) {
+                Log::warning('[TelegramBot] '.$method.' returned error: '
+                    .($json['description'] ?? $json['error'] ?? 'unknown')
+                    .' (code: '.($json['error_code'] ?? '?').')');
+            }
+            return $json;
         } catch (\Throwable $e) {
             Log::error('[TelegramBot] '.$method.' failed: '.$e->getMessage());
             return ['ok' => false, 'error' => $e->getMessage()];

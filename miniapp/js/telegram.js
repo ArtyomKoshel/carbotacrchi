@@ -5,9 +5,9 @@ const TG = (() => {
     if (!twa) return;
     twa.ready();
     twa.expand();
-    // Bot API 8.0+: true fullscreen (hides header bar)
+    // Bot API 8.0+: true fullscreen (hides header bar); older versions throw — ignore
     if (typeof twa.requestFullscreen === 'function') {
-      twa.requestFullscreen();
+      try { twa.requestFullscreen().catch(() => {}); } catch (_) {}
     }
   }
 
