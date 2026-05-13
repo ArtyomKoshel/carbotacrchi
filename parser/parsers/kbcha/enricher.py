@@ -161,6 +161,9 @@ class KBChaEnricher:
                 if on_page_callback:
                     try:
                         _progress = (i + 1) / len(lots)
+                        live_proxy = stats.get("proxy_bytes", 0) + sum(
+                            c.proxy_bytes for c in _thread_clients
+                        )
                         on_page_callback(ProgressUpdate(
                             phase="enrich",
                             phase_progress=min(_progress, 1.0),
@@ -168,7 +171,7 @@ class KBChaEnricher:
                             lots_found=len(lots),
                             lots_processed=1,
                             message=f"enrich {i+1}/{len(lots)}",
-                            stats=stats,
+                            stats={**stats, "proxy_bytes": live_proxy},
                         ))
                     except Exception:
                         pass

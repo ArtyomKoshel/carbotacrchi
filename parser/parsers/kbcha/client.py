@@ -19,15 +19,6 @@ class ProxyBudgetExhausted(RuntimeError):
 
 _CACHED_PROXIES: list[str] | None = None
 
-# Direct client (no proxy) for external inspection report sites.
-# These domains (autocafe, mpark, carmodoo, etc.) don't require a Korean proxy
-# IP, so routing them via proxy wastes ~50% of total proxy bandwidth.
-_DIRECT_CLIENT = httpx.Client(
-    timeout=_Timeout(30.0, connect=10.0),
-    follow_redirects=True,
-    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
-)
-
 
 def _generate_kbcha_proxies(count: int = 20) -> list[str]:
     """Generate KR residential proxy URLs with random session IDs (Floppydata).
@@ -388,15 +379,6 @@ class KBChaClient:
             "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
             "Referer": referer or f"{BASE_URL}/",
         }
-
-        try:
-            resp = _DIRECT_CLIENT.get(url, headers=headers)
-            if resp.status_code == 200 and len(resp.content) > 4096:
-                return resp.text
-            logger.debug("[kbcha:external] direct fetch got %s / %d bytes — falling back to proxy",
-                         resp.status_code, len(resp.content))
-        except Exception as _direct_exc:
-            logger.debug("[kbcha:external] direct fetch failed (%s) — falling back to proxy", _direct_exc)
 
         resp = self._get(url, headers=headers)
         resp.raise_for_status()
