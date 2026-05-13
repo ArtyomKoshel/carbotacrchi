@@ -97,6 +97,7 @@ class WebhookController extends Controller
         $keyboard = [];
         if ($this->miniAppUrl) {
             $keyboard[] = [['text' => '🔍 Открыть поиск', 'web_app' => ['url' => $this->miniAppUrl]]];
+            $this->bot->setChatMenuButton($chatId, '🔍 Открыть поиск', $this->miniAppUrl);
         }
         $keyboard[] = [
             ['text' => '🔔 Мои подписки', 'callback_data' => 'mysubs'],
@@ -327,6 +328,7 @@ class WebhookController extends Controller
         if ($this->miniAppUrl) {
             $deepLink = $this->miniAppUrl . '?search=' . urlencode(json_encode($queryArray));
             $footerButtons[] = [['text' => '📱 Все результаты (' . $result->total . ')', 'web_app' => ['url' => $deepLink]]];
+            $this->bot->setChatMenuButton($chatId, '🔍 Все результаты (' . $result->total . ')', $deepLink);
         }
         $footerButtons[] = [['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . base64_encode(json_encode($queryArray))]];
 

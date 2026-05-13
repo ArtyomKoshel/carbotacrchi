@@ -25,6 +25,18 @@ class TelegramBot
         ], $extra));
     }
 
+    public function setChatMenuButton(int|string $chatId, string $text, string $url): array
+    {
+        return $this->request('setChatMenuButton', [
+            'chat_id'     => $chatId,
+            'menu_button' => json_encode([
+                'type'    => 'web_app',
+                'text'    => $text,
+                'web_app' => ['url' => $url],
+            ]),
+        ]);
+    }
+
     public function sendMessageWithKeyboard(int|string $chatId, string $text, array $inlineKeyboard): array
     {
         return $this->sendMessage($chatId, $text, [

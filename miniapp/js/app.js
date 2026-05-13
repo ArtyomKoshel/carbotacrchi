@@ -27,8 +27,28 @@ const App = (() => {
       Filters.applyQuery(deepQuery);
       await searchWithQuery(deepQuery);
     } else {
-      switchTab('search');
+      const lastQuery = loadLastSearch();
+      if (lastQuery) {
+        Filters.applyQuery(lastQuery);
+        await searchWithQuery(lastQuery);
+      } else {
+        switchTab('search');
+      }
     }
+  }
+
+  function saveLastSearch(query) {
+    try { localStorage.setItem('lastSearch', JSON.stringify(query)); } catch (_) {}
+  }
+
+  function loadLastSearch() {
+    try {
+      const raw = localStorage.getItem('lastSearch');
+      if (!raw) return null;
+      const q = JSON.parse(raw);
+      if (typeof q === 'object' && q !== null) return q;
+    } catch (_) {}
+    return null;
   }
 
   function parseDeepLink() {
@@ -66,6 +86,7 @@ const App = (() => {
       } catch (_) {}
       Results.render(data);
       Subscriptions.setCurrentQuery(query);
+      saveLastSearch(query);
     } catch (e) {
       showError(e.message);
     } finally {
@@ -90,6 +111,7 @@ const App = (() => {
 
       Results.render(data);
       Subscriptions.setCurrentQuery(query);
+      saveLastSearch(query);
     } catch (e) {
       showError(e.message);
     } finally {
