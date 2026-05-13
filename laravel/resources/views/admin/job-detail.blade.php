@@ -25,25 +25,28 @@
 </div>
 
 @php
-  // Prefer $stat (DB) > $job->result (JSON) > $job->progress (live) for display
+  // For running jobs skip $stat (contains stale data from previous completed run)
+  // Priority: running → $p > $r; done/error → $stat > $r > $p
   $r = $job->result ?? [];
   $p = $job->progress ?? [];
-  $total     = $stat->total ?? ($r['total'] ?? ($p['total'] ?? 0));
-  $apiTotal  = $stat->api_total ?? ($r['api_total'] ?? ($p['api_total'] ?? 0));
-  $cov       = $stat->coverage_pct ?? ($r['coverage_pct'] ?? ($p['pct'] ?? 0));
-  $newLots   = $stat->new_lots ?? ($r['new'] ?? ($p['new'] ?? 0));
-  $updated   = $stat->updated_lots ?? ($r['updated'] ?? ($p['updated'] ?? 0));
-  $stale     = $stat->stale_lots ?? ($r['stale'] ?? 0);
-  $errors    = $stat->errors ?? ($r['errors'] ?? ($p['errors'] ?? 0));
-  $elapsed   = $stat->elapsed_s ?? ($r['elapsed_s'] ?? ($p['elapsed_s'] ?? 0));
-  $avgLot    = $stat->avg_per_lot_s ?? ($r['avg_per_lot_s'] ?? ($p['avg_per_lot_s'] ?? 0));
-  $searchT   = $stat->search_time_s ?? ($r['search_time_s'] ?? ($p['search_time_s'] ?? null));
-  $enrichT   = $stat->enrich_time_s ?? ($r['enrich_time_s'] ?? ($p['enrich_time_s'] ?? null));
-  $pauseT    = $stat->pause_time_s ?? ($r['pause_time_s'] ?? ($p['pause_time_s'] ?? 0));
-  $timeStr   = $r['time'] ?? '--';
-  $errTypes  = $stat ? json_decode($stat->error_types ?? '{}', true) : ($r['error_types'] ?? []);
-  $errLog    = $stat ? json_decode($stat->error_log ?? '[]', true) : ($r['error_log'] ?? []);
-  $proxyBytes = (int) ($r['proxy_bytes'] ?? 0);
+  $isRunning = $job->status === 'running';
+  $_s = $isRunning ? null : $stat;  // suppress stale stat during active run
+  $total    = $_s->total ?? ($r['total'] ?? ($p['total'] ?? 0));
+  $apiTotal = $_s->api_total ?? ($r['api_total'] ?? ($p['api_total'] ?? 0));
+  $cov      = $_s->coverage_pct ?? ($r['coverage_pct'] ?? null);  // null while running
+  $newLots  = $_s->new_lots ?? ($r['new'] ?? ($p['new'] ?? 0));
+  $updated  = $_s->updated_lots ?? ($r['updated'] ?? ($p['updated'] ?? 0));
+  $stale    = $_s->stale_lots ?? ($r['stale'] ?? 0);
+  $errors   = $_s->errors ?? ($r['errors'] ?? ($p['errors'] ?? 0));
+  $elapsed  = $_s->elapsed_s ?? ($r['elapsed_s'] ?? ($p['elapsed_s'] ?? 0));
+  $avgLot   = $_s->avg_per_lot_s ?? ($r['avg_per_lot_s'] ?? ($p['avg_per_lot_s'] ?? 0));
+  $searchT  = $_s->search_time_s ?? ($r['search_time_s'] ?? ($p['search_time_s'] ?? null));
+  $enrichT  = $_s->enrich_time_s ?? ($r['enrich_time_s'] ?? ($p['enrich_time_s'] ?? null));
+  $pauseT   = $_s->pause_time_s ?? ($r['pause_time_s'] ?? ($p['pause_time_s'] ?? 0));
+  $timeStr  = $r['time'] ?? ($elapsed > 0 ? gmdate($elapsed >= 3600 ? 'H:i:s' : 'i:s', (int)$elapsed) : '--');
+  $errTypes = $stat ? json_decode($stat->error_types ?? '{}', true) : ($r['error_types'] ?? []);
+  $errLog   = $stat ? json_decode($stat->error_log ?? '[]', true) : ($r['error_log'] ?? []);
+  $proxyBytes = (int) ($r['proxy_bytes'] ?? ($p['proxy_bytes'] ?? 0));
   $proxyMb    = $proxyBytes > 0 ? round($proxyBytes / 1024 / 1024, 2) : 0;
 @endphp
 
@@ -56,7 +59,7 @@
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
     <div class="text-[10px] text-gray-500 uppercase tracking-wider">Coverage</div>
-    <div class="text-xl font-bold mt-1 {{ $cov >= 95 ? 'text-green-400' : ($cov > 0 ? 'text-yellow-400' : 'text-gray-500') }}" id="s-coverage">{{ $cov }}%</div>
+    <div class="text-xl font-bold mt-1 {{ $cov >= 95 ? 'text-green-400' : ($cov > 0 ? 'text-yellow-400' : 'text-gray-500') }}" id="s-coverage">{{ $cov !== null ? $cov.'%' : '--' }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
     <div class="text-[10px] text-gray-500 uppercase tracking-wider">New</div>
@@ -467,10 +470,10 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
 
     // Stats cards
     if (d.total !== undefined) document.getElementById('s-total').textContent = fmt(d.total);
-    if (d.pct !== undefined) {
+    if (d.coverage_pct !== undefined && d.coverage_pct !== null) {
       const cel = document.getElementById('s-coverage');
-      cel.textContent = d.pct + '%';
-      cel.className = `text-xl font-bold mt-1 ${d.pct >= 95 ? 'text-green-400' : d.pct > 0 ? 'text-yellow-400' : 'text-gray-500'}`;
+      cel.textContent = d.coverage_pct + '%';
+      cel.className = `text-xl font-bold mt-1 ${d.coverage_pct >= 95 ? 'text-green-400' : d.coverage_pct > 0 ? 'text-yellow-400' : 'text-gray-500'}`;
     }
     if (d.new !== undefined) document.getElementById('s-new').textContent = fmt(d.new);
     if (d.updated !== undefined) document.getElementById('s-updated').textContent = fmt(d.updated);

@@ -160,6 +160,9 @@ class TelegramBot
         if (in_array('body_type', $cardFields, true) && !empty($lot['bodyType'])) {
             $specs[] = htmlspecialchars((string) $lot['bodyType']);
         }
+        if (in_array('trim', $cardFields, true) && !empty($lot['trim'])) {
+            $specs[] = '🏷 ' . htmlspecialchars((string) $lot['trim']);
+        }
         if ($specs) {
             $lines[] = implode(' · ', $specs);
         }

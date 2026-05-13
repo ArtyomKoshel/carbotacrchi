@@ -82,6 +82,7 @@ const Results = (() => {
             ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>`  : ''}
             ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`           : ''}
             ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`      : ''}
+            ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(lot.trim)}</span>`         : ''}
           </div>
         </div>
       </div>`;

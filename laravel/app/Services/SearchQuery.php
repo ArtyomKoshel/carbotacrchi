@@ -52,6 +52,7 @@ class SearchQuery
     /** @var string[] */
     public array $colors = [];
 
+    public string $trim = '';
     public string $vin = '';
     /** @var string[] */
     public array $sources = ['encar', 'kbcha'];
@@ -91,6 +92,7 @@ class SearchQuery
         $q->floodHistory = self::toNullableBool($data['floodHistory'] ?? null);
         $q->totalLossHistory = self::toNullableBool($data['totalLossHistory'] ?? null);
 
+        $q->trim = trim((string) ($data['trim'] ?? ''));
         $q->vin = trim((string) ($data['vin'] ?? ''));
 
         foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors'] as $key) {
@@ -258,6 +260,7 @@ class SearchQuery
         if ($this->driveTypes) $parts[] = implode('/', $this->driveTypes);
         if ($this->bodyTypes)  $parts[] = implode('/', $this->bodyTypes);
         if ($this->colors) $parts[] = 'цвет: ' . implode('/', $this->colors);
+        if ($this->trim)   $parts[] = 'комплектация: ' . $this->trim;
 
         return implode(', ', $parts) ?: 'Все лоты';
     }
@@ -298,6 +301,7 @@ class SearchQuery
         if ($this->seizureStatuses) $data['seizureStatuses'] = $this->seizureStatuses;
         if ($this->sellTypes)     $data['sellTypes']     = $this->sellTypes;
         if ($this->colors)        $data['colors']        = $this->colors;
+        if ($this->trim)          $data['trim']          = $this->trim;
         if ($this->vin)           $data['vin']           = $this->vin;
         if ($this->sources !== ['encar', 'kbcha']) {
             $data['sources'] = $this->sources;

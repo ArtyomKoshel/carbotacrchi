@@ -88,16 +88,22 @@ _PAGE_HEADERS = {
 class KBChaClient:
     def __init__(self, proxy: str | None = _SENTINEL):
         if proxy is _SENTINEL:
+            # Default: start direct, activate proxy on first 403/429
             proxy_pool = _generate_kbcha_proxies()
+            self._proxy_active: bool = False
+            self._proxies: list[str | None] = [None]
+            initial_proxy = None
         else:
+            # Explicit proxy (enricher thread clients): start with it active immediately
             proxy_pool = [proxy] if proxy else []
+            self._proxy_active = bool(proxy)
+            self._proxies = [proxy] if proxy else [None]
+            initial_proxy = proxy
         self._proxy_pool: list[str] = proxy_pool
-        self._proxy_active: bool = False
-        self._proxies: list[str | None] = [None]  # start direct; proxy activated on first block
         self._proxy_idx: int = 0
         self._proxy_bytes: int = 0
         self._last_list_url: str = f"{BASE_URL}/public/search/main.kbc"
-        self._client = self._build_client(None)
+        self._client = self._build_client(initial_proxy)
 
     def _build_client(self, proxy: str | None) -> httpx.Client:
         transport = httpx.HTTPTransport(proxy=proxy) if proxy else None

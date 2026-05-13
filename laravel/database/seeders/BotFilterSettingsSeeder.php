@@ -31,6 +31,7 @@ class BotFilterSettingsSeeder extends Seeder
         'seizure_status' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
         'sell_type' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
         'seat_count' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
+        'trim' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
         'registration_year_month' => ['enabled' => false, 'tolerance_type' => 'absolute', 'tolerance_value' => 6, 'display_in_card' => false],
     ];
 

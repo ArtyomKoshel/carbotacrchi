@@ -197,6 +197,9 @@ class ProviderAggregator
             $builder->whereIn('sell_type', $query->sellTypes);
         }
 
+        if ($query->trim) {
+            $builder->whereRaw('`trim` LIKE ?', ['%' . $query->trim . '%']);
+        }
         if ($query->vin) {
             $builder->where('vin', $query->vin);
         }

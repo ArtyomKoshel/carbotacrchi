@@ -506,9 +506,12 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
                 logger.info(f"[job_worker] Job #{job_id} cancel detected during {update.phase}")
                 raise JobCancelledError(f"Job #{job_id} cancelled by user")
 
-            pct = round(update.total_progress * 100, 1) if update.total_progress else (
-                round(found_total / _api_total_ref[0] * 100, 1) if _api_total_ref[0] else 0
-            )
+            if _api_total_ref[0] and found_total:
+                pct = round(found_total / _api_total_ref[0] * 100, 1)
+            elif update.total_progress:
+                pct = round(update.total_progress * 100, 1)
+            else:
+                pct = 0
             elapsed = round(_time.monotonic() - _run_start, 1)
             avg_lot = round(elapsed / found_total, 2) if found_total else 0
 

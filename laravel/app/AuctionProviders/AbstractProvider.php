@@ -179,6 +179,9 @@ abstract class AbstractProvider implements ProviderInterface
                     return false;
                 }
             }
+            if ($query->trim !== '' && ($lot->trim === null || !str_contains(mb_strtolower((string) $lot->trim), mb_strtolower($query->trim)))) {
+                return false;
+            }
             if ($query->vin !== '' && ($lot->vin === null || !str_starts_with(strtoupper($lot->vin), strtoupper($query->vin)))) {
                 return false;
             }
