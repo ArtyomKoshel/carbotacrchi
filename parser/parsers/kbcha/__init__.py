@@ -526,8 +526,22 @@ class KBChaParser(AbstractParser):
                     stats["_cancel_exc"] = _cancel_exc
                     break
 
-            if enrich_callback and new_page_lots:
-                enrich_callback(new_page_lots)
+            # Split: truly new lots need full detail-page enrichment;
+            # existing lots only need price/mileage update from listing data.
+            # COALESCE in upsert_batch preserves all previously enriched fields.
+            truly_new     = [l for l in new_page_lots if l.id not in existing_ids]
+            existing_seen = [l for l in new_page_lots if l.id in existing_ids]
+
+            if existing_seen:
+                try:
+                    self.repo.upsert_batch(existing_seen, stats=stats)
+                    logger.debug(f"[{source}] {label} p.{page}: "
+                                 f"{len(existing_seen)} existing lots updated from listing")
+                except Exception as _ue:
+                    logger.warning(f"[{source}] {label}: listing-only upsert failed: {_ue}")
+
+            if enrich_callback and truly_new:
+                enrich_callback(truly_new)
 
             if not enrich_callback and Config.REQUEST_DELAY > 0:
                 _p = _time.monotonic()
