@@ -79,6 +79,8 @@ class KBChaEnricher:
         logger.info(f"[{self._source}] Detail enrichment: {len(lots)} lots, {workers} workers")
 
         _thread_local = threading.local()
+        _thread_clients: list[KBChaClient] = []
+        _thread_clients_lock = threading.Lock()
 
         def _get_thread_client(proxy_idx: int) -> KBChaClient:
             """Return a warmed-up client for this thread; create+warmup only on first call."""
@@ -88,6 +90,8 @@ class KBChaEnricher:
                 c.warmup()
                 _thread_local.client = c
                 _thread_local.proxy_idx = proxy_idx
+                with _thread_clients_lock:
+                    _thread_clients.append(c)
             return _thread_local.client
 
         def _task(lot: CarLot, idx: int) -> tuple[CarLot, dict, tuple | None, int, str]:
@@ -170,6 +174,9 @@ class KBChaEnricher:
                         pass
 
         _flush(force=True)  # write remaining lots
+        # Aggregate proxy traffic from all thread-local clients into stats
+        thread_proxy_bytes = sum(c.proxy_bytes for c in _thread_clients)
+        stats["proxy_bytes"] = stats.get("proxy_bytes", 0) + thread_proxy_bytes
 
         if total_saved == 0 and total_skipped == len(lots):
             logger.warning(

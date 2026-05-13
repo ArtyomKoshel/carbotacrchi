@@ -506,7 +506,9 @@ def _run_parse(source: str, filters: dict, job_id: int, conn, r: redis.Redis,
                 logger.info(f"[job_worker] Job #{job_id} cancel detected during {update.phase}")
                 raise JobCancelledError(f"Job #{job_id} cancelled by user")
 
-            if _api_total_ref[0] and found_total:
+            if update.phase in ('enrich', 'inspect'):
+                pct = round(update.phase_progress * 100, 1)
+            elif _api_total_ref[0] and found_total:
                 pct = round(found_total / _api_total_ref[0] * 100, 1)
             elif update.total_progress:
                 pct = round(update.total_progress * 100, 1)
