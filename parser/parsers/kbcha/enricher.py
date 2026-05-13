@@ -11,7 +11,7 @@ from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import ProgressUpdate
 from .._shared import sell_type as _sell
-from .client import KBChaClient, ProxyBudgetExhausted, _generate_kbcha_proxies
+from .client import KBChaClient, ProxyBudgetExhausted, _generate_kbcha_proxies, _reset_proxy_cache
 from .detail_parser import KBChaDetailParser
 from .external_inspection_parser import KBChaExternalInspectionParser, compare_report_vs_lot
 from .inspection_parser import CarmodooInspectionParser
@@ -73,9 +73,11 @@ class KBChaEnricher:
         workers = min(Config.KBCHA_WORKERS, len(lots))
         delay = max(Config.REQUEST_DELAY, 1.5)
         enriched_fields: dict[str, int] = {}
+        # Reset proxy cache so each batch gets fresh random sessions (new IPs).
+        # Without this, autocafe bans the same 20 cached IPs across all batches.
+        _reset_proxy_cache()
         proxy_pool = _generate_kbcha_proxies()
         _stats_lock = threading.Lock()
-
         logger.info(f"[{self._source}] Detail enrichment: {len(lots)} lots, {workers} workers")
 
         _thread_local = threading.local()
