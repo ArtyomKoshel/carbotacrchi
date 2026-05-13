@@ -28,6 +28,7 @@ class FiltersController extends Controller
         $transmissions = [];
         $fuelTypes = [];
         $driveTypes = [];
+        $colors = [];
         $filterFields = [];
 
         try {
@@ -40,6 +41,7 @@ class FiltersController extends Controller
             $transmissions = $this->distinctStrings('transmission', $sources);
             $fuelTypes = $this->distinctStrings('fuel', $sources);
             $driveTypes = $this->distinctStrings('drive_type', $sources);
+            $colors = $this->distinctStrings('color', $sources);
             $filterFields = $this->buildFilterFieldsMeta();
         } catch (\Throwable) {
         }
@@ -58,6 +60,7 @@ class FiltersController extends Controller
                 'transmissions' => $transmissions,
                 'fuelTypes'     => $fuelTypes,
                 'driveTypes'    => $driveTypes,
+                'colors'        => $colors,
             ],
         ]);
     }

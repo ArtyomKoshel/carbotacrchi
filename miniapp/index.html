@@ -133,6 +133,47 @@
       <div class="filter-divider"></div>
 
       <div class="filter-section">
+        <div class="filter-label">Цвет</div>
+        <div class="chip-group" id="color-chips"></div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-section">
+        <div class="filter-label">Комплектация</div>
+        <input class="filter-input" type="text" id="filter-trim" placeholder="노블레스, Noblesse, Prestige…">
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-section">
+        <div class="filter-label">Состояние (ДТП)</div>
+        <div class="chip-group" id="accident-chips"></div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-section">
+        <div class="filter-label">Владельцев</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" id="filter-owners-min" placeholder="От" min="0" max="20">
+          <input class="filter-input" type="number" id="filter-owners-max" placeholder="До" min="0" max="20">
+        </div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-section">
+        <div class="filter-label">Страховых случаев</div>
+        <div class="filter-range-row">
+          <input class="filter-input" type="number" id="filter-insurance-min" placeholder="От" min="0">
+          <input class="filter-input" type="number" id="filter-insurance-max" placeholder="До" min="0">
+        </div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-section">
         <div class="filter-label">VIN</div>
         <input class="filter-input" type="text" id="filter-vin" placeholder="Поиск по VIN" maxlength="17" style="text-transform:uppercase">
       </div>

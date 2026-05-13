@@ -24,6 +24,7 @@ const App = (() => {
 
     const deepQuery = parseDeepLink();
     if (deepQuery) {
+      Filters.applyQuery(deepQuery);
       await searchWithQuery(deepQuery);
     } else {
       switchTab('search');
