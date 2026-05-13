@@ -406,6 +406,11 @@ class KBChaParser(AbstractParser):
         source = self.get_source_key()
         lots: list[CarLot] = []
         label = f"{maker_name}/{class_label}" if class_label else maker_name
+        # Accumulate truly-new lots; flush when buffer is large enough so we get
+        # one warmup per flush instead of one per page, but avoid holding thousands
+        # of lots in memory on first (all-new) runs.
+        _enrich_buffer: list[CarLot] = []
+        _ENRICH_FLUSH_SIZE = 200  # one warmup per ~200 lots
 
         for page in range(1, pages + 1):
             _t_search = _time.monotonic()
@@ -541,13 +546,22 @@ class KBChaParser(AbstractParser):
                 except Exception as _ue:
                     logger.warning(f"[{source}] {label}: listing-only upsert failed: {_ue}")
 
-            if enrich_callback and truly_new:
-                enrich_callback(truly_new)
+            if truly_new:
+                _enrich_buffer.extend(truly_new)
+
+            if enrich_callback and len(_enrich_buffer) >= _ENRICH_FLUSH_SIZE:
+                enrich_callback(_enrich_buffer[:])
+                _enrich_buffer.clear()
 
             if not enrich_callback and Config.REQUEST_DELAY > 0:
                 _p = _time.monotonic()
                 _time.sleep(Config.REQUEST_DELAY)
                 stats["pause_time"] += _time.monotonic() - _p
+
+        # Enrich all buffered new lots in a single batch (one ThreadPoolExecutor,
+        # one warmup per worker thread instead of one warmup per page).
+        if enrich_callback and _enrich_buffer:
+            enrich_callback(_enrich_buffer)
 
         return lots
 
