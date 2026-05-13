@@ -198,14 +198,18 @@ class KBChaClient:
         return self._proxy_bytes
 
     def _get(self, url: str, params: dict | None = None,
-             headers: dict | None = None) -> httpx.Response:
+             headers: dict | None = None,
+             timeout: _Timeout | None = None) -> httpx.Response:
         """Wrapper around client.get; on first block (403/429) activates proxy and retries once."""
+        kw: dict = {"params": params, "headers": headers}
+        if timeout is not None:
+            kw["timeout"] = timeout
         try:
-            r = self._client.get(url, params=params, headers=headers)
+            r = self._client.get(url, **kw)
             if r.status_code in (403, 429) and self._activate_proxy():
                 logger.info(f"[kbcha:proxy] {r.status_code} on direct — retrying via proxy")
                 _time.sleep(1)
-                r = self._client.get(url, params=params, headers=headers)
+                r = self._client.get(url, **kw)
                 self._proxy_bytes += len(r.content)
                 return r
             if self._proxy_active:
@@ -215,11 +219,11 @@ class KBChaClient:
             if "402" in str(e) or "Payment Required" in str(e):
                 logger.warning(f"[kbcha:proxy] Proxy budget exhausted ({e}) — switching to direct connection")
                 self._fallback_to_direct()
-                return self._client.get(url, params=params, headers=headers)
+                return self._client.get(url, **kw)
             logger.warning(f"[kbcha:proxy] ProxyError ({e}) — rotating and retrying...")
             self.rotate_proxy()
             _time.sleep(2)
-            return self._client.get(url, params=params, headers=headers)
+            return self._client.get(url, **kw)
         except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError) as e:
             logger.warning(f"[kbcha:proxy] {type(e).__name__} ({e}) — rebuilding client and retrying...")
             self._rebuild_client()
@@ -380,7 +384,8 @@ class KBChaClient:
             "Referer": referer or f"{BASE_URL}/",
         }
 
-        resp = self._get(url, headers=headers)
+        _ext_timeout = _Timeout(connect=8.0, read=20.0, write=10.0, pool=10.0)
+        resp = self._get(url, headers=headers, timeout=_ext_timeout)
         resp.raise_for_status()
         return resp.text
 
