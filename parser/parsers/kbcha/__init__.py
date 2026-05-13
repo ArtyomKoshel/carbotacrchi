@@ -328,7 +328,9 @@ class KBChaParser(AbstractParser):
                     else:
                         logger.info(f"[STAT] [{source}]   {name}: {collected:,}")
 
-        _proxy_bytes = self._client.proxy_bytes
+        # Combine main-client bytes (listing pages, direct) + thread bytes accumulated by enricher
+        _proxy_bytes = self._client.proxy_bytes + stats.get("proxy_bytes", 0)
+        stats["proxy_bytes"] = _proxy_bytes
         self._client.close()
         if stats.get("_cancel_exc") is not None:
             raise stats["_cancel_exc"]
@@ -507,7 +509,6 @@ class KBChaParser(AbstractParser):
 
             if on_page_callback:
                 try:
-                    stats["proxy_bytes"] = self._client.proxy_bytes
                     _api_total = stats.get("site_api_total") or len(seen_ids) or 1
                     _progress = stats["total"] / _api_total if _api_total else 0
                     on_page_callback(ProgressUpdate(
