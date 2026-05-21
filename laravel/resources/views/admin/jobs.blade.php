@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Parse Jobs')
+@section('title', 'Задачи парсера')
 
 @section('content')
 
@@ -11,12 +11,12 @@
 
 {{-- Launch form --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-  <div class="text-sm font-semibold text-white mb-4">Launch Parser</div>
+  <div class="text-sm font-semibold text-white mb-4">Запустить парсер</div>
   <form method="POST" action="{{ route('admin.jobs.launch') }}"
         class="flex flex-wrap gap-3 items-end">
     @csrf
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-gray-500">Source</label>
+      <label class="text-xs text-gray-500">Источник</label>
       <select name="source"
               class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
         @foreach($sources as $src)
@@ -25,18 +25,18 @@
       </select>
     </div>
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-gray-500">Max pages <span class="text-gray-600">(0 = from schedule)</span></label>
+      <label class="text-xs text-gray-500">Макс. страниц <span class="text-gray-600">(0 = по расписанию)</span></label>
       <input type="number" name="max_pages" min="0" value="0"
              class="w-28 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
     </div>
     <div class="flex flex-col gap-1">
-      <label class="text-xs text-gray-500">Maker filter <span class="text-gray-600">(optional)</span></label>
-      <input type="text" name="maker" placeholder="e.g. Hyundai"
+      <label class="text-xs text-gray-500">Фильтр марки <span class="text-gray-600">(необязательно)</span></label>
+      <input type="text" name="maker" placeholder="напр. Hyundai"
              class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white w-40 placeholder-gray-600">
     </div>
     <button type="submit"
             class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition">
-      ▶ Run now
+      ▶ Запустить
     </button>
   </form>
 </div>
@@ -44,17 +44,17 @@
 {{-- Jobs table --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-800 font-semibold text-white text-sm">
-    Job History
+    История задач
   </div>
   <table class="w-full text-sm">
     <thead>
       <tr class="text-xs text-gray-500 uppercase border-b border-gray-800">
         <th class="px-5 py-3 text-left w-10">#</th>
-        <th class="px-5 py-3 text-left">Source</th>
-        <th class="px-5 py-3 text-left">Status</th>
-        <th class="px-5 py-3 text-left">Progress</th>
-        <th class="px-5 py-3 text-left">Result</th>
-        <th class="px-5 py-3 text-left">Started</th>
+        <th class="px-5 py-3 text-left">Источник</th>
+        <th class="px-5 py-3 text-left">Статус</th>
+        <th class="px-5 py-3 text-left">Прогресс</th>
+        <th class="px-5 py-3 text-left">Результат</th>
+        <th class="px-5 py-3 text-left">Запущено</th>
         <th class="px-5 py-3"></th>
       </tr>
     </thead>
@@ -67,9 +67,9 @@
         <td class="px-5 py-3 text-white">
           {{ $job->source }}
           @if($job->triggered_by === 'scheduler')
-            <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ auto</span>
+            <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ авто</span>
           @else
-            <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">manual</span>
+            <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">вручную</span>
           @endif
         </td>
         <td class="px-5 py-3">
@@ -108,7 +108,7 @@
             @if(isset($job->result['error']))
               <span class="text-red-400">{{ Str::limit($job->result['error'], 60) }}</span>
             @else
-              <span class="text-white font-semibold">{{ number_format($job->result['total'] ?? 0) }}</span> lots
+              <span class="text-white font-semibold">{{ number_format($job->result['total'] ?? 0) }}</span> лотов
               @if(isset($job->result['coverage_pct']))
                 <span class="text-gray-600">·</span>
                 <span class="{{ ($job->result['coverage_pct'] ?? 0) >= 95 ? 'text-green-400' : 'text-yellow-400' }}">{{ $job->result['coverage_pct'] }}%</span>
@@ -138,21 +138,21 @@
         <td class="px-5 py-3 text-right flex items-center gap-2 justify-end">
           <a href="{{ route('admin.jobs.detail', $job->id) }}"
              class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white transition">
-            Details
+            Детали
           </a>
           @if(in_array($job->status, ['pending', 'running', 'interrupted']))
             <form method="POST"
                   action="{{ route('admin.jobs.cancel', ['id' => $job->id]) }}">
               @csrf
               <button type="submit" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-red-400 transition">
-                Cancel
+                Отмена
               </button>
             </form>
           @endif
         </td>
       </tr>
       @empty
-      <tr><td colspan="7" class="px-5 py-12 text-center text-gray-600">No jobs yet. Launch one above.</td></tr>
+      <tr><td colspan="7" class="px-5 py-12 text-center text-gray-600">Задач пока нет. Запустите выше.</td></tr>
       @endforelse
     </tbody>
   </table>
@@ -183,7 +183,7 @@ function watchJobRow(id, source) {
         `<div class="w-24 bg-gray-800 rounded-full h-1 mt-1"><div class="bg-blue-500 h-1 rounded-full" style="width:${barW}%"></div></div>`;
     }
     if (d.total !== undefined) {
-      let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> lots`;
+      let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> лотов`;
       if (d.new) r += ` <span class="text-gray-600">·</span> <span class="text-blue-400">+${d.new.toLocaleString()}</span>`;
       if (d.errors) r += ` <span class="text-gray-600">·</span> <span class="text-red-400">${d.errors} err</span>`;
       row.querySelector('.result-cell').innerHTML = r;

@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Filters')
+@section('title', 'Фильтры')
 
 @section('content')
 
@@ -21,9 +21,9 @@
 @endif
 
 <p class="text-sm text-gray-500 mb-6">
-  Rules are evaluated before every lot upsert. Parser reloads rules from DB every 60 seconds
+  Правила проверяются перед каждым сохранением лота. Парсер перезагружает правила каждые 60 секунд
   @if($recentHits > 0)
-    · <span class="text-blue-400">{{ $recentHits }} lot(s) deactivated by rules in the last 24h</span>
+    · <span class="text-blue-400">{{ $recentHits }} лот(ов) деактивировано правилами за последние 24ч</span>
   @endif
 </p>
 
@@ -40,33 +40,33 @@
   {{-- Header with add button --}}
   <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
     <span class="text-sm font-semibold text-white">
-      {{ count($filters) }} rule(s) defined
+      {{ count($filters) }} правил(о) добавлено
     </span>
     <button type="button"
             @click="openCreate()"
             class="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition">
-      + New rule
+      + Новое правило
     </button>
   </div>
 
   {{-- Rules table --}}
   @if(count($filters) === 0)
     <div class="px-5 py-10 text-center text-gray-500 text-sm">
-      No rules yet. The parser will accept all lots until you add rules.
+      Правил пока нет. Парсер будет принимать все лоты до добавления правил.
     </div>
   @else
     <table class="w-full text-sm">
       <thead class="bg-gray-900/60 text-gray-500 text-xs uppercase">
         <tr>
-          <th class="px-4 py-2 text-left font-medium">Prio</th>
-          <th class="px-4 py-2 text-left font-medium">Name</th>
-          <th class="px-4 py-2 text-left font-medium">Group</th>
-          <th class="px-4 py-2 text-left font-medium">Scope</th>
-          <th class="px-4 py-2 text-left font-medium">Condition</th>
-          <th class="px-4 py-2 text-left font-medium">Action</th>
-          <th class="px-4 py-2 text-left font-medium">Phase</th>
-          <th class="px-4 py-2 text-center font-medium">Enabled</th>
-          <th class="px-4 py-2 text-right font-medium">Manage</th>
+          <th class="px-4 py-2 text-left font-medium">Приор.</th>
+          <th class="px-4 py-2 text-left font-medium">Название</th>
+          <th class="px-4 py-2 text-left font-medium">Группа</th>
+          <th class="px-4 py-2 text-left font-medium">Охват</th>
+          <th class="px-4 py-2 text-left font-medium">Условие</th>
+          <th class="px-4 py-2 text-left font-medium">Действие</th>
+          <th class="px-4 py-2 text-left font-medium">Фаза</th>
+          <th class="px-4 py-2 text-center font-medium">Вкл.</th>
+          <th class="px-4 py-2 text-right font-medium">Действия</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-800/60">
@@ -92,7 +92,7 @@
               @if($filter->source)
                 <span class="px-2 py-0.5 rounded bg-purple-900/60 text-purple-300">{{ $filter->source }}</span>
               @else
-                <span class="px-2 py-0.5 rounded bg-gray-800 text-gray-500">global</span>
+                <span class="px-2 py-0.5 rounded bg-gray-800 text-gray-500">глобально</span>
               @endif
             </td>
             <td class="px-4 py-3 font-mono text-xs">
@@ -131,11 +131,11 @@
             <td class="px-4 py-3 text-right space-x-2">
               <button type="button"
                       @click='openEdit(@json($filter))'
-                      class="text-xs text-blue-400 hover:text-blue-300">edit</button>
+                      class="text-xs text-blue-400 hover:text-blue-300">редакт.</button>
               <form method="POST" action="{{ route('admin.filters.delete', $filter->id) }}" class="inline"
-                    onsubmit="return confirm('Delete rule {{ $filter->name }}?');">
+                    onsubmit="return confirm('Удалить правило {{ $filter->name }}?');">
                 @csrf @method('DELETE')
-                <button type="submit" class="text-xs text-red-400 hover:text-red-300">delete</button>
+                <button type="submit" class="text-xs text-red-400 hover:text-red-300">удалить</button>
               </form>
             </td>
           </tr>

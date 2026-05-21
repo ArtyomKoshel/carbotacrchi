@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Dashboard')
+@section('title', 'Дашборд')
 
 @section('content')
 
@@ -10,26 +10,26 @@
     <div class="flex items-center justify-between mb-3">
       <span class="text-xs font-bold uppercase tracking-widest text-gray-500">{{ $src->source }}</span>
       <div class="flex items-center gap-2">
-        <span class="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-400">active</span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-400">активен</span>
         <form method="POST" action="{{ route('admin.jobs.launch') }}">
           @csrf
           <input type="hidden" name="source" value="{{ $src->source }}">
           <input type="hidden" name="max_pages" value="0">
           <button type="submit"
                   class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:bg-blue-900/50 hover:text-blue-300 transition"
-                  title="Run parser now">▶ Run</button>
+                  title="Запустить парсер">▶ Запустить</button>
         </form>
       </div>
     </div>
     <div class="text-3xl font-bold text-white">{{ number_format($src->active) }}</div>
-    <div class="text-sm text-gray-500 mt-1">{{ number_format($src->total) }} total &nbsp;·&nbsp; {{ number_format($src->total - $src->active) }} inactive</div>
+    <div class="text-sm text-gray-500 mt-1">{{ number_format($src->total) }} всего &nbsp;·&nbsp; {{ number_format($src->total - $src->active) }} неактивных</div>
     @if(isset($lastParsed[$src->source]))
-    <div class="text-xs text-gray-600 mt-2">Last lot update: {{ \Carbon\Carbon::parse($lastParsed[$src->source])->diffForHumans() }}</div>
+    <div class="text-xs text-gray-600 mt-2">Последнее обновление: {{ \Carbon\Carbon::parse($lastParsed[$src->source])->diffForHumans() }}</div>
     @endif
     @if(isset($lastScheduled[$src->source]))
     @php $sched = $lastScheduled[$src->source]; @endphp
     <div class="text-xs mt-1 flex items-center gap-1.5">
-      <span class="text-gray-600">⏱ Scheduler:</span>
+      <span class="text-gray-600">⏱ Планировщик:</span>
       <span class="text-gray-500">{{ \Carbon\Carbon::parse($sched->last_run)->diffForHumans() }}</span>
       @php
         $sc = match($sched->last_status ?? '') {
@@ -42,7 +42,7 @@
       <span class="text-xs {{ $sc }}">· {{ $sched->last_status }}</span>
     </div>
     @else
-    <div class="text-xs text-gray-700 mt-1">⏱ Scheduler: never ran</div>
+    <div class="text-xs text-gray-700 mt-1">⏱ Планировщик: не запускался</div>
     @endif
   </div>
   @endforeach
@@ -52,7 +52,10 @@
 <div class="grid grid-cols-3 gap-4 mb-8">
   @foreach(['update' => 'blue', 'delisted' => 'red', 'relisted' => 'green'] as $ev => $color)
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-    <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $ev }} (24h)</div>
+@php
+      $evRu = ['update' => 'обновление', 'delisted' => 'снято', 'relisted' => 'возвращено'];
+    @endphp
+    <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $evRu[$ev] ?? $ev }} (24ч)</div>
     <div class="text-2xl font-bold text-{{ $color }}-400">{{ $changeSummary[$ev] ?? 0 }}</div>
   </div>
   @endforeach
@@ -61,16 +64,16 @@
 {{-- Proxy balance (on-demand) --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8" id="proxy-balance-card">
   <div class="flex items-center justify-between">
-    <span class="text-xs font-bold uppercase tracking-widest text-gray-500">Proxy Traffic (Floppydata)</span>
+    <span class="text-xs font-bold uppercase tracking-widest text-gray-500">Прокси трафик (Floppydata)</span>
     <button onclick="loadProxyBalance()" id="proxy-balance-btn"
             class="text-xs px-3 py-1 rounded bg-gray-800 text-gray-400 hover:bg-blue-900/50 hover:text-blue-300 transition">
-      Check balance
+      Проверить баланс
     </button>
   </div>
   <div id="proxy-balance-result" class="mt-3 hidden">
     <div class="flex items-end gap-3 mb-3">
       <span class="text-3xl font-bold text-white" id="proxy-gb">—</span>
-      <span class="text-sm text-gray-500 mb-1">GB remaining</span>
+      <span class="text-sm text-gray-500 mb-1">ГБ остаток</span>
     </div>
     <div class="w-full bg-gray-800 rounded-full h-2">
       <div id="proxy-bar" class="bg-green-500 h-2 rounded-full transition-all" style="width: 0%"></div>
@@ -99,18 +102,18 @@ function loadProxyBalance() {
       bar.style.width = pct + '%';
       if (res.subscription?.expiresOn) {
         const exp = document.getElementById('proxy-expires');
-        exp.textContent = 'Subscription expires: ' + new Date(res.subscription.expiresOn).toLocaleDateString();
+        exp.textContent = 'Подписка истекает: ' + new Date(res.subscription.expiresOn).toLocaleDateString();
         exp.classList.remove('hidden');
       }
       document.getElementById('proxy-balance-result').classList.remove('hidden');
       document.getElementById('proxy-balance-error').classList.add('hidden');
-      btn.textContent = 'Refresh';
+      btn.textContent = 'Обновить';
       btn.disabled = false;
     })
     .catch(e => {
       document.getElementById('proxy-balance-error').textContent = 'Error: ' + e.message;
       document.getElementById('proxy-balance-error').classList.remove('hidden');
-      btn.textContent = 'Check balance';
+      btn.textContent = 'Проверить баланс';
       btn.disabled = false;
     });
 }
@@ -119,17 +122,17 @@ function loadProxyBalance() {
 {{-- Recent changes --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-    <span class="font-semibold text-white">Recent Changes</span>
+    <span class="font-semibold text-white">Последние изменения</span>
     <a href="{{ route('admin.changes') }}"
-       class="text-xs text-blue-400 hover:text-blue-300">View all →</a>
+       class="text-xs text-blue-400 hover:text-blue-300">Все →</a>
   </div>
   <table class="w-full text-sm">
     <thead>
       <tr class="text-xs text-gray-500 uppercase border-b border-gray-800">
-        <th class="px-5 py-3 text-left">Lot</th>
-        <th class="px-5 py-3 text-left">Event</th>
-        <th class="px-5 py-3 text-left">Changes</th>
-        <th class="px-5 py-3 text-left">When</th>
+        <th class="px-5 py-3 text-left">Лот</th>
+        <th class="px-5 py-3 text-left">Событие</th>
+        <th class="px-5 py-3 text-left">Изменения</th>
+        <th class="px-5 py-3 text-left">Когда</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-800">
@@ -174,7 +177,7 @@ function loadProxyBalance() {
         </td>
       </tr>
       @empty
-      <tr><td colspan="4" class="px-5 py-8 text-center text-gray-600">No changes yet</td></tr>
+      <tr><td colspan="4" class="px-5 py-8 text-center text-gray-600">Изменений пока нет</td></tr>
       @endforelse
     </tbody>
   </table>
@@ -182,7 +185,7 @@ function loadProxyBalance() {
 
 {{-- Query timing --}}
 <div class="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
-  <div class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Query timing</div>
+  <div class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Время запросов</div>
   <div class="flex flex-wrap gap-3">
     @foreach($dbg as $label => $ms)
     <span class="text-xs px-2 py-1 rounded {{ $ms > 1000 ? 'bg-red-900 text-red-400' : ($ms > 200 ? 'bg-yellow-900 text-yellow-400' : 'bg-gray-800 text-gray-500') }}">

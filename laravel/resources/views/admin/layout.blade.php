@@ -22,16 +22,16 @@
     <span class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 px-2">Carbot Admin</span>
 
     @foreach([
-      ['route' => 'admin.dashboard', 'icon' => '▦', 'label' => 'Dashboard'],
-      ['route' => 'admin.changes',   'icon' => '↻', 'label' => 'Changes'],
-      ['route' => 'admin.logs',      'icon' => '≡', 'label' => 'Logs'],
-      ['route' => 'admin.jobs',      'icon' => '▶', 'label' => 'Jobs'],
-      ['route' => 'admin.schedules', 'icon' => '⏱', 'label' => 'Schedules'],
-      ['route' => 'admin.filters',   'icon' => '⚑', 'label' => 'Filters'],
-      ['route' => 'admin.bot-filters', 'icon' => '🤖', 'label' => 'Bot Filters'],
-      ['route' => 'admin.filter-skip-log.index', 'icon' => '✗', 'label' => 'Skip Log'],
-      ['route' => 'admin.fields',    'icon' => '◎', 'label' => 'Fields'],
-      ['route' => 'admin.lots',      'icon' => '⟳', 'label' => 'Re-parse'],
+      ['route' => 'admin.dashboard', 'icon' => '▦', 'label' => 'Дашборд'],
+      ['route' => 'admin.changes',   'icon' => '↻', 'label' => 'Изменения'],
+      ['route' => 'admin.logs',      'icon' => '≡', 'label' => 'Логи'],
+      ['route' => 'admin.jobs',      'icon' => '▶', 'label' => 'Задачи'],
+      ['route' => 'admin.schedules', 'icon' => '⏱', 'label' => 'Расписания'],
+      ['route' => 'admin.filters',   'icon' => '⚑', 'label' => 'Фильтры'],
+      ['route' => 'admin.bot-filters', 'icon' => '🤖', 'label' => 'Бот-фильтры'],
+      ['route' => 'admin.filter-skip-log.index', 'icon' => '✗', 'label' => 'Лог пропусков'],
+      ['route' => 'admin.fields',    'icon' => '◎', 'label' => 'Поля'],
+      ['route' => 'admin.lots',      'icon' => '⟳', 'label' => 'Репарсинг'],
     ] as $item)
       @php $active = request()->routeIs($item['route']) @endphp
       <a href="{{ route($item['route']) }}"

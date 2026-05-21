@@ -86,7 +86,7 @@ class WebhookController extends Controller
 
         $text = "👋 Привет, <b>{$name}</b>!\n\n"
             ."Я — бот для поиска авто на аукционах:\n\n"
-            ."🇷 <b>Encar</b> · <b>KBChacha</b>\n\n"
+            ."��🇷 <b>Encar</b>\n\n"
             ."🔍 <b>Что я умею:</b>\n"
             ."• Поиск по 200+ маркам и моделям\n"
             ."• 13 фильтров: цена, пробег, кузов, КПП, привод…\n"

@@ -47,7 +47,7 @@ class ParserJobsController extends Controller
         if (!$source && str_contains($lotId, '_')) {
             $source = explode('_', $lotId, 2)[0];
         }
-        $source = $source ?: 'kbcha';
+        $source = $source ?: 'encar';
 
         $pending = ParseJob::where('type', 'reparse')
             ->whereIn('status', ['pending', 'running', 'interrupted'])

@@ -44,7 +44,7 @@ class ParseFilter extends Model
 
     public const ACTIONS = ['allow', 'skip', 'flag', 'mark_inactive'];
 
-    public const SOURCES = ['encar', 'kbcha'];
+    public const SOURCES = ['encar'];
 
     public const PHASES = ['pre', 'post'];
 

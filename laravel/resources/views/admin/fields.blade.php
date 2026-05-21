@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Fields')
+@section('title', 'Поля')
 
 @section('content')
 
@@ -18,8 +18,8 @@
 {{-- Header --}}
 <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
   <p class="text-sm text-gray-500">
-    Unified catalogue: every lot attribute, its source mapping, and fill-coverage per parser.
-    Pre-computed — reads the <code class="text-gray-400">field_coverage_stats</code> table.
+    Единый каталог: все атрибуты лота, маппинг источников и покрытие полей.
+    Предвычислено — читает таблицу <code class="text-gray-400">field_coverage_stats</code>.
   </p>
   <form method="POST" action="{{ route('admin.fields.recompute') }}" class="flex items-center gap-3">
     @csrf
@@ -28,11 +28,11 @@
         computed {{ $computedAt->diffForHumans() }}
       </span>
     @else
-      <span class="text-xs text-amber-400">never computed — click Refresh</span>
+      <span class="text-xs text-amber-400">не вычислялось — нажмите Обновить</span>
     @endif
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition">
-      ↻ Recompute
+      ↻ Обновить
     </button>
   </form>
 </div>
@@ -40,7 +40,7 @@
 {{-- Summary strip --}}
 <div class="flex flex-wrap gap-3 mb-6">
   <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300">
-    <span class="text-gray-500">Total fields:</span>
+    <span class="text-gray-500">Всего полей:</span>
     <span class="text-white font-semibold ml-1">{{ $totalFields }}</span>
   </span>
   @foreach($sources as $src)
@@ -51,7 +51,7 @@
     <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300">
       <span class="text-{{ $color }}-400 font-semibold">{{ $src }}</span>:
       <span class="text-white font-semibold ml-1">{{ number_format($n) }}</span>
-      <span class="text-gray-500">lots</span>
+      <span class="text-gray-500">лотов</span>
     </span>
   @endforeach
   <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-500">
@@ -64,7 +64,7 @@
 
   <div class="mb-6 flex flex-wrap items-center gap-3">
     <input type="text" x-model="q"
-           placeholder="Filter by field name / column / raw location..."
+           placeholder="Фильтр по названию поля / колонке / raw пути..."
            class="flex-1 min-w-[260px] bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600">
 
     <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400">
@@ -75,12 +75,12 @@
 
     <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400 cursor-pointer">
       <input type="checkbox" x-model="showEmpty" class="w-3.5 h-3.5">
-      show fields not populated
+      показывать пустые поля
     </label>
 
     <button type="button" @click="q=''; minPct=0; showEmpty=true"
             class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-gray-300">
-      Clear
+      Сбросить
     </button>
   </div>
 
@@ -103,12 +103,12 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-900/60 text-gray-500 text-xs uppercase">
             <tr>
-              <th class="px-4 py-2 text-left font-medium w-[180px]">Field</th>
-              <th class="px-4 py-2 text-left font-medium w-[90px]">Type</th>
+              <th class="px-4 py-2 text-left font-medium w-[180px]">Поле</th>
+              <th class="px-4 py-2 text-left font-medium w-[90px]">Тип</th>
               @foreach($sources as $src)
-                <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $src }} coverage</th>
+                <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $src }} покрытие</th>
               @endforeach
-              <th class="px-4 py-2 text-left font-medium">Sources & transform</th>
+              <th class="px-4 py-2 text-left font-medium">Источники & преобразование</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-800/60">
@@ -168,7 +168,7 @@
                 @endforeach
                 <td class="px-4 py-3 align-top">
                   @if(empty($f['extractions']))
-                    <span class="text-[11px] text-gray-600 italic">not mapped in field_mappings.py</span>
+                    <span class="text-[11px] text-gray-600 italic">не описано в field_mappings.py</span>
                   @else
                     <div class="space-y-1">
                       @foreach($f['extractions'] as $e)

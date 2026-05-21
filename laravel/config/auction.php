@@ -5,6 +5,6 @@ return [
     'webhook_secret'     => env('TELEGRAM_WEBHOOK_SECRET', ''),
     'miniapp_url'        => env('MINIAPP_URL', 'https://localhost:8080/miniapp/'),
     'data_dir'           => storage_path('app/data'),
-    'sources'            => array_filter(explode(',', env('PARSER_SOURCES', 'kbcha,encar'))),
+    'sources'            => array_filter(explode(',', env('PARSER_SOURCES', 'encar'))),
     'floppydata_api_key' => env('FLOPPYDATA_API_KEY', ''),
 ];

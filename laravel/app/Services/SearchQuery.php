@@ -55,7 +55,7 @@ class SearchQuery
     public string $trim = '';
     public string $vin = '';
     /** @var string[] */
-    public array $sources = ['encar', 'kbcha'];
+    public array $sources = ['encar'];
     public string $sort = 'date';
     public int $limit = 20;
     public int $offset = 0;

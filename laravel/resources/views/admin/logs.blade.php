@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Logs')
+@section('title', 'Логи')
 
 @section('content')
 
@@ -10,12 +10,12 @@
 
   {{-- Main log files --}}
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
-    <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Parser Logs</div>
+    <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Логи парсера</div>
     @foreach($rotationFiles as $rf)
     <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $rf['idx'] ?: null])) }}"
        class="block px-2 py-1.5 rounded text-xs font-mono truncate transition mb-0.5
               {{ !$jobFile && !$appLog && $fileIdx === $rf['idx'] ? 'bg-blue-700/30 text-blue-300 border border-blue-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
-      {{ $rf['label'] }}{{ $rf['idx'] === 0 ? ' (current)' : '' }}
+      {{ $rf['label'] }}{{ $rf['idx'] === 0 ? ' (текущий)' : '' }}
     </a>
     @endforeach
   </div>
@@ -23,7 +23,7 @@
   {{-- Laravel app logs (dynamic scan) --}}
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
     <div class="flex items-center justify-between mb-2">
-      <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">App Log</span>
+      <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Лог приложения</span>
       @if(!empty($appLogFiles))
       <span class="text-xs text-gray-600">{{ count($appLogFiles) }}</span>
       @endif
@@ -123,12 +123,11 @@
   {{-- Source filter (10E) --}}
   <select id="source-select" onchange="applySource(this.value)"
           class="px-2 py-1 rounded-lg text-xs bg-gray-800 border border-gray-700 text-gray-300">
-    <option value="" {{ !$source ? 'selected' : '' }}>All sources</option>
+    <option value="" {{ !$source ? 'selected' : '' }}>Все источники</option>
     <option value="encar" {{ $source === 'encar' ? 'selected' : '' }}>Encar</option>
-    <option value="kbcha" {{ $source === 'kbcha' ? 'selected' : '' }}>KBCha</option>
   </select>
 
-  <span class="text-xs text-gray-600 ml-auto mr-1">Lines:</span>
+  <span class="text-xs text-gray-600 ml-auto mr-1">Строк:</span>
   @foreach([500, 1000, 3000, 10000] as $lim)
   <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $lim])) }}"
      class="px-2 py-1 rounded text-xs transition

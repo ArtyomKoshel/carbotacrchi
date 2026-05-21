@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Re-parse Lot')
+@section('title', 'Репарсинг')
 
 @section('content')
 
@@ -12,11 +12,11 @@
 {{-- Search form --}}
 <form method="GET" action="{{ route('admin.lots') }}"
       class="flex gap-3 mb-6">
-  <input type="text" name="q" value="{{ $q }}" placeholder="Lot ID / plate / VIN..."
+  <input type="text" name="q" value="{{ $q }}" placeholder="ID лота / номер / VIN..."
          class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
   <button type="submit"
           class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm transition">
-    Search
+    Найти
   </button>
 </form>
 
@@ -24,16 +24,16 @@
 @if($q !== '' && $lots->isNotEmpty())
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
   <div class="px-5 py-3 border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wide">
-    Results for "{{ $q }}"
+    Результаты для "{{ $q }}"
   </div>
   <table class="w-full text-sm">
     <thead>
       <tr class="text-xs text-gray-500 uppercase border-b border-gray-800">
         <th class="px-5 py-3 text-left">ID</th>
-        <th class="px-5 py-3 text-left">Make / Model</th>
-        <th class="px-5 py-3 text-left">Plate</th>
-        <th class="px-5 py-3 text-left">Status</th>
-        <th class="px-5 py-3 text-left">Parsed</th>
+        <th class="px-5 py-3 text-left">Марка / Модель</th>
+        <th class="px-5 py-3 text-left">Номер</th>
+        <th class="px-5 py-3 text-left">Статус</th>
+        <th class="px-5 py-3 text-left">Обновлён</th>
         <th class="px-5 py-3"></th>
       </tr>
     </thead>
@@ -47,7 +47,7 @@
         <td class="px-5 py-3 text-gray-400 text-xs">{{ $lot->plate_number ?? '—' }}</td>
         <td class="px-5 py-3">
           <span class="text-xs px-2 py-0.5 rounded-full {{ $lot->is_active ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-500' }}">
-            {{ $lot->is_active ? 'active' : 'inactive' }}
+            {{ $lot->is_active ? 'активен' : 'неактивен' }}
           </span>
         </td>
         <td class="px-5 py-3 text-gray-500 text-xs">
@@ -59,7 +59,7 @@
             @csrf
             <button type="submit"
                     class="px-3 py-1 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-xs transition">
-              ⟳ Re-parse
+              ⟳ Репарсинг
             </button>
           </form>
         </td>
@@ -69,21 +69,21 @@
   </table>
 </div>
 @elseif($q !== '')
-<div class="text-gray-500 text-sm mb-6">No lots found for "{{ $q }}"</div>
+<div class="text-gray-500 text-sm mb-6">Лоты не найдены для "{{ $q }}"</div>
 @endif
 
 {{-- Recent reparse queue --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-800 font-semibold text-white text-sm">
-    Recent re-parse requests
+    Последние запросы репарсинга
   </div>
   <table class="w-full text-sm">
     <thead>
       <tr class="text-xs text-gray-500 uppercase border-b border-gray-800">
-        <th class="px-5 py-3 text-left">Lot ID</th>
-        <th class="px-5 py-3 text-left">Status</th>
-        <th class="px-5 py-3 text-left">Result</th>
-        <th class="px-5 py-3 text-left">Requested</th>
+        <th class="px-5 py-3 text-left">ID лота</th>
+        <th class="px-5 py-3 text-left">Статус</th>
+        <th class="px-5 py-3 text-left">Результат</th>
+        <th class="px-5 py-3 text-left">Запрошено</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-800" id="reparse-table">
@@ -122,7 +122,7 @@
         </td>
       </tr>
       @empty
-      <tr><td colspan="4" class="px-5 py-8 text-center text-gray-600">No requests yet</td></tr>
+      <tr><td colspan="4" class="px-5 py-8 text-center text-gray-600">Запросов пока нет</td></tr>
       @endforelse
     </tbody>
   </table>
