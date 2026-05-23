@@ -25,7 +25,7 @@ class NormalizeEncarTaxonomy extends Command
     ];
 
     private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
-    private const MODEL_PREFIX_RE = '/^(?:더|더\s+뉴|올\s+뉴|올뉴|뉴|신형)\s+/u';
+    private const MODEL_PREFIX_RE = '/^(?:더\s+뉴|더|올\s+뉴|올뉴|뉴|신형)\s+/u';
 
     public function handle(TaxonomyRuleEngine $ruleEngine, TaxonomySuggestionService $suggestions, TaxonomyTermService $termService): int
     {

@@ -63,7 +63,7 @@ _TRIM_HINTS = (
 )
 
 _UNKNOWN_TAIL_HINT_RE = _re.compile(r'(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$')
-_MODEL_PREFIX_RE = _re.compile(r'^(?:더|더\s+뉴|올\s+뉴|올뉴|뉴|신형)\s+')
+_MODEL_PREFIX_RE = _re.compile(r'^(?:더\s+뉴|더|올\s+뉴|올뉴|뉴|신형)\s+')
 _ANOMALY_SEEN_MAX = 20_000
 _ANOMALY_SEEN_TTL_SEC = 6 * 60 * 60
 _anomaly_seen: dict[str, float] = {}
