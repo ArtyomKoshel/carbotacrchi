@@ -2,6 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\TaxonomyAnomalyQueue;
+use App\Services\Taxonomy\TaxonomyRuleEngine;
+use App\Services\Taxonomy\TaxonomySuggestionService;
+use App\Services\Taxonomy\TaxonomyTermService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -15,34 +19,15 @@ class NormalizeEncarTaxonomy extends Command
 
     protected $description = 'Normalize Encar model taxonomy: clean model, infer generation, and fill empty trim where possible';
 
-    private const TAIL_POWERTRAIN_TOKENS = [
-        '가솔린', '디젤', '하이브리드', 'HEV', 'LPG', '전기', 'EV',
-        '2WD', '4WD', 'AWD', 'FWD', 'RWD', 'xDrive', 'sDrive',
-        '터보', 'TCe', 'TFSI', 'TDI', 'e-VGT', '(택시형)', '(렌터카)', '(영업용)',
-    ];
-
     private const GEN_NON_CHASSIS_TOKENS = [
         'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
         'AWD', 'FWD', 'RWD', '4WD', '2WD',
     ];
 
-    private const PACKAGE_HINTS = [
-        'M 스포츠 플러스', 'M 퍼포먼스', 'M 스포츠',
-        'AMG Line', 'GT Line', 'N Line', 'S line', 'xLine',
-    ];
-
-    private const TRIM_HINTS = [
-        '캘리그래피 블랙에디션', '마스터즈 그래비티', '익스클루시브 스페셜',
-        '프레스티지 스페셜', '노블레스 스페셜', '프리미엄 초이스',
-        '캘리그래피', '인스퍼레이션', '익스클루시브', '프레스티지', '시그니처',
-        '노블레스', '프리미엄', '모던', '스마트', '럭셔리',
-        '르블랑', '고급형', '기본형', '비즈니스 2', '비즈니스 1', '모빌리티',
-    ];
-
     private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
     private const MODEL_PREFIX_RE = '/^(?:더|더\s+뉴|올\s+뉴|올뉴|뉴|신형)\s+/u';
 
-    public function handle(): int
+    public function handle(TaxonomyRuleEngine $ruleEngine, TaxonomySuggestionService $suggestions, TaxonomyTermService $termService): int
     {
         $apply = (bool) $this->option('apply');
         $limit = max(0, (int) $this->option('limit'));
@@ -52,6 +37,8 @@ class NormalizeEncarTaxonomy extends Command
         $this->info('Normalize Encar Taxonomy');
         $this->line('Mode: ' . ($apply ? 'APPLY' : 'DRY-RUN'));
         $this->line("Source: {$source}, Chunk: {$chunk}, Limit: " . ($limit ?: 'all'));
+
+        $termSets = $termService->getSets($source);
 
         $processed = 0;
         $wouldUpdate = 0;
@@ -75,6 +62,8 @@ class NormalizeEncarTaxonomy extends Command
         $baseQuery->chunkById($chunk, function ($rows) use (
             $apply,
             $limit,
+            $ruleEngine,
+            $suggestions,
             &$processed,
             &$wouldUpdate,
             &$updated,
@@ -96,8 +85,25 @@ class NormalizeEncarTaxonomy extends Command
 
                 [$normalizedModel, $generation, $inferredTrim, $inferredPackage, $unknownTail] = $this->normalizeModelTaxonomy((string) $row->model, $modelGroup);
 
+                $rulePatch = $ruleEngine->apply([
+                    'source' => (string) $row->source,
+                    'lot_id' => (string) $row->id,
+                    'make' => (string) ($row->make ?? ''),
+                    'model_raw' => (string) $row->model,
+                    'model' => $normalizedModel,
+                    'generation' => $generation,
+                    'trim' => $inferredTrim,
+                    'unknown_tail' => $unknownTail,
+                ], false);
+
+                $normalizedModel = $rulePatch['model'] ?? $normalizedModel;
+                $generation = $rulePatch['generation'] ?? $generation;
+                $inferredTrim = $rulePatch['trim'] ?? $inferredTrim;
+                $unknownTail = $rulePatch['unknown_tail'] ?? $unknownTail;
+
                 if ($unknownTail) {
                     $unknownTailHits[$unknownTail] = ($unknownTailHits[$unknownTail] ?? 0) + 1;
+                    $this->upsertAnomalyQueue((string) $row->source, (string) ($row->make ?? ''), (string) $row->id, (string) $row->model, $unknownTail, $suggestions);
                 }
 
                 $patch = [];
@@ -204,6 +210,60 @@ class NormalizeEncarTaxonomy extends Command
         return self::SUCCESS;
     }
 
+    private function upsertAnomalyQueue(string $source, string $make, string $lotId, string $modelRaw, string $unknownTail, TaxonomySuggestionService $suggestions): void
+    {
+        $source = trim($source) === '' ? 'encar' : trim($source);
+        $make = $this->nullableString($make);
+        $unknownTail = trim($unknownTail);
+        if ($unknownTail === '') {
+            return;
+        }
+
+        $reason = 'model_tail_not_matched_by_known_trim_package_patterns';
+        $row = TaxonomyAnomalyQueue::query()
+            ->where('source', $source)
+            ->where('make', $make)
+            ->where('unknown_tail', $unknownTail)
+            ->where('reason', $reason)
+            ->first();
+
+        if ($row) {
+            $row->seen_count = (int) $row->seen_count + 1;
+            $row->last_seen_at = now();
+            if ($row->sample_lot_id === null) {
+                $row->sample_lot_id = $lotId;
+            }
+            if ($row->sample_model_raw === null) {
+                $row->sample_model_raw = $modelRaw;
+            }
+            $row->save();
+            return;
+        }
+
+        $s = $suggestions->suggest($unknownTail, $modelRaw);
+        TaxonomyAnomalyQueue::query()->create([
+            'source' => $source,
+            'make' => $make,
+            'unknown_tail' => $unknownTail,
+            'reason' => $reason,
+            'sample_lot_id' => $lotId,
+            'sample_model_raw' => $modelRaw,
+            'seen_count' => 1,
+            'first_seen_at' => now(),
+            'last_seen_at' => now(),
+            'status' => 'new',
+            'suggested_action' => $s['action'],
+            'suggested_value' => $s['value'],
+            'suggestion_confidence' => $s['confidence'],
+        ]);
+    }
+
+    private function nullableString(string $value): ?string
+    {
+        $v = trim($value);
+        return $v === '' ? null : $v;
+    }
+
     private function decodeRawData(mixed $rawData): ?array
     {
         if (is_array($rawData)) {
@@ -242,11 +302,14 @@ class NormalizeEncarTaxonomy extends Command
             return '';
         }
 
+        $termSets = app(TaxonomyTermService::class)->getSets('encar');
+        $tailTokens = $termSets['tail_powertrain_tokens'] ?? [];
+
         $tokens = preg_split('/\s+/u', $model) ?: [];
         while (!empty($tokens)) {
             $tail = $tokens[count($tokens) - 1];
             if (
-                in_array($tail, self::TAIL_POWERTRAIN_TOKENS, true)
+                in_array($tail, $tailTokens, true)
                 || preg_match('/^\d+(?:\.\d+)?(?:T|D|L)?$/i', $tail)
                 || preg_match('/^\d{1,2}인승$/u', $tail)
             ) {
@@ -358,8 +421,12 @@ class NormalizeEncarTaxonomy extends Command
             return ['', null, null];
         }
 
-        [$baseAfterPackage, $package] = $this->extractSuffixHint($normalized, self::PACKAGE_HINTS);
-        [$baseAfterTrim, $trim] = $this->extractSuffixHint($baseAfterPackage, self::TRIM_HINTS);
+        $termSets = app(TaxonomyTermService::class)->getSets('encar');
+        $packageHints = $termSets['package_hints'] ?? [];
+        $trimHints = $termSets['trim_hints'] ?? [];
+
+        [$baseAfterPackage, $package] = $this->extractSuffixHint($normalized, $packageHints);
+        [$baseAfterTrim, $trim] = $this->extractSuffixHint($baseAfterPackage, $trimHints);
 
         return [$baseAfterTrim, $trim, $package];
     }

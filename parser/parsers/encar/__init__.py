@@ -10,6 +10,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable
 
 import httpx
+try:
+    import pymysql as _pymysql
+    from pymysql.cursors import DictCursor as _DictCursor
+except Exception:  # pragma: no cover - parser may run in reduced env for tests
+    _pymysql = None
+    _DictCursor = None
 
 from config import Config
 from models import CarLot, InspectionRecord
@@ -61,6 +67,9 @@ _MODEL_PREFIX_RE = _re.compile(r'^(?:더|더\s+뉴|올\s+뉴|올뉴|뉴|신형)\
 _ANOMALY_SEEN_MAX = 20_000
 _ANOMALY_SEEN_TTL_SEC = 6 * 60 * 60
 _anomaly_seen: dict[str, float] = {}
+_TAX_RULES_RELOAD_SEC = 60.0
+_tax_rules_cache: list[dict] = []
+_tax_rules_loaded_at: float = 0.0
 
 
 def _anomaly_file_path() -> str:
@@ -156,6 +165,112 @@ def _append_taxonomy_anomaly(payload: dict) -> None:
             fp.write('\n')
     except OSError as e:
         logger.warning(f"[{_SOURCE}] cannot write taxonomy anomaly log: {e}")
+
+
+def _load_taxonomy_rules() -> list[dict]:
+    global _tax_rules_cache, _tax_rules_loaded_at
+    now = _time.monotonic()
+    if _tax_rules_cache and now - _tax_rules_loaded_at < _TAX_RULES_RELOAD_SEC:
+        return _tax_rules_cache
+
+    if _pymysql is None or _DictCursor is None:
+        return _tax_rules_cache
+
+    try:
+        conn = _pymysql.connect(
+            host=Config.DB_HOST,
+            port=Config.DB_PORT,
+            user=Config.DB_USERNAME,
+            password=Config.DB_PASSWORD,
+            database=Config.DB_DATABASE,
+            charset='utf8mb4',
+            cursorclass=_DictCursor,
+            autocommit=True,
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT source, make, model_contains, unknown_tail, action, action_value
+                FROM taxonomy_rules
+                WHERE is_active = 1
+                ORDER BY priority ASC, id ASC
+                """
+            )
+            _tax_rules_cache = [dict(r) for r in cur.fetchall()]
+            _tax_rules_loaded_at = now
+        conn.close()
+    except Exception as e:  # pragma: no cover - must never break parser run
+        logger.debug(f"[{_SOURCE}] taxonomy rules load skipped: {type(e).__name__}: {e}")
+
+    return _tax_rules_cache
+
+
+def _rule_matches(rule: dict, ctx: dict) -> bool:
+    source = (rule.get('source') or '').strip()
+    if source and source != '*' and source != ctx.get('source'):
+        return False
+
+    make = (rule.get('make') or '').strip().lower()
+    if make and make != (ctx.get('make') or '').strip().lower():
+        return False
+
+    model_contains = (rule.get('model_contains') or '').strip().lower()
+    if model_contains and model_contains not in (ctx.get('model_raw') or '').strip().lower():
+        return False
+
+    tail = (rule.get('unknown_tail') or '').strip().lower()
+    if tail and tail != (ctx.get('unknown_tail') or '').strip().lower():
+        return False
+
+    return True
+
+
+def _apply_taxonomy_rules(
+    source: str,
+    make: str,
+    model_raw: str,
+    model: str,
+    generation: str | None,
+    trim: str | None,
+    unknown_tail: str | None,
+) -> tuple[str, str | None, str | None, str | None]:
+    state = {
+        'source': source,
+        'make': make or '',
+        'model_raw': model_raw or '',
+        'model': model or '',
+        'generation': generation,
+        'trim': trim,
+        'unknown_tail': unknown_tail,
+    }
+
+    for rule in _load_taxonomy_rules():
+        if not _rule_matches(rule, state):
+            continue
+
+        action = (rule.get('action') or '').strip()
+        value = (rule.get('action_value') or '').strip()
+
+        if action == 'set_trim':
+            if not state['trim']:
+                state['trim'] = value or state['unknown_tail']
+                state['unknown_tail'] = None
+        elif action == 'set_generation':
+            if not state['generation'] and value:
+                state['generation'] = value
+        elif action == 'strip_tail':
+            target = value or (state['unknown_tail'] or '')
+            if target:
+                suffix = f" {target}"
+                if state['model'].endswith(suffix):
+                    state['model'] = state['model'][:-len(suffix)].strip()
+                if state['unknown_tail'] and state['unknown_tail'].lower() == target.lower():
+                    state['unknown_tail'] = None
+        elif action == 'replace_model':
+            if value:
+                state['model'] = value
+
+    return state['model'], state['generation'], state['trim'], state['unknown_tail']
 
 
 def _strip_tail_noise(model: str) -> str:
@@ -323,6 +438,15 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
 
     model_group = item.get("ModelGroup")
     model_clean, generation, inferred_trim, inferred_package, unknown_tail = _normalize_model_taxonomy(model, model_group)
+    model_clean, generation, inferred_trim, unknown_tail = _apply_taxonomy_rules(
+        source=_SOURCE,
+        make=make_kr,
+        model_raw=model,
+        model=model_clean,
+        generation=generation,
+        trim=inferred_trim,
+        unknown_tail=unknown_tail,
+    )
     trim = (badge_detail or '').strip() or inferred_trim
 
     if unknown_tail:

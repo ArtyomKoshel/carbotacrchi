@@ -23,6 +23,7 @@ class AdminPagePermission extends Model
         'bot-filters'     => 'Бот-фильтры',
         'filter-skip-log' => 'Лог пропусков',
         'fields'          => 'Поля',
+        'taxonomy'        => 'Таксономия',
         'lots'            => 'Репарсинг',
     ];
 
@@ -57,6 +58,13 @@ class AdminPagePermission extends Model
         'admin.fields'                 => 'fields',
         'admin.fields.recompute'       => 'fields',
         'admin.fields.schema'          => 'fields',
+        'admin.taxonomy.index'         => 'taxonomy',
+        'admin.taxonomy.ingest'        => 'taxonomy',
+        'admin.taxonomy.rules.store'   => 'taxonomy',
+        'admin.taxonomy.rules.update'  => 'taxonomy',
+        'admin.taxonomy.rules.delete'  => 'taxonomy',
+        'admin.taxonomy.queue.update'  => 'taxonomy',
+        'admin.taxonomy.queue.create-rule' => 'taxonomy',
         'admin.lots'                   => 'lots',
         'admin.lots.reparse'           => 'lots',
         'admin.reparse.status'         => 'lots',
