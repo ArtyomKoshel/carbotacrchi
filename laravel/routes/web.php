@@ -62,6 +62,7 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     // Taxonomy rules (Encar model/generation/trim curation)
     Route::get('/taxonomy',                      [TaxonomyRulesController::class, 'index'])->name('taxonomy.index');
     Route::post('/taxonomy/ingest',              [TaxonomyRulesController::class, 'ingest'])->name('taxonomy.ingest');
+    Route::post('/taxonomy/bootstrap',           [TaxonomyRulesController::class, 'bootstrap'])->name('taxonomy.bootstrap');
     Route::post('/taxonomy/rules',               [TaxonomyRulesController::class, 'storeRule'])->name('taxonomy.rules.store');
     Route::put('/taxonomy/rules/{id}',           [TaxonomyRulesController::class, 'updateRule'])->name('taxonomy.rules.update');
     Route::delete('/taxonomy/rules/{id}',        [TaxonomyRulesController::class, 'deleteRule'])->name('taxonomy.rules.delete');
