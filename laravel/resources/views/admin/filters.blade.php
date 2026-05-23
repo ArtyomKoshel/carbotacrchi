@@ -102,7 +102,7 @@
             <td class="px-4 py-3 font-mono text-xs">
               <span class="text-blue-300">{{ $ui::field($filter->field) }}</span>
               <span class="text-gray-600">({{ $filter->field }})</span>
-              <span class="text-gray-500">{{ $filter->operator }}</span>
+              <span class="text-gray-500">{{ $operatorLabels[$filter->operator] ?? $filter->operator }}</span>
               <span class="text-yellow-300">{{ $filter->value ?? '—' }}</span>
             </td>
             <td class="px-4 py-3">
@@ -210,7 +210,7 @@
               <option value="{{ $val }}">{{ $label }}</option>
             @endforeach
           </select>
-          <p class="text-xs text-gray-600 mt-1">Post = после загрузки данных осмотра.</p>
+          <p class="text-xs text-gray-600 mt-1">Фаза «После осмотра» применяется после загрузки данных осмотра.</p>
         </div>
 
         <div>
@@ -226,7 +226,7 @@
               </optgroup>
             @endforeach
           </select>
-          <p class="text-xs text-gray-600 mt-1" x-text="currentField?.description || ''"></p>
+          <p class="text-xs text-gray-600 mt-1">Отображается нормализованное имя поля для фильтрации.</p>
         </div>
 
         <div>

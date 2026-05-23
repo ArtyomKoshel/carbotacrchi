@@ -142,8 +142,10 @@
             $tolType = $setting->tolerance_type ?: 'none';
             $tolValue = $setting->tolerance_value;
             $tolDisplay = $tolType === 'percentage' && $tolValue !== null ? $tolValue * 100 : $tolValue;
+            $fieldUiLabel = $ui::field($setting->field_name);
             $searchText = mb_strtolower(trim(implode(' ', [
               $setting->field_name,
+              $fieldUiLabel,
               $setting->field_label,
               $setting->description,
               $setting->dtype,
@@ -157,12 +159,9 @@
                data-dtype="{{ $setting->dtype }}"
                data-search="{{ e($searchText) }}">
             <div class="col-span-4 min-w-0">
-              <div class="text-white font-medium truncate">{{ $setting->field_label ?: $ui::field($setting->field_name) }}</div>
+              <div class="text-white font-medium truncate">{{ $fieldUiLabel }}</div>
               <div class="text-[11px] text-gray-500 truncate">
                 <span class="font-mono text-gray-400">{{ $setting->field_name }}</span>
-                @if($setting->description)
-                  · {{ $setting->description }}
-                @endif
               </div>
             </div>
 

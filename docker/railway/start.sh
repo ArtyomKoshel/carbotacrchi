@@ -93,23 +93,6 @@ fi
 echo "[start] Clearing config cache..."
 php "$APP_DIR/artisan" config:clear 2>/dev/null || true
 
-NEED_MIGRATE=0
-if [ -n "$DB_HOST" ]; then
-    echo "[start] Waiting for MySQL at ${DB_HOST}:${DB_PORT:-3306}..."
-    MAX=30
-    COUNT=0
-    until nc -z "${DB_HOST}" "${DB_PORT:-3306}" 2>/dev/null; do
-        COUNT=$((COUNT + 1))
-        if [ "$COUNT" -ge "$MAX" ]; then
-            echo "[start] MySQL not ready after $MAX attempts, continuing anyway..."
-            break
-        fi
-        sleep 2
-    done
-
-    NEED_MIGRATE=1
-fi
-
 echo "[start] Preparing log & storage directories..."
 mkdir -p /app/logs
 mkdir -p "$APP_DIR/storage/logs" "$APP_DIR/storage/framework/cache" "$APP_DIR/storage/framework/sessions" "$APP_DIR/storage/framework/views" "$APP_DIR/bootstrap/cache"
@@ -123,27 +106,11 @@ if [ "$APP_READONLY" = "true" ]; then
     sed -i '/\[program:parser\]/,/^\[/{s/autostart=true/autostart=false/}' /etc/supervisord.conf
 fi
 
-# Start web server FIRST so healthcheck /up passes while migrations run
+# Start web server
 echo "[start] Starting nginx + php-fpm via supervisord..."
 /usr/bin/supervisord -c /etc/supervisord.conf &
 SUPER_PID=$!
 sleep 2  # give php-fpm a moment to bind
-
-if [ "$NEED_MIGRATE" = "1" ] && [ "$APP_READONLY" != "true" ]; then
-    echo "[start] Running migrations..."
-    php "$APP_DIR/artisan" migrate --force --no-interaction || \
-        echo "[start] WARNING: migrate failed, continuing anyway"
-
-    if [ -n "$TEST_TELEGRAM_ID" ]; then
-        echo "[start] Seeding demo data for user $TEST_TELEGRAM_ID..."
-        php "$APP_DIR/artisan" demo:seed --telegram-id="$TEST_TELEGRAM_ID" || true
-
-        if [ "$DEMO_NOTIFY" = "1" ]; then
-            echo "[start] Sending demo notifications..."
-            php "$APP_DIR/artisan" demo:notify --telegram-id="$TEST_TELEGRAM_ID" || true
-        fi
-    fi
-fi
 
 # Keep container alive — wait on supervisord
 wait $SUPER_PID

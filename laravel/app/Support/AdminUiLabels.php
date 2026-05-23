@@ -13,6 +13,7 @@ class AdminUiLabels
         'update' => 'Обновление',
         'delisted' => 'Снят с продажи',
         'relisted' => 'Возвращён в продажу',
+        'deactivated_filter' => 'Деактивирован фильтром',
     ];
 
     private const STATUS_LABELS = [
@@ -36,23 +37,35 @@ class AdminUiLabels
     ];
 
     private const FIELD_LABELS = [
+        'id' => 'Внутренний ID',
         'source' => 'Источник',
         'lot_id' => 'ID лота',
         'lot_url' => 'Ссылка на лот',
+        'location' => 'Местоположение',
         'make' => 'Марка',
         'model' => 'Модель',
+        'trim' => 'Комплектация',
         'year' => 'Год',
+        'registration_date' => 'Дата первой регистрации',
+        'registration_year_month' => 'Год и месяц регистрации',
         'price' => 'Цена',
+        'retail_value' => 'Розничная стоимость',
+        'repair_cost' => 'Стоимость ремонта',
         'mileage' => 'Пробег',
         'fuel' => 'Топливо',
         'transmission' => 'Коробка передач',
         'engine_volume' => 'Объём двигателя',
         'drive_type' => 'Привод',
         'body_type' => 'Тип кузова',
+        'seat_count' => 'Количество мест',
+        'sell_type' => 'Тип продажи',
         'insurance_count' => 'Страховых случаев',
         'has_accident' => 'Были ДТП',
         'owners_count' => 'Кол-во владельцев',
         'flood_history' => 'История затопления',
+        'total_loss_history' => 'Полная гибель (история)',
+        'lien_status' => 'Статус залога',
+        'seizure_status' => 'Статус ареста',
         'is_active' => 'Активность лота',
         'plate_number' => 'Гос. номер',
         'vin' => 'VIN',
@@ -81,6 +94,10 @@ class AdminUiLabels
     {
         if (!$event) {
             return '—';
+        }
+
+        if (str_starts_with($event, 'deactivated_filter')) {
+            return 'Деактивирован фильтром';
         }
 
         return self::EVENT_LABELS[$event] ?? self::humanize($event);
