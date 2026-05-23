@@ -50,7 +50,7 @@
   @if(count($jobFiles))
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-3">
     <div class="flex items-center justify-between mb-2">
-      <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Job Logs</span>
+      <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Логи задач</span>
       <span class="text-xs text-gray-600">{{ count($jobFiles) }}</span>
     </div>
     <div class="max-h-64 overflow-y-auto space-y-0.5">
@@ -72,19 +72,19 @@
           <span class="block text-[10px] text-gray-700">{{ \Carbon\Carbon::createFromTimestamp($jf['mtime'])->diffForHumans() }}</span>
         </a>
         @if($jid)
-        <a href="{{ route('admin.jobs.detail', $jid) }}" title="View job #{{ $jid }}"
+        <a href="{{ route('admin.jobs.detail', $jid) }}" title="Открыть задачу #{{ $jid }}"
            class="text-gray-600 hover:text-blue-400 text-xs opacity-0 group-hover:opacity-100 transition">→</a>
         @endif
       </div>
       @endforeach
     </div>
-    {{-- Clear job logs (10H) --}}
+    {{-- Очистка логов задач (10H) --}}
     <form method="POST" action="{{ route('admin.logs.clear.jobs') }}" class="mt-2"
-          onsubmit="return confirm('Delete ALL job log files ({{ count($jobFiles) }} files)?')">
+          onsubmit="return confirm('Удалить ВСЕ логи задач ({{ count($jobFiles) }} файлов)?')">
       @csrf
       <button type="submit"
               class="w-full px-2 py-1 rounded text-xs bg-gray-800 text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition">
-        🗑 Clear all job logs
+        🗑 Очистить логи задач
       </button>
     </form>
   </div>
@@ -99,23 +99,23 @@
 <div class="flex items-center gap-2 flex-wrap mb-3">
   <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">
-    ↻ Refresh
+    ↻ Обновить
   </a>
   <button id="auto-refresh-btn" onclick="toggleAutoRefresh()"
           class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
-    ⏱ Auto: <span id="ar-state">OFF</span>
+    ⏱ Авто: <span id="ar-state">ВЫКЛ</span>
   </button>
   <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
-    ↓ Download
+    ↓ Скачать
   </a>
   @if(!$jobFile && !$appLog)
   <form method="POST" action="{{ route('admin.logs.clear') }}" class="inline"
-        onsubmit="return confirm('Clear the main parser log?')">
+        onsubmit="return confirm('Очистить основной лог парсера?')">
     @csrf
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-red-400 transition">
-      🗑 Clear
+      🗑 Очистить
     </button>
   </form>
   @endif
@@ -142,7 +142,7 @@
 <div class="mb-4 space-y-2">
   {{-- Level filter --}}
   <div class="flex items-center gap-2 flex-wrap">
-    @foreach(['' => 'All', 'ERROR' => 'Errors', 'WARNING' => 'Warnings', 'INFO' => 'Info', 'DEBUG' => 'Debug'] as $lv => $lbl)
+    @foreach(['' => 'Все', 'ERROR' => 'Ошибки', 'WARNING' => 'Предупреждения', 'INFO' => 'Инфо', 'DEBUG' => 'Отладка'] as $lv => $lbl)
     <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
@@ -152,7 +152,7 @@
     <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
-      📊 Stats
+      📊 Статистика
     </a>
   </div>
 
@@ -163,15 +163,15 @@
     @if($jobFile)<input type="hidden" name="job" value="{{ $jobFile }}">@endif
     @if($appLog)<input type="hidden" name="app" value="1">@endif
     @if($maxLines != 1000)<input type="hidden" name="limit" value="{{ $maxLines }}">@endif
-    <input type="text" name="search" value="{{ $search }}" placeholder="Search text..."
+    <input type="text" name="search" value="{{ $search }}" placeholder="Текст для поиска..."
            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
     <button type="submit"
             class="px-4 py-1.5 rounded-lg text-sm bg-blue-700 hover:bg-blue-600 text-white transition">
-      Search
+      Найти
     </button>
     @if($search || $source || $level)
     <a href="{{ route('admin.logs', array_filter(['job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
-       class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Reset</a>
+       class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Сброс</a>
     @endif
   </form>
 </div>
@@ -195,10 +195,10 @@
   <div class="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
     <div class="px-4 py-2 border-b border-gray-800 flex items-center gap-3 flex-wrap">
       <span class="text-xs text-gray-600">
-        ~{{ number_format($totalLines) }} lines · page {{ $page + 1 }} / {{ $totalPages }}
-        @if($level) · level: <span class="text-gray-400">{{ $level }}</span>@endif
-        @if($source) · parser: <span class="text-gray-400">{{ $source }}</span>@endif
-        @if($search) · search: <span class="text-gray-400">"{{ $search }}"</span>@endif
+        ~{{ number_format($totalLines) }} строк · страница {{ $page + 1 }} / {{ $totalPages }}
+        @if($level) · уровень: <span class="text-gray-400">{{ $level }}</span>@endif
+        @if($source) · источник: <span class="text-gray-400">{{ $source }}</span>@endif
+        @if($search) · поиск: <span class="text-gray-400">"{{ $search }}"</span>@endif
       </span>
       @if($totalPages > 1)
       @php
@@ -209,7 +209,7 @@
         <a href="{{ route('admin.logs', array_merge($pq, ['page' => 0])) }}"
            class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">«</a>
         <a href="{{ route('admin.logs', array_merge($pq, ['page' => $page - 1])) }}"
-           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">‹ Prev</a>
+           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">‹ Пред.</a>
         @endif
         @php $start = max(0, $page - 2); $end = min($totalPages - 1, $page + 2); @endphp
         @for($p = $start; $p <= $end; $p++)
@@ -220,7 +220,7 @@
         @endfor
         @if($page < $totalPages - 1)
         <a href="{{ route('admin.logs', array_merge($pq, ['page' => $page + 1])) }}"
-           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">Next ›</a>
+           class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">След. ›</a>
         <a href="{{ route('admin.logs', array_merge($pq, ['page' => $totalPages - 1])) }}"
            class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">»</a>
         @endif
@@ -279,11 +279,11 @@ function toggleAutoRefresh() {
     if (_arTimer) {
         clearInterval(_arTimer);
         _arTimer = null;
-        btn.textContent = 'OFF';
+        btn.textContent = 'ВЫКЛ';
         btn.parentElement.classList.remove('text-green-400');
         btn.parentElement.classList.add('text-gray-400');
     } else {
-        btn.textContent = 'ON';
+        btn.textContent = 'ВКЛ';
         btn.parentElement.classList.remove('text-gray-400');
         btn.parentElement.classList.add('text-green-400');
         _arTimer = setInterval(refreshLogs, 5000);

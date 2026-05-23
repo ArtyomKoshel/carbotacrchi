@@ -3,6 +3,10 @@
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 @if(session('success'))
 <div class="mb-4 px-4 py-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
   {{ session('success') }}
@@ -20,7 +24,7 @@
       <select name="source"
               class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
         @foreach($sources as $src)
-        <option value="{{ $src }}">{{ $src }}</option>
+        <option value="{{ $src }}">{{ $ui::source($src) }}</option>
         @endforeach
       </select>
     </div>
@@ -65,7 +69,7 @@
           <a href="{{ route('admin.jobs.detail', $job->id) }}" class="text-blue-400 hover:text-blue-300 underline">{{ $job->id }}</a>
         </td>
         <td class="px-5 py-3 text-white">
-          {{ $job->source }}
+          {{ $ui::source($job->source) }}
           @if($job->triggered_by === 'scheduler')
             <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ авто</span>
           @else
@@ -83,13 +87,13 @@
               default       => 'bg-blue-900/50 text-blue-400',
             };
           @endphp
-          <span class="status-badge text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $job->status }}</span>
+          <span class="status-badge text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ui::status($job->status) }}</span>
         </td>
         <td class="px-5 py-3 text-xs text-gray-400 progress-cell">
           @if($job->progress)
             @if(isset($job->progress['pct']))
               @if(!empty($job->progress['phase']))
-                <span class="text-gray-500 capitalize mr-1">{{ $job->progress['phase'] }}:</span>
+                <span class="text-gray-500 mr-1">{{ $ui::phase($job->progress['phase']) }}:</span>
               @endif
               <span class="text-white font-semibold">{{ $job->progress['pct'] }}%</span>
               @php
@@ -123,7 +127,7 @@
               @endif
               @if(isset($job->result['errors']) && $job->result['errors'])
                 <span class="text-gray-600">·</span>
-                <span class="text-red-400">{{ $job->result['errors'] }} err</span>
+                <span class="text-red-400">{{ $job->result['errors'] }} ошибок</span>
               @endif
               @if(isset($job->result['time']))
                 <span class="text-gray-600">·</span>
@@ -174,9 +178,9 @@ function watchJobRow(id, source) {
       running:'bg-yellow-900 text-yellow-400', pending:'bg-blue-900/50 text-blue-400',
       cancelled:'bg-gray-800 text-gray-500' };
     badge.className = `status-badge text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
-    badge.textContent = d.status;
+    badge.textContent = window.AdminUi?.status(d.status) ?? d.status;
     if (d.pct !== undefined) {
-      const phase = d.phase ? `<span class="text-gray-500 capitalize mr-1">${d.phase}:</span>` : '';
+      const phase = d.phase ? `<span class="text-gray-500 mr-1">${window.AdminUi?.phase(d.phase) ?? d.phase}:</span>` : '';
       const barW = d.total_progress !== undefined ? Math.round(d.total_progress * 100) : d.pct;
       row.querySelector('.progress-cell').innerHTML =
         `${phase}<span class="text-white font-semibold">${d.pct}%</span>` +
@@ -185,7 +189,7 @@ function watchJobRow(id, source) {
     if (d.total !== undefined) {
       let r = `<span class="text-white font-semibold">${d.total.toLocaleString()}</span> лотов`;
       if (d.new) r += ` <span class="text-gray-600">·</span> <span class="text-blue-400">+${d.new.toLocaleString()}</span>`;
-      if (d.errors) r += ` <span class="text-gray-600">·</span> <span class="text-red-400">${d.errors} err</span>`;
+      if (d.errors) r += ` <span class="text-gray-600">·</span> <span class="text-red-400">${d.errors} ошибок</span>`;
       row.querySelector('.result-cell').innerHTML = r;
     }
     if (['done','error','cancelled'].includes(d.status)) {

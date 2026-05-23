@@ -3,12 +3,16 @@
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 {{-- Source stats --}}
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
   @foreach($sources as $src)
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
     <div class="flex items-center justify-between mb-3">
-      <span class="text-xs font-bold uppercase tracking-widest text-gray-500">{{ $src->source }}</span>
+      <span class="text-xs font-bold uppercase tracking-widest text-gray-500">{{ $ui::source($src->source) }}</span>
       <div class="flex items-center gap-2">
         <span class="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-400">активен</span>
         <form method="POST" action="{{ route('admin.jobs.launch') }}">
@@ -39,7 +43,7 @@
           default   => 'text-blue-500',
         };
       @endphp
-      <span class="text-xs {{ $sc }}">· {{ $sched->last_status }}</span>
+      <span class="text-xs {{ $sc }}">· {{ $ui::status($sched->last_status) }}</span>
     </div>
     @else
     <div class="text-xs text-gray-700 mt-1">⏱ Планировщик: не запускался</div>
@@ -52,10 +56,7 @@
 <div class="grid grid-cols-3 gap-4 mb-8">
   @foreach(['update' => 'blue', 'delisted' => 'red', 'relisted' => 'green'] as $ev => $color)
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-@php
-      $evRu = ['update' => 'обновление', 'delisted' => 'снято', 'relisted' => 'возвращено'];
-    @endphp
-    <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $evRu[$ev] ?? $ev }} (24ч)</div>
+    <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{{ $ui::event($ev) }} (24ч)</div>
     <div class="text-2xl font-bold text-{{ $color }}-400">{{ $changeSummary[$ev] ?? 0 }}</div>
   </div>
   @endforeach
@@ -86,7 +87,7 @@
 <script>
 function loadProxyBalance() {
   const btn = document.getElementById('proxy-balance-btn');
-  btn.textContent = 'Loading…';
+  btn.textContent = 'Загрузка…';
   btn.disabled = true;
   fetch('{{ route('admin.proxy.balance') }}')
     .then(r => r.json())
@@ -111,7 +112,7 @@ function loadProxyBalance() {
       btn.disabled = false;
     })
     .catch(e => {
-      document.getElementById('proxy-balance-error').textContent = 'Error: ' + e.message;
+      document.getElementById('proxy-balance-error').textContent = 'Ошибка: ' + e.message;
       document.getElementById('proxy-balance-error').classList.remove('hidden');
       btn.textContent = 'Проверить баланс';
       btn.disabled = false;
@@ -147,11 +148,11 @@ function loadProxyBalance() {
               default    => 'bg-blue-900 text-blue-400',
             };
           @endphp
-          <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ch->event }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ui::event($ch->event) }}</span>
         </td>
         <td class="px-5 py-3 text-gray-300 text-xs">
           @php
-            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'yes' : 'no') : (is_array($v) ? json_encode($v) : $v));
+            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'да' : 'нет') : (is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : $v));
           @endphp
           @foreach($ch->changes as $field => $diff)
             @if($field === 'is_active' && count($ch->changes) === 1)
@@ -159,7 +160,7 @@ function loadProxyBalance() {
               @continue
             @endif
             <span class="mr-2">
-              <span class="text-gray-500">{{ $field }}:</span>
+              <span class="text-gray-500">{{ $ui::field($field) }} <span class="text-gray-600">({{ $field }})</span>:</span>
               @if(isset($diff['old']))
                 <span class="line-through text-gray-600 ml-1">{{ $fv($diff['old']) }}</span>
                 <span class="text-blue-400 ml-1">→ {{ $fv($diff['new']) }}</span>
@@ -169,7 +170,7 @@ function loadProxyBalance() {
             </span>
           @endforeach
           @if(in_array($ch->event, ['delisted','relisted']) && count($ch->changes) <= 1)
-            <span class="text-gray-600 italic">{{ $ch->event }}</span>
+            <span class="text-gray-600 italic">{{ $ui::event($ch->event) }}</span>
           @endif
         </td>
         <td class="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">

@@ -3,6 +3,10 @@
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 {{-- Charts row --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -73,7 +77,7 @@
       @forelse($changes as $ch)
       <tr class="hover:bg-gray-800/50">
         <td class="px-5 py-3 font-mono text-xs text-gray-400">{{ $ch->lot_id }}</td>
-        <td class="px-5 py-3 text-gray-400 text-xs">{{ $ch->source }}</td>
+        <td class="px-5 py-3 text-gray-400 text-xs">{{ $ui::source($ch->source) }}</td>
         <td class="px-5 py-3">
           @php
             $badge = match($ch->event) {
@@ -82,15 +86,15 @@
               default    => 'bg-blue-900 text-blue-400',
             };
           @endphp
-          <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ch->event }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ui::event($ch->event) }}</span>
         </td>
         <td class="px-5 py-3 text-xs space-y-0.5">
           @php
-            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'yes' : 'no') : (is_array($v) ? json_encode($v) : $v));
+            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'да' : 'нет') : (is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : $v));
           @endphp
           @foreach($ch->changes as $field => $diff)
             <div>
-              <span class="text-gray-500">{{ $field }}:</span>
+              <span class="text-gray-500">{{ $ui::field($field) }} <span class="text-gray-600">({{ $field }})</span>:</span>
               @if(isset($diff['old']))
                 <span class="line-through text-gray-600 ml-1">{{ $fv($diff['old']) }}</span>
                 <span class="{{ $ch->event === 'delisted' ? 'text-red-400' : ($ch->event === 'relisted' ? 'text-green-400' : 'text-blue-400') }} ml-1">→ {{ $fv($diff['new']) }}</span>

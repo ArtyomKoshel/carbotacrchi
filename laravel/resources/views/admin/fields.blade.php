@@ -3,6 +3,10 @@
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 @if(session('success'))
 <div class="mb-4 px-4 py-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
   {{ session('success') }}
@@ -25,7 +29,7 @@
     @csrf
     @if($computedAt)
       <span class="text-xs text-gray-500">
-        computed {{ $computedAt->diffForHumans() }}
+        вычислено {{ $computedAt->diffForHumans() }}
       </span>
     @else
       <span class="text-xs text-amber-400">не вычислялось — нажмите Обновить</span>
@@ -46,16 +50,16 @@
   @foreach($sources as $src)
     @php
       $n = $totals[$src] ?? 0;
-      $color = $src === 'encar' ? 'indigo' : ($src === 'kbcha' ? 'pink' : 'gray');
+      $color = $src === 'encar' ? 'indigo' : 'gray';
     @endphp
     <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300">
-      <span class="text-{{ $color }}-400 font-semibold">{{ $src }}</span>:
+      <span class="text-{{ $color }}-400 font-semibold">{{ $ui::source($src) }}</span>:
       <span class="text-white font-semibold ml-1">{{ number_format($n) }}</span>
       <span class="text-gray-500">лотов</span>
     </span>
   @endforeach
   <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-500">
-    schema v{{ $version }}
+    схема v{{ $version }}
   </span>
 </div>
 
@@ -68,7 +72,7 @@
            class="flex-1 min-w-[260px] bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600">
 
     <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400">
-      <span>min %</span>
+      <span>Мин. %</span>
       <input type="number" min="0" max="100" step="10" x-model.number="minPct"
              class="w-14 bg-gray-800 border-none rounded text-sm text-white">
     </label>
@@ -106,7 +110,7 @@
               <th class="px-4 py-2 text-left font-medium w-[180px]">Поле</th>
               <th class="px-4 py-2 text-left font-medium w-[90px]">Тип</th>
               @foreach($sources as $src)
-                <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $src }} покрытие</th>
+                <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $ui::source($src) }} покрытие</th>
               @endforeach
               <th class="px-4 py-2 text-left font-medium">Источники & преобразование</th>
             </tr>
@@ -123,12 +127,13 @@
                   class="hover:bg-gray-800/30">
                 <td class="px-4 py-3 align-top">
                   <div class="font-mono text-xs text-blue-300">
-                    {{ $f['name'] }}
+                    {{ $ui::field($f['name']) }}
+                    <span class="text-gray-500">({{ $f['name'] }})</span>
                     @if($f['filterable'])
-                      <span class="ml-1 text-[10px] px-1 rounded bg-purple-900/60 text-purple-300" title="used in filters">flt</span>
+                      <span class="ml-1 text-[10px] px-1 rounded bg-purple-900/60 text-purple-300" title="используется в фильтрах">фил</span>
                     @endif
                     @if($f['tracked'])
-                      <span class="ml-1 text-[10px] px-1 rounded bg-blue-900/60 text-blue-300" title="tracked in lot_changes">trk</span>
+                      <span class="ml-1 text-[10px] px-1 rounded bg-blue-900/60 text-blue-300" title="отслеживается в lot_changes">изм</span>
                     @endif
                   </div>
                   @if($f['db_column'] !== $f['name'])
@@ -175,10 +180,9 @@
                         <div class="text-[11px] flex items-start gap-2">
                           <span class="px-1.5 py-0.5 rounded uppercase tracking-wide
                             @if($e['source']==='encar') bg-indigo-900/60 text-indigo-300
-                            @elseif($e['source']==='kbcha') bg-pink-900/60 text-pink-300
                             @else bg-gray-800 text-gray-400
                             @endif">
-                            {{ $e['source'] }}
+                            {{ $ui::source($e['source']) }}
                           </span>
                           <div class="flex-1 font-mono text-gray-300 break-all">
                             {{ $e['raw_location'] }}

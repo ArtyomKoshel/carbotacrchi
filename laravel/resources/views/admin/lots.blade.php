@@ -3,6 +3,10 @@
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 @if(session('success'))
 <div class="mb-4 px-4 py-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
   {{ session('success') }}
@@ -114,7 +118,7 @@
               default       => 'bg-gray-800 text-gray-400',
             };
           @endphp
-          <span class="status-badge text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $req->status }}</span>
+          <span class="status-badge text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ui::status($req->status) }}</span>
         </td>
         <td class="px-5 py-3 text-gray-400 text-xs result-cell">{{ $resultText }}</td>
         <td class="px-5 py-3 text-gray-500 text-xs">
@@ -146,7 +150,7 @@ function pollPending() {
         row.dataset.status = data.status;
         const badge = row.querySelector('.status-badge');
         badge.className = 'status-badge text-xs px-2 py-0.5 rounded-full ' + (statusColors[data.status] ?? '');
-        badge.textContent = data.status;
+        badge.textContent = window.AdminUi?.status(data.status) ?? data.status;
         if (data.result) row.querySelector('.result-cell').textContent = data.result;
       });
   });

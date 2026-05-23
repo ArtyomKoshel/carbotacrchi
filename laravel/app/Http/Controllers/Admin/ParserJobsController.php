@@ -85,7 +85,7 @@ class ParserJobsController extends Controller
     public function jobs(Request $request)
     {
         $jobs = ParseJob::orderByDesc('created_at')->paginate(30);
-        $sources = array_values(config('auction.sources', ['kbcha']));
+        $sources = array_values(config('auction.sources', ['encar']));
 
         return view('admin.jobs', compact('jobs', 'sources'));
     }
@@ -329,7 +329,7 @@ class ParserJobsController extends Controller
     public function schedules()
     {
         $schedules = ParserSchedule::orderBy('source')->get()->keyBy('source');
-        $sources = array_values(config('auction.sources', ['kbcha']));
+        $sources = array_values(config('auction.sources', ['encar']));
 
         return view('admin.schedules', compact('schedules', 'sources'));
     }

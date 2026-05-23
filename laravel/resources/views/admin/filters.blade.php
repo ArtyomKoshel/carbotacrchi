@@ -9,9 +9,13 @@
 </div>
 @endif
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 @if($errors->any())
 <div class="mb-4 px-4 py-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
-  <p class="font-semibold mb-1">Validation errors:</p>
+  <p class="font-semibold mb-1">Ошибки валидации:</p>
   <ul class="list-disc list-inside">
     @foreach($errors->all() as $error)
       <li>{{ $error }}</li>
@@ -31,7 +35,7 @@
 <script>
   window.__FIELD_SCHEMA__ = @json($schema['fields'] ?? []);
   window.__OPERATOR_LABELS__ = @json($operatorLabels);
-  window.__PHASE_LABELS__ = @json($phaseLabels ?? ['pre' => 'Pre-filter', 'post' => 'Post-filter']);
+  window.__PHASE_LABELS__ = @json($phaseLabels ?? ['pre' => 'До осмотра', 'post' => 'После осмотра']);
 </script>
 
 <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6"
@@ -81,7 +85,7 @@
             </td>
             <td class="px-4 py-3 text-xs">
               @if($filter->rule_group_id)
-                <span class="px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300" title="AND-group: all rules in this group must match">
+                <span class="px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300" title="AND-группа: должны совпасть все правила группы">
                   AND:{{ $filter->rule_group_id }}
                 </span>
               @else
@@ -90,13 +94,14 @@
             </td>
             <td class="px-4 py-3 text-xs">
               @if($filter->source)
-                <span class="px-2 py-0.5 rounded bg-purple-900/60 text-purple-300">{{ $filter->source }}</span>
+                <span class="px-2 py-0.5 rounded bg-purple-900/60 text-purple-300">{{ $ui::source($filter->source) }}</span>
               @else
                 <span class="px-2 py-0.5 rounded bg-gray-800 text-gray-500">глобально</span>
               @endif
             </td>
             <td class="px-4 py-3 font-mono text-xs">
-              <span class="text-blue-300">{{ $filter->field }}</span>
+              <span class="text-blue-300">{{ $ui::field($filter->field) }}</span>
+              <span class="text-gray-600">({{ $filter->field }})</span>
               <span class="text-gray-500">{{ $filter->operator }}</span>
               <span class="text-yellow-300">{{ $filter->value ?? '—' }}</span>
             </td>
@@ -111,12 +116,12 @@
                 };
               @endphp
               <span class="px-2 py-0.5 rounded text-xs {{ $actionClass }}">
-                {{ $filter->action }}
+                {{ $actionLabels[$filter->action] ?? $filter->action }}
               </span>
             </td>
             <td class="px-4 py-3">
               <span class="px-2 py-0.5 rounded text-xs {{ ($filter->phase ?? 'pre') === 'post' ? 'bg-indigo-900/60 text-indigo-300' : 'bg-gray-800 text-gray-500' }}">
-                {{ $filter->phase ?? 'pre' }}
+                {{ $phaseLabels[$filter->phase ?? 'pre'] ?? ($filter->phase ?? 'pre') }}
               </span>
             </td>
             <td class="px-4 py-3 text-center">
@@ -124,14 +129,14 @@
                 @csrf @method('PATCH')
                 <button type="submit"
                         class="px-2 py-0.5 rounded text-xs {{ $filter->enabled ? 'bg-green-900/60 text-green-300' : 'bg-gray-800 text-gray-500' }} hover:opacity-80">
-                  {{ $filter->enabled ? 'on' : 'off' }}
+                  {{ $filter->enabled ? 'вкл' : 'выкл' }}
                 </button>
               </form>
             </td>
             <td class="px-4 py-3 text-right space-x-2">
               <button type="button"
                       @click='openEdit(@json($filter))'
-                      class="text-xs text-blue-400 hover:text-blue-300">редакт.</button>
+                      class="text-xs text-blue-400 hover:text-blue-300">Редакт.</button>
               <form method="POST" action="{{ route('admin.filters.delete', $filter->id) }}" class="inline"
                     onsubmit="return confirm('Удалить правило {{ $filter->name }}?');">
                 @csrf @method('DELETE')
@@ -157,66 +162,66 @@
 
       <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
         <h2 class="text-white font-semibold">
-          <span x-text="editId ? 'Edit rule' : 'New rule'"></span>
+          <span x-text="editId ? 'Редактирование правила' : 'Новое правило'"></span>
         </h2>
         <button type="button" @click="open = false" class="text-gray-500 hover:text-white">✕</button>
       </div>
 
       <div class="px-5 py-5 grid grid-cols-2 gap-4">
         <div class="col-span-2">
-          <label class="text-xs text-gray-500 mb-1 block">Name <span class="text-red-500">*</span></label>
+          <label class="text-xs text-gray-500 mb-1 block">Название <span class="text-red-500">*</span></label>
           <input type="text" name="name" x-model="form.name" required
                  pattern="[a-z0-9_]+" placeholder="exclude_custom"
                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-          <p class="text-xs text-gray-600 mt-1">Lowercase letters, digits, underscore.</p>
+          <p class="text-xs text-gray-600 mt-1">Малые буквы, цифры, подчёркивание.</p>
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Scope</label>
+          <label class="text-xs text-gray-500 mb-1 block">Охват</label>
           <select name="source" x-model="form.source"
                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-            <option value="">All sources (global)</option>
+            <option value="">Все источники (глобально)</option>
             @foreach($sources as $src)
-              <option value="{{ $src }}">{{ $src }}</option>
+              <option value="{{ $src }}">{{ $ui::source($src) }}</option>
             @endforeach
           </select>
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Priority <span class="text-red-500">*</span></label>
+          <label class="text-xs text-gray-500 mb-1 block">Приоритет <span class="text-red-500">*</span></label>
           <input type="number" name="priority" x-model.number="form.priority" min="0" max="10000" required
                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-          <p class="text-xs text-gray-600 mt-1">Lower = evaluated first (0–10000).</p>
+          <p class="text-xs text-gray-600 mt-1">Меньше = проверяется первым (0–10000).</p>
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">AND-group</label>
+          <label class="text-xs text-gray-500 mb-1 block">AND-группа</label>
           <input type="text" name="rule_group_id" x-model="form.rule_group_id"
-                 pattern="[a-zA-Z0-9_]*" placeholder="e.g. old_expensive"
+                 pattern="[a-zA-Z0-9_]*" placeholder="напр. old_expensive"
                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-          <p class="text-xs text-gray-600 mt-1">Same group = AND logic.</p>
+          <p class="text-xs text-gray-600 mt-1">Одинаковая группа = логика AND.</p>
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Phase</label>
+          <label class="text-xs text-gray-500 mb-1 block">Фаза</label>
           <select name="phase" x-model="form.phase"
                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
             @foreach($phaseLabels as $val => $label)
               <option value="{{ $val }}">{{ $label }}</option>
             @endforeach
           </select>
-          <p class="text-xs text-gray-600 mt-1">Post = after inspection data loaded.</p>
+          <p class="text-xs text-gray-600 mt-1">Post = после загрузки данных осмотра.</p>
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Field <span class="text-red-500">*</span></label>
+          <label class="text-xs text-gray-500 mb-1 block">Поле <span class="text-red-500">*</span></label>
           <select name="field" x-model="form.field" required @change="onFieldChange"
                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-            <option value="">— select —</option>
+            <option value="">— выберите —</option>
             @foreach($groupedFields as $category => $fields)
               <optgroup label="{{ $category }}">
                 @foreach($fields as $f)
-                  <option value="{{ $f['name'] }}">{{ $f['name'] }} ({{ $f['dtype'] }})</option>
+                  <option value="{{ $f['name'] }}">{{ $ui::field($f['name']) }} ({{ $f['name'] }}, {{ $f['dtype'] }})</option>
                 @endforeach
               </optgroup>
             @endforeach
@@ -225,7 +230,7 @@
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Operator <span class="text-red-500">*</span></label>
+          <label class="text-xs text-gray-500 mb-1 block">Оператор <span class="text-red-500">*</span></label>
           <select name="operator" x-model="form.operator" required
                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
             <template x-for="op in availableOperators" :key="op">
@@ -236,14 +241,14 @@
 
         <div class="col-span-2">
           <label class="text-xs text-gray-500 mb-1 block">
-            Value
-            <span class="text-gray-600" x-show="!needsValue">(not used by this operator)</span>
+            Значение
+            <span class="text-gray-600" x-show="!needsValue">(не используется этим оператором)</span>
           </label>
           <template x-if="currentField?.dtype === 'enum' && currentField?.enum_values">
             <select name="value" x-model="form.value"
                     class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
                     :disabled="!needsValue">
-              <option value="">— select —</option>
+              <option value="">— выберите —</option>
               <template x-for="v in currentField.enum_values" :key="v">
                 <option :value="`&quot;${v}&quot;`" x-text="v"></option>
               </template>
@@ -260,14 +265,14 @@
           </template>
           <template x-if="!['enum','bool'].includes(currentField?.dtype) || !currentField?.enum_values">
             <input type="text" name="value" x-model="form.value" :disabled="!needsValue"
-                   placeholder='e.g. 200000, "rental", ["a","b"], [0,100]'
+                   placeholder='напр. 200000, "rental", ["a","b"], [0,100]'
                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-40">
           </template>
-          <p class="text-xs text-gray-600 mt-1">JSON literal. Plain strings/numbers are auto-wrapped.</p>
+          <p class="text-xs text-gray-600 mt-1">JSON. Простые значения обертываются автоматически.</p>
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Action <span class="text-red-500">*</span></label>
+          <label class="text-xs text-gray-500 mb-1 block">Действие <span class="text-red-500">*</span></label>
           <select name="action" x-model="form.action" required
                   class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
             @foreach($actions as $a)
@@ -277,32 +282,32 @@
         </div>
 
         <div>
-          <label class="text-xs text-gray-500 mb-1 block">Enabled</label>
+          <label class="text-xs text-gray-500 mb-1 block">Включено</label>
           <label class="flex items-center gap-2 mt-2">
             <input type="checkbox" name="enabled" value="1" x-model="form.enabled"
                    class="w-4 h-4 bg-gray-800 border-gray-700 rounded">
-            <span class="text-sm text-gray-300" x-text="form.enabled ? 'rule is active' : 'disabled'"></span>
+            <span class="text-sm text-gray-300" x-text="form.enabled ? 'правило активно' : 'отключено'"></span>
           </label>
         </div>
 
         <div class="col-span-2">
-          <label class="text-xs text-gray-500 mb-1 block">Description</label>
+          <label class="text-xs text-gray-500 mb-1 block">Описание</label>
           <input type="text" name="description" x-model="form.description" maxlength="255"
-                 placeholder="Short explanation for other admins"
+                 placeholder="Краткое пояснение для админа"
                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
         </div>
       </div>
 
       <div class="px-5 py-4 bg-gray-900/60 border-t border-gray-800 flex items-center justify-between">
         <span class="text-xs text-gray-600">
-          Changes take effect within 60 seconds (parser hot-reloads rules).
+          Изменения вступают в силу через 60 секунд (парсер перечитывает правила).
         </span>
         <div class="space-x-2">
           <button type="button" @click="open = false"
-                  class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white">Cancel</button>
+                  class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white">Отмена</button>
           <button type="submit"
                   class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">
-            <span x-text="editId ? 'Save changes' : 'Create rule'"></span>
+            <span x-text="editId ? 'Сохранить' : 'Создать'"></span>
           </button>
         </div>
       </div>

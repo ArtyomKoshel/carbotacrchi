@@ -43,7 +43,7 @@ class ParseFiltersController extends Controller
         ParseFilter::create($data);
 
         return redirect()->route('admin.filters')
-            ->with('success', "Rule '{$data['name']}' created — parser picks it up within 60s.");
+            ->with('success', "Правило '{$data['name']}' создано — парсер подхватит его в течение 60 сек.");
     }
 
     /** PUT /admin/filters/{id} — update an existing rule. */
@@ -54,7 +54,7 @@ class ParseFiltersController extends Controller
         $filter->update($data);
 
         return redirect()->route('admin.filters')
-            ->with('success', "Rule '{$filter->name}' updated.");
+            ->with('success', "Правило '{$filter->name}' обновлено.");
     }
 
     /** DELETE /admin/filters/{id} — delete a rule. */
@@ -65,7 +65,7 @@ class ParseFiltersController extends Controller
         $filter->delete();
 
         return redirect()->route('admin.filters')
-            ->with('success', "Rule '{$name}' deleted.");
+            ->with('success', "Правило '{$name}' удалено.");
     }
 
     /** PATCH /admin/filters/{id}/toggle — quickly flip enabled. */
@@ -76,7 +76,7 @@ class ParseFiltersController extends Controller
         $filter->save();
 
         return redirect()->route('admin.filters')
-            ->with('success', "Rule '{$filter->name}' " . ($filter->enabled ? 'enabled' : 'disabled') . '.');
+            ->with('success', "Правило '{$filter->name}' " . ($filter->enabled ? 'включено' : 'отключено') . '.');
     }
 
     private function validateFilterPayload(Request $request, ?int $ignoreId = null): array

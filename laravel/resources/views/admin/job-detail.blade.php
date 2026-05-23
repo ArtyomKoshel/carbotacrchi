@@ -1,11 +1,15 @@
 @extends('admin.layout')
-@section('title', "Job #{$job->id}")
+@section('title', "Задача #{$job->id}")
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 <div class="flex items-center gap-3 mb-6">
-  <a href="{{ route('admin.jobs') }}" class="text-gray-500 hover:text-white text-sm">← Jobs</a>
-  <h1 class="text-lg font-bold text-white">Job #{{ $job->id }}</h1>
+  <a href="{{ route('admin.jobs') }}" class="text-gray-500 hover:text-white text-sm">← Задачи</a>
+  <h1 class="text-lg font-bold text-white">Задача #{{ $job->id }}</h1>
   @php
     $badge = match($job->status) {
       'done'        => 'bg-green-900 text-green-400',
@@ -16,10 +20,10 @@
       default       => 'bg-blue-900/50 text-blue-400',
     };
   @endphp
-  <span id="status-badge" class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $job->status }}</span>
-  <span class="text-xs text-gray-600">{{ $job->source }}</span>
+  <span id="status-badge" class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ui::status($job->status) }}</span>
+  <span class="text-xs text-gray-600">{{ $ui::source($job->source) }}</span>
   @if($job->triggered_by === 'scheduler')
-    <span class="text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ auto</span>
+    <span class="text-xs px-1.5 py-0.5 rounded bg-purple-900/50 text-purple-400">⏱ авто</span>
   @endif
   <span class="text-xs text-gray-600 ml-auto">{{ $job->created_at->format('Y-m-d H:i:s') }}</span>
 </div>
@@ -53,28 +57,28 @@
 {{-- Stats grid --}}
 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6" id="stats-grid">
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Processed</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Обработано</div>
     <div class="text-xl font-bold text-white mt-1" id="s-total">{{ number_format($total) }}</div>
     <div class="text-[10px] text-gray-600 mt-0.5">API: {{ number_format($apiTotal) }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Coverage</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Покрытие</div>
     <div class="text-xl font-bold mt-1 {{ $cov >= 95 ? 'text-green-400' : ($cov > 0 ? 'text-yellow-400' : 'text-gray-500') }}" id="s-coverage">{{ $cov !== null ? $cov.'%' : '--' }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">New</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Новые</div>
     <div class="text-xl font-bold text-blue-400 mt-1" id="s-new">{{ number_format($newLots) }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Updated</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Обновлённые</div>
     <div class="text-xl font-bold text-gray-300 mt-1" id="s-updated">{{ number_format($updated) }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Stale</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Неактивные</div>
     <div class="text-xl font-bold text-orange-400 mt-1" id="s-stale">{{ number_format($stale) }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Errors</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Ошибки</div>
     <div class="text-xl font-bold {{ $errors > 0 ? 'text-red-400' : 'text-gray-500' }} mt-1" id="s-errors">{{ $errors }}</div>
   </div>
 </div>
@@ -82,29 +86,29 @@
 {{-- Timing --}}
 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6" id="timing-grid">
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Elapsed</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Прошло времени</div>
     <div class="text-lg font-mono text-white mt-1" id="t-elapsed">{{ $timeStr }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Avg / Lot</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Среднее / лот</div>
     <div class="text-lg font-mono text-gray-300 mt-1" id="t-avg">{{ $avgLot ? ($avgLot . 's') : '--' }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Search + Batch</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Поиск + пакет</div>
     <div class="text-lg font-mono text-cyan-400 mt-1" id="t-search">{{ $searchT !== null ? $searchT . 's' : '--' }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Enrichment</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Обогащение</div>
     <div class="text-lg font-mono text-purple-400 mt-1" id="t-enrich">{{ $enrichT !== null ? $enrichT . 's' : '--' }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Pauses</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Паузы</div>
     <div class="text-lg font-mono {{ $pauseT > 10 ? 'text-yellow-400' : 'text-gray-500' }} mt-1" id="t-pause">{{ $pauseT . 's' }}</div>
   </div>
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
-    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Proxy Traffic</div>
+    <div class="text-[10px] text-gray-500 uppercase tracking-wider">Прокси-трафик</div>
     <div class="text-lg font-mono {{ $proxyMb > 0 ? 'text-amber-400' : 'text-gray-600' }} mt-1" id="t-proxy-mb">{{ $proxyMb > 0 ? $proxyMb.' MB' : '--' }}</div>
-    <div class="text-[10px] text-gray-600 mt-0.5" id="t-proxy-kb">{{ $proxyBytes > 0 ? number_format($proxyBytes / 1024).' KB' : 'direct only' }}</div>
+    <div class="text-[10px] text-gray-600 mt-0.5" id="t-proxy-kb">{{ $proxyBytes > 0 ? number_format($proxyBytes / 1024).' KB' : 'без прокси' }}</div>
   </div>
 </div>
 
@@ -153,7 +157,7 @@
       @endif
       <div class="phase-node flex flex-col items-center flex-shrink-0" data-phase="{{ $ph }}" data-state="{{ $state }}">
         <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold {{ $dotCls }}">{!! $icon !!}</div>
-        <div class="text-[10px] mt-1 capitalize font-medium {{ $textCls }}">{{ $ph }}</div>
+        <div class="text-[10px] mt-1 capitalize font-medium {{ $textCls }}">{{ $ui::phase($ph) }}</div>
         <div class="text-[9px] text-gray-600 h-3" id="ph-pct-{{ $ph }}">{{ $phaseProgress !== null ? $phaseProgress.'%' : '' }}</div>
       </div>
     @endforeach
@@ -171,7 +175,7 @@
 @endphp
 <div class="mb-6">
   <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-    <span id="pb-label"><span id="pb-phase" class="text-gray-400 capitalize">{{ $initPhase }}</span>{{ $initPhase ? ': ' : '' }}<span id="pb-pct">{{ $initPct }}</span>%</span>
+    <span id="pb-label"><span id="pb-phase" class="text-gray-400 capitalize">{{ $ui::phase($initPhase) }}</span>{{ $initPhase ? ': ' : '' }}<span id="pb-pct">{{ $initPct }}</span>%</span>
     <span id="pb-detail">{{ number_format($initFoundTotal) }} / {{ number_format($initApiTotal) }}</span>
   </div>
   <div class="w-full bg-gray-800 rounded-full h-2">
@@ -183,13 +187,13 @@
 {{-- Tabs --}}
 <div class="flex border-b border-gray-800 text-sm mb-4">
   <button onclick="switchTab('errors')" id="tab-errors" class="px-4 py-2 text-red-400 border-b-2 border-red-500 font-semibold">
-    Errors <span id="err-count" class="text-gray-600 ml-1">{{ count($errLog) }}</span>
+    Ошибки <span id="err-count" class="text-gray-600 ml-1">{{ count($errLog) }}</span>
   </button>
   <button onclick="switchTab('error-types')" id="tab-error-types" class="px-4 py-2 text-gray-500 hover:text-white">
-    Error Types
+    Типы ошибок
   </button>
   <button onclick="switchTab('logs')" id="tab-logs" class="px-4 py-2 text-gray-500 hover:text-white">
-    Logs
+    Логи
   </button>
 </div>
 
@@ -198,7 +202,7 @@
   @forelse($errLog as $err)
     <div class="text-red-400/80">{{ $err }}</div>
   @empty
-    <div class="text-gray-600">No errors recorded</div>
+    <div class="text-gray-600">Ошибок не зафиксировано</div>
   @endforelse
 </div>
 
@@ -214,7 +218,7 @@
       @endforeach
     </div>
   @else
-    <div class="text-gray-600 text-xs">No error types recorded</div>
+    <div class="text-gray-600 text-xs">Типы ошибок не зафиксированы</div>
   @endif
 </div>
 
@@ -223,23 +227,23 @@
   {{-- Toolbar row 1: level + search --}}
   <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-800 flex-wrap">
     <select id="log-level" onchange="logPage=0;loadLogs()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white">
-      <option value="">All levels</option>
-      <option value="ERROR">Errors</option>
-      <option value="WARNING">Warnings</option>
-      <option value="INFO">Info</option>
-      <option value="DEBUG">Debug</option>
-      <option value="STAT">Stats</option>
+      <option value="">Все уровни</option>
+      <option value="ERROR">Ошибки</option>
+      <option value="WARNING">Предупреждения</option>
+      <option value="INFO">Инфо</option>
+      <option value="DEBUG">Отладка</option>
+      <option value="STAT">Статистика</option>
     </select>
-    <input id="log-search" type="text" placeholder="Search..." onkeydown="if(event.key==='Enter'){logPage=0;loadLogs()}"
+    <input id="log-search" type="text" placeholder="Поиск..." onkeydown="if(event.key==='Enter'){logPage=0;loadLogs()}"
            class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white placeholder-gray-600 w-48">
-    <button onclick="logPage=0;loadLogs()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">Search</button>
-    <button onclick="loadLogs()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">↻ Refresh</button>
+    <button onclick="logPage=0;loadLogs()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">Найти</button>
+    <button onclick="loadLogs()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">↻ Обновить</button>
     <button id="log-ar-btn" onclick="toggleLogAutoRefresh()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-green-400">
-      Auto: <span id="log-ar-state">OFF</span>
+      Авто: <span id="log-ar-state">ВЫКЛ</span>
     </button>
-    <button onclick="scrollLogBottom()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white" title="Scroll to end">↓ End</button>
+    <button onclick="scrollLogBottom()" class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white" title="Прокрутить в конец">↓ В конец</button>
     <a href="/admin/jobs/{{ $job->id }}/log?limit=50000" target="_blank"
-       class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white ml-auto">↓ Raw</a>
+       class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-400 hover:text-white ml-auto">↓ Сырой лог</a>
     <span id="log-meta" class="text-xs text-gray-600"></span>
   </div>
   {{-- Toolbar row 2: pagination --}}
@@ -251,7 +255,7 @@
     <button onclick="logPage=logTotalPages-1;loadLogs()" class="px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-400 hover:text-white">»</button>
   </div>
   <div id="log-content" class="p-4 font-mono text-xs space-y-0.5 max-h-[600px] overflow-y-auto">
-    <div class="text-gray-600">Switch to this tab to load logs</div>
+    <div class="text-gray-600">Переключитесь на вкладку, чтобы загрузить логи</div>
   </div>
 </div>
 
@@ -313,7 +317,7 @@ function loadLogs() {
   const level  = document.getElementById('log-level').value;
   const search = document.getElementById('log-search').value;
   const content = document.getElementById('log-content');
-  content.innerHTML = '<div class="text-gray-500">Loading...</div>';
+  content.innerHTML = '<div class="text-gray-500">Загрузка...</div>';
   logNextByte = 0;  // full reload resets incremental position
 
   const params = new URLSearchParams({ level, search, page: logPage, limit: 500 });
@@ -329,20 +333,20 @@ function loadLogs() {
 
       const mb = (data.file_size / 1024 / 1024).toFixed(1);
       document.getElementById('log-meta').textContent =
-        `${data.total.toLocaleString()} of ${data.total_raw.toLocaleString()} lines · ${mb} MB`;
+        `${data.total.toLocaleString()} из ${data.total_raw.toLocaleString()} строк · ${mb} MB`;
 
       logPage = data.page;
       logTotalPages = data.total_pages;
       const pgEl = document.getElementById('log-pagination');
       if (logTotalPages > 1) {
         pgEl.classList.remove('hidden');
-        document.getElementById('log-page-info').textContent = `Page ${logPage + 1} / ${logTotalPages}`;
+        document.getElementById('log-page-info').textContent = `Страница ${logPage + 1} / ${logTotalPages}`;
       } else {
         pgEl.classList.add('hidden');
       }
 
       if (!data.lines.length) {
-        content.innerHTML = '<div class="text-gray-600">No matching log lines</div>';
+        content.innerHTML = '<div class="text-gray-600">Совпадающих строк не найдено</div>';
         return;
       }
       content.innerHTML = '';
@@ -350,7 +354,7 @@ function loadLogs() {
       content.scrollTop = content.scrollHeight;
     })
     .catch(e => {
-      content.innerHTML = `<div class="text-red-400">Failed: ${e}</div>`;
+      content.innerHTML = `<div class="text-red-400">Ошибка: ${e}</div>`;
     });
 }
 
@@ -370,7 +374,7 @@ function loadLogsTail() {
       const mb = (data.file_size / 1024 / 1024).toFixed(1);
       const totalRaw = (typeof data.total_raw === 'number') ? data.total_raw : 0;
       document.getElementById('log-meta').textContent =
-        `${totalRaw.toLocaleString()} lines · ${mb} MB`;
+        `${totalRaw.toLocaleString()} строк · ${mb} MB`;
     })
     .catch(() => {});
 }
@@ -379,7 +383,7 @@ function toggleLogAutoRefresh() {
   if (logAutoRefresh) {
     clearInterval(logAutoRefresh);
     logAutoRefresh = null;
-    document.getElementById('log-ar-state').textContent = 'OFF';
+    document.getElementById('log-ar-state').textContent = 'ВЫКЛ';
     document.getElementById('log-ar-btn').classList.remove('text-green-400');
     document.getElementById('log-ar-btn').classList.add('text-gray-400');
   } else {
@@ -464,7 +468,7 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
       const barPct = d.total_progress !== undefined ? Math.round(d.total_progress * 100) : (d.pct ?? 0);
       if (bar) bar.style.width = barPct + '%';
       if (pctEl) pctEl.textContent = d.pct ?? barPct;
-      if (phEl && d.phase) { phEl.textContent = d.phase; phEl.nextSibling && (phEl.nextSibling.textContent = ': '); }
+      if (phEl && d.phase) { phEl.textContent = window.AdminUi?.phase(d.phase) ?? d.phase; phEl.nextSibling && (phEl.nextSibling.textContent = ': '); }
       if (det) det.textContent = `${fmt(d.found_total)} / ${fmt(d.api_total)}`;
     }
 
@@ -512,7 +516,7 @@ if (['running', 'pending', 'interrupted'].includes(JOB_STATUS)) {
       const badge = document.getElementById('status-badge');
       const colors = { done: 'bg-green-900 text-green-400', error: 'bg-red-900 text-red-400', cancelled: 'bg-gray-800 text-gray-500' };
       badge.className = `text-xs px-2 py-0.5 rounded-full ${colors[d.status] ?? ''}`;
-      badge.textContent = d.status;
+      badge.textContent = window.AdminUi?.status(d.status) ?? d.status;
       es.close();
       // Reload to get final data
       setTimeout(() => location.reload(), 1000);

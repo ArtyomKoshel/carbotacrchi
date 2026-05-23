@@ -23,8 +23,14 @@
         class="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
     @csrf
     <div>
+      <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Логин</label>
+      <input type="text" name="username" value="{{ old('username') }}" autofocus autocomplete="username"
+             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm
+                    focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+    </div>
+    <div>
       <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wider">Пароль</label>
-      <input type="password" name="password" autofocus autocomplete="current-password"
+      <input type="password" name="password" autocomplete="current-password"
              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm
                     focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
     </div>

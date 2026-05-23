@@ -3,6 +3,10 @@
 
 @section('content')
 
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
+
 @if(session('success'))
 <div class="mb-4 px-4 py-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
   {{ session('success') }}
@@ -18,7 +22,7 @@
   @php $s = $schedules[$source] ?? null @endphp
   <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
     <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-      <span class="font-semibold text-white">{{ $source }}</span>
+      <span class="font-semibold text-white">{{ $ui::source($source) }}</span>
       <span class="text-xs px-2 py-0.5 rounded-full {{ $s?->enabled ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-500' }}">
         {{ $s?->enabled ? 'включено' : 'отключено' }}
       </span>
