@@ -83,6 +83,7 @@ const Results = (() => {
             ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`           : ''}
             ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`      : ''}
             ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(lot.trim)}</span>`         : ''}
+            ${cardFields.has('generation') && lot.generation ? `<span class="lot-card__tag">🧬 ${escHtml(lot.generation)}</span>` : ''}
           </div>
         </div>
       </div>`;
@@ -169,6 +170,10 @@ const Results = (() => {
           ${lot.trim ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Комплектация</span>
             <span class="sheet-detail-value">${escHtml(lot.trim)}</span>
+          </div>` : ''}
+          ${lot.generation ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Поколение</span>
+            <span class="sheet-detail-value">${escHtml(lot.generation)}</span>
           </div>` : ''}
           ${lot.hasKeys !== null && lot.hasKeys !== undefined ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Ключи</span>

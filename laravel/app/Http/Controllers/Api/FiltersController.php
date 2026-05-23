@@ -18,7 +18,8 @@ class FiltersController extends Controller
 
         $currentYear = (int) date('Y');
 
-        $sources = array_values(config('auction.sources', ['encar', 'kbcha']));
+        $sourcesCfg = config('auction.sources', ['encar', 'kbcha']);
+        $sources = array_values(is_array($sourcesCfg) ? $sourcesCfg : ['encar', 'kbcha']);
 
         $sourceOptions = $this->buildSourceOptions($sources);
 
@@ -29,6 +30,7 @@ class FiltersController extends Controller
         $fuelTypes = [];
         $driveTypes = [];
         $colors = [];
+        $generations = [];
         $filterFields = [];
 
         try {
@@ -42,6 +44,7 @@ class FiltersController extends Controller
             $fuelTypes = $this->distinctStrings('fuel', $sources);
             $driveTypes = $this->distinctStrings('drive_type', $sources);
             $colors = $this->distinctStrings('color', $sources);
+            $generations = $this->distinctStrings('generation', $sources);
             $filterFields = $this->buildFilterFieldsMeta();
         } catch (\Throwable) {
         }
@@ -61,6 +64,7 @@ class FiltersController extends Controller
                 'fuelTypes'     => $fuelTypes,
                 'driveTypes'    => $driveTypes,
                 'colors'        => $colors,
+                'generations'   => $generations,
             ],
         ]);
     }
@@ -106,9 +110,9 @@ class FiltersController extends Controller
             ->whereIn('source', $sources)
             ->whereNotNull('make')
             ->where('make', '!=', '')
-            ->select(['make', 'model_en'])
+            ->select(['make', 'model'])
             ->orderBy('make')
-            ->orderBy('model_en')
+            ->orderBy('model')
             ->get();
 
         $byMake = [];
@@ -118,7 +122,7 @@ class FiltersController extends Controller
                 continue;
             }
 
-            $model = trim((string) ($row->model_en ?? ''));
+            $model = trim((string) ($row->model ?? ''));
             $byMake[$make] ??= [];
             if ($model !== '') {
                 $byMake[$make][$model] = true;

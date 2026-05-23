@@ -130,7 +130,7 @@ class AdminUiLabels
         return self::FIELD_LABELS[$field] ?? self::humanize($field);
     }
 
-    public static function boolValue($value): string
+    public static function boolValue(mixed $value): string
     {
         if (is_bool($value)) {
             return $value ? 'да' : 'нет';

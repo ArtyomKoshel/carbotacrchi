@@ -97,6 +97,9 @@ class ProviderAggregator
         if ($query->model) {
             $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
         }
+        if ($query->generation) {
+            $builder->whereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
+        }
 
         if ($query->yearFrom) {
             $builder->where('year', '>=', $query->yearFrom);

@@ -5,6 +5,7 @@ const Filters = (() => {
     sources:          ['encar', 'kbcha'],
     make:             '',
     model:            '',
+    generation:       '',
     yearFrom:         '',
     yearTo:           '',
     priceMin:         '',
@@ -149,6 +150,7 @@ const Filters = (() => {
     state.mileageMax       = document.getElementById('filter-mileage-max')?.value  ?? '';
     state.engineMin        = document.getElementById('filter-engine-min')?.value   ?? '';
     state.engineMax        = document.getElementById('filter-engine-max')?.value   ?? '';
+    state.generation       = document.getElementById('filter-generation')?.value?.trim() ?? '';
     state.trim             = document.getElementById('filter-trim')?.value?.trim() ?? '';
     state.ownersCountMin   = document.getElementById('filter-owners-min')?.value   ?? '';
     state.ownersCountMax   = document.getElementById('filter-owners-max')?.value   ?? '';
@@ -162,6 +164,7 @@ const Filters = (() => {
     return {
       make:             state.make              || undefined,
       model:            state.model             || undefined,
+      generation:       state.generation        || undefined,
       yearFrom:         state.yearFrom          ? parseInt(state.yearFrom)          : undefined,
       yearTo:           state.yearTo            ? parseInt(state.yearTo)            : undefined,
       priceMin:         state.priceMin          ? parseInt(state.priceMin)          : undefined,
@@ -228,12 +231,14 @@ const Filters = (() => {
     setEl('filter-mileage-max',   q.mileageMax);
     setEl('filter-engine-min',    q.engineMin);
     setEl('filter-engine-max',    q.engineMax);
+    setEl('filter-generation',    q.generation);
     setEl('filter-trim',          q.trim);
     setEl('filter-owners-min',    q.ownersCountMin);
     setEl('filter-owners-max',    q.ownersCountMax);
     setEl('filter-insurance-min', q.insuranceCountMin);
     setEl('filter-insurance-max', q.insuranceCountMax);
     setEl('filter-vin',           q.vin);
+    if (q.generation)       state.generation       = q.generation;
     if (q.trim)             state.trim             = q.trim;
     if (q.bodyTypes)        state.bodyTypes        = q.bodyTypes;
     if (q.transmissions)    state.transmissions    = q.transmissions;

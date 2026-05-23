@@ -90,6 +90,30 @@
   </div>
   @endif
 
+  {{-- Taxonomy anomaly logs (super only) --}}
+  @if(($isSuper ?? false) && count($anomalyFiles ?? []))
+  <div class="bg-gray-900 border border-amber-800/40 rounded-xl p-3">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-amber-500 font-semibold uppercase tracking-wider">Аномалии таксономии</span>
+      <span class="text-xs text-gray-600">{{ count($anomalyFiles) }}</span>
+    </div>
+    <div class="max-h-48 overflow-y-auto space-y-0.5">
+      @foreach(($anomalyFiles ?? []) as $af)
+      @php
+        $isActive = ($anomaly ?? false) && (($anomalyFile ?? '') === $af['label']);
+        $sizeStr  = $af['size'] >= 1048576 ? round($af['size'] / 1048576, 1) . ' MB' : round($af['size'] / 1024) . ' KB';
+      @endphp
+      <a href="{{ route('admin.logs', array_filter(['anomaly' => 1, 'anomalyfile' => $af['label'], 'level' => $level, 'search' => $search, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+         class="block px-2 py-1.5 rounded text-xs font-mono truncate transition
+                {{ $isActive ? 'bg-amber-700/30 text-amber-300 border border-amber-700/50' : 'text-gray-400 hover:text-white hover:bg-gray-800' }}">
+        {{ $af['label'] }}
+        <span class="text-gray-600 ml-1">{{ $sizeStr }}</span>
+      </a>
+      @endforeach
+    </div>
+  </div>
+  @endif
+
 </div>
 
 {{-- ── Main content area ─────────────────────────────────────────────── --}}
@@ -97,7 +121,7 @@
 
 {{-- Action bar --}}
 <div class="flex items-center gap-2 flex-wrap mb-3">
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'appfile' => $appFile ?: null, 'anomaly' => ($anomaly ?? false) ? 1 : null, 'anomalyfile' => $anomalyFile ?: null])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-white transition">
     ↻ Обновить
   </a>
@@ -105,11 +129,11 @@
           class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
     ⏱ Авто: <span id="ar-state">ВЫКЛ</span>
   </button>
-  <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
+  <a href="{{ route('admin.logs.download', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'appfile' => $appFile ?: null, 'anomaly' => ($anomaly ?? false) ? 1 : null, 'anomalyfile' => $anomalyFile ?: null])) }}"
      class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-400 hover:text-green-400 transition">
     ↓ Скачать
   </a>
-  @if(!$jobFile && !$appLog)
+  @if(!$jobFile && !$appLog && !($anomaly ?? false))
   <form method="POST" action="{{ route('admin.logs.clear') }}" class="inline"
         onsubmit="return confirm('Очистить основной лог парсера?')">
     @csrf
@@ -129,13 +153,15 @@
 
   <span class="text-xs text-gray-600 ml-auto mr-1">Строк:</span>
   @foreach([500, 1000, 3000, 10000] as $lim)
-  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $lim])) }}"
+  <a href="{{ route('admin.logs', array_filter(['level' => $level, 'search' => $search, 'source' => $source, 'file' => $fileIdx ?: null, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'appfile' => $appFile ?: null, 'anomaly' => ($anomaly ?? false) ? 1 : null, 'anomalyfile' => $anomalyFile ?: null, 'limit' => $lim])) }}"
      class="px-2 py-1 rounded text-xs transition
             {{ $maxLines == $lim ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-500 hover:text-white' }}">
     {{ number_format($lim) }}
   </a>
   @endforeach
-  <span class="text-xs text-gray-600 ml-2 font-mono">{{ $appLog ? 'laravel.log' : ($jobFile ?: basename(config('admin.log_file')) . ($fileIdx > 0 ? '.'.$fileIdx : '')) }}</span>
+  <span class="text-xs text-gray-600 ml-2 font-mono">
+    {{ ($anomaly ?? false) ? ($anomalyFile ?: 'taxonomy_anomalies.jsonl') : ($appLog ? 'laravel.log' : ($jobFile ?: basename(config('admin.log_file')) . ($fileIdx > 0 ? '.'.$fileIdx : ''))) }}
+  </span>
 </div>
 
 {{-- Filters --}}
@@ -143,13 +169,13 @@
   {{-- Level filter --}}
   <div class="flex items-center gap-2 flex-wrap">
     @foreach(['' => 'Все', 'ERROR' => 'Ошибки', 'WARNING' => 'Предупреждения', 'INFO' => 'Инфо', 'DEBUG' => 'Отладка'] as $lv => $lbl)
-    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $lv, 'search' => $search, 'source' => $source, 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'appfile' => $appFile ?: null, 'anomaly' => ($anomaly ?? false) ? 1 : null, 'anomalyfile' => $anomalyFile ?: null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $level === $lv ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
       {{ $lbl }}
     </a>
     @endforeach
-    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['level' => $level, 'source' => $source, 'search' => '[STAT]', 'job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'appfile' => $appFile ?: null, 'anomaly' => ($anomaly ?? false) ? 1 : null, 'anomalyfile' => $anomalyFile ?: null, 'limit' => $maxLines != 1000 ? $maxLines : null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm transition
               {{ $search === '[STAT]' ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-cyan-500 hover:bg-cyan-900/40' }}">
       📊 Статистика
@@ -162,6 +188,9 @@
     <input type="hidden" name="source" value="{{ $source }}">
     @if($jobFile)<input type="hidden" name="job" value="{{ $jobFile }}">@endif
     @if($appLog)<input type="hidden" name="app" value="1">@endif
+    @if($appFile)<input type="hidden" name="appfile" value="{{ $appFile }}">@endif
+    @if($anomaly ?? false)<input type="hidden" name="anomaly" value="1">@endif
+    @if($anomalyFile)<input type="hidden" name="anomalyfile" value="{{ $anomalyFile }}">@endif
     @if($maxLines != 1000)<input type="hidden" name="limit" value="{{ $maxLines }}">@endif
     <input type="text" name="search" value="{{ $search }}" placeholder="Текст для поиска..."
            class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500">
@@ -170,7 +199,7 @@
       Найти
     </button>
     @if($search || $source || $level)
-    <a href="{{ route('admin.logs', array_filter(['job' => $jobFile ?: null, 'app' => $appLog ? 1 : null])) }}"
+    <a href="{{ route('admin.logs', array_filter(['job' => $jobFile ?: null, 'app' => $appLog ? 1 : null, 'appfile' => $appFile ?: null, 'anomaly' => ($anomaly ?? false) ? 1 : null, 'anomalyfile' => $anomalyFile ?: null])) }}"
        class="px-3 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-500 hover:text-red-400 transition">✕ Сброс</a>
     @endif
   </form>
@@ -202,7 +231,7 @@
       </span>
       @if($totalPages > 1)
       @php
-        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'job'=>$jobFile?:null,'app'=>$appLog?1:null,'limit'=>$maxLines!=1000?$maxLines:null]);
+        $pq = array_filter(['level'=>$level,'search'=>$search,'source'=>$source,'file'=>$fileIdx?:null,'job'=>$jobFile?:null,'app'=>$appLog?1:null,'appfile'=>$appFile?:null,'anomaly'=>($anomaly ?? false)?1:null,'anomalyfile'=>$anomalyFile?:null,'limit'=>$maxLines!=1000?$maxLines:null]);
       @endphp
       <div class="ml-auto flex items-center gap-1">
         @if($page > 0)

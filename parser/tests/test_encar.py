@@ -35,6 +35,47 @@ def test_search_returns_results():
     client.close()
 
 
+def test_lot_from_search_taxonomy_normalization():
+    norm = EncarNormalizer()
+
+    lot = _lot_from_search({
+        "Id": "1001",
+        "Manufacturer": "기아",
+        "Model": "스포티지 (NQ5) 노블레스",
+        "ModelGroup": "NQ5",
+        "Badge": "가솔린 1.6T 2WD",
+        "BadgeDetail": "",
+        "Year": 202306.0,
+        "FormYear": "202306",
+        "Price": 3200.0,
+        "Mileage": 23000.0,
+        "Photos": [],
+    }, norm)
+
+    assert lot.model == "스포티지"
+    assert lot.generation == "NQ5"
+    assert lot.trim == "노블레스"
+
+    lot2 = _lot_from_search({
+        "Id": "1002",
+        "Manufacturer": "BMW",
+        "Model": "5시리즈 G30 M 스포츠",
+        "ModelGroup": "G30",
+        "Badge": "디젤 2.0 2WD",
+        "BadgeDetail": "",
+        "Year": 202001.0,
+        "FormYear": "202001",
+        "Price": 4100.0,
+        "Mileage": 68000.0,
+        "Photos": [],
+    }, norm)
+
+    assert lot2.model == "5시리즈"
+    assert lot2.generation == "G30"
+    assert lot2.trim is None
+    assert lot2.raw_data.get("package_inferred") == "M 스포츠"
+
+
 def test_lot_from_search():
     client = EncarClient()
     norm = EncarNormalizer()

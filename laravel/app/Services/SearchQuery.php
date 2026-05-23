@@ -8,6 +8,7 @@ class SearchQuery
 {
     public string $make = '';
     public string $model = '';
+    public string $generation = '';
     public int $yearFrom = 0;
     public int $yearTo = 0;
     public int $priceMax = 0;
@@ -66,6 +67,7 @@ class SearchQuery
 
         $q->make = trim((string) ($data['make'] ?? ''));
         $q->model = trim((string) ($data['model'] ?? ''));
+        $q->generation = trim((string) ($data['generation'] ?? ''));
         $q->yearFrom = (int) ($data['yearFrom'] ?? 0);
         $q->yearTo = (int) ($data['yearTo'] ?? 0);
         $q->priceMax = (int) ($data['priceMax'] ?? 0);
@@ -234,6 +236,7 @@ class SearchQuery
         $parts = [];
         if ($this->make)       $parts[] = $this->make;
         if ($this->model)      $parts[] = $this->model;
+        if ($this->generation) $parts[] = 'поколение: ' . $this->generation;
         if ($this->yearFrom && $this->yearTo) {
             $parts[] = "{$this->yearFrom}–{$this->yearTo}";
         } elseif ($this->yearFrom) {
@@ -270,6 +273,7 @@ class SearchQuery
         $data = [];
         if ($this->make)          $data['make']          = $this->make;
         if ($this->model)         $data['model']         = $this->model;
+        if ($this->generation)    $data['generation']    = $this->generation;
         if ($this->yearFrom)      $data['yearFrom']      = $this->yearFrom;
         if ($this->yearTo)        $data['yearTo']        = $this->yearTo;
         if ($this->priceMin)      $data['priceMin']      = $this->priceMin;

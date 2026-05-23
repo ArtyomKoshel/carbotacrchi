@@ -16,6 +16,9 @@ class Config:
     KBCHA_WORKERS = int(os.getenv("KBCHA_WORKERS", "10"))
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
+    PARSER_ANOMALY_FILE = os.getenv("PARSER_ANOMALY_FILE", "")
+    PARSER_ANOMALY_MAX_BYTES = int(os.getenv("PARSER_ANOMALY_MAX_BYTES", str(10 * 1024 * 1024)))
+    PARSER_ANOMALY_MAX_LINES = int(os.getenv("PARSER_ANOMALY_MAX_LINES", "200000"))
 
     # Redis — supports both REDIS_URL (Railway standard) and individual vars
     _redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")

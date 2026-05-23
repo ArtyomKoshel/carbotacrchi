@@ -15,7 +15,7 @@
           class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition">
     🔍 Найти
   </button>
-  @if(request()->hasAny(['search','status','source','make','model','year_from','year_to','price_min','price_max','mileage_min','mileage_max','engine_min','engine_max','body_types','transmissions','fuels','drive_types','colors','has_accident','flood_history','owners_count','insurance_max','sort']))
+  @if(request()->hasAny(['search','status','source','make','model','generation','year_from','year_to','price_min','price_max','mileage_min','mileage_max','engine_min','engine_max','body_types','transmissions','fuels','drive_types','colors','has_accident','flood_history','owners_count','insurance_max','sort']))
     <a href="{{ route('admin.lots-browse') }}"
        class="px-4 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition">
       ✕ Сбросить
@@ -25,7 +25,7 @@
 
 {{-- Filters panel --}}
 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-5 space-y-4"
-     x-data="{ open: {{ request()->hasAny(['status','source','make','model','year_from','year_to','price_min','price_max','mileage_min','mileage_max','engine_min','engine_max','body_types','transmissions','fuels','drive_types','colors','has_accident','flood_history','owners_count','insurance_max']) ? 'true' : 'false' }} }">
+     x-data="{ open: {{ request()->hasAny(['status','source','make','model','generation','year_from','year_to','price_min','price_max','mileage_min','mileage_max','engine_min','engine_max','body_types','transmissions','fuels','drive_types','colors','has_accident','flood_history','owners_count','insurance_max']) ? 'true' : 'false' }} }">
 
   <div class="flex items-center justify-between">
     <span class="text-sm font-semibold text-white">Фильтры</span>
@@ -38,7 +38,7 @@
   <div x-show="open" x-cloak class="space-y-4">
 
     {{-- Row 1: Status, Source, Make, Model --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
       <div>
         <label class="text-xs text-gray-500 block mb-1">Статус</label>
         <select name="status" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
@@ -70,6 +70,15 @@
         <input type="text" name="model" value="{{ request('model') }}"
                placeholder="напр. Tucson"
                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Поколение</label>
+        <input type="text" name="generation" value="{{ request('generation') }}" list="generations-list"
+               placeholder="напр. G30, W213, NQ5"
+               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <datalist id="generations-list">
+          @foreach($generations as $g)<option value="{{ $g }}">@endforeach
+        </datalist>
       </div>
     </div>
 
@@ -275,6 +284,7 @@
             </td>
             <td class="px-4 py-2.5">
               <div class="text-white font-semibold">{{ $lot->make }} {{ $lot->model }}</div>
+              @if($lot->generation)<div class="text-gray-400 mt-0.5">{{ $lot->generation }}</div>@endif
               @if($lot->trim)<div class="text-gray-500 mt-0.5">{{ $lot->trim }}</div>@endif
             </td>
             <td class="px-4 py-2.5 text-gray-300">{{ $lot->year }}</td>

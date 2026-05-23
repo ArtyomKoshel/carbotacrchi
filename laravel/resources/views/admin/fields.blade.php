@@ -5,6 +5,8 @@
 
 @php
   $ui = \App\Support\AdminUiLabels::class;
+  $singleSource = count($sources) === 1;
+  $activeSource = $singleSource ? ($sources[0] ?? null) : null;
 @endphp
 
 @if(session('success'))
@@ -109,10 +111,15 @@
             <tr>
               <th class="px-4 py-2 text-left font-medium w-[180px]">Поле</th>
               <th class="px-4 py-2 text-left font-medium w-[90px]">Тип</th>
-              @foreach($sources as $src)
-                <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $ui::source($src) }} покрытие</th>
-              @endforeach
-              <th class="px-4 py-2 text-left font-medium">Источники & преобразование</th>
+              @if($singleSource)
+                <th class="px-4 py-2 text-center font-medium w-[150px]">Покрытие</th>
+                <th class="px-4 py-2 text-left font-medium">Преобразование</th>
+              @else
+                @foreach($sources as $src)
+                  <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $ui::source($src) }} покрытие</th>
+                @endforeach
+                <th class="px-4 py-2 text-left font-medium">Источники & преобразование</th>
+              @endif
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-800/60">
@@ -120,8 +127,11 @@
               @php
                 $isEmpty = empty($f['extractions']) && empty($f['coverage']);
                 $maxPct = $maxCov($f['coverage']);
+                $displayExtractions = $singleSource
+                    ? array_values(array_filter($f['extractions'], fn($e) => ($e['source'] ?? null) === $activeSource))
+                    : $f['extractions'];
                 $searchBase = strtolower($f['name'] . ' ' . $f['db_column'] . ' '
-                    . implode(' ', array_map(fn($e) => $e['raw_location'].' '.$e['transform'], $f['extractions'])));
+                    . implode(' ', array_map(fn($e) => $e['raw_location'].' '.$e['transform'], $displayExtractions)));
               @endphp
               <tr x-show="(!q || '{{ $searchBase }}'.includes(q.toLowerCase())) && {{ $maxPct }} >= minPct && (showEmpty || {{ $isEmpty ? 'false' : 'true' }})"
                   class="hover:bg-gray-800/30">
@@ -148,11 +158,11 @@
                 <td class="px-4 py-3 align-top text-xs text-gray-400">
                   {{ $f['dtype'] }}
                 </td>
-                @foreach($sources as $src)
+                @if($singleSource)
                   <td class="px-4 py-3 align-top">
-                    @if(isset($f['coverage'][$src]))
+                    @if($activeSource && isset($f['coverage'][$activeSource]))
                       @php
-                        $c = $f['coverage'][$src];
+                        $c = $f['coverage'][$activeSource];
                         $pct = $c['pct'];
                         $barColor = $pct >= 80 ? 'bg-emerald-500' : ($pct >= 40 ? 'bg-amber-400' : 'bg-red-500');
                         $txtColor = $pct >= 80 ? 'text-emerald-400' : ($pct >= 40 ? 'text-amber-400' : 'text-red-400');
@@ -170,20 +180,48 @@
                       <div class="text-center text-xs text-gray-700">—</div>
                     @endif
                   </td>
-                @endforeach
+                @else
+                  @foreach($sources as $src)
+                    <td class="px-4 py-3 align-top">
+                      @if(isset($f['coverage'][$src]))
+                        @php
+                          $c = $f['coverage'][$src];
+                          $pct = $c['pct'];
+                          $barColor = $pct >= 80 ? 'bg-emerald-500' : ($pct >= 40 ? 'bg-amber-400' : 'bg-red-500');
+                          $txtColor = $pct >= 80 ? 'text-emerald-400' : ($pct >= 40 ? 'text-amber-400' : 'text-red-400');
+                        @endphp
+                        <div class="flex items-center gap-2">
+                          <div class="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden min-w-[50px]">
+                            <div class="{{ $barColor }} h-full rounded-full" style="width:{{ min(100, $pct) }}%"></div>
+                          </div>
+                          <span class="text-xs font-bold {{ $txtColor }} w-12 text-right">{{ $pct }}%</span>
+                        </div>
+                        <div class="text-[10px] text-gray-600 text-right mt-0.5">
+                          {{ number_format($c['filled']) }}/{{ number_format($c['total']) }}
+                        </div>
+                      @else
+                        <div class="text-center text-xs text-gray-700">—</div>
+                      @endif
+                    </td>
+                  @endforeach
+                @endif
                 <td class="px-4 py-3 align-top">
-                  @if(empty($f['extractions']))
-                    <span class="text-[11px] text-gray-600 italic">не описано в field_mappings.py</span>
+                  @if(empty($displayExtractions))
+                    <span class="text-[11px] text-gray-600 italic">
+                      {{ $singleSource ? 'для активного источника не описано в field_mappings.py' : 'не описано в field_mappings.py' }}
+                    </span>
                   @else
                     <div class="space-y-1">
-                      @foreach($f['extractions'] as $e)
+                      @foreach($displayExtractions as $e)
                         <div class="text-[11px] flex items-start gap-2">
-                          <span class="px-1.5 py-0.5 rounded uppercase tracking-wide
-                            @if($e['source']==='encar') bg-indigo-900/60 text-indigo-300
-                            @else bg-gray-800 text-gray-400
-                            @endif">
-                            {{ $ui::source($e['source']) }}
-                          </span>
+                          @if(!$singleSource)
+                            <span class="px-1.5 py-0.5 rounded uppercase tracking-wide
+                              @if($e['source']==='encar') bg-indigo-900/60 text-indigo-300
+                              @else bg-gray-800 text-gray-400
+                              @endif">
+                              {{ $ui::source($e['source']) }}
+                            </span>
+                          @endif
                           <div class="flex-1 font-mono text-gray-300 break-all">
                             {{ $e['raw_location'] }}
                             <span class="text-gray-600">→</span>

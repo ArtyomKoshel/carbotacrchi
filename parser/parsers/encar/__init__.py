@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 import re as _re
 import time as _time
+import json as _json
+import os as _os
+from datetime import datetime as _dt, timezone as _tz, timedelta as _td
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable
 
@@ -23,6 +26,242 @@ _SOURCE = "encar"
 _PAGE_SIZE = 100
 _BATCH_SIZE = 20   # batch_details API hard-caps at 20 items
 _MAX_SAFE_OFFSET = 9900  # Encar search API (Elasticsearch) caps at ~10k results per query
+
+_ENGINE_TOKEN_RE = _re.compile(r'^\d+(?:\.\d+)?(?:T|D|L)?$', _re.IGNORECASE)
+_GEN_PAREN_RE = _re.compile(r'\(([A-Za-z0-9]{2,6})\)')
+_GEN_TOKEN_RE = _re.compile(r'^[A-Z]{1,3}\d{1,3}$')
+_SEAT_TOKEN_RE = _re.compile(r'^\d{1,2}인승$')
+
+_TAIL_POWERTRAIN_TOKENS = {
+    '가솔린', '디젤', '하이브리드', 'HEV', 'LPG', '전기', 'EV',
+    '2WD', '4WD', 'AWD', 'FWD', 'RWD', 'xDrive', 'sDrive',
+    '터보', 'TCe', 'TFSI', 'TDI', 'e-VGT', '(택시형)', '(렌터카)', '(영업용)',
+}
+
+_GEN_NON_CHASSIS_TOKENS = {
+    'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
+    'AWD', 'FWD', 'RWD', '4WD', '2WD',
+}
+
+_PACKAGE_HINTS = (
+    'M 스포츠 플러스', 'M 퍼포먼스', 'M 스포츠',
+    'AMG Line', 'GT Line', 'N Line', 'S line', 'xLine',
+)
+
+_TRIM_HINTS = (
+    '캘리그래피 블랙에디션', '마스터즈 그래비티', '익스클루시브 스페셜',
+    '프레스티지 스페셜', '노블레스 스페셜', '프리미엄 초이스',
+    '캘리그래피', '인스퍼레이션', '익스클루시브', '프레스티지', '시그니처',
+    '노블레스', '프리미엄', '모던', '스마트', '럭셔리',
+    '르블랑', '고급형', '기본형', '비즈니스 2', '비즈니스 1', '모빌리티',
+)
+
+_UNKNOWN_TAIL_HINT_RE = _re.compile(r'(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$')
+_ANOMALY_SEEN_MAX = 20_000
+_ANOMALY_SEEN_TTL_SEC = 6 * 60 * 60
+_anomaly_seen: dict[str, float] = {}
+
+
+def _anomaly_file_path() -> str:
+    if Config.PARSER_ANOMALY_FILE:
+        return Config.PARSER_ANOMALY_FILE
+    base = Config.LOG_FILE or '/app/logs/parser.log'
+    return _os.path.join(_os.path.dirname(base), 'taxonomy_anomalies.jsonl')
+
+
+def _build_anomaly_key(payload: dict) -> str:
+    return '|'.join([
+        str(payload.get('source') or ''),
+        str(payload.get('model_raw') or ''),
+        str(payload.get('unknown_tail') or ''),
+        str(payload.get('reason') or ''),
+    ])
+
+
+def _utc3_now_iso() -> str:
+    tz = _tz(_td(hours=3))
+    return _dt.now(tz=tz).isoformat(timespec='seconds')
+
+
+def _estimate_lines(path: str) -> int:
+    try:
+        with open(path, 'rb') as fp:
+            return sum(buf.count(b'\n') for buf in iter(lambda: fp.read(1024 * 1024), b''))
+    except OSError:
+        return 0
+
+
+def _rotate_anomaly_file(path: str) -> None:
+    try:
+        if not _os.path.exists(path):
+            return
+        stamp = _dt.now().strftime('%Y%m%d-%H%M%S')
+        rotated = path.replace('.jsonl', f'-{stamp}.jsonl')
+        _os.replace(path, rotated)
+    except OSError as e:
+        logger.warning(f"[{_SOURCE}] cannot rotate taxonomy anomaly log: {e}")
+
+
+def _is_duplicate_anomaly(payload: dict) -> bool:
+    now = _time.time()
+    key = _build_anomaly_key(payload)
+
+    seen_at = _anomaly_seen.get(key)
+    if seen_at and (now - seen_at) < _ANOMALY_SEEN_TTL_SEC:
+        return True
+
+    if len(_anomaly_seen) >= _ANOMALY_SEEN_MAX:
+        stale_cutoff = now - _ANOMALY_SEEN_TTL_SEC
+        stale_keys = [k for k, ts in _anomaly_seen.items() if ts < stale_cutoff]
+        for k in stale_keys[: max(1, len(stale_keys))]:
+            _anomaly_seen.pop(k, None)
+        if len(_anomaly_seen) >= _ANOMALY_SEEN_MAX:
+            # fallback bounded growth protection
+            _anomaly_seen.clear()
+
+    _anomaly_seen[key] = now
+    return False
+
+
+def ensure_anomaly_file_exists() -> None:
+    path = _anomaly_file_path()
+    try:
+        _os.makedirs(_os.path.dirname(path), exist_ok=True)
+        if not _os.path.exists(path):
+            with open(path, 'a', encoding='utf-8'):
+                pass
+    except OSError as e:
+        logger.warning(f"[{_SOURCE}] cannot initialize taxonomy anomaly log file: {e}")
+
+
+def _append_taxonomy_anomaly(payload: dict) -> None:
+    if _is_duplicate_anomaly(payload):
+        return
+
+    path = _anomaly_file_path()
+    try:
+        _os.makedirs(_os.path.dirname(path), exist_ok=True)
+        if _os.path.exists(path):
+            st = _os.stat(path)
+            if st.st_size >= Config.PARSER_ANOMALY_MAX_BYTES:
+                _rotate_anomaly_file(path)
+            if _estimate_lines(path) >= Config.PARSER_ANOMALY_MAX_LINES:
+                _rotate_anomaly_file(path)
+        if not _os.path.exists(path):
+            with open(path, 'a', encoding='utf-8'):
+                pass
+        with open(path, 'a', encoding='utf-8') as fp:
+            fp.write(_json.dumps(payload, ensure_ascii=False, default=str))
+            fp.write('\n')
+    except OSError as e:
+        logger.warning(f"[{_SOURCE}] cannot write taxonomy anomaly log: {e}")
+
+
+def _strip_tail_noise(model: str) -> str:
+    tokens = model.split()
+    while tokens:
+        tail = tokens[-1]
+        if (
+            tail in _TAIL_POWERTRAIN_TOKENS
+            or _ENGINE_TOKEN_RE.match(tail)
+            or _SEAT_TOKEN_RE.match(tail)
+        ):
+            tokens.pop()
+            continue
+        break
+    return ' '.join(tokens).strip()
+
+
+def _extract_generation(model: str, model_group: str | None) -> tuple[str, str | None]:
+    cleaned = _re.sub(r'\s+', ' ', model or '').strip()
+    generation: str | None = None
+
+    m = _GEN_PAREN_RE.search(cleaned)
+    if m:
+        generation = m.group(1)
+        cleaned = _GEN_PAREN_RE.sub('', cleaned)
+        cleaned = _re.sub(r'\s+', ' ', cleaned).strip()
+
+    if generation is None and model_group:
+        for token in str(model_group).replace('/', ' ').split():
+            if _is_generation_token(token):
+                generation = token
+                break
+
+    if generation is None:
+        for token in cleaned.split():
+            if _is_generation_token(token):
+                generation = token
+                cleaned = ' '.join([t for t in cleaned.split() if t != token]).strip()
+                break
+
+    if generation is not None:
+        cleaned = ' '.join([t for t in cleaned.split() if t != generation]).strip()
+
+    return cleaned, generation
+
+
+def _is_generation_token(token: str) -> bool:
+    t = (token or '').strip()
+    if not t:
+        return False
+    if _GEN_TOKEN_RE.match(t):
+        return True
+    if _re.match(r'^[A-Z]{2,4}$', t) and t not in _GEN_NON_CHASSIS_TOKENS:
+        return True
+    return False
+
+
+def _extract_suffix_hint(text: str, hints: tuple[str, ...]) -> tuple[str, str | None]:
+    normalized = _re.sub(r'\s+', ' ', text or '').strip()
+    if not normalized:
+        return '', None
+    for hint in sorted(hints, key=len, reverse=True):
+        if normalized == hint:
+            return normalized, None
+        suffix = f' {hint}'
+        if normalized.endswith(suffix):
+            return normalized[:-len(suffix)].strip(), hint
+    return normalized, None
+
+
+def _split_model_trim_package(model: str) -> tuple[str, str | None, str | None]:
+    normalized = _re.sub(r'\s+', ' ', model or '').strip()
+    if not normalized:
+        return '', None, None
+
+    base_after_pkg, package = _extract_suffix_hint(normalized, _PACKAGE_HINTS)
+    base_after_trim, trim = _extract_suffix_hint(base_after_pkg, _TRIM_HINTS)
+    return base_after_trim, trim, package
+
+
+def _detect_unknown_tail(model_no_gen: str, model_clean: str, inferred_trim: str | None, inferred_package: str | None) -> str | None:
+    if inferred_trim or inferred_package:
+        return None
+    tokens = (model_no_gen or '').split()
+    if len(tokens) < 2:
+        return None
+    tail2 = ' '.join(tokens[-2:])
+    tail1 = tokens[-1]
+    if _UNKNOWN_TAIL_HINT_RE.search(tail2):
+        return tail2
+    if _UNKNOWN_TAIL_HINT_RE.search(tail1):
+        return tail1
+    return None
+
+
+def _normalize_model_taxonomy(model_raw: str, model_group: str | None) -> tuple[str, str | None, str | None, str | None, str | None]:
+    model_no_noise = _strip_tail_noise(_re.sub(r'\s+', ' ', model_raw or '').strip())
+    model_no_gen, generation = _extract_generation(model_no_noise, model_group)
+    model_clean, inferred_trim, inferred_package = _split_model_trim_package(model_no_gen)
+    unknown_tail = _detect_unknown_tail(model_no_gen, model_clean, inferred_trim, inferred_package)
+    return (
+        model_clean or model_no_noise or (model_raw or '').strip(),
+        generation,
+        inferred_trim,
+        inferred_package,
+        unknown_tail,
+    )
 
 
 def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
@@ -72,14 +311,36 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         except (TypeError, ValueError):
             pass
 
-    _model_str = f"{model} {badge}".strip() if badge else model
+    model_group = item.get("ModelGroup")
+    model_clean, generation, inferred_trim, inferred_package, unknown_tail = _normalize_model_taxonomy(model, model_group)
+    trim = (badge_detail or '').strip() or inferred_trim
+
+    if unknown_tail:
+        _append_taxonomy_anomaly({
+            'ts': _utc3_now_iso(),
+            'source': _SOURCE,
+            'lot_id': vid,
+            'make_kr': make_kr,
+            'model_raw': model,
+            'model_group_raw': model_group,
+            'badge_raw': badge,
+            'badge_detail_raw': badge_detail,
+            'model_clean': model_clean,
+            'generation_inferred': generation,
+            'trim_inferred': inferred_trim,
+            'package_inferred': inferred_package,
+            'unknown_tail': unknown_tail,
+            'reason': 'model_tail_not_matched_by_known_trim_package_patterns',
+        })
+
     return CarLot(
         id=vid,
         source=_SOURCE,
         make=norm.make(make_kr),
-        model=_model_str,
-        model_en=resolve_model_en(_model_str),
-        trim=badge_detail or None,
+        model=model_clean,
+        model_en=resolve_model_en(model_clean),
+        generation=generation,
+        trim=trim or None,
         year=year,
         price=price_raw,
         mileage=mileage,
@@ -97,9 +358,14 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         raw_data={
             "manufacturer_kr":   make_kr,
             "model_kr":          model,
-            "model_group_kr":    item.get("ModelGroup"),
+            "model_group_kr":    model_group,
             "badge_kr":          badge,
             "badge_detail_kr":   badge_detail,
+            "model_taxonomy_clean": model_clean,
+            "generation_inferred": generation,
+            "trim_inferred": inferred_trim,
+            "package_inferred": inferred_package,
+            "unknown_tail_candidate": unknown_tail,
             # ad_type + condition[] are kept as debug context for sell_type
             # normalization (the normalized result already lives in the
             # lots.sell_type + lots.sell_type_raw columns).

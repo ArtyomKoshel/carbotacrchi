@@ -21,6 +21,7 @@ class EncarProvider extends AbstractDbProvider
                 price:        (int) ($raw['price']   ?? 0),
                 mileage:      (int) ($raw['mileage'] ?? 0),
                 modelEn:      $raw['model_en'] ?? null,
+                generation:   $raw['generation'] ?? null,
                 location:     $raw['location'] ?? 'Korea',
                 lotUrl:       $raw['lot_url']   ?? '',
                 imageUrl:     $raw['image_url'] ?? null,

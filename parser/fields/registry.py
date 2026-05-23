@@ -120,7 +120,12 @@ FIELDS: list[FieldSpec] = [
     FieldSpec(
         name="model", dtype=FieldType.STRING, required=True, filterable=True,
         category="identity", description="Model name (parser-normalized)",
-        sources={"encar": "Model + Badge", "kbcha": "classCode + title parsing"},
+        sources={"encar": "Model (normalized, without badge tail tokens)", "kbcha": "classCode + title parsing"},
+    ),
+    FieldSpec(
+        name="generation", dtype=FieldType.STRING, filterable=True,
+        category="identity", description="Generation / chassis code",
+        sources={"encar": "Model / ModelGroup token extraction", "kbcha": "title parsing (e.g. G80, NX4)"},
     ),
     FieldSpec(
         name="trim", dtype=FieldType.STRING, filterable=True, tracked=True,

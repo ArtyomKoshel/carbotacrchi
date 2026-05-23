@@ -175,6 +175,9 @@ class TelegramBot
         if (in_array('trim', $cardFields, true) && !empty($lot['trim'])) {
             $specs[] = '🏷 ' . htmlspecialchars((string) $lot['trim']);
         }
+        if (in_array('generation', $cardFields, true) && !empty($lot['generation'])) {
+            $specs[] = '🧬 ' . htmlspecialchars((string) $lot['generation']);
+        }
         if ($specs) {
             $lines[] = implode(' · ', $specs);
         }

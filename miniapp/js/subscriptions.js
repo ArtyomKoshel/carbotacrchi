@@ -12,6 +12,7 @@ const Subscriptions = (() => {
     const n = {};
     if (q.make     && q.make !== '')  n.make     = String(q.make).trim();
     if (q.model    && q.model !== '') n.model    = String(q.model).trim();
+    if (q.generation && q.generation !== '') n.generation = String(q.generation).trim();
     if (q.yearFrom && q.yearFrom > 0) n.yearFrom = Number(q.yearFrom);
     if (q.yearTo   && q.yearTo   > 0) n.yearTo   = Number(q.yearTo);
     if (q.priceMax && q.priceMax > 0) n.priceMax = Number(q.priceMax);

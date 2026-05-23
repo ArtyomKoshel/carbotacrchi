@@ -20,7 +20,8 @@ class AdminLotsController extends Controller
                     ->orWhere('vin', 'like', "%{$search}%")
                     ->orWhere('make', 'like', "%{$search}%")
                     ->orWhereRaw('model LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('model_en LIKE ?', ["%{$search}%"]);
+                    ->orWhereRaw('model_en LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('generation LIKE ?', ["%{$search}%"]);
             });
         }
 
@@ -42,6 +43,9 @@ class AdminLotsController extends Controller
         // Model
         if ($model = trim((string) $request->input('model', ''))) {
             $q->whereRaw('model LIKE ? OR model_en LIKE ?', ["%{$model}%", "%{$model}%"]);
+        }
+        if ($generation = trim((string) $request->input('generation', ''))) {
+            $q->whereRaw('generation LIKE ?', ["%{$generation}%"]);
         }
 
         // Year
@@ -105,6 +109,7 @@ class AdminLotsController extends Controller
 
         // Filter options from DB (distinct values, cached implicitly by MySQL query cache)
         $makes      = DB::table('lots')->distinct()->orderBy('make')->pluck('make')->filter()->values();
+        $generations = DB::table('lots')->whereNotNull('generation')->where('generation', '!=', '')->distinct()->orderBy('generation')->pluck('generation')->filter()->values();
         $bodyTypes  = DB::table('lots')->distinct()->orderBy('body_type')->pluck('body_type')->filter()->values();
         $transList  = DB::table('lots')->distinct()->orderBy('transmission')->pluck('transmission')->filter()->values();
         $fuelList   = DB::table('lots')->distinct()->orderBy('fuel')->pluck('fuel')->filter()->values();
@@ -113,7 +118,7 @@ class AdminLotsController extends Controller
         $sources    = DB::table('lots')->distinct()->pluck('source')->values();
 
         return view('admin.lots-browse', compact(
-            'lots', 'makes', 'bodyTypes', 'transList', 'fuelList', 'driveList', 'colorList', 'sources'
+            'lots', 'makes', 'generations', 'bodyTypes', 'transList', 'fuelList', 'driveList', 'colorList', 'sources'
         ));
     }
 }

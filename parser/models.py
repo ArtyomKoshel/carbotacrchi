@@ -15,6 +15,7 @@ class CarLot:
     price: int                    # Always in KRW (canonical)
     mileage: int = 0
     model_en: str | None = None   # Canonical English model name (resolved from Korean)
+    generation: str | None = None # Generation / chassis code (e.g. G30, NX4)
 
     # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
     registration_year_month: int | None = None
@@ -108,6 +109,7 @@ class CarLot:
             "make": self.make,
             "model": self.model,
             "model_en": self.model_en,
+            "generation": self.generation,
             "year": self.year,
             "price": self.price,
             "mileage": self.mileage,
