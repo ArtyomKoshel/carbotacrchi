@@ -47,6 +47,9 @@ class AdminLotsController extends Controller
         if ($generation = trim((string) $request->input('generation', ''))) {
             $q->whereRaw('generation LIKE ?', ["%{$generation}%"]);
         }
+        if ($trim = trim((string) $request->input('trim', ''))) {
+            $q->whereRaw('`trim` LIKE ?', ["%{$trim}%"]);
+        }
 
         // Year
         if ($yf = (int) $request->input('year_from')) $q->where('year', '>=', $yf);
@@ -107,8 +110,25 @@ class AdminLotsController extends Controller
         $perPage = min(200, max(20, (int) $request->input('per_page', 50)));
         $lots    = $q->paginate($perPage)->withQueryString();
 
-        // Filter options from DB (distinct values, cached implicitly by MySQL query cache)
-        $makes      = DB::table('lots')->distinct()->orderBy('make')->pluck('make')->filter()->values();
+        // Filter options from DB
+        $rawPairs = DB::table('lots')
+            ->whereNotNull('make')->where('make', '!=', '')
+            ->whereNotNull('model')->where('model', '!=', '')
+            ->select(['make', 'model'])
+            ->distinct()->orderBy('make')->orderBy('model')
+            ->get();
+        $makesModels = [];
+        foreach ($rawPairs as $row) {
+            $mk = trim((string) $row->make);
+            $md = trim((string) $row->model);
+            if ($mk === '' || $md === '') continue;
+            $makesModels[$mk][] = $md;
+        }
+        ksort($makesModels);
+        foreach ($makesModels as &$mdList) {
+            $mdList = array_values(array_unique($mdList));
+        }
+        unset($mdList);
         $generations = DB::table('lots')->whereNotNull('generation')->where('generation', '!=', '')->distinct()->orderBy('generation')->pluck('generation')->filter()->values();
         $bodyTypes  = DB::table('lots')->distinct()->orderBy('body_type')->pluck('body_type')->filter()->values();
         $transList  = DB::table('lots')->distinct()->orderBy('transmission')->pluck('transmission')->filter()->values();
@@ -118,7 +138,7 @@ class AdminLotsController extends Controller
         $sources    = DB::table('lots')->distinct()->pluck('source')->values();
 
         return view('admin.lots-browse', compact(
-            'lots', 'makes', 'generations', 'bodyTypes', 'transList', 'fuelList', 'driveList', 'colorList', 'sources'
+            'lots', 'makesModels', 'generations', 'bodyTypes', 'transList', 'fuelList', 'driveList', 'colorList', 'sources'
         ));
     }
 }
