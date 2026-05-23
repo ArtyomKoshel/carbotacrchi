@@ -57,6 +57,7 @@ _TRIM_HINTS = (
 )
 
 _UNKNOWN_TAIL_HINT_RE = _re.compile(r'(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$')
+_MODEL_PREFIX_RE = _re.compile(r'^(?:더|더\s+뉴|올\s+뉴|올뉴|뉴|신형)\s+')
 _ANOMALY_SEEN_MAX = 20_000
 _ANOMALY_SEEN_TTL_SEC = 6 * 60 * 60
 _anomaly_seen: dict[str, float] = {}
@@ -184,13 +185,13 @@ def _extract_generation(model: str, model_group: str | None) -> tuple[str, str |
 
     if generation is None and model_group:
         for token in str(model_group).replace('/', ' ').split():
-            if _is_generation_token(token):
+            if _is_generation_token(token) and not _looks_like_model_prefix(cleaned, token):
                 generation = token
                 break
 
     if generation is None:
         for token in cleaned.split():
-            if _is_generation_token(token):
+            if _is_generation_token(token) and not _looks_like_model_prefix(cleaned, token):
                 generation = token
                 cleaned = ' '.join([t for t in cleaned.split() if t != token]).strip()
                 break
@@ -205,9 +206,18 @@ def _is_generation_token(token: str) -> bool:
     t = (token or '').strip()
     if not t:
         return False
-    if _GEN_TOKEN_RE.match(t):
+    return bool(_GEN_TOKEN_RE.match(t))
+
+
+def _looks_like_model_prefix(model_text: str, candidate: str) -> bool:
+    text = _re.sub(r'\s+', ' ', model_text or '').strip()
+    cand = (candidate or '').strip()
+    if not text or not cand:
+        return False
+    if text.startswith(cand + ' ') or text == cand:
         return True
-    if _re.match(r'^[A-Z]{2,4}$', t) and t not in _GEN_NON_CHASSIS_TOKENS:
+    stripped = _MODEL_PREFIX_RE.sub('', text)
+    if stripped.startswith(cand + ' ') or stripped == cand:
         return True
     return False
 

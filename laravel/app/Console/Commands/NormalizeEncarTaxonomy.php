@@ -40,6 +40,7 @@ class NormalizeEncarTaxonomy extends Command
     ];
 
     private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
+    private const MODEL_PREFIX_RE = '/^(?:더|더\s+뉴|올\s+뉴|올뉴|뉴|신형)\s+/u';
 
     public function handle(): int
     {
@@ -272,7 +273,7 @@ class NormalizeEncarTaxonomy extends Command
         if ($generation === null && $modelGroup) {
             $parts = preg_split('/\s+/', str_replace('/', ' ', $modelGroup)) ?: [];
             foreach ($parts as $part) {
-                if ($this->isGenerationToken($part)) {
+                if ($this->isGenerationToken($part) && !$this->looksLikeModelPrefix($cleaned, $part)) {
                     $generation = $part;
                     break;
                 }
@@ -282,7 +283,7 @@ class NormalizeEncarTaxonomy extends Command
         if ($generation === null && $cleaned !== '') {
             $parts = preg_split('/\s+/', $cleaned) ?: [];
             foreach ($parts as $i => $part) {
-                if ($this->isGenerationToken($part)) {
+                if ($this->isGenerationToken($part) && !$this->looksLikeModelPrefix($cleaned, $part)) {
                     $generation = $part;
                     unset($parts[$i]);
                     $cleaned = $this->normalizeSpace(implode(' ', $parts));
@@ -307,12 +308,24 @@ class NormalizeEncarTaxonomy extends Command
             return false;
         }
 
-        if (preg_match('/^[A-Z]{1,3}\d{1,3}$/', $t)) {
+        return preg_match('/^[A-Z]{1,3}\d{1,3}$/', $t) === 1;
+    }
+
+    private function looksLikeModelPrefix(string $modelText, string $candidate): bool
+    {
+        $text = $this->normalizeSpace($modelText);
+        $cand = trim($candidate);
+        if ($text === '' || $cand === '') {
+            return false;
+        }
+
+        if ($text === $cand || str_starts_with($text, $cand . ' ')) {
             return true;
         }
 
-        return preg_match('/^[A-Z]{2,4}$/', $t) === 1
-            && !in_array($t, self::GEN_NON_CHASSIS_TOKENS, true);
+        $stripped = $this->normalizeSpace((string) preg_replace(self::MODEL_PREFIX_RE, '', $text));
+
+        return $stripped === $cand || str_starts_with($stripped, $cand . ' ');
     }
 
     private function extractSuffixHint(string $text, array $hints): array
