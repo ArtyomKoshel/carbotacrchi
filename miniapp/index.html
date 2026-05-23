@@ -36,13 +36,16 @@
       <div class="filter-divider"></div>
 
       <div class="filter-section">
-        <div class="filter-label">Марка и модель</div>
+        <div class="filter-label">Марка / Модель / Комплектация</div>
         <div class="filter-selects">
           <div class="filter-select-wrap">
             <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
           </div>
           <div class="filter-select-wrap">
             <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
+          </div>
+          <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
+            <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
           </div>
         </div>
       </div>
@@ -142,13 +145,6 @@
       <div class="filter-section">
         <div class="filter-label">Цвет</div>
         <div class="chip-group" id="color-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Комплектация</div>
-        <input class="filter-input" type="text" id="filter-trim" placeholder="노블레스, Noblesse, Prestige…">
       </div>
 
       <div class="filter-divider"></div>

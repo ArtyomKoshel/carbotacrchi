@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BotFilterSetting;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FiltersController extends Controller
@@ -138,6 +139,38 @@ class FiltersController extends Controller
         ksort($result);
 
         return $result;
+    }
+
+    public function trims(Request $request): JsonResponse
+    {
+        $make = trim((string) $request->query('make', ''));
+        $model = trim((string) $request->query('model', ''));
+        $sources = config('auction.sources', ['encar', 'kbcha']);
+        $sources = is_array($sources) ? $sources : ['encar', 'kbcha'];
+
+        $query = DB::table('lots')
+            ->where('is_active', true)
+            ->whereIn('source', $sources)
+            ->whereNotNull('trim')
+            ->where('trim', '!=', '')
+            ->where('trim', '!=', '(세부등급 없음)');
+
+        if ($make !== '') {
+            $query->where('make', $make);
+        }
+        if ($model !== '') {
+            $query->where('model', $model);
+        }
+
+        $trims = $query->distinct()
+            ->orderBy('trim')
+            ->pluck('trim')
+            ->map(static fn ($v) => trim((string) $v))
+            ->filter(static fn (string $v) => $v !== '')
+            ->values()
+            ->toArray();
+
+        return response()->json(['ok' => true, 'data' => ['trims' => array_values(array_unique($trims))]]);
     }
 
     /** @return array<int, array<string, mixed>> */

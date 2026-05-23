@@ -67,6 +67,13 @@ const API = (() => {
     });
   }
 
+  function getTrims(make, model) {
+    const p = new URLSearchParams();
+    if (make) p.set('make', make);
+    if (model) p.set('model', model);
+    return request('GET', `/filters/trims?${p}`);
+  }
+
   async function getInspection(lotId) {
     const res = await fetch(`${BASE}/lots/${encodeURIComponent(lotId)}/inspection`);
     if (res.status === 404) return null;
@@ -74,5 +81,5 @@ const API = (() => {
     return json?.data ?? null;
   }
 
-  return { getFilters, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen, getInspection };
+  return { getFilters, getTrims, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen, getInspection };
 })();

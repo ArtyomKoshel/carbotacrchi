@@ -138,7 +138,38 @@ const Filters = (() => {
     const models = (filtersData?.makes?.[state.make]) ?? [];
     sel.innerHTML = '<option value="">Любая модель</option>' +
       models.map(m => `<option value="${m}"${state.model===m?' selected':''}>${m}</option>`).join('');
-    sel.addEventListener('change', () => { state.model = sel.value; });
+    sel.addEventListener('change', () => {
+      state.model = sel.value;
+      state.trim  = '';
+      renderTrimSelect([]);
+      if (state.make || state.model) loadTrims();
+    });
+    if (state.make || state.model) loadTrims();
+  }
+
+  async function loadTrims() {
+    try {
+      const data = await API.getTrims(state.make, state.model);
+      renderTrimSelect(data?.trims ?? []);
+    } catch (e) {
+      renderTrimSelect([]);
+    }
+  }
+
+  function renderTrimSelect(trims) {
+    const wrap = document.getElementById('filter-trim-wrap');
+    const sel  = document.getElementById('filter-trim');
+    if (!wrap || !sel) return;
+    if (!trims || trims.length === 0) {
+      wrap.style.display = 'none';
+      sel.innerHTML = '<option value="">Любая комплектация</option>';
+      state.trim = '';
+      return;
+    }
+    wrap.style.display = '';
+    sel.innerHTML = '<option value="">Любая комплектация</option>' +
+      trims.map(t => `<option value="${t}"${state.trim===t?' selected':''}>${t}</option>`).join('');
+    sel.addEventListener('change', () => { state.trim = sel.value; });
   }
 
   function readFormState() {
@@ -221,6 +252,7 @@ const Filters = (() => {
     const setEl = (id, val) => { if (val !== undefined && val !== null && val !== '') { const el = document.getElementById(id); if (el) el.value = val; } };
     if (q.make)  { state.make  = q.make;  }
     if (q.model) { state.model = q.model; }
+    if (q.trim)  { state.trim  = q.trim;  }
     renderMakeSelect();
     renderModelSelect();
     setEl('filter-year-from',     q.yearFrom);
@@ -232,14 +264,12 @@ const Filters = (() => {
     setEl('filter-engine-min',    q.engineMin);
     setEl('filter-engine-max',    q.engineMax);
     setEl('filter-generation',    q.generation);
-    setEl('filter-trim',          q.trim);
     setEl('filter-owners-min',    q.ownersCountMin);
     setEl('filter-owners-max',    q.ownersCountMax);
     setEl('filter-insurance-min', q.insuranceCountMin);
     setEl('filter-insurance-max', q.insuranceCountMax);
     setEl('filter-vin',           q.vin);
     if (q.generation)       state.generation       = q.generation;
-    if (q.trim)             state.trim             = q.trim;
     if (q.bodyTypes)        state.bodyTypes        = q.bodyTypes;
     if (q.transmissions)    state.transmissions    = q.transmissions;
     if (q.fuelTypes)        state.fuelTypes        = q.fuelTypes;

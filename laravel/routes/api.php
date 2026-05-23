@@ -20,4 +20,5 @@ Route::middleware('telegram.auth')->group(function () {
     Route::post('/subscriptions/{id}/seen',   [SubscriptionsController::class,'markSeen']);
 });
 
+Route::get('/filters/trims', [FiltersController::class, 'trims']);
 Route::get('/filters', [FiltersController::class, 'index']);
