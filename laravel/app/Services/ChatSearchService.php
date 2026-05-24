@@ -626,15 +626,6 @@ PROMPT;
             return self::$makesModels;
         }
 
-        $path = storage_path('app/data/makes_models.json');
-        if (is_file($path) && is_readable($path)) {
-            $decoded = json_decode((string) file_get_contents($path), true);
-            if (is_array($decoded) && !empty($decoded)) {
-                self::$makesModels = $decoded;
-                return self::$makesModels;
-            }
-        }
-
         try {
             $rows = \Illuminate\Support\Facades\DB::table('lots')
                 ->where('is_active', true)
