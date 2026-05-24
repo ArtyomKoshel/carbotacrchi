@@ -24,6 +24,7 @@ const Filters = (() => {
     titleTypes:       [],
     trim:             '',
     hasAccident:      null,
+    floodHistory:     null,
     ownersCountMin:   '',
     ownersCountMax:   '',
     insuranceCountMin:'',
@@ -35,32 +36,49 @@ const Filters = (() => {
   function resetState() {
     const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
     state.sources = sourceKeys.length ? sourceKeys : ['encar', 'kbcha'];
-    state.make = '';
-    state.model = '';
-    state.generation = '';
-    state.yearFrom = '';
-    state.yearTo = '';
-    state.priceMin = '';
-    state.priceMax = '';
-    state.mileageMin = '';
-    state.mileageMax = '';
-    state.engineMin = '';
-    state.engineMax = '';
-    state.bodyTypes = [];
-    state.transmissions = [];
-    state.fuelTypes = [];
-    state.driveTypes = [];
-    state.colors = [];
-    state.damageTypes = [];
-    state.titleTypes = [];
+    state.make = ''; state.model = ''; state.generation = '';
+    state.yearFrom = ''; state.yearTo = '';
+    state.priceMin = ''; state.priceMax = '';
+    state.mileageMin = ''; state.mileageMax = '';
+    state.engineMin = ''; state.engineMax = '';
+    state.bodyTypes = []; state.transmissions = [];
+    state.fuelTypes = []; state.driveTypes = [];
+    state.colors = []; state.damageTypes = []; state.titleTypes = [];
     state.trim = '';
-    state.hasAccident = null;
-    state.ownersCountMin = '';
-    state.ownersCountMax = '';
-    state.insuranceCountMin = '';
-    state.insuranceCountMax = '';
-    state.vin = '';
-    state.sort = 'date';
+    state.hasAccident = null; state.floodHistory = null;
+    state.ownersCountMin = ''; state.ownersCountMax = '';
+    state.insuranceCountMin = ''; state.insuranceCountMax = '';
+    state.vin = ''; state.sort = 'date';
+  }
+
+  // ── Field metadata: maps field_name → UI render config ──
+  // Labels come from API (field.label from bot_filter_settings.field_label)
+  const FIELD_UI = {
+    source:         { type: 'source_chips' },
+    make:           { type: 'make_model' },
+    model:          { type: 'skip' },
+    trim:           { type: 'skip' },
+    generation:     { type: 'text', id: 'filter-generation', placeholder: 'G30, W213, NQ5, CN7...' },
+    year:           { type: 'range', idMin: 'filter-year-from', idMax: 'filter-year-to', inputType: 'number', min: 1990, max: 2026 },
+    price:          { type: 'range', idMin: 'filter-price-min', idMax: 'filter-price-max', inputType: 'number', min: 0, prefix: '₩' },
+    mileage:        { type: 'range', idMin: 'filter-mileage-min', idMax: 'filter-mileage-max', inputType: 'number', min: 0 },
+    engine_volume:  { type: 'range', idMin: 'filter-engine-min', idMax: 'filter-engine-max', inputType: 'number', min: 0, step: '0.1' },
+    body_type:      { type: 'chips', stateKey: 'bodyTypes', optionsKey: 'bodyTypeOptions', fallbackKey: 'bodyTypes' },
+    transmission:   { type: 'chips', stateKey: 'transmissions', optionsKey: 'transmissionOptions', fallbackKey: 'transmissions' },
+    fuel:           { type: 'chips', stateKey: 'fuelTypes', optionsKey: 'fuelTypeOptions', fallbackKey: 'fuelTypes' },
+    drive_type:     { type: 'chips', stateKey: 'driveTypes', optionsKey: 'driveTypeOptions', fallbackKey: 'driveTypes' },
+    color:          { type: 'chips', stateKey: 'colors', optionsKey: 'colorOptions', fallbackKey: 'colors' },
+    has_accident:   { type: 'bool_chips', stateKey: 'hasAccident', options: [{value:'',label:'Любое'},{value:'false',label:'✅ Без ДТП'},{value:'true',label:'⚠️ С ДТП'}] },
+    flood_history:  { type: 'bool_chips', stateKey: 'floodHistory', options: [{value:'',label:'Любое'},{value:'false',label:'✅ Без затоплений'},{value:'true',label:'🌊 С затоплением'}] },
+    insurance_count:{ type: 'range', idMin: 'filter-insurance-min', idMax: 'filter-insurance-max', inputType: 'number', min: 0 },
+    owners_count:   { type: 'range', idMin: 'filter-owners-min', idMax: 'filter-owners-max', inputType: 'number', min: 0, max: 20 },
+    lien_status:    { type: 'chips', stateKey: 'lienStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Чистый'}] },
+    seizure_status: { type: 'chips', stateKey: 'seizureStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Без ареста'}] },
+  };
+
+  function getEnabledFields() {
+    const fields = filtersData?.filterFields ?? [];
+    return fields.filter(f => f.enabled);
   }
 
   async function init() {
@@ -68,9 +86,7 @@ const Filters = (() => {
       filtersData = await API.getFilters('ru');
       Taxonomy.ingestFilters(filtersData ?? {});
       const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
-      if (sourceKeys.length) {
-        state.sources = sourceKeys;
-      }
+      if (sourceKeys.length) state.sources = sourceKeys;
       render();
     } catch (e) {
       console.error('Filters load failed', e);
@@ -79,17 +95,147 @@ const Filters = (() => {
   }
 
   function render() {
+    const container = document.getElementById('filters-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const enabled = getEnabledFields();
+    const rendered = new Set();
+
+    for (const field of enabled) {
+      const name = field.name;
+      if (rendered.has(name)) continue;
+      const ui = FIELD_UI[name];
+      if (!ui || ui.type === 'skip') continue;
+      rendered.add(name);
+
+      if (name === 'make') { rendered.add('model'); rendered.add('trim'); }
+
+      const section = buildFilterSection(name, ui, field.label);
+      if (section) container.appendChild(section);
+    }
+
+    // Always add sources at top if not from filterFields
+    if (!rendered.has('source')) {
+      const srcSection = buildFilterSection('source', FIELD_UI.source, 'Источники');
+      if (srcSection) container.insertBefore(srcSection, container.firstChild);
+    }
+
+    // Populate dynamic content
+    populateFilters();
+  }
+
+  function buildFilterSection(name, ui, apiLabel) {
+    const wrap = document.createElement('div');
+
+    const section = document.createElement('div');
+    section.className = 'filter-section';
+    section.dataset.filterField = name;
+
+    const label = document.createElement('div');
+    label.className = 'filter-label';
+    label.textContent = apiLabel || name;
+    section.appendChild(label);
+
+    switch (ui.type) {
+      case 'source_chips': {
+        const div = document.createElement('div');
+        div.className = 'source-chips';
+        div.id = 'source-chips';
+        section.appendChild(div);
+        break;
+      }
+      case 'make_model': {
+        const selects = document.createElement('div');
+        selects.className = 'filter-selects';
+        selects.innerHTML = `
+          <div class="filter-select-wrap">
+            <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
+          </div>
+          <div class="filter-select-wrap">
+            <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
+          </div>
+          <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
+            <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
+          </div>`;
+        section.appendChild(selects);
+        break;
+      }
+      case 'text': {
+        const input = document.createElement('input');
+        input.className = 'filter-input';
+        input.type = 'text';
+        input.id = ui.id;
+        input.placeholder = ui.placeholder || '';
+        section.appendChild(input);
+        break;
+      }
+      case 'range': {
+        const row = document.createElement('div');
+        row.className = 'filter-range-row';
+        if (ui.prefix) {
+          row.innerHTML = `
+            <div class="filter-input-wrap">
+              <span class="filter-input-prefix">${ui.prefix}</span>
+              <input class="filter-input has-prefix" type="${ui.inputType||'number'}" id="${ui.idMin}" placeholder="От" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">
+            </div>
+            <div class="filter-input-wrap">
+              <span class="filter-input-prefix">${ui.prefix}</span>
+              <input class="filter-input has-prefix" type="${ui.inputType||'number'}" id="${ui.idMax}" placeholder="До" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">
+            </div>`;
+        } else {
+          row.innerHTML = `
+            <input class="filter-input" type="${ui.inputType||'number'}" id="${ui.idMin}" placeholder="От" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">
+            <input class="filter-input" type="${ui.inputType||'number'}" id="${ui.idMax}" placeholder="До" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">`;
+        }
+        section.appendChild(row);
+        break;
+      }
+      case 'chips': {
+        const div = document.createElement('div');
+        div.className = 'chip-group';
+        div.id = `chips-${name}`;
+        section.appendChild(div);
+        break;
+      }
+      case 'bool_chips': {
+        const div = document.createElement('div');
+        div.className = 'chip-group';
+        div.id = `chips-${name}`;
+        section.appendChild(div);
+        break;
+      }
+    }
+
+    wrap.appendChild(section);
+    const divider = document.createElement('div');
+    divider.className = 'filter-divider';
+    wrap.appendChild(divider);
+
+    const frag = document.createDocumentFragment();
+    frag.appendChild(section);
+    frag.appendChild(divider);
+    return frag;
+  }
+
+  function populateFilters() {
     renderSourceChips();
     renderMakeSelect();
     renderModelSelect();
-    renderChipGroup('bodytype-chips',     filtersData?.bodyTypeOptions     ?? filtersData?.bodyTypes     ?? [], 'bodyTypes');
-    renderChipGroup('transmission-chips', filtersData?.transmissionOptions ?? filtersData?.transmissions ?? [], 'transmissions');
-    renderChipGroup('fuel-chips',         filtersData?.fuelTypeOptions     ?? filtersData?.fuelTypes     ?? [], 'fuelTypes');
-    renderChipGroup('drive-chips',        filtersData?.driveTypeOptions    ?? filtersData?.driveTypes    ?? [], 'driveTypes');
-    renderChipGroup('damage-chips',       filtersData?.damageTypes   ?? [], 'damageTypes');
-    renderChipGroup('title-chips',        filtersData?.titleTypes    ?? [], 'titleTypes');
-    renderChipGroup('color-chips',        filtersData?.colorOptions  ?? filtersData?.colors ?? [], 'colors');
-    renderAccidentChips();
+
+    const enabled = getEnabledFields();
+    for (const field of enabled) {
+      const name = field.name;
+      const ui = FIELD_UI[name];
+      if (!ui) continue;
+
+      if (ui.type === 'chips') {
+        const items = ui.staticOptions ?? (filtersData?.[ui.optionsKey] ?? filtersData?.[ui.fallbackKey] ?? []);
+        renderChipGroup(`chips-${name}`, items, ui.stateKey);
+      } else if (ui.type === 'bool_chips') {
+        renderBoolChips(`chips-${name}`, ui.options, ui.stateKey);
+      }
+    }
   }
 
   function renderChipGroup(containerId, items, stateKey) {
@@ -97,34 +243,43 @@ const Filters = (() => {
     if (!container) return;
 
     const options = Taxonomy.normalizeOptionItems(items);
-
-    const section = container.closest('.filter-section');
-    const divider = section && section.nextElementSibling?.classList?.contains('filter-divider')
-      ? section.nextElementSibling
-      : null;
-    const visible = Array.isArray(options) && options.length > 0;
-
-    if (section) section.style.display = visible ? '' : 'none';
-    if (divider) divider.style.display = visible ? '' : 'none';
-    if (!visible) {
-      state[stateKey] = [];
-      container.innerHTML = '';
+    if (!Array.isArray(options) || options.length === 0) {
+      container.innerHTML = '<span class="filter-empty">нет данных</span>';
       return;
     }
 
     container.innerHTML = options.map(o => `
-      <button class="filter-chip${state[stateKey].includes(o.value) ? ' selected' : ''}"
+      <button class="filter-chip${(state[stateKey]||[]).includes(o.value) ? ' selected' : ''}"
               data-value="${o.value}">${o.label}</button>
     `).join('');
     container.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const val = btn.dataset.value;
+        if (!state[stateKey]) state[stateKey] = [];
         if (state[stateKey].includes(val)) {
           state[stateKey] = state[stateKey].filter(x => x !== val);
         } else {
           state[stateKey].push(val);
         }
         btn.classList.toggle('selected', state[stateKey].includes(val));
+        TG.haptic('selection');
+      });
+    });
+  }
+
+  function renderBoolChips(containerId, options, stateKey) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const current = state[stateKey] === null ? '' : String(state[stateKey]);
+    container.innerHTML = options.map(o =>
+      `<button class="filter-chip${current === o.value ? ' selected' : ''}" data-value="${o.value}">${o.label}</button>`
+    ).join('');
+    container.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.dataset.value;
+        state[stateKey] = v === '' ? null : v === 'true';
+        container.querySelectorAll('.filter-chip').forEach(b =>
+          b.classList.toggle('selected', b.dataset.value === v));
         TG.haptic('selection');
       });
     });
@@ -186,7 +341,6 @@ const Filters = (() => {
     const make = state.make;
     const model = state.model;
     const reqId = ++trimRequestSeq;
-
     try {
       const data = await API.getTrims(make, model, 'ru');
       if (reqId !== trimRequestSeq) return;
@@ -256,6 +410,7 @@ const Filters = (() => {
       titleTypes:       state.titleTypes.length     ? state.titleTypes     : undefined,
       trim:             state.trim              || undefined,
       hasAccident:      state.hasAccident !== null ? state.hasAccident     : undefined,
+      floodHistory:     state.floodHistory !== null ? state.floodHistory   : undefined,
       ownersCountMin:   state.ownersCountMin    ? parseInt(state.ownersCountMin)    : undefined,
       ownersCountMax:   state.ownersCountMax    ? parseInt(state.ownersCountMax)    : undefined,
       insuranceCountMin:state.insuranceCountMin ? parseInt(state.insuranceCountMin) : undefined,
@@ -265,29 +420,6 @@ const Filters = (() => {
       sort:             state.sort,
       limit:            40,
     };
-  }
-
-  function renderAccidentChips() {
-    const container = document.getElementById('accident-chips');
-    if (!container) return;
-    const options = [
-      { value: '',      label: 'Любое' },
-      { value: 'false', label: '\u2705 Без ДТП' },
-      { value: 'true',  label: '\u26a0\ufe0f С ДТП' },
-    ];
-    const current = state.hasAccident === null ? '' : String(state.hasAccident);
-    container.innerHTML = options.map(o =>
-      `<button class="filter-chip${current === o.value ? ' selected' : ''}" data-value="${o.value}">${o.label}</button>`
-    ).join('');
-    container.querySelectorAll('.filter-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const v = btn.dataset.value;
-        state.hasAccident = v === '' ? null : v === 'true';
-        container.querySelectorAll('.filter-chip').forEach(b =>
-          b.classList.toggle('selected', b.dataset.value === v));
-        TG.haptic('selection');
-      });
-    });
   }
 
   function applyQuery(q) {
@@ -303,6 +435,24 @@ const Filters = (() => {
     if (q.make)  { state.make  = q.make;  }
     if (q.model) { state.model = q.model; }
     if (q.trim)  { state.trim  = q.trim;  }
+    if (q.generation)       state.generation       = q.generation;
+    if (q.bodyTypes)        state.bodyTypes        = q.bodyTypes;
+    if (q.transmissions)    state.transmissions    = q.transmissions;
+    if (q.fuelTypes)        state.fuelTypes        = q.fuelTypes;
+    if (q.driveTypes)       state.driveTypes       = q.driveTypes;
+    if (q.colors)           state.colors           = q.colors;
+    if (q.damageTypes)      state.damageTypes      = q.damageTypes;
+    if (q.titleTypes)       state.titleTypes       = q.titleTypes;
+    if (q.sources)          state.sources          = q.sources;
+    if (q.sort)             state.sort             = ['date', 'price_asc', 'price_desc'].includes(q.sort) ? q.sort : 'date';
+    if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
+    if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');
+    if (q.insuranceCountMin !== undefined) state.insuranceCountMin = String(q.insuranceCountMin ?? '');
+    if (q.insuranceCountMax !== undefined) state.insuranceCountMax = String(q.insuranceCountMax ?? '');
+    if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
+    if (q.floodHistory !== undefined && q.floodHistory !== null) state.floodHistory = q.floodHistory;
+
+    render();
     renderMakeSelect();
     renderModelSelect();
     setEl('filter-year-from',     q.yearFrom);
@@ -319,23 +469,7 @@ const Filters = (() => {
     setEl('filter-insurance-min', q.insuranceCountMin);
     setEl('filter-insurance-max', q.insuranceCountMax);
     setEl('filter-vin',           q.vin);
-    if (q.generation)       state.generation       = q.generation;
-    if (q.bodyTypes)        state.bodyTypes        = q.bodyTypes;
-    if (q.transmissions)    state.transmissions    = q.transmissions;
-    if (q.fuelTypes)        state.fuelTypes        = q.fuelTypes;
-    if (q.driveTypes)       state.driveTypes       = q.driveTypes;
-    if (q.colors)           state.colors           = q.colors;
-    if (q.damageTypes)      state.damageTypes      = q.damageTypes;
-    if (q.titleTypes)       state.titleTypes       = q.titleTypes;
-    if (q.sources)          state.sources          = q.sources;
-    if (q.sort)             state.sort             = ['date', 'price_asc', 'price_desc'].includes(q.sort) ? q.sort : 'date';
-    if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
-    if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');
-    if (q.insuranceCountMin !== undefined) state.insuranceCountMin = String(q.insuranceCountMin ?? '');
-    if (q.insuranceCountMax !== undefined) state.insuranceCountMax = String(q.insuranceCountMax ?? '');
-    if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
     setEl('sort-select', state.sort);
-    render();
   }
 
   function getCardFields() {
