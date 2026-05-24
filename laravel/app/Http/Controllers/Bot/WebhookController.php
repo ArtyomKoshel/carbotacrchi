@@ -266,6 +266,14 @@ class WebhookController extends Controller
 
         if ($parsed === null) {
             Log::warning('[bot] parse returned null', ['user_id' => $userId, 'prompt' => $text]);
+            $this->bot->sendMessage($chatId,
+                "🤔 Не удалось распознать поисковый запрос.\n\n"
+                ."<b>Попробуйте например:</b>\n"
+                ."• «BMW 5 серия до 20000$»\n"
+                ."• «Hyundai Sonata 2020 автомат»\n"
+                ."• «кроссовер до 15 млн вон без ДТП»\n\n"
+                ."Или нажмите <b>«Открыть поиск»</b> для фильтров 👇"
+            );
             return;
         }
 
@@ -386,15 +394,17 @@ class WebhookController extends Controller
                 return;
             }
 
+            $normalizedQuery = SearchQuery::fromArray($queryData)->toSearchArray();
+
             $aggregator = app(ProviderAggregator::class);
-            $query      = SearchQuery::fromArray($queryData);
+            $query      = SearchQuery::fromArray($normalizedQuery);
             $query->limit = 100;
             $result     = $aggregator->search($query);
             $knownIds   = array_map(fn ($l) => $l->id, $result->lots);
 
             $sub = Subscription::create([
                 'user_id'         => $userId,
-                'query'           => $queryData,
+                'query'           => $normalizedQuery,
                 'known_lot_ids'   => $knownIds,
                 'active'          => true,
                 'last_checked_at' => now(),

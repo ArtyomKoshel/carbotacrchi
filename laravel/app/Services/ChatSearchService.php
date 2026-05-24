@@ -67,10 +67,11 @@ class ChatSearchService
                     'Content-Type'  => 'application/json',
                 ])
                 ->post($this->apiUrl, [
-                    'model'       => $this->model,
-                    'max_tokens'  => config('ai.max_tokens', 300),
-                    'temperature' => config('ai.temperature', 0),
-                    'messages'    => [
+                    'model'           => $this->model,
+                    'max_tokens'      => config('ai.max_tokens', 300),
+                    'temperature'     => config('ai.temperature', 0),
+                    'response_format' => ['type' => 'json_object'],
+                    'messages'        => [
                         ['role' => 'system', 'content' => $this->getSystemPrompt()],
                         ['role' => 'user',   'content' => $text],
                     ],
@@ -85,10 +86,11 @@ class ChatSearchService
             $content = $response->json('choices.0.message.content', '');
             $json    = $this->extractJson($content);
 
-            if (!$json || isset($json['error'])) {
+            if (!$json || !empty($json['not_a_search']) || isset($json['error'])) {
                 return null;
             }
 
+            unset($json['not_a_search']);
             $this->lastParseWasAi = true;
             return $json;
         } catch (\Throwable $e) {
@@ -455,7 +457,7 @@ class ChatSearchService
                 '- make (string) — марка',
                 '- model (string) — модель',
                 '- yearFrom, yearTo (int) — диапазон годов',
-                '- priceMin, priceMax (int) — цена в KRW',
+                '- priceMin, priceMax (int) — цена в ₩ (KRW)',
                 '- mileageMin, mileageMax (int) — пробег в км',
                 '- engineMin, engineMax (float) — объем двигателя в литрах',
                 '- fuelTypes (string[])',
@@ -466,38 +468,83 @@ class ChatSearchService
         }
 
         $filtersBlock = implode("\n", $filterDescriptions);
+        $makesBlock = $this->buildMakesContext();
 
         return <<<PROMPT
-Ты — парсер поисковых запросов для автомобилей. Пользователь пишет свободный текст, ты извлекаешь параметры поиска и возвращаешь JSON.
+Ты — парсер поисковых запросов для автомобилей на корейских аукционах. Пользователь пишет свободный текст на русском/английском, ты извлекаешь параметры поиска и возвращаешь JSON.
 
 Доступные фильтры:
 {$filtersBlock}
 
+{$makesBlock}
+
 Правила:
-1. Возвращай ТОЛЬКО JSON, без пояснений
-2. Включай только те поля, которые явно упомянуты в тексте
-3. "бензин"/"бенз"/"petrol" → fuelTypes: ["Gasoline"]
-4. "дизель"/"diesel" → fuelTypes: ["Diesel"]
-5. "электро"/"электрический"/"electric" → fuelTypes: ["Electric"]
-6. "гибрид"/"hybrid" → fuelTypes: ["Hybrid"]
-7. "автомат"/"АКПП"/"automatic" → transmissions: ["Automatic"]
-8. "механика"/"МКПП"/"manual" → transmissions: ["Manual"]
-9. "полный привод"/"AWD"/"4WD" → driveTypes: ["AWD"]
-10. "передний привод"/"FWD" → driveTypes: ["FWD"]
-11. "задний привод"/"RWD" → driveTypes: ["RWD"]
-12. Числа после марки/модели без контекста — скорее всего объём двигателя (2.0, 2.5, 3.0) → engineMin и engineMax
-13. "от X" → Min поле, "до X" → Max поле
-14. Пробег определяй по контексту: "пробег от 10000" → mileageMin: 10000
-15. Цену определяй по контексту: "до 15000000₩"/"до 15000$" → priceMax
-16. "без ДТП"/"без аварий" → hasAccident: false; "с ДТП" → hasAccident: true
-17. "без залога"/"чистая" → lienStatuses: ["clean"]
-18. "1 владелец"/"один хозяин" → ownersCountMax: 1
-19. "без страховых"/"0 страховых" → insuranceCountMax: 0
-20. "не затоплена"/"без утоплений" → floodHistory: false
-21. Если указано точное число без слов "от/до" для range-поля (пробег, цена, год, объем), ставь Min и Max равными
-22. Если текст не содержит параметров поиска авто — верни {"error": "not_a_search"}
-23. Комплектация/trim: всегда возвращай корейское название → "Noblesse"/"Ноблесс"→"노블레스", "Signature"/"Сигнатюр"→"시그니처", "Gravity"/"Гравити"→"그래비티", "Prestige"/"Престиж"→"프레스티지", "Calligraphy"/"Каллиграфи"→"캘리그래피", "Modern"/"Модерн"→"모던", "Luxury"/"Люкс"→"럭셔리", "Smart"/"Смарт"→"스마트", "Premium"/"Премиум"→"프리미엄"
+1. Возвращай ТОЛЬКО валидный JSON объект, без пояснений и markdown
+2. Включай только те поля, которые ЯВНО упомянуты или однозначно подразумеваются в тексте
+3. Если текст не содержит параметров поиска авто — верни {"not_a_search": true}
+4. "бензин"/"бенз"/"petrol" → fuelTypes: ["Gasoline"]
+5. "дизель"/"diesel" → fuelTypes: ["Diesel"]
+6. "электро"/"электрический"/"electric" → fuelTypes: ["Electric"]
+7. "гибрид"/"hybrid" → fuelTypes: ["Hybrid"]
+8. "автомат"/"АКПП"/"automatic" → transmissions: ["Automatic"]
+9. "механика"/"МКПП"/"manual" → transmissions: ["Manual"]
+10. "полный привод"/"AWD"/"4WD" → driveTypes: ["AWD"]
+11. "передний привод"/"FWD" → driveTypes: ["FWD"]
+12. "задний привод"/"RWD" → driveTypes: ["RWD"]
+13. "седан"/"sedan" → bodyTypes: ["Sedan"]; "кроссовер"/"SUV" → bodyTypes: ["SUV"]; "хэтчбек"/"hatchback" → bodyTypes: ["Hatchback"]; "универсал"/"wagon" → bodyTypes: ["Wagon"]; "купе"/"coupe" → bodyTypes: ["Coupe"]; "минивэн"/"van" → bodyTypes: ["Van"]
+14. Числа 1.6, 2.0, 2.5, 3.0 и т.д. рядом с маркой/моделью — объём двигателя → engineMin и engineMax
+15. "от X" → Min поле, "до X" → Max поле
+16. Пробег определяй по контексту: "пробег от 10000" → mileageMin: 10000
+17. Цену определяй по контексту. Цены хранятся в ₩ (KRW). 1$ ≈ 1300₩. "до 15000$" → priceMax: 19500000; "до 20 млн вон" → priceMax: 20000000
+18. "без ДТП"/"без аварий" → hasAccident: false; "с ДТП" → hasAccident: true
+19. "без залога"/"чистая" → lienStatuses: ["clean"]
+20. "1 владелец"/"один хозяин" → ownersCountMax: 1
+21. "без страховых"/"0 страховых" → insuranceCountMax: 0
+22. "не затоплена"/"без утоплений" → floodHistory: false
+23. Если указано точное число для range-поля (пробег, цена, год, объем) БЕЗ слов "от/до", ставь Min и Max равными
+24. Комплектация/trim: возвращай как написано в DB (корейское или английское название). Примеры: "Noblesse"→"노블레스", "Signature"→"시그니처", "Prestige"→"프레스티지", "Premium"→"프리미엄", "Luxury"→"럭셔리", "Modern"→"모던"
+25. Поколение/generation: "G30", "W213", "CN7", "NQ5" и т.д. → generation: "G30"
+26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi и т.д.
+
+Примеры:
+User: "хендай соната 2020 автомат до 15000$"
+→ {"make": "Hyundai", "model": "Sonata", "yearFrom": 2020, "yearTo": 2020, "transmissions": ["Automatic"], "priceMax": 19500000}
+
+User: "бмв 5 серия g30 дизель пробег до 100000"
+→ {"make": "BMW", "model": "5 Series", "generation": "G30", "fuelTypes": ["Diesel"], "mileageMax": 100000}
+
+User: "кроссовер до 20 млн вон без дтп 1 владелец"
+→ {"bodyTypes": ["SUV"], "priceMax": 20000000, "hasAccident": false, "ownersCountMax": 1}
+
+User: "привет как дела"
+→ {"not_a_search": true}
+
+User: "тойота камри 2.5 белая"
+→ {"make": "Toyota", "model": "Camry", "engineMin": 2.5, "engineMax": 2.5, "colors": ["White"]}
 PROMPT;
+    }
+
+    private function buildMakesContext(): string
+    {
+        $makes = $this->getMakesModels();
+        if (empty($makes)) {
+            return '';
+        }
+
+        $lines = ['Доступные марки и модели (используй ТОЛЬКО эти названия):'];
+        $count = 0;
+        foreach ($makes as $make => $models) {
+            if ($count >= 50) {
+                $lines[] = '... и другие';
+                break;
+            }
+            $modelsList = implode(', ', array_slice($models, 0, 15));
+            $extra = count($models) > 15 ? ' ...' : '';
+            $lines[] = "- {$make}: {$modelsList}{$extra}";
+            $count++;
+        }
+
+        return implode("\n", $lines);
     }
 
     private function buildFieldPromptLine(BotFilterSetting $setting): string
@@ -580,13 +627,40 @@ PROMPT;
         }
 
         $path = storage_path('app/data/makes_models.json');
-        if (!is_file($path) || !is_readable($path)) {
-            self::$makesModels = [];
-            return self::$makesModels;
+        if (is_file($path) && is_readable($path)) {
+            $decoded = json_decode((string) file_get_contents($path), true);
+            if (is_array($decoded) && !empty($decoded)) {
+                self::$makesModels = $decoded;
+                return self::$makesModels;
+            }
         }
 
-        $decoded = json_decode((string) file_get_contents($path), true);
-        self::$makesModels = is_array($decoded) ? $decoded : [];
+        try {
+            $rows = \Illuminate\Support\Facades\DB::table('lots')
+                ->where('is_active', true)
+                ->whereNotNull('make')
+                ->where('make', '!=', '')
+                ->select(['make', 'model'])
+                ->distinct()
+                ->orderBy('make')
+                ->orderBy('model')
+                ->get();
+
+            $byMake = [];
+            foreach ($rows as $row) {
+                $make = trim((string) ($row->make ?? ''));
+                if ($make === '') continue;
+                $model = trim((string) ($row->model ?? ''));
+                $byMake[$make] ??= [];
+                if ($model !== '' && !in_array($model, $byMake[$make], true)) {
+                    $byMake[$make][] = $model;
+                }
+            }
+            ksort($byMake);
+            self::$makesModels = $byMake;
+        } catch (\Throwable) {
+            self::$makesModels = [];
+        }
 
         return self::$makesModels;
     }
