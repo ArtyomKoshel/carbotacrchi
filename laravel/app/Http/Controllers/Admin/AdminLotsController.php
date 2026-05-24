@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\Taxonomy\TaxonomyNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -37,7 +38,16 @@ class AdminLotsController extends Controller
 
         // Make
         if ($make = trim((string) $request->input('make', ''))) {
-            $q->whereRaw('make LIKE ?', [$make . '%']);
+            $variants = TaxonomyNormalizer::expandToDbValues('make', $make);
+            $q->where(function ($sub) use ($variants, $make) {
+                if ($variants !== []) {
+                    $sub->whereIn('make', $variants)
+                        ->orWhereRaw('make LIKE ?', [$make . '%']);
+                    return;
+                }
+
+                $sub->whereRaw('make LIKE ?', [$make . '%']);
+            });
         }
 
         // Model
@@ -88,10 +98,22 @@ class AdminLotsController extends Controller
         }
 
         // Multi-selects
-        if ($bt = $request->input('body_types'))      $q->whereIn('body_type', (array)$bt);
-        if ($tr = $request->input('transmissions'))   $q->whereIn('transmission', (array)$tr);
-        if ($fu = $request->input('fuels'))           $q->whereIn('fuel', (array)$fu);
-        if ($dr = $request->input('drive_types'))     $q->whereIn('drive_type', (array)$dr);
+        if ($bt = $request->input('body_types')) {
+            $vals = TaxonomyNormalizer::expandManyToDbValues('body_type', (array)$bt);
+            if ($vals !== []) $q->whereIn('body_type', $vals);
+        }
+        if ($tr = $request->input('transmissions')) {
+            $vals = TaxonomyNormalizer::expandManyToDbValues('transmission', (array)$tr);
+            if ($vals !== []) $q->whereIn('transmission', $vals);
+        }
+        if ($fu = $request->input('fuels')) {
+            $vals = TaxonomyNormalizer::expandManyToDbValues('fuel', (array)$fu);
+            if ($vals !== []) $q->whereIn('fuel', $vals);
+        }
+        if ($dr = $request->input('drive_types')) {
+            $vals = TaxonomyNormalizer::expandManyToDbValues('drive_type', (array)$dr);
+            if ($vals !== []) $q->whereIn('drive_type', $vals);
+        }
         if ($co = $request->input('colors'))          $q->whereIn('color', (array)$co);
 
         // Sort
@@ -119,7 +141,7 @@ class AdminLotsController extends Controller
             ->get();
         $makesModels = [];
         foreach ($rawPairs as $row) {
-            $mk = trim((string) $row->make);
+            $mk = TaxonomyNormalizer::normalize('make', (string) $row->make);
             $md = trim((string) $row->model);
             if ($mk === '' || $md === '') continue;
             $makesModels[$mk][] = $md;
@@ -130,15 +152,23 @@ class AdminLotsController extends Controller
         }
         unset($mdList);
         $generations = DB::table('lots')->whereNotNull('generation')->where('generation', '!=', '')->distinct()->orderBy('generation')->pluck('generation')->filter()->values();
-        $bodyTypes  = DB::table('lots')->distinct()->orderBy('body_type')->pluck('body_type')->filter()->values();
-        $transList  = DB::table('lots')->distinct()->orderBy('transmission')->pluck('transmission')->filter()->values();
-        $fuelList   = DB::table('lots')->distinct()->orderBy('fuel')->pluck('fuel')->filter()->values();
-        $driveList  = DB::table('lots')->distinct()->orderBy('drive_type')->pluck('drive_type')->filter()->values();
+        $bodyTypes = collect(TaxonomyNormalizer::normalizeMany('body_type', DB::table('lots')->distinct()->pluck('body_type')->filter()->values()->toArray()))->sort()->values();
+        $transList = collect(TaxonomyNormalizer::normalizeMany('transmission', DB::table('lots')->distinct()->pluck('transmission')->filter()->values()->toArray()))->sort()->values();
+        $fuelList = collect(TaxonomyNormalizer::normalizeMany('fuel', DB::table('lots')->distinct()->pluck('fuel')->filter()->values()->toArray()))->sort()->values();
+        $driveList = collect(TaxonomyNormalizer::normalizeMany('drive_type', DB::table('lots')->distinct()->pluck('drive_type')->filter()->values()->toArray()))->sort()->values();
         $colorList  = DB::table('lots')->distinct()->orderBy('color')->pluck('color')->filter()->values();
         $sources    = DB::table('lots')->distinct()->pluck('source')->values();
 
         return view('admin.lots-browse', compact(
-            'lots', 'makesModels', 'generations', 'bodyTypes', 'transList', 'fuelList', 'driveList', 'colorList', 'sources'
+            'lots',
+            'makesModels',
+            'generations',
+            'bodyTypes',
+            'transList',
+            'fuelList',
+            'driveList',
+            'colorList',
+            'sources'
         ));
     }
 }

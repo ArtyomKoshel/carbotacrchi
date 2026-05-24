@@ -14,8 +14,10 @@ const API = (() => {
     return json.data;
   }
 
-  function getFilters() {
-    return request('GET', '/filters');
+  function getFilters(locale = 'ru') {
+    const p = new URLSearchParams();
+    if (locale) p.set('locale', locale);
+    return request('GET', `/filters?${p}`);
   }
 
   function search(query) {
@@ -67,10 +69,11 @@ const API = (() => {
     });
   }
 
-  function getTrims(make, model) {
+  function getTrims(make, model, locale = 'ru') {
     const p = new URLSearchParams();
     if (make) p.set('make', make);
     if (model) p.set('model', model);
+    if (locale) p.set('locale', locale);
     return request('GET', `/filters/trims?${p}`);
   }
 

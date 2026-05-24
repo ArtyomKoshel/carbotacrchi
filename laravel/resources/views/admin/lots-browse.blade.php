@@ -41,7 +41,7 @@
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="text-xs text-gray-500 block mb-1">Статус</label>
-        <select name="status" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-status" name="status" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="all" {{ request('status','all') === 'all' ? 'selected' : '' }}>Все</option>
           <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Активные</option>
           <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Неактивные</option>
@@ -49,7 +49,7 @@
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Источник</label>
-        <select name="source" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-source" name="source" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Все</option>
           @foreach($sources as $src)
             <option value="{{ $src }}" {{ request('source') === $src ? 'selected' : '' }}>{{ $src }}</option>
@@ -59,47 +59,42 @@
     </div>
 
     {{-- Row 1b: Taxonomy cascade Make / Model / Комплектация / Generation --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3"
-         x-data="adminTaxFilter(@json($makesModels), '{{ addslashes(request('make')) }}', '{{ addslashes(request('model')) }}', '{{ addslashes(request('trim')) }}')"
-         x-init="init()">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div>
         <label class="text-xs text-gray-500 block mb-1">Марка</label>
-        <select name="make" x-model="selMake" @change="onMake()"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-make" name="make" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Все марки</option>
-          <template x-for="m in Object.keys(mm)" :key="m">
-            <option :value="m" x-text="m"></option>
-          </template>
+          @foreach(array_keys($makesModels) as $m)
+            <option value="{{ $m }}" {{ request('make') === $m ? 'selected' : '' }}>{{ $m }}</option>
+          @endforeach
         </select>
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Модель</label>
-        <select name="model" x-model="selModel" @change="onModel()"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-model" name="model" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Все модели</option>
-          <template x-for="m in availModels" :key="m">
-            <option :value="m" x-text="m"></option>
-          </template>
+          @if(request('model'))
+            <option value="{{ request('model') }}" selected>{{ request('model') }}</option>
+          @endif
         </select>
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Комплектация</label>
-        <select name="trim" x-model="selTrim"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-trim" name="trim" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Все</option>
-          <template x-for="t in availTrims" :key="t">
-            <option :value="t" x-text="t"></option>
-          </template>
+          @if(request('trim'))
+            <option value="{{ request('trim') }}" selected>{{ request('trim') }}</option>
+          @endif
         </select>
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Поколение</label>
-        <input type="text" name="generation" value="{{ request('generation') }}" list="generations-list"
-               placeholder="напр. G30, W213, NQ5"
-               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-        <datalist id="generations-list">
-          @foreach($generations as $g)<option value="{{ $g }}">@endforeach
-        </datalist>
+        <select id="filter-generation" name="generation" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+          <option value="">Любое</option>
+          @foreach($generations as $g)
+            <option value="{{ $g }}" {{ request('generation') === $g ? 'selected' : '' }}>{{ $g }}</option>
+          @endforeach
+        </select>
       </div>
     </div>
 
@@ -158,40 +153,49 @@
     </div>
 
     {{-- Row 4: Multi-selects --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
       <div>
         <label class="text-xs text-gray-500 block mb-1">Тип кузова</label>
-        <select name="body_types[]" multiple size="4"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
+        <select id="filter-body-types" name="body_types[]" multiple size="4"
+                class="js-select2-multi w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
           @foreach($bodyTypes as $bt)
-            <option value="{{ $bt }}" {{ in_array($bt, (array)request('body_types', [])) ? 'selected' : '' }}>{{ $bt }}</option>
+            <option value="{{ $bt }}" {{ in_array($bt, (array)request('body_types', [])) ? 'selected' : '' }}>{{ \App\Support\Taxonomy\TaxonomyLocalizer::label('body_type', (string) $bt, 'ru') }}</option>
           @endforeach
         </select>
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">КПП</label>
-        <select name="transmissions[]" multiple size="4"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
+        <select id="filter-transmissions" name="transmissions[]" multiple size="4"
+                class="js-select2-multi w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
           @foreach($transList as $tr)
-            <option value="{{ $tr }}" {{ in_array($tr, (array)request('transmissions', [])) ? 'selected' : '' }}>{{ $tr }}</option>
+            <option value="{{ $tr }}" {{ in_array($tr, (array)request('transmissions', [])) ? 'selected' : '' }}>{{ \App\Support\Taxonomy\TaxonomyLocalizer::label('transmission', (string) $tr, 'ru') }}</option>
           @endforeach
         </select>
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Топливо</label>
-        <select name="fuels[]" multiple size="4"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
+        <select id="filter-fuels" name="fuels[]" multiple size="4"
+                class="js-select2-multi w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
           @foreach($fuelList as $fu)
-            <option value="{{ $fu }}" {{ in_array($fu, (array)request('fuels', [])) ? 'selected' : '' }}>{{ $fu }}</option>
+            <option value="{{ $fu }}" {{ in_array($fu, (array)request('fuels', [])) ? 'selected' : '' }}>{{ \App\Support\Taxonomy\TaxonomyLocalizer::label('fuel', (string) $fu, 'ru') }}</option>
           @endforeach
         </select>
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Привод</label>
-        <select name="drive_types[]" multiple size="4"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
+        <select id="filter-drive-types" name="drive_types[]" multiple size="4"
+                class="js-select2-multi w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
           @foreach($driveList as $dr)
-            <option value="{{ $dr }}" {{ in_array($dr, (array)request('drive_types', [])) ? 'selected' : '' }}>{{ $dr }}</option>
+            <option value="{{ $dr }}" {{ in_array($dr, (array)request('drive_types', [])) ? 'selected' : '' }}>{{ \App\Support\Taxonomy\TaxonomyLocalizer::label('drive_type', (string) $dr, 'ru') }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Цвет</label>
+        <select id="filter-colors" name="colors[]" multiple size="4"
+                class="js-select2-multi w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm text-white">
+          @foreach($colorList as $co)
+            <option value="{{ $co }}" {{ in_array($co, (array)request('colors', [])) ? 'selected' : '' }}>{{ $co }}</option>
           @endforeach
         </select>
       </div>
@@ -201,7 +205,7 @@
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
       <div>
         <label class="text-xs text-gray-500 block mb-1">Аварийная история</label>
-        <select name="has_accident" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-has-accident" name="has_accident" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Любая</option>
           <option value="0" {{ request('has_accident') === '0' ? 'selected' : '' }}>Без ДТП</option>
           <option value="1" {{ request('has_accident') === '1' ? 'selected' : '' }}>Были ДТП</option>
@@ -209,7 +213,7 @@
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Затопление</label>
-        <select name="flood_history" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-flood-history" name="flood_history" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Любая</option>
           <option value="0" {{ request('flood_history') === '0' ? 'selected' : '' }}>Нет</option>
           <option value="1" {{ request('flood_history') === '1' ? 'selected' : '' }}>Да</option>
@@ -217,7 +221,7 @@
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">Сортировка</label>
-        <select name="sort" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-sort" name="sort" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="newest"       {{ request('sort','newest') === 'newest'       ? 'selected' : '' }}>Новые</option>
           <option value="oldest"       {{ request('sort') === 'oldest'       ? 'selected' : '' }}>Старые</option>
           <option value="price_asc"    {{ request('sort') === 'price_asc'    ? 'selected' : '' }}>Цена ↑</option>
@@ -230,7 +234,7 @@
       </div>
       <div>
         <label class="text-xs text-gray-500 block mb-1">На странице</label>
-        <select name="per_page" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+        <select id="filter-per-page" name="per_page" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           @foreach([20, 50, 100, 200] as $pp)
             <option value="{{ $pp }}" {{ (int)request('per_page', 50) === $pp ? 'selected' : '' }}>{{ $pp }}</option>
           @endforeach
@@ -315,9 +319,9 @@
             <td class="px-4 py-2.5 text-right text-gray-300">
               {{ $lot->mileage ? number_format($lot->mileage) . ' km' : '—' }}
             </td>
-            <td class="px-4 py-2.5 text-gray-400">{{ $lot->transmission ?? '—' }}</td>
-            <td class="px-4 py-2.5 text-gray-400">{{ $lot->fuel ?? '—' }}</td>
-            <td class="px-4 py-2.5 text-gray-400">{{ $lot->body_type ?? '—' }}</td>
+            <td class="px-4 py-2.5 text-gray-400">{{ $lot->transmission ? \App\Support\Taxonomy\TaxonomyLocalizer::label('transmission', (string) $lot->transmission, 'ru') : '—' }}</td>
+            <td class="px-4 py-2.5 text-gray-400">{{ $lot->fuel ? \App\Support\Taxonomy\TaxonomyLocalizer::label('fuel', (string) $lot->fuel, 'ru') : '—' }}</td>
+            <td class="px-4 py-2.5 text-gray-400">{{ $lot->body_type ? \App\Support\Taxonomy\TaxonomyLocalizer::label('body_type', (string) $lot->body_type, 'ru') : '—' }}</td>
             <td class="px-4 py-2.5">
               @if($lot->has_accident === null)
                 <span class="text-gray-600">?</span>
@@ -348,44 +352,165 @@
   @endif
 </div>
 
+<style>
+  .select2-container { width: 100% !important; }
+  .select2-container--default .select2-selection--single,
+  .select2-container--default .select2-selection--multiple {
+    background-color: rgb(31 41 55);
+    border: 1px solid rgb(55 65 81);
+    border-radius: 0.5rem;
+    min-height: 38px;
+    color: #fff;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: #fff;
+    line-height: 36px;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: #9ca3af;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; }
+  .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: rgb(30 58 138);
+    border: none;
+    color: #fff;
+  }
+  .select2-dropdown {
+    background-color: rgb(17 24 39);
+    border-color: rgb(55 65 81);
+    color: #fff;
+  }
+  .select2-results__option { color: #d1d5db; }
+  .select2-results__option--highlighted[aria-selected] {
+    background-color: rgb(37 99 235) !important;
+    color: #fff !important;
+  }
+</style>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-function adminTaxFilter(mm, initMake, initModel, initTrim) {
-  return {
-    mm,
-    selMake:   initMake,
-    selModel:  initModel,
-    selTrim:   initTrim,
-    availModels: [],
-    availTrims:  [],
-    init() {
-      this.availModels = this.mm[this.selMake] ?? [];
-      if (this.selMake || this.selModel) this.fetchTrims();
-    },
-    onMake() {
-      this.selModel = '';
-      this.selTrim  = '';
-      this.availModels = this.mm[this.selMake] ?? [];
-      this.availTrims  = [];
-      if (this.selMake) this.fetchTrims();
-    },
-    onModel() {
-      this.selTrim = '';
-      this.availTrims = [];
-      this.fetchTrims();
-    },
-    async fetchTrims() {
-      const p = new URLSearchParams();
-      if (this.selMake)  p.set('make',  this.selMake);
-      if (this.selModel) p.set('model', this.selModel);
-      try {
-        const r = await fetch(`/api/filters/trims?${p}`);
-        const j = await r.json();
-        this.availTrims = j?.data?.trims ?? [];
-        if (!this.availTrims.includes(this.selTrim)) this.selTrim = '';
-      } catch { this.availTrims = []; }
-    },
+  const getVal = (id) => document.getElementById(id)?.value ?? '';
+  const getVals = (id) => Array.from(document.getElementById(id)?.selectedOptions ?? []).map(o => o.value);
+
+  const normalizeOptionItems = (items = []) => {
+    return (items ?? []).map((item) => {
+      if (item && typeof item === 'object' && 'value' in item) {
+        const value = String(item.value ?? '').trim();
+        const label = String(item.label ?? value).trim();
+        return { value, label: label || value };
+      }
+      const value = String(item ?? '').trim();
+      return { value, label: value };
+    }).filter(o => o.value !== '');
   };
-}
+
+  const setSingleOptions = (id, options, placeholder, selected) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const list = normalizeOptionItems(options);
+    const values = new Set(list.map(o => o.value));
+    const allowed = values.has(selected) ? selected : '';
+    el.innerHTML = '';
+    el.appendChild(new Option(placeholder, ''));
+    list.forEach(o => el.appendChild(new Option(o.label, o.value, false, o.value === allowed)));
+    $(el).val(allowed).trigger('change.select2');
+  };
+
+  const setMultiOptions = (id, options, selectedValues) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const list = normalizeOptionItems(options);
+    const values = new Set(list.map(o => o.value));
+    const selected = (selectedValues ?? []).filter(v => values.has(v));
+    el.innerHTML = '';
+    list.forEach(o => el.appendChild(new Option(o.label, o.value, false, selected.includes(o.value))));
+    $(el).val(selected).trigger('change.select2');
+  };
+
+  $(function () {
+    $('.js-select2').select2({
+      width: '100%',
+      allowClear: true,
+      placeholder: 'Выберите значение'
+    });
+    $('.js-select2-multi').select2({
+      width: '100%',
+      closeOnSelect: false,
+      placeholder: 'Выберите значения'
+    });
+
+    let syncing = false;
+
+    async function refreshContext() {
+      const params = new URLSearchParams({
+        locale: 'ru',
+        status: getVal('filter-status') || 'all',
+        source: getVal('filter-source') || '',
+        make: getVal('filter-make') || '',
+        model: getVal('filter-model') || '',
+        trim: getVal('filter-trim') || '',
+        generation: getVal('filter-generation') || '',
+      });
+
+      const keep = {
+        model: getVal('filter-model'),
+        trim: getVal('filter-trim'),
+        generation: getVal('filter-generation'),
+        body: getVals('filter-body-types'),
+        trans: getVals('filter-transmissions'),
+        fuel: getVals('filter-fuels'),
+        drive: getVals('filter-drive-types'),
+        colors: getVals('filter-colors'),
+      };
+
+      try {
+        const res = await fetch(`/api/filters/context?${params.toString()}`);
+        const json = await res.json();
+        const data = json?.data ?? {};
+        syncing = true;
+
+        setSingleOptions('filter-make', data.makeOptions ?? data.makes ?? [], 'Все марки', getVal('filter-make'));
+        setSingleOptions('filter-model', data.modelOptions ?? data.models ?? [], 'Все модели', keep.model);
+        setSingleOptions('filter-trim', data.trimOptions ?? data.trims ?? [], 'Все комплектации', keep.trim);
+        setSingleOptions('filter-generation', data.generationOptions ?? data.generations ?? [], 'Любое поколение', keep.generation);
+
+        setMultiOptions('filter-body-types', data.bodyTypeOptions ?? data.bodyTypes ?? [], keep.body);
+        setMultiOptions('filter-transmissions', data.transmissionOptions ?? data.transmissions ?? [], keep.trans);
+        setMultiOptions('filter-fuels', data.fuelTypeOptions ?? data.fuelTypes ?? [], keep.fuel);
+        setMultiOptions('filter-drive-types', data.driveTypeOptions ?? data.driveTypes ?? [], keep.drive);
+        setMultiOptions('filter-colors', data.colorOptions ?? data.colors ?? [], keep.colors);
+      } catch (e) {
+      } finally {
+        syncing = false;
+      }
+    }
+
+    const onTaxChange = (id, clearIds = []) => {
+      $(`#${id}`).on('change', async function () {
+        if (syncing) return;
+        clearIds.forEach(cid => {
+          const el = document.getElementById(cid);
+          if (!el) return;
+          if (el.multiple) {
+            $(el).val([]).trigger('change.select2');
+          } else {
+            $(el).val('').trigger('change.select2');
+          }
+        });
+        await refreshContext();
+      });
+    };
+
+    onTaxChange('filter-status');
+    onTaxChange('filter-source');
+    onTaxChange('filter-make', ['filter-model', 'filter-trim', 'filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-model', ['filter-trim', 'filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-trim', ['filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-generation', ['filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+
+    refreshContext();
+  });
 </script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 @endsection

@@ -319,7 +319,7 @@ KBCHA_MAKE: dict[str, str] = {
     "제네시스":    "Genesis",
     "르노코리아":  "Renault Korea",
     "쌍용":       "SsangYong",
-    "KG모빌리티": "SsangYong",  # KG Mobility rebrand — map to the canonical legacy name
+    "KG모빌리티": "KG Mobility",
     "쉐보레":     "Chevrolet",
     "한국GM":     "Chevrolet",
     "BMW":       "BMW",
@@ -356,7 +356,7 @@ KBCHA_MAKE: dict[str, str] = {
 # marketplace returns ID references instead of Korean strings.
 KBCHA_MAKER_CODE: dict[str, str] = {
     "101": "Hyundai", "102": "Kia", "189": "Genesis",
-    "103": "Renault Korea", "104": "SsangYong", "105": "Chevrolet",
+    "103": "Renault Korea", "104": "KG Mobility", "105": "Chevrolet",
     "107": "BMW", "108": "Mercedes-Benz", "109": "Audi",
     "112": "Volkswagen", "114": "Volvo", "116": "Land Rover",
     "117": "Porsche", "124": "Toyota", "125": "Honda",

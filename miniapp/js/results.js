@@ -78,10 +78,10 @@ const Results = (() => {
             ${cardFields.has('has_accident') && lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`   : ''}
             ${cardFields.has('flood_history') && lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>` : ''}
             ${cardFields.has('owners_count') && lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`       : ''}
-            ${cardFields.has('body_type') && lot.bodyType     ? `<span class="lot-card__tag">${escHtml(lot.bodyType)}</span>`       : ''}
-            ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>`  : ''}
-            ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`           : ''}
-            ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`      : ''}
+            ${cardFields.has('body_type') && lot.bodyType     ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('body_type', lot.bodyType))}</span>`       : ''}
+            ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>`  : ''}
+            ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>`           : ''}
+            ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>`      : ''}
             ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(lot.trim)}</span>`         : ''}
             ${cardFields.has('generation') && lot.generation ? `<span class="lot-card__tag">🧬 ${escHtml(lot.generation)}</span>` : ''}
           </div>
@@ -145,19 +145,19 @@ const Results = (() => {
           </div>
           ${lot.bodyType ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Кузов</span>
-            <span class="sheet-detail-value">${escHtml(lot.bodyType)}</span>
+            <span class="sheet-detail-value">${escHtml(Taxonomy.label('body_type', lot.bodyType))}</span>
           </div>` : ''}
           ${lot.transmission ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">КПП</span>
-            <span class="sheet-detail-value">${escHtml(lot.transmission)}</span>
+            <span class="sheet-detail-value">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>
           </div>` : ''}
           ${lot.fuel ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Топливо</span>
-            <span class="sheet-detail-value">${escHtml(lot.fuel)}</span>
+            <span class="sheet-detail-value">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>
           </div>` : ''}
           ${lot.driveType ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Привод</span>
-            <span class="sheet-detail-value">${escHtml(lot.driveType)}</span>
+            <span class="sheet-detail-value">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>
           </div>` : ''}
           ${lot.engineVolume ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Двигатель</span>

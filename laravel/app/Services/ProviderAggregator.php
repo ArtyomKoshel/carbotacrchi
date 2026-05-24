@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\AuctionProviders\ProviderInterface;
+use App\Support\Taxonomy\TaxonomyNormalizer;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -92,10 +93,19 @@ class ProviderAggregator
     private function applyDbFilters(Builder $builder, SearchQuery $query): void
     {
         if ($query->make) {
-            $builder->whereRaw('make LIKE ?', [$query->make . '%']);
+            $variants = TaxonomyNormalizer::expandToDbValues('make', $query->make);
+            $builder->where(function (Builder $sub) use ($variants, $query): void {
+                if ($variants !== []) {
+                    $sub->whereIn('make', $variants)
+                        ->orWhereRaw('make LIKE ?', [$query->make . '%']);
+                    return;
+                }
+
+                $sub->whereRaw('make LIKE ?', [$query->make . '%']);
+            });
         }
         if ($query->model) {
-            $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
+            $builder->whereRaw('(model LIKE ? OR model_en LIKE ?)', ['%' . $query->model . '%', '%' . $query->model . '%']);
         }
         if ($query->generation) {
             $builder->whereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
@@ -176,16 +186,28 @@ class ProviderAggregator
         }
 
         if ($query->transmissions) {
-            $builder->whereIn('transmission', $query->transmissions);
+            $vals = TaxonomyNormalizer::expandManyToDbValues('transmission', $query->transmissions);
+            if ($vals !== []) {
+                $builder->whereIn('transmission', $vals);
+            }
         }
         if ($query->fuelTypes) {
-            $builder->whereIn('fuel', $query->fuelTypes);
+            $vals = TaxonomyNormalizer::expandManyToDbValues('fuel', $query->fuelTypes);
+            if ($vals !== []) {
+                $builder->whereIn('fuel', $vals);
+            }
         }
         if ($query->bodyTypes) {
-            $builder->whereIn('body_type', $query->bodyTypes);
+            $vals = TaxonomyNormalizer::expandManyToDbValues('body_type', $query->bodyTypes);
+            if ($vals !== []) {
+                $builder->whereIn('body_type', $vals);
+            }
         }
         if ($query->driveTypes) {
-            $builder->whereIn('drive_type', $query->driveTypes);
+            $vals = TaxonomyNormalizer::expandManyToDbValues('drive_type', $query->driveTypes);
+            if ($vals !== []) {
+                $builder->whereIn('drive_type', $vals);
+            }
         }
         if ($query->colors) {
             $builder->whereIn('color', $query->colors);

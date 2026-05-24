@@ -33,7 +33,8 @@ const Filters = (() => {
 
   async function init() {
     try {
-      filtersData = await API.getFilters();
+      filtersData = await API.getFilters('ru');
+      Taxonomy.ingestFilters(filtersData ?? {});
       const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
       if (sourceKeys.length) {
         state.sources = sourceKeys;
@@ -49,13 +50,13 @@ const Filters = (() => {
     renderSourceChips();
     renderMakeSelect();
     renderModelSelect();
-    renderChipGroup('bodytype-chips',     filtersData?.bodyTypes     ?? [], 'bodyTypes');
-    renderChipGroup('transmission-chips', filtersData?.transmissions ?? [], 'transmissions');
-    renderChipGroup('fuel-chips',         filtersData?.fuelTypes     ?? [], 'fuelTypes');
-    renderChipGroup('drive-chips',        filtersData?.driveTypes    ?? [], 'driveTypes');
+    renderChipGroup('bodytype-chips',     filtersData?.bodyTypeOptions     ?? filtersData?.bodyTypes     ?? [], 'bodyTypes');
+    renderChipGroup('transmission-chips', filtersData?.transmissionOptions ?? filtersData?.transmissions ?? [], 'transmissions');
+    renderChipGroup('fuel-chips',         filtersData?.fuelTypeOptions     ?? filtersData?.fuelTypes     ?? [], 'fuelTypes');
+    renderChipGroup('drive-chips',        filtersData?.driveTypeOptions    ?? filtersData?.driveTypes    ?? [], 'driveTypes');
     renderChipGroup('damage-chips',       filtersData?.damageTypes   ?? [], 'damageTypes');
     renderChipGroup('title-chips',        filtersData?.titleTypes    ?? [], 'titleTypes');
-    renderChipGroup('color-chips',        filtersData?.colors        ?? [], 'colors');
+    renderChipGroup('color-chips',        filtersData?.colorOptions  ?? filtersData?.colors ?? [], 'colors');
     renderAccidentChips();
   }
 
@@ -63,11 +64,13 @@ const Filters = (() => {
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    const options = Taxonomy.normalizeOptionItems(items);
+
     const section = container.closest('.filter-section');
     const divider = section && section.nextElementSibling?.classList?.contains('filter-divider')
       ? section.nextElementSibling
       : null;
-    const visible = Array.isArray(items) && items.length > 0;
+    const visible = Array.isArray(options) && options.length > 0;
 
     if (section) section.style.display = visible ? '' : 'none';
     if (divider) divider.style.display = visible ? '' : 'none';
@@ -77,9 +80,9 @@ const Filters = (() => {
       return;
     }
 
-    container.innerHTML = items.map(item => `
-      <button class="filter-chip${state[stateKey].includes(item) ? ' selected' : ''}"
-              data-value="${item}">${item}</button>
+    container.innerHTML = options.map(o => `
+      <button class="filter-chip${state[stateKey].includes(o.value) ? ' selected' : ''}"
+              data-value="${o.value}">${o.label}</button>
     `).join('');
     container.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -122,9 +125,9 @@ const Filters = (() => {
   function renderMakeSelect() {
     const sel = document.getElementById('filter-make');
     if (!sel) return;
-    const makes = filtersData ? Object.keys(filtersData.makes) : [];
+    const makeOptions = Taxonomy.normalizeOptionItems(filtersData?.makeOptions ?? Object.keys(filtersData?.makes ?? {}));
     sel.innerHTML = '<option value="">Любая марка</option>' +
-      makes.map(m => `<option value="${m}"${state.make===m?' selected':''}>${m}</option>`).join('');
+      makeOptions.map(o => `<option value="${o.value}"${state.make===o.value?' selected':''}>${o.label}</option>`).join('');
     sel.addEventListener('change', () => {
       state.make  = sel.value;
       state.model = '';
@@ -149,7 +152,7 @@ const Filters = (() => {
 
   async function loadTrims() {
     try {
-      const data = await API.getTrims(state.make, state.model);
+      const data = await API.getTrims(state.make, state.model, 'ru');
       renderTrimSelect(data?.trims ?? []);
     } catch (e) {
       renderTrimSelect([]);
@@ -160,7 +163,8 @@ const Filters = (() => {
     const wrap = document.getElementById('filter-trim-wrap');
     const sel  = document.getElementById('filter-trim');
     if (!wrap || !sel) return;
-    if (!trims || trims.length === 0) {
+    const trimOptions = Taxonomy.normalizeOptionItems(trims);
+    if (!trimOptions || trimOptions.length === 0) {
       wrap.style.display = 'none';
       sel.innerHTML = '<option value="">Любая комплектация</option>';
       state.trim = '';
@@ -168,7 +172,7 @@ const Filters = (() => {
     }
     wrap.style.display = '';
     sel.innerHTML = '<option value="">Любая комплектация</option>' +
-      trims.map(t => `<option value="${t}"${state.trim===t?' selected':''}>${t}</option>`).join('');
+      trimOptions.map(o => `<option value="${o.value}"${state.trim===o.value?' selected':''}>${o.label}</option>`).join('');
     sel.addEventListener('change', () => { state.trim = sel.value; });
   }
 

@@ -21,4 +21,5 @@ Route::middleware('telegram.auth')->group(function () {
 });
 
 Route::get('/filters/trims', [FiltersController::class, 'trims']);
+Route::get('/filters/context', [FiltersController::class, 'context']);
 Route::get('/filters', [FiltersController::class, 'index']);
