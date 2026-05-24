@@ -32,6 +32,8 @@ return new class extends Migration
         'sell_type' => 'Тип продажи',
         'seat_count' => 'Количество мест',
         'registration_year_month' => 'Дата регистрации',
+        'first_reg_date' => 'Дата первой регистрации',
+        'listed_at' => 'Дата публикации объявления',
         'lot_url' => 'Ссылка на лот',
         'location' => 'Местоположение',
     ];

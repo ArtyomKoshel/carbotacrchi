@@ -41,7 +41,8 @@ class CarLot:
     # Registration & documents
     vin: str | None = None
     plate_number: str | None = None
-    registration_date: str | None = None
+    first_reg_date: str | None = None   # Date of first vehicle registration (최초등록일)
+    listed_at: str | None = None        # Date the ad was published on the source site
 
     # Legal / registration status
     lien_status: str | None = None
@@ -137,7 +138,8 @@ class CarLot:
             "lot_url": self.lot_url,
             "raw_data": raw_json,
             "plate_number": self.plate_number,
-            "registration_date": self.registration_date,
+            "first_reg_date": self.first_reg_date,
+            "listed_at": self.listed_at,
             "options": options_json,
             "paid_options": paid_options_json,
             "sell_type": self.sell_type,

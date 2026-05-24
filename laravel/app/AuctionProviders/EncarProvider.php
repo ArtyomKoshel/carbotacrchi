@@ -26,7 +26,7 @@ class EncarProvider extends AbstractDbProvider
                 lotUrl:       $raw['lot_url']   ?? '',
                 imageUrl:     $raw['image_url'] ?? null,
                 vin:          $raw['vin']       ?? null,
-                auctionDate:  $raw['registration_date'] ?? null,
+                auctionDate:  $raw['listed_at'] ?? null,
                 createdAt:    $raw['created_at'] ?? date('c'),
                 transmission: $raw['transmission']  ?? null,
                 fuel:         $raw['fuel']          ?? null,
@@ -45,7 +45,8 @@ class EncarProvider extends AbstractDbProvider
                 sellType:         $raw['sell_type']     ?? null,
                 sellTypeRaw:      $raw['sell_type_raw'] ?? null,
                 registrationYearMonth: isset($raw['registration_year_month']) ? (int) $raw['registration_year_month'] : null,
-                registrationDate: $raw['registration_date'] ?? null,
+                firstRegDate: $raw['first_reg_date'] ?? null,
+                listedAt:     $raw['listed_at'] ?? null,
         );
     }
 }

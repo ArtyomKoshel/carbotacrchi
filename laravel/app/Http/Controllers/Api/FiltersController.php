@@ -17,10 +17,7 @@ class FiltersController extends Controller
     {
         $locale = trim((string) request()->query('locale', 'ru')) ?: 'ru';
 
-        $makesFile = storage_path('app/data/makes_models.json');
-        $makes = file_exists($makesFile)
-            ? json_decode(file_get_contents($makesFile), true) ?? []
-            : [];
+        $makes = [];
 
         $currentYear = (int) date('Y');
 
@@ -40,10 +37,7 @@ class FiltersController extends Controller
         $filterFields = [];
 
         try {
-            $dynamicMakes = $this->buildMakesFromLots($sources);
-            if ($dynamicMakes !== []) {
-                $makes = $dynamicMakes;
-            }
+            $makes = $this->buildMakesFromLots($sources);
 
             $bodyTypes = $this->distinctStrings('body_type', $sources, 'body_type');
             $transmissions = $this->distinctStrings('transmission', $sources, 'transmission');

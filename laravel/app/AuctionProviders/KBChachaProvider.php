@@ -21,11 +21,12 @@ class KBChachaProvider extends AbstractDbProvider
                 price:        (int) ($raw['price']   ?? 0),
                 mileage:      (int) ($raw['mileage'] ?? 0),
                 modelEn:      $raw['model_en'] ?? null,
+                generation:   $raw['generation'] ?? null,
                 location:     $raw['location'] ?? 'Korea',
                 lotUrl:       $raw['lot_url']   ?? '',
                 imageUrl:     $raw['image_url'] ?? null,
                 vin:          $raw['vin']       ?? null,
-                auctionDate:  $raw['registration_date'] ?? null,
+                auctionDate:  $raw['listed_at'] ?? null,
                 createdAt:    $raw['created_at'] ?? date('c'),
                 transmission: $raw['transmission']  ?? null,
                 fuel:         $raw['fuel']          ?? null,
@@ -50,7 +51,8 @@ class KBChachaProvider extends AbstractDbProvider
                 insuranceCount:   isset($raw['insurance_count']) ? (int) $raw['insurance_count'] : null,
                 seatColor:        $raw['seat_color']    ?? null,
                 seatCount:        isset($raw['seat_count'])      ? (int)  $raw['seat_count']      : null,
-                registrationDate: $raw['registration_date'] ?? null,
+                firstRegDate: $raw['first_reg_date'] ?? null,
+                listedAt:     $raw['listed_at'] ?? null,
         );
     }
 }

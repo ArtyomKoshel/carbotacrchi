@@ -44,7 +44,8 @@ readonly class LotDTO
         public ?int    $insuranceCount      = null,
         public ?string $seatColor           = null,
         public ?int    $seatCount           = null,
-        public ?string $registrationDate    = null,
+        public ?string $firstRegDate        = null,
+        public ?string $listedAt             = null,
     ) {}
 
     public function toArray(): array
@@ -89,7 +90,8 @@ readonly class LotDTO
             'insuranceCount'   => $this->insuranceCount,
             'seatColor'        => $this->seatColor,
             'seatCount'        => $this->seatCount,
-            'registrationDate' => $this->registrationDate,
+            'firstRegDate'     => $this->firstRegDate,
+            'listedAt'         => $this->listedAt,
         ];
     }
 }

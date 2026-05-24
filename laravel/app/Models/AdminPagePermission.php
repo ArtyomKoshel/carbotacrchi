@@ -60,6 +60,7 @@ class AdminPagePermission extends Model
         'admin.fields.schema'          => 'fields',
         'admin.taxonomy.index'         => 'taxonomy',
         'admin.taxonomy.ingest'        => 'taxonomy',
+        'admin.taxonomy.bootstrap'     => 'taxonomy',
         'admin.taxonomy.rules.store'   => 'taxonomy',
         'admin.taxonomy.rules.update'  => 'taxonomy',
         'admin.taxonomy.rules.delete'  => 'taxonomy',

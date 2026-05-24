@@ -545,7 +545,7 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
         lot.location = contact["address"]
 
     if manage.get("registDateTime"):
-        lot.registration_date = manage["registDateTime"][:10]
+        lot.listed_at = manage["registDateTime"][:10]
 
     # NOTE: lien_status/seizure_status are set from the Record API in _enrich_from_record
     # (rec["loan"] / rec["robberCnt"]) which is the authoritative source.
@@ -635,8 +635,8 @@ def _enrich_from_record(lot: CarLot, rec: dict) -> InspectionRecord:
     if my_cost + other_cost > 0:
         lot.repair_cost = my_cost + other_cost
 
-    if rec.get("firstDate") and not lot.registration_date:
-        lot.registration_date = rec["firstDate"]
+    if rec.get("firstDate") and not lot.first_reg_date:
+        lot.first_reg_date = rec["firstDate"]
 
     accidents = rec.get("accidents") or []
     acc_lines = [
@@ -725,8 +725,8 @@ def _enrich_from_inspection(
         record.valid_until = ve
     if fr := _parse_date8(detail.get("firstRegistrationDate")):
         record.first_registration = fr
-        if not lot.registration_date:
-            lot.registration_date = fr
+        if not lot.first_reg_date:
+            lot.first_reg_date = fr
 
     if detail.get("mileage"):
         record.inspection_mileage = int(detail["mileage"])
@@ -826,8 +826,8 @@ def _enrich_from_inspection_html(
         m = _re.search(r"(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일", reg_raw)
         if m:
             reg_date = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
-            if not lot.registration_date:
-                lot.registration_date = reg_date
+            if not lot.first_reg_date:
+                lot.first_reg_date = reg_date
             if not record.first_registration:
                 record.first_registration = reg_date
 

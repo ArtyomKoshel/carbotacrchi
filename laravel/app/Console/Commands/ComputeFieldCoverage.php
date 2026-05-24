@@ -31,7 +31,8 @@ class ComputeFieldCoverage extends Command
         ['field' => 'trim',              'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'vin',               'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'plate_number',      'pred' => "X IS NOT NULL AND X <> ''"],
-        ['field' => 'registration_date',       'pred' => "X IS NOT NULL"],
+        ['field' => 'first_reg_date',           'pred' => "X IS NOT NULL"],
+        ['field' => 'listed_at',                'pred' => "X IS NOT NULL"],
         ['field' => 'registration_year_month', 'pred' => "X IS NOT NULL AND X > 0"],
 
         // Pricing

@@ -118,10 +118,17 @@ FIELD_MAPPINGS: list[FieldMapping] = [
         },
     ),
     FieldMapping(
-        attribute="registration_date", db_column="registration_date",
+        attribute="first_reg_date", db_column="first_reg_date",
         extractions={
-            "encar": SourceExtraction("manage.registDateTime[:10] or record.firstDate", "ISO date"),
-            "kbcha": SourceExtraction("연식 reg portion",        "date parsing"),
+            "encar": SourceExtraction("record.firstDate / inspection.firstRegistrationDate / HTML 최초등록일", "ISO date"),
+            "kbcha": SourceExtraction("연식 → YYYY-MM-01", "date parsing"),
+        },
+    ),
+    FieldMapping(
+        attribute="listed_at", db_column="listed_at",
+        extractions={
+            "encar": SourceExtraction("manage.registDateTime[:10]", "ISO date"),
+            "kbcha": SourceExtraction("", ""),
         },
     ),
     FieldMapping(

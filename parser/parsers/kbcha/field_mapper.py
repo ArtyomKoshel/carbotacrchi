@@ -110,9 +110,9 @@ class KBChaFieldMapper:
                     condition=lambda x: x and x != "information",
                     overwrite=False
                 )
-                # Also derive registration_date (YYYY-MM-01)
+                # Also derive first_reg_date (YYYY-MM-01)
                 mappings[kr_key + "_reg"] = FieldMapping(
-                    kr_key, "registration_date",
+                    kr_key, "first_reg_date",
                     transformer=lambda x, norm=self.normalizer: _ym_to_date(norm.parse_year_month(x)),
                     condition=lambda x: x and x != "information",
                     overwrite=False

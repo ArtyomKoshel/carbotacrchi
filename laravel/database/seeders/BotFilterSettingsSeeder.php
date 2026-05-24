@@ -33,6 +33,8 @@ class BotFilterSettingsSeeder extends Seeder
         'seat_count' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
         'trim' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
         'registration_year_month' => ['enabled' => false, 'tolerance_type' => 'absolute', 'tolerance_value' => 6, 'display_in_card' => false],
+        'first_reg_date' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
+        'listed_at' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
     ];
 
     public function run(): void
@@ -175,6 +177,8 @@ class BotFilterSettingsSeeder extends Seeder
         'sell_type' => 'Тип продажи',
         'seat_count' => 'Количество мест',
         'registration_year_month' => 'Дата регистрации',
+        'first_reg_date' => 'Дата первой регистрации',
+        'listed_at' => 'Дата публикации объявления',
         'lot_url' => 'Ссылка на лот',
         'location' => 'Местоположение',
     ];

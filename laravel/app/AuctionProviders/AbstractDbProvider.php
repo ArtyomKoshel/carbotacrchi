@@ -53,7 +53,7 @@ abstract class AbstractDbProvider extends AbstractProvider
         match ($sort) {
             'price_asc' => $builder->orderBy('price', 'asc'),
             'price_desc' => $builder->orderBy('price', 'desc'),
-            default => $builder->orderBy('registration_date', 'desc')->orderBy('id', 'desc'),
+            default => $builder->orderBy('listed_at', 'desc')->orderBy('id', 'desc'),
         };
     }
 

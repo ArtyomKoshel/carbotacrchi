@@ -165,4 +165,34 @@ class TaxonomyRulesController extends Controller
 
         return back()->with('success', trim(Artisan::output()));
     }
+
+    public function bootstrap(Request $request): RedirectResponse
+    {
+        if (session('admin_role') !== 'super') {
+            abort(403);
+        }
+
+        $source = trim((string) $request->input('source', 'encar'));
+        $minSeen = max(1, (int) $request->input('min_seen', 5));
+        $minConfidence = max(0.0, min(1.0, (float) $request->input('min_confidence', 0.80)));
+        $actions = trim((string) $request->input('actions', 'set_trim'));
+        $apply = (bool) $request->boolean('apply', false);
+
+        $args = [
+            '--source' => $source,
+            '--min-seen' => $minSeen,
+            '--min-confidence' => $minConfidence,
+            '--actions' => $actions,
+        ];
+        if ($apply) {
+            $args['--apply'] = true;
+        }
+
+        $code = Artisan::call('taxonomy:bootstrap-rules', $args);
+        if ($code !== 0) {
+            return back()->with('error', 'Ошибка bootstrap rules: ' . trim(Artisan::output()));
+        }
+
+        return back()->with('success', trim(Artisan::output()));
+    }
 }
