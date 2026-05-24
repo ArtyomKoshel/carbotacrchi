@@ -27,9 +27,9 @@ html, body {
   overflow-x: hidden;
 }
 
-#app { display: flex; flex-direction: column; min-height: 100vh; }
+#app { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 56px; }
 
-.screen { display: none; flex-direction: column; flex: 1; }
+.screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; }
 .screen.active { display: flex; }
 
 /* ── Header ── */
@@ -215,7 +215,7 @@ html, body {
 
 /* ── Bottom nav ── */
 .bottom-nav {
-  position: sticky; bottom: 0;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
   background: var(--bg2);
   display: flex; border-top: 1px solid rgba(255,255,255,.06);
 }
