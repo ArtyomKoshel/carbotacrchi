@@ -425,7 +425,7 @@
     el.innerHTML = '';
     el.appendChild(new Option(placeholder, ''));
     list.forEach(o => el.appendChild(new Option(o.label, o.value, false, o.value === allowed)));
-    $(el).val(allowed).trigger('change.select2');
+    $(el).val(allowed).trigger('change');
   };
 
   const setMultiOptions = (id, options, selectedValues) => {
@@ -436,7 +436,7 @@
     const selected = (selectedValues ?? []).filter(v => values.has(v));
     el.innerHTML = '';
     list.forEach(o => el.appendChild(new Option(o.label, o.value, false, selected.includes(o.value))));
-    $(el).val(selected).trigger('change.select2');
+    $(el).val(selected).trigger('change');
   };
 
   $(function () {
