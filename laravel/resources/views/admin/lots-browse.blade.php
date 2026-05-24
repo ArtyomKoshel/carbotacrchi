@@ -352,35 +352,47 @@
   @endif
 </div>
 
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
   .select2-container { width: 100% !important; }
   .select2-container--default .select2-selection--single,
   .select2-container--default .select2-selection--multiple {
-    background-color: rgb(31 41 55);
-    border: 1px solid rgb(55 65 81);
+    background-color: rgb(31 41 55) !important;
+    border: 1px solid rgb(55 65 81) !important;
     border-radius: 0.5rem;
     min-height: 38px;
-    color: #fff;
+    color: #fff !important;
   }
   .select2-container--default .select2-selection--single .select2-selection__rendered {
-    color: #fff;
+    color: #fff !important;
     line-height: 36px;
   }
   .select2-container--default .select2-selection--single .select2-selection__placeholder {
-    color: #9ca3af;
+    color: #9ca3af !important;
   }
   .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; }
   .select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: rgb(30 58 138);
+    background-color: rgb(30 58 138) !important;
     border: none;
-    color: #fff;
+    color: #fff !important;
   }
   .select2-dropdown {
-    background-color: rgb(17 24 39);
-    border-color: rgb(55 65 81);
-    color: #fff;
+    background-color: rgb(17 24 39) !important;
+    border-color: rgb(55 65 81) !important;
+    color: #fff !important;
   }
-  .select2-results__option { color: #d1d5db; }
+  .select2-results__option { color: #d1d5db !important; }
+  .select2-search--dropdown .select2-search__field {
+    background: rgb(31 41 55) !important;
+    border: 1px solid rgb(55 65 81) !important;
+    color: #fff !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow b {
+    border-color: #9ca3af transparent transparent transparent !important;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__clear {
+    color: #9ca3af !important;
+  }
   .select2-results__option--highlighted[aria-selected] {
     background-color: rgb(37 99 235) !important;
     color: #fff !important;
@@ -441,18 +453,9 @@
 
     let syncing = false;
 
-    async function refreshContext() {
-      const params = new URLSearchParams({
-        locale: 'ru',
-        status: getVal('filter-status') || 'all',
-        source: getVal('filter-source') || '',
-        make: getVal('filter-make') || '',
-        model: getVal('filter-model') || '',
-        trim: getVal('filter-trim') || '',
-        generation: getVal('filter-generation') || '',
-      });
-
-      const keep = {
+    async function refreshContext(depth = 0) {
+      const before = {
+        make: getVal('filter-make'),
         model: getVal('filter-model'),
         trim: getVal('filter-trim'),
         generation: getVal('filter-generation'),
@@ -463,22 +466,51 @@
         colors: getVals('filter-colors'),
       };
 
+      const params = new URLSearchParams({
+        locale: 'ru',
+        status: getVal('filter-status') || 'all',
+        source: getVal('filter-source') || '',
+        make: before.make || '',
+        model: before.model || '',
+        trim: before.trim || '',
+        generation: before.generation || '',
+      });
+
       try {
         const res = await fetch(`/api/filters/context?${params.toString()}`);
         const json = await res.json();
         const data = json?.data ?? {};
         syncing = true;
 
-        setSingleOptions('filter-make', data.makeOptions ?? data.makes ?? [], 'Все марки', getVal('filter-make'));
-        setSingleOptions('filter-model', data.modelOptions ?? data.models ?? [], 'Все модели', keep.model);
-        setSingleOptions('filter-trim', data.trimOptions ?? data.trims ?? [], 'Все комплектации', keep.trim);
-        setSingleOptions('filter-generation', data.generationOptions ?? data.generations ?? [], 'Любое поколение', keep.generation);
+        setSingleOptions('filter-make', data.makeOptions ?? data.makes ?? [], 'Все марки', before.make);
+        setSingleOptions('filter-model', data.modelOptions ?? data.models ?? [], 'Все модели', before.model);
+        setSingleOptions('filter-trim', data.trimOptions ?? data.trims ?? [], 'Все комплектации', before.trim);
+        setSingleOptions('filter-generation', data.generationOptions ?? data.generations ?? [], 'Любое поколение', before.generation);
 
-        setMultiOptions('filter-body-types', data.bodyTypeOptions ?? data.bodyTypes ?? [], keep.body);
-        setMultiOptions('filter-transmissions', data.transmissionOptions ?? data.transmissions ?? [], keep.trans);
-        setMultiOptions('filter-fuels', data.fuelTypeOptions ?? data.fuelTypes ?? [], keep.fuel);
-        setMultiOptions('filter-drive-types', data.driveTypeOptions ?? data.driveTypes ?? [], keep.drive);
-        setMultiOptions('filter-colors', data.colorOptions ?? data.colors ?? [], keep.colors);
+        setMultiOptions('filter-body-types', data.bodyTypeOptions ?? data.bodyTypes ?? [], before.body);
+        setMultiOptions('filter-transmissions', data.transmissionOptions ?? data.transmissions ?? [], before.trans);
+        setMultiOptions('filter-fuels', data.fuelTypeOptions ?? data.fuelTypes ?? [], before.fuel);
+        setMultiOptions('filter-drive-types', data.driveTypeOptions ?? data.driveTypes ?? [], before.drive);
+        setMultiOptions('filter-colors', data.colorOptions ?? data.colors ?? [], before.colors);
+
+        const after = {
+          make: getVal('filter-make'),
+          model: getVal('filter-model'),
+          trim: getVal('filter-trim'),
+          generation: getVal('filter-generation'),
+        };
+
+        const shifted =
+          after.make !== before.make ||
+          after.model !== before.model ||
+          after.trim !== before.trim ||
+          after.generation !== before.generation;
+
+        if (shifted && depth < 2) {
+          syncing = false;
+          await refreshContext(depth + 1);
+          return;
+        }
       } catch (e) {
       } finally {
         syncing = false;
@@ -488,6 +520,7 @@
     const onTaxChange = (id, clearIds = []) => {
       $(`#${id}`).on('change', async function () {
         if (syncing) return;
+        syncing = true;
         clearIds.forEach(cid => {
           const el = document.getElementById(cid);
           if (!el) return;
@@ -497,6 +530,7 @@
             $(el).val('').trigger('change.select2');
           }
         });
+        syncing = false;
         await refreshContext();
       });
     };
@@ -511,6 +545,5 @@
     refreshContext();
   });
 </script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 @endsection

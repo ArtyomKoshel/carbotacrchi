@@ -350,6 +350,17 @@ KBCHA_MAKE: dict[str, str] = {
     "벤틀리":     "Bentley",
     "롤스로이스":  "Rolls-Royce",
     "람보르기니": "Lamborghini",
+    "로터스":     "Lotus",
+    "르노":      "Renault",
+    "맥라렌":     "McLaren",
+    "스마트":     "Smart",
+    "스즈키":     "Suzuki",
+    "시트로엥":    "Citroen",
+    "알파로메오":  "Alfa Romeo",
+    "애스턴마틴":  "Aston Martin",
+    "이베코":     "Iveco",
+    "폭스홀":     "Vauxhall",
+    "피아트":     "Fiat",
 }
 
 # KBCha's internal numeric maker code → canonical name. Used when the

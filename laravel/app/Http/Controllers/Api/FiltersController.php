@@ -82,7 +82,7 @@ class FiltersController extends Controller
                 'driveTypes'    => $driveTypes,
                 'driveTypeOptions' => $driveTypeOptions,
                 'colors'        => $colors,
-                'colorOptions'  => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $colors),
+                'colorOptions'  => TaxonomyLocalizer::options('color', $colors, $locale),
                 'generations'   => $generations,
             ],
         ]);
@@ -282,10 +282,7 @@ class FiltersController extends Controller
                 'driveTypes' => $driveTypes,
                 'driveTypeOptions' => TaxonomyLocalizer::options('drive_type', $driveTypes, $locale),
                 'colors' => $colors,
-                'colorOptions' => array_map(
-                    static fn (string $v) => ['value' => $v, 'label' => $v],
-                    $colors
-                ),
+                'colorOptions' => TaxonomyLocalizer::options('color', $colors, $locale),
             ],
         ]);
     }
