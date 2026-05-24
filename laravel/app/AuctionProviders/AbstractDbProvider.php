@@ -102,5 +102,10 @@ abstract class AbstractDbProvider extends AbstractProvider
         if ($query->sellTypes)     $builder->whereIn('sell_type', $query->sellTypes);
 
         if ($query->vin) $builder->where('vin', $query->vin);
+
+        if ($query->listedAfter)    $builder->where('listed_at', '>=', $query->listedAfter);
+        if ($query->listedBefore)   $builder->where('listed_at', '<=', $query->listedBefore);
+        if ($query->firstRegAfter)  $builder->where('first_reg_date', '>=', $query->firstRegAfter);
+        if ($query->firstRegBefore) $builder->where('first_reg_date', '<=', $query->firstRegBefore);
     }
 }

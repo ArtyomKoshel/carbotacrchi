@@ -113,6 +113,8 @@ const Results = (() => {
             ${cardFields.has('has_accident') && lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`   : ''}
             ${cardFields.has('flood_history') && lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>` : ''}
             ${cardFields.has('owners_count') && lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`       : ''}
+            ${cardFields.has('listed_at') && (lot.listedAt || lot.auctionDate) ? `<span class="lot-card__tag">📅 ${escHtml(lot.listedAt || lot.auctionDate)}</span>` : ''}
+            ${cardFields.has('first_reg_date') && lot.firstRegDate ? `<span class="lot-card__tag">🗓 ${escHtml(lot.firstRegDate)}</span>` : ''}
             ${cardFields.has('body_type') && lot.bodyType     ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('body_type', lot.bodyType))}</span>`       : ''}
             ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>`  : ''}
             ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>`           : ''}

@@ -55,6 +55,12 @@ class SearchQuery
 
     public string $trim = '';
     public string $vin = '';
+
+    public string $listedAfter = '';    // ISO date YYYY-MM-DD
+    public string $listedBefore = '';   // ISO date YYYY-MM-DD
+    public string $firstRegAfter = '';  // ISO date YYYY-MM-DD
+    public string $firstRegBefore = ''; // ISO date YYYY-MM-DD
+
     /** @var string[] */
     public array $sources = ['encar'];
     public string $sort = 'date';
@@ -96,6 +102,11 @@ class SearchQuery
 
         $q->trim = trim((string) ($data['trim'] ?? ''));
         $q->vin = trim((string) ($data['vin'] ?? ''));
+
+        $q->listedAfter = trim((string) ($data['listedAfter'] ?? ''));
+        $q->listedBefore = trim((string) ($data['listedBefore'] ?? ''));
+        $q->firstRegAfter = trim((string) ($data['firstRegAfter'] ?? ''));
+        $q->firstRegBefore = trim((string) ($data['firstRegBefore'] ?? ''));
 
         foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors'] as $key) {
             if (!empty($data[$key]) && is_array($data[$key])) {
@@ -154,10 +165,13 @@ class SearchQuery
 
             // When only one bound is set, tolerance creates a range around that value.
             // Save originals first to avoid double-applying tolerance.
-            $hasMin  = $clone->$minProp !== null && $clone->$minProp > 0;
-            $hasMax  = $clone->$maxProp !== null && $clone->$maxProp > 0;
-            $origMin = $clone->$minProp;
-            $origMax = $clone->$maxProp;
+            $minValue = $clone->$minProp;
+            $maxValue = $clone->$maxProp;
+
+            $hasMin  = is_numeric($minValue) && (float) $minValue > 0;
+            $hasMax  = is_numeric($maxValue) && (float) $maxValue > 0;
+            $origMin = $hasMin ? ($isFloat ? (float) $minValue : (int) $minValue) : 0;
+            $origMax = $hasMax ? ($isFloat ? (float) $maxValue : (int) $maxValue) : 0;
 
             if (!$hasMin && !$hasMax) {
                 continue;
@@ -264,6 +278,10 @@ class SearchQuery
         if ($this->bodyTypes)  $parts[] = implode('/', $this->bodyTypes);
         if ($this->colors) $parts[] = 'цвет: ' . implode('/', $this->colors);
         if ($this->trim)   $parts[] = 'комплектация: ' . $this->trim;
+        if ($this->listedAfter)   $parts[] = "объявления от {$this->listedAfter}";
+        if ($this->listedBefore)  $parts[] = "объявления до {$this->listedBefore}";
+        if ($this->firstRegAfter) $parts[] = "регистрация от {$this->firstRegAfter}";
+        if ($this->firstRegBefore) $parts[] = "регистрация до {$this->firstRegBefore}";
 
         return implode(', ', $parts) ?: 'Все лоты';
     }
@@ -307,6 +325,10 @@ class SearchQuery
         if ($this->colors)        $data['colors']        = $this->colors;
         if ($this->trim)          $data['trim']          = $this->trim;
         if ($this->vin)           $data['vin']           = $this->vin;
+        if ($this->listedAfter)   $data['listedAfter']   = $this->listedAfter;
+        if ($this->listedBefore)  $data['listedBefore']  = $this->listedBefore;
+        if ($this->firstRegAfter) $data['firstRegAfter'] = $this->firstRegAfter;
+        if ($this->firstRegBefore) $data['firstRegBefore'] = $this->firstRegBefore;
         if ($this->sources !== ['encar', 'kbcha']) {
             $data['sources'] = $this->sources;
         }

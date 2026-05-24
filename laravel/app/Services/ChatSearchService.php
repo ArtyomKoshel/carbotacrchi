@@ -373,6 +373,21 @@ class ChatSearchService
             }
         }
 
+        // ── Date filters (listed_at / first_reg_date) ───────────────────────
+        if (preg_match('/(?:свежие|новые\s*объявлен|за\s*(?:последн|эту)\s*недел)/ui', $text)) {
+            $result['listedAfter'] = date('Y-m-d', strtotime('-7 days'));
+        } elseif (preg_match('/за\s*(?:последний\s*)?месяц/ui', $text)) {
+            $result['listedAfter'] = date('Y-m-d', strtotime('-30 days'));
+        } elseif (preg_match('/за\s*(\d+)\s*дн/ui', $text, $m)) {
+            $result['listedAfter'] = date('Y-m-d', strtotime("-{$m[1]} days"));
+        }
+
+        if (preg_match('/регистрац\w*\s*(?:после|от|с)\s*(\d{4})/ui', $text, $m)) {
+            $result['firstRegAfter'] = $m[1] . '-01-01';
+        } elseif (preg_match('/регистрац\w*\s*(?:до|по)\s*(\d{4})/ui', $text, $m)) {
+            $result['firstRegBefore'] = $m[1] . '-12-31';
+        }
+
         return empty($result) ? null : $result;
     }
 
@@ -469,6 +484,7 @@ class ChatSearchService
 
         $filtersBlock = implode("\n", $filterDescriptions);
         $makesBlock = $this->buildMakesContext();
+        $today = date('Y-m-d');
 
         return <<<PROMPT
 Ты — парсер поисковых запросов для автомобилей на корейских аукционах. Пользователь пишет свободный текст на русском/английском, ты извлекаешь параметры поиска и возвращаешь JSON.
@@ -505,6 +521,9 @@ class ChatSearchService
 24. Комплектация/trim: возвращай как написано в DB (корейское или английское название). Примеры: "Noblesse"→"노블레스", "Signature"→"시그니처", "Prestige"→"프레스티지", "Premium"→"프리미엄", "Luxury"→"럭셔리", "Modern"→"모던"
 25. Поколение/generation: "G30", "W213", "CN7", "NQ5" и т.д. → generation: "G30"
 26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi и т.д.
+27. "свежие"/"новые объявления"/"за последнюю неделю"/"за месяц" → listedAfter: "YYYY-MM-DD" (вычисли дату от текущей)
+28. "регистрация после 2022"/"зарегистрирована в 2023" → firstRegAfter: "YYYY-01-01" (или firstRegBefore для "до")
+29. Текущая дата: {$today}
 
 Примеры:
 User: "хендай соната 2020 автомат до 15000$"
@@ -590,6 +609,8 @@ PROMPT;
             'retail_value' => ['retailValueMin', 'retailValueMax'],
             'seat_count' => ['seatCountMin', 'seatCountMax'],
             'registration_year_month' => ['registrationYearMonthMin', 'registrationYearMonthMax'],
+            'listed_at' => ['listedAfter', 'listedBefore'],
+            'first_reg_date' => ['firstRegAfter', 'firstRegBefore'],
             default => [$this->snakeToCamel($name) . 'Min', $this->snakeToCamel($name) . 'Max'],
         };
     }

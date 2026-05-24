@@ -29,6 +29,10 @@ const Filters = (() => {
     ownersCountMax:   '',
     insuranceCountMin:'',
     insuranceCountMax:'',
+    listedAfter:      '',
+    listedBefore:     '',
+    firstRegAfter:    '',
+    firstRegBefore:   '',
     vin:              '',
     sort:             'date',
   };
@@ -48,6 +52,8 @@ const Filters = (() => {
     state.hasAccident = null; state.floodHistory = null;
     state.ownersCountMin = ''; state.ownersCountMax = '';
     state.insuranceCountMin = ''; state.insuranceCountMax = '';
+    state.listedAfter = ''; state.listedBefore = '';
+    state.firstRegAfter = ''; state.firstRegBefore = '';
     state.vin = ''; state.sort = 'date';
   }
 
@@ -72,6 +78,8 @@ const Filters = (() => {
     flood_history:  { type: 'bool_chips', stateKey: 'floodHistory', options: [{value:'',label:'Любое'},{value:'false',label:'✅ Без затоплений'},{value:'true',label:'🌊 С затоплением'}] },
     insurance_count:{ type: 'range', idMin: 'filter-insurance-min', idMax: 'filter-insurance-max', inputType: 'number', min: 0 },
     owners_count:   { type: 'range', idMin: 'filter-owners-min', idMax: 'filter-owners-max', inputType: 'number', min: 0, max: 20 },
+    listed_at:      { type: 'range', idMin: 'filter-listed-after', idMax: 'filter-listed-before', inputType: 'date', step: '1' },
+    first_reg_date: { type: 'range', idMin: 'filter-first-reg-after', idMax: 'filter-first-reg-before', inputType: 'date', step: '1' },
     lien_status:    { type: 'chips', stateKey: 'lienStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Чистый'}] },
     seizure_status: { type: 'chips', stateKey: 'seizureStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Без ареста'}] },
   };
@@ -384,6 +392,10 @@ const Filters = (() => {
     state.ownersCountMax   = document.getElementById('filter-owners-max')?.value   ?? '';
     state.insuranceCountMin= document.getElementById('filter-insurance-min')?.value ?? '';
     state.insuranceCountMax= document.getElementById('filter-insurance-max')?.value ?? '';
+    state.listedAfter      = document.getElementById('filter-listed-after')?.value ?? '';
+    state.listedBefore     = document.getElementById('filter-listed-before')?.value ?? '';
+    state.firstRegAfter    = document.getElementById('filter-first-reg-after')?.value ?? '';
+    state.firstRegBefore   = document.getElementById('filter-first-reg-before')?.value ?? '';
     state.vin              = document.getElementById('filter-vin')?.value?.trim()  ?? '';
   }
 
@@ -415,6 +427,10 @@ const Filters = (() => {
       ownersCountMax:   state.ownersCountMax    ? parseInt(state.ownersCountMax)    : undefined,
       insuranceCountMin:state.insuranceCountMin ? parseInt(state.insuranceCountMin) : undefined,
       insuranceCountMax:state.insuranceCountMax ? parseInt(state.insuranceCountMax) : undefined,
+      listedAfter:      state.listedAfter       || undefined,
+      listedBefore:     state.listedBefore      || undefined,
+      firstRegAfter:    state.firstRegAfter     || undefined,
+      firstRegBefore:   state.firstRegBefore    || undefined,
       vin:              state.vin              || undefined,
       sources:          state.sources,
       sort:             state.sort,
@@ -449,6 +465,10 @@ const Filters = (() => {
     if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');
     if (q.insuranceCountMin !== undefined) state.insuranceCountMin = String(q.insuranceCountMin ?? '');
     if (q.insuranceCountMax !== undefined) state.insuranceCountMax = String(q.insuranceCountMax ?? '');
+    if (q.listedAfter !== undefined)       state.listedAfter       = String(q.listedAfter ?? '');
+    if (q.listedBefore !== undefined)      state.listedBefore      = String(q.listedBefore ?? '');
+    if (q.firstRegAfter !== undefined)     state.firstRegAfter     = String(q.firstRegAfter ?? '');
+    if (q.firstRegBefore !== undefined)    state.firstRegBefore    = String(q.firstRegBefore ?? '');
     if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
     if (q.floodHistory !== undefined && q.floodHistory !== null) state.floodHistory = q.floodHistory;
 
@@ -468,6 +488,10 @@ const Filters = (() => {
     setEl('filter-owners-max',    q.ownersCountMax);
     setEl('filter-insurance-min', q.insuranceCountMin);
     setEl('filter-insurance-max', q.insuranceCountMax);
+    setEl('filter-listed-after',  q.listedAfter);
+    setEl('filter-listed-before', q.listedBefore);
+    setEl('filter-first-reg-after', q.firstRegAfter);
+    setEl('filter-first-reg-before', q.firstRegBefore);
     setEl('filter-vin',           q.vin);
     setEl('sort-select', state.sort);
   }

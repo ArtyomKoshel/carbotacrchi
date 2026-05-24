@@ -79,6 +79,20 @@ class AdminLotsController extends Controller
         if ($emin = (float) $request->input('engine_min')) $q->where('engine_volume', '>=', $emin);
         if ($emax = (float) $request->input('engine_max')) $q->where('engine_volume', '<=', $emax);
 
+        // Date ranges
+        if ($listedFrom = trim((string) $request->input('listed_from', ''))) {
+            $q->whereDate('listed_at', '>=', $listedFrom);
+        }
+        if ($listedTo = trim((string) $request->input('listed_to', ''))) {
+            $q->whereDate('listed_at', '<=', $listedTo);
+        }
+        if ($firstRegFrom = trim((string) $request->input('first_reg_from', ''))) {
+            $q->whereDate('first_reg_date', '>=', $firstRegFrom);
+        }
+        if ($firstRegTo = trim((string) $request->input('first_reg_to', ''))) {
+            $q->whereDate('first_reg_date', '<=', $firstRegTo);
+        }
+
         // Owners count
         if (($oc = $request->input('owners_count')) !== null && $oc !== '') {
             $q->where('owners_count', '<=', (int) $oc);
@@ -127,8 +141,8 @@ class AdminLotsController extends Controller
             'mileage_desc' => $q->orderBy('mileage', 'desc'),
             'year_asc'     => $q->orderBy('year', 'asc'),
             'year_desc'    => $q->orderBy('year', 'desc'),
-            'oldest'       => $q->orderBy('parsed_at', 'asc'),
-            default        => $q->orderByDesc('parsed_at'),
+            'oldest'       => $q->orderBy('listed_at', 'asc')->orderBy('id', 'asc'),
+            default        => $q->orderByDesc('listed_at')->orderByDesc('id'),
         };
 
         $perPage = min(200, max(20, (int) $request->input('per_page', 50)));

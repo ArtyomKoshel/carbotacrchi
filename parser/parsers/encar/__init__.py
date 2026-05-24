@@ -49,6 +49,12 @@ _GEN_NON_CHASSIS_TOKENS = {
     'AWD', 'FWD', 'RWD', '4WD', '2WD',
 }
 
+_GEN_EXCLUDE_TOKENS = {
+    'V6', 'V8', 'V10', 'V12',
+    'Q4',
+    'VS380', 'CW700', 'EL300', 'G330',
+}
+
 _PACKAGE_HINTS = (
     'M 스포츠 플러스', 'M 퍼포먼스', 'M 스포츠',
     'AMG Line', 'GT Line', 'N Line', 'S line', 'xLine',
@@ -321,7 +327,16 @@ def _is_generation_token(token: str) -> bool:
     t = (token or '').strip()
     if not t:
         return False
-    return bool(_GEN_TOKEN_RE.match(t))
+    upper = t.upper()
+    if upper in _GEN_NON_CHASSIS_TOKENS:
+        return False
+    if upper in _GEN_EXCLUDE_TOKENS:
+        return False
+    if _re.match(r'^V\d{1,2}$', upper):
+        return False
+    if _re.match(r'^Q\d$', upper):
+        return False
+    return bool(_GEN_TOKEN_RE.match(upper))
 
 
 def _looks_like_model_prefix(model_text: str, candidate: str) -> bool:

@@ -24,6 +24,12 @@ class NormalizeEncarTaxonomy extends Command
         'AWD', 'FWD', 'RWD', '4WD', '2WD',
     ];
 
+    private const GEN_EXCLUDE_TOKENS = [
+        'V6', 'V8', 'V10', 'V12',
+        'Q4',
+        'VS380', 'CW700', 'EL300', 'G330',
+    ];
+
     private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
     private const MODEL_PREFIX_RE = '/^(?:더\s+뉴|더|올\s+뉴|올뉴|뉴|신형)\s+/u';
 
@@ -371,7 +377,25 @@ class NormalizeEncarTaxonomy extends Command
             return false;
         }
 
-        return preg_match('/^[A-Z]{1,3}\d{1,3}$/', $t) === 1;
+        $upper = strtoupper($t);
+
+        if (in_array($upper, self::GEN_NON_CHASSIS_TOKENS, true)) {
+            return false;
+        }
+
+        if (in_array($upper, self::GEN_EXCLUDE_TOKENS, true)) {
+            return false;
+        }
+
+        if (preg_match('/^V\d{1,2}$/', $upper) === 1) {
+            return false;
+        }
+
+        if (preg_match('/^Q\d$/', $upper) === 1) {
+            return false;
+        }
+
+        return preg_match('/^[A-Z]{1,3}\d{1,3}$/', $upper) === 1;
     }
 
     private function looksLikeModelPrefix(string $modelText, string $candidate): bool
