@@ -105,7 +105,9 @@ class ProviderAggregator
             });
         }
         if ($query->model) {
-            $builder->whereRaw('(model LIKE ? OR model_en LIKE ?)', ['%' . $query->model . '%', '%' . $query->model . '%']);
+            $builder->where(function (Builder $sub) use ($query): void {
+                $sub->where('model', $query->model)->orWhere('model_en', $query->model);
+            });
         }
         if ($query->generation) {
             $builder->whereRaw('generation LIKE ?', ['%' . $query->generation . '%']);

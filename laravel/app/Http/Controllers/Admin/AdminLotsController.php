@@ -52,7 +52,9 @@ class AdminLotsController extends Controller
 
         // Model
         if ($model = trim((string) $request->input('model', ''))) {
-            $q->whereRaw('model LIKE ? OR model_en LIKE ?', ["%{$model}%", "%{$model}%"]);
+            $q->where(function ($sub) use ($model) {
+                $sub->where('model', $model)->orWhere('model_en', $model);
+            });
         }
         if ($generation = trim((string) $request->input('generation', ''))) {
             $q->whereRaw('generation LIKE ?', ["%{$generation}%"]);
