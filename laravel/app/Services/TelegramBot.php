@@ -290,7 +290,9 @@ class TelegramBot
         if ($miniAppUrl) {
             $deepLink = $miniAppUrl;
             if (!empty($subscriptionQuery)) {
-                $deepLink .= '?search=' . urlencode(json_encode($subscriptionQuery));
+                $separator = str_contains($miniAppUrl, '?') ? '&' : '?';
+                $payload = json_encode($subscriptionQuery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $deepLink .= $separator . 'search=' . rawurlencode($payload ?: '{}');
             }
             $footerButtons[] = [['text' => '📱 Все результаты', 'web_app' => ['url' => $deepLink]]];
         }

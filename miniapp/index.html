@@ -234,6 +234,11 @@
 
       <div class="cards-grid" id="cards-grid"></div>
 
+      <div id="load-more-wrap" style="display:none;text-align:center;padding:12px 0">
+        <button class="btn btn-secondary btn-sm" id="load-more-btn">Загрузить ещё</button>
+      </div>
+      <div id="scroll-sentinel" style="height:1px"></div>
+
       <div id="results-empty" class="empty-state" style="display:none">
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
@@ -251,11 +256,14 @@
     <div class="header">
       <span class="header-title">❤️ Избранное</span>
     </div>
-    <div id="favorites-list" class="empty-state">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-      </svg>
-      <p>Нет сохранённых лотов.</p>
+    <div id="favorites-list">
+      <div id="favorites-grid" class="cards-grid"></div>
+      <div id="favorites-empty" class="empty-state" style="display:none">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <p>Нет сохранённых лотов.</p>
+      </div>
     </div>
   </div>
 

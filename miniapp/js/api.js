@@ -9,8 +9,23 @@ const API = (() => {
     if (body) opts.body = JSON.stringify(body);
 
     const res = await fetch(BASE + path, opts);
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error ?? 'Server error');
+
+    let json = null;
+    try {
+      json = await res.json();
+    } catch (_) {
+      json = null;
+    }
+
+    if (!res.ok) {
+      const err = json?.error ?? `HTTP ${res.status}`;
+      throw new Error(err);
+    }
+
+    if (!json || json.ok !== true) {
+      throw new Error(json?.error ?? 'Server error');
+    }
+
     return json.data;
   }
 
@@ -20,11 +35,12 @@ const API = (() => {
     return request('GET', `/filters?${p}`);
   }
 
-  function search(query) {
+  function search(query, offset = 0) {
+    const q = offset > 0 ? { ...query, offset } : query;
     return request('POST', '/search', {
       user_id: TG.getUserId(),
       init_data: TG.getInitData(),
-      query,
+      query: q,
     });
   }
 

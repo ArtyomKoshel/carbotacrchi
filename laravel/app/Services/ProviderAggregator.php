@@ -225,7 +225,7 @@ class ProviderAggregator
         }
 
         if ($query->trim) {
-            $builder->whereRaw('`trim` LIKE ?', ['%' . $query->trim . '%']);
+            $builder->where('trim', $query->trim);
         }
         if ($query->vin) {
             $builder->where('vin', $query->vin);

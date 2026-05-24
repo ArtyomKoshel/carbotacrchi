@@ -1,5 +1,6 @@
 const Filters = (() => {
   let filtersData = null;
+  let trimRequestSeq = 0;
 
   const state = {
     sources:          ['encar', 'kbcha'],
@@ -30,6 +31,37 @@ const Filters = (() => {
     vin:              '',
     sort:             'date',
   };
+
+  function resetState() {
+    const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
+    state.sources = sourceKeys.length ? sourceKeys : ['encar', 'kbcha'];
+    state.make = '';
+    state.model = '';
+    state.generation = '';
+    state.yearFrom = '';
+    state.yearTo = '';
+    state.priceMin = '';
+    state.priceMax = '';
+    state.mileageMin = '';
+    state.mileageMax = '';
+    state.engineMin = '';
+    state.engineMax = '';
+    state.bodyTypes = [];
+    state.transmissions = [];
+    state.fuelTypes = [];
+    state.driveTypes = [];
+    state.colors = [];
+    state.damageTypes = [];
+    state.titleTypes = [];
+    state.trim = '';
+    state.hasAccident = null;
+    state.ownersCountMin = '';
+    state.ownersCountMax = '';
+    state.insuranceCountMin = '';
+    state.insuranceCountMax = '';
+    state.vin = '';
+    state.sort = 'date';
+  }
 
   async function init() {
     try {
@@ -128,11 +160,11 @@ const Filters = (() => {
     const makeOptions = Taxonomy.normalizeOptionItems(filtersData?.makeOptions ?? Object.keys(filtersData?.makes ?? {}));
     sel.innerHTML = '<option value="">Любая марка</option>' +
       makeOptions.map(o => `<option value="${o.value}"${state.make===o.value?' selected':''}>${o.label}</option>`).join('');
-    sel.addEventListener('change', () => {
+    sel.onchange = () => {
       state.make  = sel.value;
       state.model = '';
       renderModelSelect();
-    });
+    };
   }
 
   function renderModelSelect() {
@@ -141,20 +173,27 @@ const Filters = (() => {
     const models = (filtersData?.makes?.[state.make]) ?? [];
     sel.innerHTML = '<option value="">Любая модель</option>' +
       models.map(m => `<option value="${m}"${state.model===m?' selected':''}>${m}</option>`).join('');
-    sel.addEventListener('change', () => {
+    sel.onchange = () => {
       state.model = sel.value;
       state.trim  = '';
       renderTrimSelect([]);
       if (state.make || state.model) loadTrims();
-    });
+    };
     if (state.make || state.model) loadTrims();
   }
 
   async function loadTrims() {
+    const make = state.make;
+    const model = state.model;
+    const reqId = ++trimRequestSeq;
+
     try {
-      const data = await API.getTrims(state.make, state.model, 'ru');
+      const data = await API.getTrims(make, model, 'ru');
+      if (reqId !== trimRequestSeq) return;
+      if (make !== state.make || model !== state.model) return;
       renderTrimSelect(data?.trims ?? []);
     } catch (e) {
+      if (reqId !== trimRequestSeq) return;
       renderTrimSelect([]);
     }
   }
@@ -173,7 +212,7 @@ const Filters = (() => {
     wrap.style.display = '';
     sel.innerHTML = '<option value="">Любая комплектация</option>' +
       trimOptions.map(o => `<option value="${o.value}"${state.trim===o.value?' selected':''}>${o.label}</option>`).join('');
-    sel.addEventListener('change', () => { state.trim = sel.value; });
+    sel.onchange = () => { state.trim = sel.value; };
   }
 
   function readFormState() {
@@ -253,7 +292,14 @@ const Filters = (() => {
 
   function applyQuery(q) {
     if (!q) return;
-    const setEl = (id, val) => { if (val !== undefined && val !== null && val !== '') { const el = document.getElementById(id); if (el) el.value = val; } };
+    resetState();
+
+    const setEl = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = (val === undefined || val === null) ? '' : String(val);
+    };
+
     if (q.make)  { state.make  = q.make;  }
     if (q.model) { state.model = q.model; }
     if (q.trim)  { state.trim  = q.trim;  }
@@ -279,12 +325,16 @@ const Filters = (() => {
     if (q.fuelTypes)        state.fuelTypes        = q.fuelTypes;
     if (q.driveTypes)       state.driveTypes       = q.driveTypes;
     if (q.colors)           state.colors           = q.colors;
+    if (q.damageTypes)      state.damageTypes      = q.damageTypes;
+    if (q.titleTypes)       state.titleTypes       = q.titleTypes;
     if (q.sources)          state.sources          = q.sources;
+    if (q.sort)             state.sort             = ['date', 'price_asc', 'price_desc'].includes(q.sort) ? q.sort : 'date';
     if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
     if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');
     if (q.insuranceCountMin !== undefined) state.insuranceCountMin = String(q.insuranceCountMin ?? '');
     if (q.insuranceCountMax !== undefined) state.insuranceCountMax = String(q.insuranceCountMax ?? '');
     if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
+    setEl('sort-select', state.sort);
     render();
   }
 

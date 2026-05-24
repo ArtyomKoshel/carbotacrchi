@@ -7,17 +7,44 @@ const Subscriptions = (() => {
     renderSubscribeBtn();
   }
 
+  const IGNORE_KEYS = new Set(['limit', 'offset']);
+
   function normalizeQuery(q) {
-    const sources = (q.sources ?? []).slice().sort();
-    const n = {};
-    if (q.make     && q.make !== '')  n.make     = String(q.make).trim();
-    if (q.model    && q.model !== '') n.model    = String(q.model).trim();
-    if (q.generation && q.generation !== '') n.generation = String(q.generation).trim();
-    if (q.yearFrom && q.yearFrom > 0) n.yearFrom = Number(q.yearFrom);
-    if (q.yearTo   && q.yearTo   > 0) n.yearTo   = Number(q.yearTo);
-    if (q.priceMax && q.priceMax > 0) n.priceMax = Number(q.priceMax);
-    if (sources.length)               n.sources  = sources;
-    return JSON.stringify(n);
+    if (!q || typeof q !== 'object') return '{}';
+
+    const normalizeArray = (arr) => {
+      if (!Array.isArray(arr) || arr.length === 0) return undefined;
+      return arr
+        .map(v => String(v ?? '').trim())
+        .filter(v => v !== '')
+        .sort();
+    };
+
+    const normalized = {};
+    for (const [key, value] of Object.entries(q)) {
+      if (IGNORE_KEYS.has(key)) continue;
+      if (value === undefined || value === null) continue;
+      if (typeof value === 'string') {
+        const s = value.trim();
+        if (s === '') continue;
+        normalized[key] = s;
+        continue;
+      }
+      if (Array.isArray(value)) {
+        const arr = normalizeArray(value);
+        if (arr && arr.length) normalized[key] = arr;
+        continue;
+      }
+      normalized[key] = value;
+    }
+
+    const sortedKeys = Object.keys(normalized).sort();
+    const ordered = {};
+    for (const key of sortedKeys) {
+      ordered[key] = normalized[key];
+    }
+
+    return JSON.stringify(ordered);
   }
 
   function isSubscribed() {
@@ -100,7 +127,15 @@ const Subscriptions = (() => {
         btn.addEventListener('click', () => removeById(parseInt(btn.dataset.id)));
       });
       container.querySelectorAll('.sub-view-btn').forEach(btn => {
-        btn.addEventListener('click', () => viewResults(parseInt(btn.dataset.id), JSON.parse(btn.dataset.query)));
+        btn.addEventListener('click', () => {
+          let query = {};
+          try {
+            query = JSON.parse(btn.dataset.query ?? '{}');
+          } catch (_) {
+            query = {};
+          }
+          viewResults(parseInt(btn.dataset.id), query);
+        });
       });
       container.querySelectorAll('.mini-lot[data-url]').forEach(card => {
         card.addEventListener('click', () => {
@@ -126,6 +161,8 @@ const Subscriptions = (() => {
           ${previews.map(p => renderMiniLot(p)).join('')}
         </div>
       </div>` : '';
+    const queryPayload = escAttr(JSON.stringify(s.query ?? {}));
+
     return `
       <div class="sub-card">
         <div class="sub-card__top">
@@ -136,7 +173,7 @@ const Subscriptions = (() => {
             <div class="sub-card__meta">Создана: ${escHtml(date)}</div>
           </div>
           <div class="sub-card__actions">
-            <button class="sub-view-btn" data-id="${s.id}" data-query='${JSON.stringify(s.query)}'
+            <button class="sub-view-btn" data-id="${s.id}" data-query="${queryPayload}"
                     title="Просмотреть результаты">🔍</button>
             <button class="sub-remove-btn" data-id="${s.id}" title="Отписаться">✕</button>
           </div>
@@ -179,11 +216,16 @@ const Subscriptions = (() => {
   function renderBadge() {
     const badge = document.getElementById('subs-badge');
     if (!badge) return;
-    badge.textContent = activeSubs.length || '';
-    badge.style.display = activeSubs.length ? 'inline-block' : 'none';
+    const newCount = activeSubs.reduce((sum, s) => sum + (s.new_lots_count || 0), 0);
+    badge.textContent = newCount || '';
+    badge.style.display = newCount > 0 ? 'inline-block' : 'none';
   }
 
   function escHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function escAttr(v) {
     return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
@@ -201,8 +243,17 @@ const Subscriptions = (() => {
     const sub = activeSubs.find(s => s.id === id);
     if (sub) sub.new_lots_count = 0;
     renderBadge();
-    await App.searchWithQuery(query);
+    Filters.applyQuery(query);
+    await App.searchWithQuery(Filters.getQuery());
   }
 
-  return { setCurrentQuery, toggleSubscribe, loadAndRender };
+  async function loadSubs() {
+    try {
+      activeSubs = await API.getSubscriptions() ?? [];
+      renderBadge();
+      renderSubscribeBtn();
+    } catch (_) {}
+  }
+
+  return { setCurrentQuery, toggleSubscribe, loadAndRender, loadSubs };
 })();

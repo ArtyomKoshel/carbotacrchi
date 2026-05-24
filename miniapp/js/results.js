@@ -7,29 +7,38 @@ const Results = (() => {
     favorites = new Set(ids);
   }
 
-  function render(data) {
+  function render(data, mount) {
     lots = data.lots ?? [];
     const total  = data.total  ?? 0;
     const errors = data.errors ?? [];
+    const isCustomMount = !!mount;
 
-    document.getElementById('results-count').textContent =
-      `${total} ${ruLots(total)}`;
+    if (!isCustomMount) {
+      document.getElementById('results-count').textContent =
+        `${total} ${ruLots(total)}`;
+    }
 
     const banner = document.getElementById('errors-banner');
-    if (errors.length) {
-      banner.textContent = `⚠️ Ошибка источников: ${errors.join(', ')}`;
-      banner.style.display = 'block';
-    } else {
-      banner.style.display = 'none';
+    if (!isCustomMount) {
+      if (errors.length) {
+        banner.textContent = `⚠️ Ошибка источников: ${errors.join(', ')}`;
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
     }
 
-    const grid = document.getElementById('cards-grid');
+    const grid = mount?.grid ?? document.getElementById('cards-grid');
+    const emptyState = mount?.empty ?? document.getElementById('results-empty');
+
+    if (!grid) return;
+
     if (!lots.length) {
       grid.innerHTML = '';
-      document.getElementById('results-empty').style.display = 'flex';
+      if (emptyState) emptyState.style.display = 'flex';
       return;
     }
-    document.getElementById('results-empty').style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
     grid.innerHTML = lots.map((lot, i) => renderCard(lot, i)).join('');
 
     grid.querySelectorAll('.lot-card').forEach((card, i) => {
@@ -42,6 +51,33 @@ const Results = (() => {
     grid.querySelectorAll('.lot-card__fav-btn').forEach((btn, i) => {
       btn.addEventListener('click', () => toggleFav(lots[i], btn));
     });
+  }
+
+  function appendCards(newLots) {
+    if (!newLots || !newLots.length) return;
+    const startIdx = lots.length;
+    lots = lots.concat(newLots);
+
+    const grid = document.getElementById('cards-grid');
+    if (!grid) return;
+
+    const fragment = document.createDocumentFragment();
+    const temp = document.createElement('div');
+    temp.innerHTML = newLots.map((lot, i) => renderCard(lot, startIdx + i)).join('');
+    while (temp.firstChild) fragment.appendChild(temp.firstChild);
+    grid.appendChild(fragment);
+
+    const newCards = grid.querySelectorAll('.lot-card');
+    for (let i = startIdx; i < newCards.length; i++) {
+      const card = newCards[i];
+      const lot = lots[i];
+      card.addEventListener('click', e => {
+        if (e.target.closest('.lot-card__fav-btn')) return;
+        openSheet(lot);
+      });
+      const favBtn = card.querySelector('.lot-card__fav-btn');
+      if (favBtn) favBtn.addEventListener('click', () => toggleFav(lot, favBtn));
+    }
   }
 
   function renderCard(lot, i) {
@@ -73,7 +109,6 @@ const Results = (() => {
               ${km}
             </span>
           </div>
-          ${lot.damage ? `<div class="lot-card__damage">⚡ ${escHtml(lot.damage)}</div>` : ''}
           <div class="lot-card__tags">
             ${cardFields.has('has_accident') && lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`   : ''}
             ${cardFields.has('flood_history') && lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>` : ''}
@@ -161,7 +196,7 @@ const Results = (() => {
           </div>` : ''}
           ${lot.engineVolume ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Двигатель</span>
-            <span class="sheet-detail-value">${lot.engineVolume} л${lot.cylinders ? ' / ' + lot.cylinders + ' цил.' : ''}</span>
+            <span class="sheet-detail-value">${lot.engineVolume} л</span>
           </div>` : ''}
           ${lot.color ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Цвет</span>
@@ -182,14 +217,6 @@ const Results = (() => {
           ${lot.vin ? `<div class="sheet-detail-item" style="grid-column:span 2">
             <span class="sheet-detail-label">VIN</span>
             <span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>
-          </div>` : ''}
-          ${lot.damage ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">Повреждения</span>
-            <span class="sheet-detail-value" style="color:var(--danger)">${escHtml(lot.damage)}</span>
-          </div>` : ''}
-          ${lot.secondaryDamage ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">Доп. повреждения</span>
-            <span class="sheet-detail-value" style="color:var(--danger)">${escHtml(lot.secondaryDamage)}</span>
           </div>` : ''}
           ${lot.document ? `<div class="sheet-detail-item" style="grid-column:span 2">
             <span class="sheet-detail-label">Документ</span>
@@ -320,5 +347,5 @@ const Results = (() => {
     setTimeout(() => t.classList.remove('show'), 2000);
   }
 
-  return { render, setFavorites, closeSheet, sheetToggleFav };
+  return { render, appendCards, setFavorites, closeSheet, sheetToggleFav };
 })();

@@ -1,5 +1,7 @@
 const App = (() => {
   let currentTab = 'search';
+  let paginationState = { query: null, offset: 0, total: 0, loading: false, limit: 40 };
+  let scrollObserver = null;
 
   async function init() {
     TG.init();
@@ -7,6 +9,7 @@ const App = (() => {
     await Filters.init();
 
     document.getElementById('search-btn').addEventListener('click', runSearch);
+    document.getElementById('load-more-btn')?.addEventListener('click', loadMore);
     document.getElementById('sort-select')?.addEventListener('change', async e => {
       Filters.setSort(e.target.value);
       if (currentTab === 'results') {
@@ -22,15 +25,17 @@ const App = (() => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
+    Subscriptions.loadSubs();
+
     const deepQuery = parseDeepLink();
     if (deepQuery) {
       Filters.applyQuery(deepQuery);
-      await searchWithQuery(deepQuery);
+      await searchWithQuery(Filters.getQuery());
     } else {
       const lastQuery = loadLastSearch();
       if (lastQuery) {
         Filters.applyQuery(lastQuery);
-        await searchWithQuery(lastQuery);
+        await searchWithQuery(Filters.getQuery());
       } else {
         switchTab('search');
       }
@@ -53,11 +58,49 @@ const App = (() => {
 
   function parseDeepLink() {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const raw = params.get('search');
-      if (!raw) return null;
-      const q = JSON.parse(raw);
-      if (typeof q === 'object' && q !== null) return q;
+      const parseJsonQuery = (raw) => {
+        if (!raw) return null;
+        try {
+          const q = JSON.parse(raw);
+          return (typeof q === 'object' && q !== null) ? q : null;
+        } catch (_) {
+          return null;
+        }
+      };
+
+      const parseBase64Query = (raw) => {
+        if (!raw) return null;
+        try {
+          const normalized = String(raw).replace(/-/g, '+').replace(/_/g, '/');
+          const pad = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+          const decoded = atob(normalized + pad);
+          return parseJsonQuery(decoded);
+        } catch (_) {
+          return null;
+        }
+      };
+
+      const fromUrlParams = (params) => {
+        if (!params) return null;
+        const fromSearch = parseJsonQuery(params.get('search'));
+        if (fromSearch) return fromSearch;
+        return parseBase64Query(params.get('q'));
+      };
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const fromQuery = fromUrlParams(urlParams);
+      if (fromQuery) return fromQuery;
+
+      const hashRaw = String(window.location.hash || '').replace(/^#/, '');
+      if (hashRaw) {
+        const hashParams = new URLSearchParams(hashRaw);
+        const fromHash = fromUrlParams(hashParams);
+        if (fromHash) return fromHash;
+      }
+
+      const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+      const fromStartParam = parseBase64Query(startParam) ?? parseJsonQuery(startParam);
+      if (fromStartParam) return fromStartParam;
     } catch (_) {}
     return null;
   }
@@ -72,74 +115,151 @@ const App = (() => {
 
     if (tab === 'favorites') loadFavorites();
     if (tab === 'alerts')    Subscriptions.loadAndRender();
+    if (tab === 'results')   refreshFavState();
+  }
+
+  async function refreshFavState() {
+    try {
+      const favData = await API.getFavorites();
+      Results.setFavorites((favData ?? []).map(f => f.id));
+    } catch (_) {}
   }
 
   async function searchWithQuery(query) {
     TG.haptic('impact', 'medium');
     showScreen('results');
     showLoading(true);
+    hideLoadMore();
+
+    paginationState = { query, offset: 0, total: 0, loading: true, limit: 40 };
+
     try {
-      const data = await API.search(query);
+      const data = await API.search(query, 0);
       try {
         const favData = await API.getFavorites();
         Results.setFavorites((favData ?? []).map(f => f.id));
       } catch (_) {}
       Results.render(data);
+      paginationState.total = data.total ?? 0;
+      paginationState.offset = (data.lots ?? []).length;
       Subscriptions.setCurrentQuery(query);
       saveLastSearch(query);
+      updateLoadMoreUI();
+      setupScrollObserver();
     } catch (e) {
       showError(e.message);
     } finally {
+      paginationState.loading = false;
       showLoading(false);
     }
   }
 
   async function runSearch() {
     const query = Filters.getQuery();
-    TG.haptic('impact', 'medium');
+    await searchWithQuery(query);
+  }
 
-    showScreen('results');
-    showLoading(true);
+  async function loadMore() {
+    if (paginationState.loading) return;
+    if (paginationState.offset >= paginationState.total) return;
+
+    paginationState.loading = true;
+    showLoadMoreLoading(true);
 
     try {
-      const data = await API.search(query);
-
-      try {
-        const favData = await API.getFavorites();
-        Results.setFavorites((favData ?? []).map(f => f.id));
-      } catch (_) {}
-
-      Results.render(data);
-      Subscriptions.setCurrentQuery(query);
-      saveLastSearch(query);
+      const data = await API.search(paginationState.query, paginationState.offset);
+      const newLots = data.lots ?? [];
+      if (newLots.length) {
+        Results.appendCards(newLots);
+        paginationState.offset += newLots.length;
+      }
+      updateLoadMoreUI();
     } catch (e) {
-      showError(e.message);
+      showToast('Ошибка загрузки: ' + (e.message || 'network'));
     } finally {
-      showLoading(false);
+      paginationState.loading = false;
+      showLoadMoreLoading(false);
     }
+  }
+
+  function setupScrollObserver() {
+    if (scrollObserver) scrollObserver.disconnect();
+
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (!sentinel) return;
+
+    scrollObserver = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && !paginationState.loading && paginationState.offset < paginationState.total) {
+        loadMore();
+      }
+    }, { rootMargin: '200px' });
+
+    scrollObserver.observe(sentinel);
+  }
+
+  function updateLoadMoreUI() {
+    const wrap = document.getElementById('load-more-wrap');
+    if (!wrap) return;
+    const hasMore = paginationState.offset < paginationState.total;
+    wrap.style.display = hasMore ? 'block' : 'none';
+  }
+
+  function hideLoadMore() {
+    const wrap = document.getElementById('load-more-wrap');
+    if (wrap) wrap.style.display = 'none';
+  }
+
+  function showLoadMoreLoading(visible) {
+    const btn = document.getElementById('load-more-btn');
+    if (!btn) return;
+    btn.disabled = visible;
+    btn.textContent = visible ? 'Загрузка…' : 'Загрузить ещё';
   }
 
   async function loadFavorites() {
     const container = document.getElementById('favorites-list');
-    container.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span>Загрузка…</span></div>';
+    if (!container) return;
+
+    const favGrid = document.getElementById('favorites-grid');
+    const favEmpty = document.getElementById('favorites-empty');
+
+    if (favGrid) {
+      favGrid.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span>Загрузка…</span></div>';
+    }
+    if (favEmpty) {
+      favEmpty.style.display = 'none';
+      const msg = favEmpty.querySelector('p');
+      if (msg) {
+        msg.textContent = 'Нет сохранённых лотов.';
+        msg.style.color = '';
+      }
+    }
 
     try {
       const favs = await API.getFavorites();
+
       if (!favs || !favs.length) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-            <p>Нет сохранённых лотов. Найдите лоты и нажмите ♡ чтобы сохранить.</p>
-          </div>`;
+        if (favEmpty) favEmpty.style.display = 'flex';
+        if (favGrid) favGrid.innerHTML = '';
         return;
       }
       Results.setFavorites(favs.map(f => f.id));
-      Results.render({ lots: favs, total: favs.length, errors: [] });
-      container.innerHTML = document.getElementById('cards-grid').innerHTML;
+      Results.render(
+        { lots: favs, total: favs.length, errors: [] },
+        { grid: favGrid, empty: favEmpty }
+      );
     } catch (e) {
-      container.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${e.message}</p></div>`;
+      if (favGrid) favGrid.innerHTML = '';
+      if (favEmpty) {
+        favEmpty.style.display = 'flex';
+        const msg = favEmpty.querySelector('p');
+        if (msg) {
+          msg.textContent = e?.message ? `Ошибка: ${e.message}` : 'Ошибка загрузки избранного.';
+          msg.style.color = 'var(--danger)';
+        }
+      } else {
+        container.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${e.message}</p></div>`;
+      }
     }
   }
 
@@ -160,7 +280,10 @@ const App = (() => {
 
   function showError(msg) {
     const grid = document.getElementById('cards-grid');
-    if (grid) grid.innerHTML = `<div class="empty-state" style="grid-column:span 2"><p style="color:var(--danger)">${msg}</p></div>`;
+    if (grid) {
+      const escaped = String(msg ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      grid.innerHTML = `<div class="empty-state" style="grid-column:span 2"><p style="color:var(--danger)">${escaped}</p></div>`;
+    }
     showLoading(false);
   }
 

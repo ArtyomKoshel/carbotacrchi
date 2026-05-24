@@ -326,7 +326,9 @@ class WebhookController extends Controller
         $footerButtons = [];
 
         if ($this->miniAppUrl) {
-            $deepLink = $this->miniAppUrl . '?search=' . urlencode(json_encode($queryArray));
+            $separator = str_contains($this->miniAppUrl, '?') ? '&' : '?';
+            $payload = json_encode($queryArray, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $deepLink = $this->miniAppUrl . $separator . 'search=' . rawurlencode($payload ?: '{}');
             $footerButtons[] = [['text' => '📱 Все результаты (' . $result->total . ')', 'web_app' => ['url' => $deepLink]]];
             $this->bot->setChatMenuButton($chatId, '🔍 Все результаты (' . $result->total . ')', $deepLink);
         }

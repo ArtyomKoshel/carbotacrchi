@@ -34,17 +34,14 @@ class SubscriptionsController extends Controller
 
     private function normalizeQuery(array $q): array
     {
-        $sources = $q['sources'] ?? [];
-        sort($sources);
+        $query = SearchQuery::fromArray($q);
+        $normalized = $query->toSearchArray();
 
-        return array_filter([
-            'make'     => trim((string) ($q['make']     ?? '')),
-            'model'    => trim((string) ($q['model']    ?? '')),
-            'yearFrom' => (int) ($q['yearFrom'] ?? 0),
-            'yearTo'   => (int) ($q['yearTo']   ?? 0),
-            'priceMax' => (int) ($q['priceMax'] ?? 0),
-            'sources'  => $sources,
-        ], fn ($v) => $v !== '' && $v !== 0 && $v !== []);
+        if (isset($normalized['sources']) && is_array($normalized['sources'])) {
+            sort($normalized['sources']);
+        }
+
+        return $normalized;
     }
 
     public function store(Request $request): JsonResponse
@@ -52,10 +49,12 @@ class SubscriptionsController extends Controller
         $userId = $request->input('user_id', 0);
         $normalized = $this->normalizeQuery($request->input('query', []));
         $query = $normalized;
+        $normalizedJson = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}';
 
         $existing = Subscription::where('user_id', $userId)
             ->active()
-            ->where('query', json_encode($normalized))
+            ->whereRaw('JSON_CONTAINS(`query`, CAST(? AS JSON))', [$normalizedJson])
+            ->whereRaw('JSON_CONTAINS(CAST(? AS JSON), `query`)', [$normalizedJson])
             ->first();
 
         if ($existing) {
