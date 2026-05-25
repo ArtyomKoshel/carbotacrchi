@@ -93,6 +93,36 @@ SELECT @run_id, @phase, NOW(), 'encar', 'generation_empty',
 FROM lots
 WHERE source='encar';
 
+INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
+SELECT @run_id, @phase, NOW(), 'encar', 'empty_fuel',
+       SUM(CASE WHEN fuel IS NULL OR fuel = '' THEN 1 ELSE 0 END)
+FROM lots WHERE source='encar';
+
+INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
+SELECT @run_id, @phase, NOW(), 'encar', 'empty_fuel_pct',
+       ROUND(100 * SUM(CASE WHEN fuel IS NULL OR fuel = '' THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 2)
+FROM lots WHERE source='encar';
+
+INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
+SELECT @run_id, @phase, NOW(), 'encar', 'empty_drive_type',
+       SUM(CASE WHEN drive_type IS NULL OR drive_type = '' THEN 1 ELSE 0 END)
+FROM lots WHERE source='encar';
+
+INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
+SELECT @run_id, @phase, NOW(), 'encar', 'empty_drive_type_pct',
+       ROUND(100 * SUM(CASE WHEN drive_type IS NULL OR drive_type = '' THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 2)
+FROM lots WHERE source='encar';
+
+INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
+SELECT @run_id, @phase, NOW(), 'encar', 'empty_engine_volume',
+       SUM(CASE WHEN engine_volume IS NULL THEN 1 ELSE 0 END)
+FROM lots WHERE source='encar';
+
+INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
+SELECT @run_id, @phase, NOW(), 'encar', 'empty_engine_volume_pct',
+       ROUND(100 * SUM(CASE WHEN engine_volume IS NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 2)
+FROM lots WHERE source='encar';
+
 -- Taxonomy readiness metrics
 INSERT INTO verification_trim_metrics (run_id, phase, captured_at, source, metric_name, metric_value)
 SELECT @run_id, @phase, NOW(), 'encar', CONCAT('taxonomy_terms_', term_type), COUNT(*)

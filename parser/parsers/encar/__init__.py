@@ -279,8 +279,9 @@ def _apply_taxonomy_rules(
     return state['model'], state['generation'], state['trim'], state['unknown_tail']
 
 
-def _strip_tail_noise(model: str) -> str:
+def _strip_tail_noise(model: str) -> tuple[str, list[str]]:
     tokens = model.split()
+    stripped: list[str] = []
     while tokens:
         tail = tokens[-1]
         if (
@@ -288,10 +289,31 @@ def _strip_tail_noise(model: str) -> str:
             or _ENGINE_TOKEN_RE.match(tail)
             or _SEAT_TOKEN_RE.match(tail)
         ):
-            tokens.pop()
+            stripped.insert(0, tokens.pop())
             continue
         break
-    return ' '.join(tokens).strip()
+    return ' '.join(tokens).strip(), stripped
+
+
+def _extract_tech_specs_from_tokens(tokens: list[str], norm: EncarNormalizer) -> dict:
+    specs: dict = {}
+    for tok in tokens:
+        if 'fuel' not in specs:
+            f = norm.fuel(tok)
+            if f:
+                specs['fuel'] = f
+        if 'drive_type' not in specs:
+            d = norm.drive(tok)
+            if d:
+                specs['drive_type'] = d
+        if 'engine_volume' not in specs and _ENGINE_TOKEN_RE.match(tok):
+            try:
+                vol = float(_re.sub(r'[TDLtdl]$', '', tok))
+                if 0.5 <= vol <= 10.0:
+                    specs['engine_volume'] = round(vol, 1)
+            except ValueError:
+                pass
+    return specs
 
 
 def _extract_generation(model: str, model_group: str | None) -> tuple[str, str | None]:
@@ -390,8 +412,8 @@ def _detect_unknown_tail(model_no_gen: str, model_clean: str, inferred_trim: str
     return None
 
 
-def _normalize_model_taxonomy(model_raw: str, model_group: str | None) -> tuple[str, str | None, str | None, str | None, str | None]:
-    model_no_noise = _strip_tail_noise(_re.sub(r'\s+', ' ', model_raw or '').strip())
+def _normalize_model_taxonomy(model_raw: str, model_group: str | None) -> tuple[str, str | None, str | None, str | None, str | None, list[str]]:
+    model_no_noise, stripped_tokens = _strip_tail_noise(_re.sub(r'\s+', ' ', model_raw or '').strip())
     model_no_gen, generation = _extract_generation(model_no_noise, model_group)
     model_clean, inferred_trim, inferred_package = _split_model_trim_package(model_no_gen)
     unknown_tail = _detect_unknown_tail(model_no_gen, model_clean, inferred_trim, inferred_package)
@@ -401,6 +423,7 @@ def _normalize_model_taxonomy(model_raw: str, model_group: str | None) -> tuple[
         inferred_trim,
         inferred_package,
         unknown_tail,
+        stripped_tokens,
     )
 
 
@@ -452,7 +475,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
             pass
 
     model_group = item.get("ModelGroup")
-    model_clean, generation, inferred_trim, inferred_package, unknown_tail = _normalize_model_taxonomy(model, model_group)
+    model_clean, generation, inferred_trim, inferred_package, unknown_tail, stripped_tokens = _normalize_model_taxonomy(model, model_group)
     model_clean, generation, inferred_trim, unknown_tail = _apply_taxonomy_rules(
         source=_SOURCE,
         make=make_kr,
@@ -482,6 +505,29 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
             'reason': 'model_tail_not_matched_by_known_trim_package_patterns',
         })
 
+    tail_specs = _extract_tech_specs_from_tokens(stripped_tokens, norm)
+    _raw_data: dict = {
+        "manufacturer_kr":   make_kr,
+        "model_kr":          model,
+        "model_group_kr":    model_group,
+        "badge_kr":          badge,
+        "badge_detail_kr":   badge_detail,
+        "model_taxonomy_clean": model_clean,
+        "generation_inferred": generation,
+        "trim_inferred": inferred_trim,
+        "package_inferred": inferred_package,
+        "unknown_tail_candidate": unknown_tail,
+        # ad_type + condition[] are kept as debug context for sell_type
+        # normalization (the normalized result already lives in the
+        # lots.sell_type + lots.sell_type_raw columns).
+        "ad_type":           item.get("AdType"),
+        "condition":         conditions,
+    }
+    if stripped_tokens:
+        _raw_data["stripped_model_tokens"] = stripped_tokens
+    if tail_specs:
+        _raw_data["tech_specs_from_model"] = tail_specs
+
     return CarLot(
         id=vid,
         source=_SOURCE,
@@ -494,33 +540,18 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         price=price_raw,
         mileage=mileage,
         registration_year_month=reg_ym,
-        fuel=norm.fuel(item.get("FuelType")),
+        fuel=norm.fuel(item.get("FuelType")) or tail_specs.get('fuel'),
         transmission=norm.transmission(item.get("Transmission")),
         color=norm.color(item.get("Color")),
         seat_color=norm.color(item.get("SeatColor")),
-        drive_type=drive_type,
+        drive_type=drive_type or tail_specs.get('drive_type'),
+        engine_volume=tail_specs.get('engine_volume'),
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",
         sell_type=sell_type,
         sell_type_raw=sell_type_raw or None,
-        raw_data={
-            "manufacturer_kr":   make_kr,
-            "model_kr":          model,
-            "model_group_kr":    model_group,
-            "badge_kr":          badge,
-            "badge_detail_kr":   badge_detail,
-            "model_taxonomy_clean": model_clean,
-            "generation_inferred": generation,
-            "trim_inferred": inferred_trim,
-            "package_inferred": inferred_package,
-            "unknown_tail_candidate": unknown_tail,
-            # ad_type + condition[] are kept as debug context for sell_type
-            # normalization (the normalized result already lives in the
-            # lots.sell_type + lots.sell_type_raw columns).
-            "ad_type":           item.get("AdType"),
-            "condition":         conditions,
-        },
+        raw_data=_raw_data,
     )
 
 
