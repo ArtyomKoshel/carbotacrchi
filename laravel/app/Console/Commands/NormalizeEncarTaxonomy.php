@@ -102,10 +102,18 @@ class NormalizeEncarTaxonomy extends Command
                     'unknown_tail' => $unknownTail,
                 ], false);
 
-                $normalizedModel = $rulePatch['model'] ?? $normalizedModel;
-                $generation = $rulePatch['generation'] ?? $generation;
-                $inferredTrim = $rulePatch['trim'] ?? $inferredTrim;
-                $unknownTail = $rulePatch['unknown_tail'] ?? $unknownTail;
+                if (array_key_exists('model', $rulePatch)) {
+                    $normalizedModel = (string) $rulePatch['model'];
+                }
+                if (array_key_exists('generation', $rulePatch)) {
+                    $generation = $rulePatch['generation'];
+                }
+                if (array_key_exists('trim', $rulePatch)) {
+                    $inferredTrim = $rulePatch['trim'];
+                }
+                if (array_key_exists('unknown_tail', $rulePatch)) {
+                    $unknownTail = $rulePatch['unknown_tail'];
+                }
 
                 if ($unknownTail) {
                     $unknownTailHits[$unknownTail] = ($unknownTailHits[$unknownTail] ?? 0) + 1;
