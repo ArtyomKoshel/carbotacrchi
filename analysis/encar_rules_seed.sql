@@ -1,13 +1,39 @@
 -- ============================================================
 -- Encar taxonomy seed: consolidated (replaces batch1 + batch2)
 -- Source of truth for STG and PROD.
--- All INSERTs are idempotent (LEFT JOIN WHERE id IS NULL).
+-- All INSERTs use INSERT IGNORE for idempotency (safe to re-run).
 -- ============================================================
+
+-- ── 0. Fix rows inserted before ENUM was extended (term_type = '') ─────────
+--      Run AFTER migration 2026_05_26_000002_extend_taxonomy_enums
+
+UPDATE taxonomy_terms SET term_type = 'gen_non_chassis_token'
+WHERE source = 'encar' AND term_type = ''
+  AND term IN ('EV','HEV','PHEV','GDI','TDI','TFSI','MPI','AWD','FWD','RWD','4WD','2WD');
+
+UPDATE taxonomy_terms SET term_type = 'gen_exclude_token'
+WHERE source = 'encar' AND term_type = ''
+  AND term IN ('V6','V8','V10','V12','Q4','VS380','CW700','EL300','G330');
+
+UPDATE taxonomy_terms SET term_type = 'variant_exclude'
+WHERE source = 'encar' AND term_type = ''
+  AND term IN ('BEV','FHEV','CRDI','VGT','TCI','TSI','FSI','GDE','GTE','LPLI','LPE','LPI','AWD4','TCE','LPG');
+
+UPDATE taxonomy_terms SET term_type = 'special_tag'
+WHERE source = 'encar' AND term_type = ''
+  AND term IN ('장애인용','리무진','캠핑카');
+
+UPDATE taxonomy_terms SET term_type = 'engine_family_tokens'
+WHERE source = 'encar' AND term_type = ''
+  AND term IN ('T-GDI','TGDI','MPFI','e-VGT','4MATIC','블루텍','4TRONIC');
+
+-- Delete any remaining orphan rows with term_type = '' after above updates
+DELETE FROM taxonomy_terms WHERE source = 'encar' AND term_type = '';
 
 
 -- ── 1. taxonomy_terms (package_hints) ─────────────────────────────────────
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'package_hint', t.term, 100, 1, NOW(), NOW()
 FROM (
@@ -159,7 +185,7 @@ WHERE r.id IS NULL;
 -- ── 4a. taxonomy_terms: tail_powertrain_token ─────────────────────────────
 --       Stripped from model TAIL only (used by _strip_tail_noise).
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'tail_powertrain_token', t.term, 100, 1, NOW(), NOW()
 FROM (
@@ -172,10 +198,9 @@ FROM (
     UNION ALL SELECT 'TFSI'        UNION ALL SELECT 'TDI'       UNION ALL SELECT 'e-VGT'
     UNION ALL SELECT '(택시형)'    UNION ALL SELECT '(렌터카)'  UNION ALL SELECT '(영업용)'
     UNION ALL SELECT 'GDI'         UNION ALL SELECT 'T-GDI'     UNION ALL SELECT 'GDe'
-    UNION ALL SELECT 'GDi'         UNION ALL SELECT 'MPI'       UNION ALL SELECT 'TSI'
-    UNION ALL SELECT 'FSI'         UNION ALL SELECT 'CRDi'      UNION ALL SELECT 'VGT'
-    UNION ALL SELECT 'TCI'         UNION ALL SELECT 'FHEV'      UNION ALL SELECT 'LPI'
-    UNION ALL SELECT 'LPi'         UNION ALL SELECT 'BEV'
+    UNION ALL SELECT 'MPI'         UNION ALL SELECT 'TSI'       UNION ALL SELECT 'FSI'
+    UNION ALL SELECT 'CRDi'        UNION ALL SELECT 'VGT'       UNION ALL SELECT 'TCI'
+    UNION ALL SELECT 'FHEV'        UNION ALL SELECT 'LPI'       UNION ALL SELECT 'BEV'
     UNION ALL SELECT '4MATIC'      UNION ALL SELECT '블루텍'    UNION ALL SELECT 'GTe'
     UNION ALL SELECT 'LPLI'        UNION ALL SELECT 'LPe'       UNION ALL SELECT '4TRONIC'
 ) t
@@ -187,7 +212,7 @@ WHERE x.id IS NULL;
 -- ── 4b. taxonomy_terms: gen_non_chassis_token ─────────────────────────────
 --       Tokens that look like gen codes but are NOT chassis (blocked from gen).
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'gen_non_chassis_token', t.term, 100, 1, NOW(), NOW()
 FROM (
@@ -204,7 +229,7 @@ WHERE x.id IS NULL;
 -- ── 4c. taxonomy_terms: gen_exclude_token ─────────────────────────────────
 --       Specific non-gen tokens known to look like chassis codes.
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'gen_exclude_token', t.term, 100, 1, NOW(), NOW()
 FROM (
@@ -221,7 +246,7 @@ WHERE x.id IS NULL;
 -- ── 4d. taxonomy_terms: variant_exclude ───────────────────────────────────
 --       Tokens that match _VARIANT_RE shape but are NOT model variants.
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'variant_exclude', t.term, 100, 1, NOW(), NOW()
 FROM (
@@ -243,7 +268,7 @@ WHERE x.id IS NULL;
 
 -- ── 4e. taxonomy_terms: special_tag ───────────────────────────────────────
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'special_tag', t.term, 100, 1, NOW(), NOW()
 FROM (
@@ -258,22 +283,20 @@ WHERE x.id IS NULL;
 --      Used by cleanTechSpecTokensFromModel (PHP) to strip engine descriptors
 --      from model field after trim/generation extraction.
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'engine_family_tokens', t.term, 100, 1, NOW(), NOW()
 FROM (
-    SELECT 'GDI'     AS term  UNION ALL SELECT 'T-GDI'
-    UNION ALL SELECT 'TGDI'   UNION ALL SELECT 'GDe'    UNION ALL SELECT 'GDi'
-    UNION ALL SELECT 'MPI'    UNION ALL SELECT 'MPFI'
-    UNION ALL SELECT 'TFSI'   UNION ALL SELECT 'TSI'    UNION ALL SELECT 'FSI'
-    UNION ALL SELECT 'TDI'    UNION ALL SELECT 'CRDi'   UNION ALL SELECT 'VGT'
+    SELECT 'GDI'     AS term  UNION ALL SELECT 'T-GDI'   UNION ALL SELECT 'TGDI'
+    UNION ALL SELECT 'GDe'    UNION ALL SELECT 'MPI'     UNION ALL SELECT 'MPFI'
+    UNION ALL SELECT 'TFSI'   UNION ALL SELECT 'TSI'     UNION ALL SELECT 'FSI'
+    UNION ALL SELECT 'TDI'    UNION ALL SELECT 'CRDi'    UNION ALL SELECT 'VGT'
     UNION ALL SELECT 'TCI'    UNION ALL SELECT 'e-VGT'
     UNION ALL SELECT 'FHEV'   UNION ALL SELECT 'HEV'
-    UNION ALL SELECT 'LPi'    UNION ALL SELECT 'LPe'    UNION ALL SELECT 'LPLI'
+    UNION ALL SELECT 'LPI'    UNION ALL SELECT 'LPG'     UNION ALL SELECT 'LPLI'
     UNION ALL SELECT 'EV'     UNION ALL SELECT 'BEV'
     UNION ALL SELECT '4MATIC' UNION ALL SELECT '블루텍'
-    UNION ALL SELECT 'GTe'    UNION ALL SELECT 'GDe'    UNION ALL SELECT '4TRONIC'
-    UNION ALL SELECT 'TCe'    UNION ALL SELECT 'e-VGT'
+    UNION ALL SELECT 'GTe'    UNION ALL SELECT '4TRONIC' UNION ALL SELECT 'TCe'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'engine_family_tokens' AND x.term = t.term
@@ -282,7 +305,7 @@ WHERE x.id IS NULL;
 
 -- ── 5. taxonomy_terms: trim_hints (additional) ────────────────────────────
 
-INSERT INTO taxonomy_terms
+INSERT IGNORE INTO taxonomy_terms
     (source, term_type, term, priority, is_active, created_at, updated_at)
 SELECT 'encar', 'trim_hint', t.term, 90, 1, NOW(), NOW()
 FROM (

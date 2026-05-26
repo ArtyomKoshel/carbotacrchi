@@ -15,7 +15,8 @@ class NormalizeEncarTaxonomy extends Command
         {--apply : Persist updates (default mode is dry-run)}
         {--limit=0 : Max lots to scan (0 = no limit)}
         {--chunk=1000 : Chunk size for scanning rows}
-        {--source=encar : Source to process (kept for flexibility)}';
+        {--source=encar : Source to process (kept for flexibility)}
+        {--random : Sample lots in random order (for quick dry-run iteration)}';
 
     protected $description = 'Normalize Encar model taxonomy: clean model, infer generation, and fill empty trim where possible';
 
@@ -62,8 +63,10 @@ class NormalizeEncarTaxonomy extends Command
         $chunk = max(100, (int) $this->option('chunk'));
         $source = (string) $this->option('source');
 
+        $random = (bool) $this->option('random');
+
         $this->info('Normalize Encar Taxonomy');
-        $this->line('Mode: ' . ($apply ? 'APPLY' : 'DRY-RUN'));
+        $this->line('Mode: ' . ($apply ? 'APPLY' : 'DRY-RUN') . ($random ? ' [RANDOM SAMPLE]' : ''));
         $this->line("Source: {$source}, Chunk: {$chunk}, Limit: " . ($limit ?: 'all'));
 
         $termSets = $termService->getSets($source);
@@ -82,14 +85,13 @@ class NormalizeEncarTaxonomy extends Command
         $baseQuery = DB::table('lots')
             ->where('source', $source)
             ->whereNotNull('model')
-            ->where('model', '!=', '')
-            ->orderBy('id');
+            ->where('model', '!=', '');
 
         if ($limit > 0) {
             $baseQuery->limit($limit);
         }
 
-        $baseQuery->chunkById($chunk, function ($rows) use (
+        $processRow = function ($rows) use (
             $apply,
             $limit,
             $ruleEngine,
@@ -241,7 +243,13 @@ class NormalizeEncarTaxonomy extends Command
             }
 
             return true;
-        }, 'id', 'id');
+        };
+
+        if ($random) {
+            $processRow($baseQuery->inRandomOrder()->get());
+        } else {
+            $baseQuery->orderBy('id')->chunkById($chunk, $processRow, 'id', 'id');
+        }
 
         $this->line('');
         $this->line("Processed: {$processed}");
