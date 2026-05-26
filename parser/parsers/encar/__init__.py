@@ -38,34 +38,65 @@ _GEN_PAREN_RE = _re.compile(r'\(([A-Za-z0-9]{2,6})\)')
 _GEN_TOKEN_RE = _re.compile(r'^[A-Z]{1,3}\d{1,3}$')
 _SEAT_TOKEN_RE = _re.compile(r'^\d{1,2}인승$')
 
-_TAIL_POWERTRAIN_TOKENS = {
+_DEFAULT_ENGINE_FAMILY_TOKENS: frozenset[str] = frozenset({
+    'GDI', 'T-GDI', 'TGDI', 'GDE',
+    'MPI', 'MPFI',
+    'TFSI', 'TSI', 'FSI',
+    'TDI', 'CRDI', 'VGT', 'TCI', 'E-VGT',
+    'FHEV', 'HEV',
+    'LPI', 'LPE',
+    'EV', 'BEV',
+    '4MATIC', '블루텍', 'GTE', 'LPLI', '4TRONIC',
+})
+
+_DEFAULT_TAIL_POWERTRAIN_TOKENS: frozenset[str] = frozenset({
     '가솔린', '디젤', '하이브리드', 'HEV', 'LPG', '전기', 'EV',
     '2WD', '4WD', 'AWD', 'FWD', 'RWD', 'xDrive', 'sDrive',
     '터보', 'TCe', 'TFSI', 'TDI', 'e-VGT', '(택시형)', '(렌터카)', '(영업용)',
-}
+    'GDI', 'T-GDI', 'GDe', 'GDi', 'MPI', 'TSI', 'FSI',
+    'CRDi', 'VGT', 'TCI', 'FHEV', 'LPI', 'LPi', 'BEV',
+    '4MATIC', '블루텍', 'GTe', 'LPLI', 'LPe', '4TRONIC',
+})
 
-_GEN_NON_CHASSIS_TOKENS = {
+_DEFAULT_GEN_NON_CHASSIS_TOKENS: frozenset[str] = frozenset({
     'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
     'AWD', 'FWD', 'RWD', '4WD', '2WD',
-}
+})
 
-_GEN_EXCLUDE_TOKENS = {
+_DEFAULT_GEN_EXCLUDE_TOKENS: frozenset[str] = frozenset({
     'V6', 'V8', 'V10', 'V12',
     'Q4',
     'VS380', 'CW700', 'EL300', 'G330',
-}
+})
 
-_PACKAGE_HINTS = (
+_VARIANT_RE = _re.compile(r'^(?:[A-Z]{1,4}\d{2,4}[a-z]{0,2}|\d{3,4}[A-Za-z]{1,3})$')
+
+_DEFAULT_VARIANT_EXCLUDE: frozenset[str] = frozenset({
+    'EV', 'BEV', 'HEV', 'FHEV',
+    'GDI', 'TDI', 'MPI', 'CRDI', 'VGT', 'TCI', 'TFSI', 'TSI', 'FSI',
+    'GDE', 'GTE', 'LPLI', 'LPE', 'LPI',
+    '4WD', '2WD', 'AWD', 'FWD', 'RWD',
+    'AWD4', 'V6', 'V8', 'V10', 'V12',
+    'TCE', 'LPG',
+})
+
+_DEFAULT_SPECIAL_TAGS: frozenset[str] = frozenset({'장애인용', '리무진', '캠핑카'})
+
+_DEFAULT_PACKAGE_HINTS: tuple[str, ...] = (
     'M 스포츠 플러스', 'M 퍼포먼스', 'M 스포츠',
     'AMG Line', 'GT Line', 'N Line', 'S line', 'xLine',
 )
 
-_TRIM_HINTS = (
+_DEFAULT_TRIM_HINTS: tuple[str, ...] = (
     '캘리그래피 블랙에디션', '마스터즈 그래비티', '익스클루시브 스페셜',
     '프레스티지 스페셜', '노블레스 스페셜', '프리미엄 초이스',
     '캘리그래피', '인스퍼레이션', '익스클루시브', '프레스티지', '시그니처',
     '노블레스', '프리미엄', '모던', '스마트', '럭셔리',
     '르블랑', '고급형', '기본형', '비즈니스 2', '비즈니스 1', '모빌리티',
+    '리미티드', '아방가르드', '그란루쏘', '엘레강스',
+    'RE Plus', 'LE Plus', 'SE Plus', 'PE Plus',
+    'RE', 'LE', 'SE', 'PE',
+    'SVR', 'SVX', 'VX',
 )
 
 _UNKNOWN_TAIL_HINT_RE = _re.compile(r'(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$')
@@ -76,6 +107,10 @@ _anomaly_seen: dict[str, float] = {}
 _TAX_RULES_RELOAD_SEC = 60.0
 _tax_rules_cache: list[dict] = []
 _tax_rules_loaded_at: float = 0.0
+
+_TERMS_RELOAD_SEC = 60.0
+_tax_terms_cache: dict[str, list[str]] = {}
+_tax_terms_loaded_at: float = 0.0
 
 
 def _anomaly_file_path() -> str:
@@ -173,6 +208,98 @@ def _append_taxonomy_anomaly(payload: dict) -> None:
         logger.warning(f"[{_SOURCE}] cannot write taxonomy anomaly log: {e}")
 
 
+def _load_taxonomy_terms() -> dict[str, list[str]]:
+    global _tax_terms_cache, _tax_terms_loaded_at
+    now = _time.monotonic()
+    if _tax_terms_cache and now - _tax_terms_loaded_at < _TERMS_RELOAD_SEC:
+        return _tax_terms_cache
+
+    if _pymysql is None or _DictCursor is None:
+        return _tax_terms_cache
+
+    try:
+        conn = _pymysql.connect(
+            host=Config.DB_HOST,
+            port=Config.DB_PORT,
+            user=Config.DB_USERNAME,
+            password=Config.DB_PASSWORD,
+            database=Config.DB_DATABASE,
+            charset='utf8mb4',
+            cursorclass=_DictCursor,
+            autocommit=True,
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT term_type, term FROM taxonomy_terms
+                WHERE is_active = 1 AND (source = 'encar' OR source = '*')
+                ORDER BY priority ASC, id ASC
+                """
+            )
+            result: dict[str, list[str]] = {}
+            for row in cur.fetchall():
+                t = (row['term'] or '').strip()
+                if t:
+                    result.setdefault(row['term_type'], []).append(t)
+            _tax_terms_cache = result
+            _tax_terms_loaded_at = now
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.debug(f"[{_SOURCE}] taxonomy terms load skipped: {type(e).__name__}: {e}")
+
+    return _tax_terms_cache
+
+
+def _get_tail_powertrain_tokens() -> frozenset[str]:
+    db = frozenset(_load_taxonomy_terms().get('tail_powertrain_token', []))
+    return _DEFAULT_TAIL_POWERTRAIN_TOKENS | db
+
+
+def _get_engine_family_tokens() -> frozenset[str]:
+    db = frozenset(t.upper() for t in _load_taxonomy_terms().get('engine_family_tokens', []))
+    return _DEFAULT_ENGINE_FAMILY_TOKENS | db
+
+
+def _get_gen_non_chassis_tokens() -> frozenset[str]:
+    db = frozenset(t.upper() for t in _load_taxonomy_terms().get('gen_non_chassis_token', []))
+    return _DEFAULT_GEN_NON_CHASSIS_TOKENS | db
+
+
+def _get_gen_exclude_tokens() -> frozenset[str]:
+    db = frozenset(t.upper() for t in _load_taxonomy_terms().get('gen_exclude_token', []))
+    return _DEFAULT_GEN_EXCLUDE_TOKENS | db
+
+
+def _get_variant_exclude() -> frozenset[str]:
+    db = frozenset(t.upper() for t in _load_taxonomy_terms().get('variant_exclude', []))
+    return _DEFAULT_VARIANT_EXCLUDE | db
+
+
+def _get_special_tags() -> frozenset[str]:
+    db = frozenset(_load_taxonomy_terms().get('special_tag', []))
+    return _DEFAULT_SPECIAL_TAGS | db
+
+
+def _get_package_hints() -> tuple[str, ...]:
+    db = sorted(
+        _load_taxonomy_terms().get('package_hint', []),
+        key=len, reverse=True,
+    )
+    seen = set(_DEFAULT_PACKAGE_HINTS)
+    extra = tuple(t for t in db if t not in seen)
+    return extra + _DEFAULT_PACKAGE_HINTS
+
+
+def _get_trim_hints() -> tuple[str, ...]:
+    db = sorted(
+        _load_taxonomy_terms().get('trim_hint', []),
+        key=len, reverse=True,
+    )
+    seen = set(_DEFAULT_TRIM_HINTS)
+    extra = tuple(t for t in db if t not in seen)
+    return extra + _DEFAULT_TRIM_HINTS
+
+
 def _load_taxonomy_rules() -> list[dict]:
     global _tax_rules_cache, _tax_rules_loaded_at
     now = _time.monotonic()
@@ -239,15 +366,20 @@ def _apply_taxonomy_rules(
     generation: str | None,
     trim: str | None,
     unknown_tail: str | None,
-) -> tuple[str, str | None, str | None, str | None]:
+    badge_raw: str = '',
+) -> tuple[str, str | None, str | None, str | None, str | None, str | None, str | None]:
+    full_search = f"{model_raw} {badge_raw}".strip() if badge_raw else model_raw
     state = {
         'source': source,
         'make': make or '',
-        'model_raw': model_raw or '',
+        'model_raw': full_search,
         'model': model or '',
         'generation': generation,
         'trim': trim,
         'unknown_tail': unknown_tail,
+        'fuel': None,
+        'drive_type': None,
+        'variant': None,
     }
 
     for rule in _load_taxonomy_rules():
@@ -259,11 +391,25 @@ def _apply_taxonomy_rules(
 
         if action == 'set_trim':
             if not state['trim']:
-                state['trim'] = value or state['unknown_tail']
+                trim_val = value or state['unknown_tail']
+                state['trim'] = trim_val
                 state['unknown_tail'] = None
+                if trim_val:
+                    suffix = f" {trim_val}"
+                    if state['model'].endswith(suffix):
+                        state['model'] = state['model'][:-len(suffix)].strip()
         elif action == 'set_generation':
             if not state['generation'] and value:
                 state['generation'] = value
+        elif action == 'set_fuel':
+            if state['fuel'] is None and value:
+                state['fuel'] = value
+        elif action == 'set_drive_type':
+            if state['drive_type'] is None and value:
+                state['drive_type'] = value
+        elif action == 'set_variant':
+            if state['variant'] is None and value:
+                state['variant'] = value
         elif action == 'strip_tail':
             target = value or (state['unknown_tail'] or '')
             if target:
@@ -276,16 +422,67 @@ def _apply_taxonomy_rules(
             if value:
                 state['model'] = value
 
-    return state['model'], state['generation'], state['trim'], state['unknown_tail']
+    return (
+        state['model'], state['generation'], state['trim'], state['unknown_tail'],
+        state['fuel'], state['drive_type'], state['variant'],
+    )
+
+
+def _clean_tech_spec_tokens_from_model(model: str) -> str:
+    """Remove engine-family, engine-volume, and powertrain tokens from all positions in model string."""
+    engine_family = _get_engine_family_tokens()
+    tail_tokens = _get_tail_powertrain_tokens()
+    tokens = model.split()
+    clean = []
+    for t in tokens:
+        if t.upper() in engine_family:
+            continue
+        if t in tail_tokens:
+            continue
+        if _ENGINE_TOKEN_RE.match(t):
+            continue
+        clean.append(t)
+    result = ' '.join(clean).strip()
+    return result if result else model
+
+
+def _extract_variant(model: str) -> tuple[str, str | None]:
+    """Find and extract a variant code (e.g. E300, 730Ld) from model string."""
+    variant_exclude = _get_variant_exclude()
+    tokens = model.split()
+    for i, tok in enumerate(tokens):
+        if tok.upper() in variant_exclude:
+            continue
+        if _VARIANT_RE.match(tok):
+            variant = tok
+            remaining = tokens[:i] + tokens[i + 1:]
+            cleaned = ' '.join(remaining).strip()
+            return (cleaned if cleaned else model), variant
+    return model, None
+
+
+def _extract_engine_volume(text: str) -> float | None:
+    """Scan full string for engine volume token (e.g. 2.0, 1.6T, 3.5)."""
+    for tok in text.split():
+        m = _re.match(r'^(\d+(?:\.\d+)?)(?:T|D|L)?$', tok, _re.IGNORECASE)
+        if m:
+            try:
+                vol = float(m.group(1))
+                if 0.5 <= vol <= 10.0:
+                    return round(vol, 1)
+            except ValueError:
+                pass
+    return None
 
 
 def _strip_tail_noise(model: str) -> tuple[str, list[str]]:
+    tail_tokens = _get_tail_powertrain_tokens()
     tokens = model.split()
     stripped: list[str] = []
     while tokens:
         tail = tokens[-1]
         if (
-            tail in _TAIL_POWERTRAIN_TOKENS
+            tail in tail_tokens
             or _ENGINE_TOKEN_RE.match(tail)
             or _SEAT_TOKEN_RE.match(tail)
         ):
@@ -350,9 +547,9 @@ def _is_generation_token(token: str) -> bool:
     if not t:
         return False
     upper = t.upper()
-    if upper in _GEN_NON_CHASSIS_TOKENS:
+    if upper in _get_gen_non_chassis_tokens():
         return False
-    if upper in _GEN_EXCLUDE_TOKENS:
+    if upper in _get_gen_exclude_tokens():
         return False
     if _re.match(r'^V\d{1,2}$', upper):
         return False
@@ -392,8 +589,8 @@ def _split_model_trim_package(model: str) -> tuple[str, str | None, str | None]:
     if not normalized:
         return '', None, None
 
-    base_after_pkg, package = _extract_suffix_hint(normalized, _PACKAGE_HINTS)
-    base_after_trim, trim = _extract_suffix_hint(base_after_pkg, _TRIM_HINTS)
+    base_after_pkg, package = _extract_suffix_hint(normalized, _get_package_hints())
+    base_after_trim, trim = _extract_suffix_hint(base_after_pkg, _get_trim_hints())
     return base_after_trim, trim, package
 
 
@@ -412,10 +609,14 @@ def _detect_unknown_tail(model_no_gen: str, model_clean: str, inferred_trim: str
     return None
 
 
-def _normalize_model_taxonomy(model_raw: str, model_group: str | None) -> tuple[str, str | None, str | None, str | None, str | None, list[str]]:
+def _normalize_model_taxonomy(
+    model_raw: str, model_group: str | None
+) -> tuple[str, str | None, str | None, str | None, str | None, list[str], str | None]:
     model_no_noise, stripped_tokens = _strip_tail_noise(_re.sub(r'\s+', ' ', model_raw or '').strip())
     model_no_gen, generation = _extract_generation(model_no_noise, model_group)
     model_clean, inferred_trim, inferred_package = _split_model_trim_package(model_no_gen)
+    model_clean = _clean_tech_spec_tokens_from_model(model_clean)
+    model_clean, variant = _extract_variant(model_clean)
     unknown_tail = _detect_unknown_tail(model_no_gen, model_clean, inferred_trim, inferred_package)
     return (
         model_clean or model_no_noise or (model_raw or '').strip(),
@@ -424,6 +625,7 @@ def _normalize_model_taxonomy(model_raw: str, model_group: str | None) -> tuple[
         inferred_package,
         unknown_tail,
         stripped_tokens,
+        variant,
     )
 
 
@@ -444,12 +646,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
     price_raw = norm.price_from_man(price_man)
     mileage   = int(item.get("Mileage") or 0)
 
-    # Drive type: scan badge + model tokens for known keywords (e.g. "4WD", "AWD", "2WD")
-    _drive_tokens = f"{model} {badge}".split()
-    drive_type = next(
-        (norm.drive(t) for t in _drive_tokens if norm.drive(t)),
-        None,
-    )
+    # Drive type will be resolved by taxonomy rules (set_drive_type) from full model+badge string.
 
     # Main photo: first Photos entry or Photo prefix
     photos = item.get("Photos") or []
@@ -475,8 +672,8 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
             pass
 
     model_group = item.get("ModelGroup")
-    model_clean, generation, inferred_trim, inferred_package, unknown_tail, stripped_tokens = _normalize_model_taxonomy(model, model_group)
-    model_clean, generation, inferred_trim, unknown_tail = _apply_taxonomy_rules(
+    model_clean, generation, inferred_trim, inferred_package, unknown_tail, stripped_tokens, heuristic_variant = _normalize_model_taxonomy(model, model_group)
+    model_clean, generation, inferred_trim, unknown_tail, rule_fuel, rule_drive_type, rule_variant = _apply_taxonomy_rules(
         source=_SOURCE,
         make=make_kr,
         model_raw=model,
@@ -484,6 +681,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         generation=generation,
         trim=inferred_trim,
         unknown_tail=unknown_tail,
+        badge_raw=badge,
     )
     trim = (badge_detail or '').strip() or inferred_trim
 
@@ -505,28 +703,34 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
             'reason': 'model_tail_not_matched_by_known_trim_package_patterns',
         })
 
-    tail_specs = _extract_tech_specs_from_tokens(stripped_tokens, norm)
+    lot_fuel = norm.fuel(item.get("FuelType")) or rule_fuel
+    _drive_tokens = f"{model} {badge}".split()
+    lot_drive_type = rule_drive_type or next(
+        (norm.drive(t) for t in _drive_tokens if norm.drive(t)),
+        None,
+    )
+    lot_engine_volume = _extract_engine_volume(f"{model} {badge}")
+    lot_variant = rule_variant or heuristic_variant
+    # extract special tags from the raw model string (장애인용, 캠핑카 etc.)
+    _special_found = [t for t in _get_special_tags() if t in model]
     _raw_data: dict = {
-        "manufacturer_kr":   make_kr,
-        "model_kr":          model,
-        "model_group_kr":    model_group,
-        "badge_kr":          badge,
-        "badge_detail_kr":   badge_detail,
+        "manufacturer_kr":      make_kr,
+        "model_kr_raw":         model,
+        "model_group_kr":       model_group,
+        "badge_kr":             badge,
+        "badge_detail_kr":      badge_detail,
         "model_taxonomy_clean": model_clean,
-        "generation_inferred": generation,
-        "trim_inferred": inferred_trim,
-        "package_inferred": inferred_package,
+        "generation_inferred":  generation,
+        "trim_inferred":        inferred_trim,
+        "package_inferred":     inferred_package,
         "unknown_tail_candidate": unknown_tail,
-        # ad_type + condition[] are kept as debug context for sell_type
-        # normalization (the normalized result already lives in the
-        # lots.sell_type + lots.sell_type_raw columns).
-        "ad_type":           item.get("AdType"),
-        "condition":         conditions,
+        "ad_type":              item.get("AdType"),
+        "condition":            conditions,
     }
     if stripped_tokens:
         _raw_data["stripped_model_tokens"] = stripped_tokens
-    if tail_specs:
-        _raw_data["tech_specs_from_model"] = tail_specs
+    if _special_found:
+        _raw_data["special_tags"] = _special_found
 
     return CarLot(
         id=vid,
@@ -535,17 +739,18 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         model=model_clean,
         model_en=resolve_model_en(model_clean),
         generation=generation,
+        variant=lot_variant,
         trim=trim or None,
         year=year,
         price=price_raw,
         mileage=mileage,
         registration_year_month=reg_ym,
-        fuel=norm.fuel(item.get("FuelType")) or tail_specs.get('fuel'),
+        fuel=lot_fuel,
         transmission=norm.transmission(item.get("Transmission")),
         color=norm.color(item.get("Color")),
         seat_color=norm.color(item.get("SeatColor")),
-        drive_type=drive_type or tail_specs.get('drive_type'),
-        engine_volume=tail_specs.get('engine_volume'),
+        drive_type=lot_drive_type,
+        engine_volume=lot_engine_volume,
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",

@@ -13,15 +13,22 @@ class TaxonomyRuleEngine
 
     public function apply(array $context, bool $storeHit = false): array
     {
+        $badgeRaw = trim((string) ($context['badge_raw'] ?? ''));
+        $modelRaw = trim((string) ($context['model_raw'] ?? ''));
+        $searchStr = $badgeRaw !== '' ? $modelRaw . ' ' . $badgeRaw : $modelRaw;
+
         $state = [
             'source' => (string) ($context['source'] ?? 'encar'),
             'lot_id' => isset($context['lot_id']) ? (string) $context['lot_id'] : null,
             'make' => trim((string) ($context['make'] ?? '')),
             'model' => trim((string) ($context['model'] ?? '')),
-            'model_raw' => trim((string) ($context['model_raw'] ?? '')),
+            'model_raw' => $searchStr,
             'generation' => $this->nullable($context['generation'] ?? null),
             'trim' => $this->nullable($context['trim'] ?? null),
             'unknown_tail' => $this->nullable($context['unknown_tail'] ?? null),
+            'fuel' => null,
+            'drive_type' => null,
+            'variant' => null,
         ];
 
         foreach ($this->rules() as $rule) {
@@ -63,6 +70,9 @@ class TaxonomyRuleEngine
             'generation' => $state['generation'],
             'trim' => $state['trim'],
             'unknown_tail' => $state['unknown_tail'],
+            'fuel' => $state['fuel'],
+            'drive_type' => $state['drive_type'],
+            'variant' => $state['variant'],
         ];
     }
 
@@ -114,14 +124,39 @@ class TaxonomyRuleEngine
         switch ($rule->action) {
             case 'set_trim':
                 if ($state['trim'] === null || $state['trim'] === '') {
-                    $state['trim'] = $value !== '' ? $value : $state['unknown_tail'];
+                    $trimVal = $value !== '' ? $value : $state['unknown_tail'];
+                    $state['trim'] = $trimVal;
                     $state['unknown_tail'] = null;
+                    if ($trimVal !== null && $trimVal !== '') {
+                        $suffix = ' ' . $trimVal;
+                        if (str_ends_with($state['model'], $suffix)) {
+                            $state['model'] = trim(substr($state['model'], 0, -strlen($suffix)));
+                        }
+                    }
                 }
                 break;
 
             case 'set_generation':
                 if (($state['generation'] === null || $state['generation'] === '') && $value !== '') {
                     $state['generation'] = $value;
+                }
+                break;
+
+            case 'set_fuel':
+                if ($state['fuel'] === null && $value !== '') {
+                    $state['fuel'] = $value;
+                }
+                break;
+
+            case 'set_drive_type':
+                if ($state['drive_type'] === null && $value !== '') {
+                    $state['drive_type'] = $value;
+                }
+                break;
+
+            case 'set_variant':
+                if ($state['variant'] === null && $value !== '') {
+                    $state['variant'] = $value;
                 }
                 break;
 

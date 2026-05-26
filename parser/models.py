@@ -16,6 +16,7 @@ class CarLot:
     mileage: int = 0
     model_en: str | None = None   # Canonical English model name (resolved from Korean)
     generation: str | None = None # Generation / chassis code (e.g. G30, NX4)
+    variant: str | None = None    # Model variant / sub-designation (e.g. E300, 730Ld, Boxster S)
 
     # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
     registration_year_month: int | None = None
@@ -84,8 +85,6 @@ class CarLot:
         "sell_type",          # -> lots.sell_type_raw column
         "manufacturer_kr",    # -> duplicate of make
         "model_en",           # -> first-class column
-        "model_kr",           # -> duplicate of model
-        "badge_kr",           # -> duplicate of trim
         "model_group_kr",     # -> duplicate of model
         "year_month",         # -> duplicate of registration_year_month
         "origin_price",       # -> duplicate of retail_value
@@ -111,6 +110,7 @@ class CarLot:
             "model": self.model,
             "model_en": self.model_en,
             "generation": self.generation,
+            "variant": self.variant,
             "year": self.year,
             "price": self.price,
             "mileage": self.mileage,

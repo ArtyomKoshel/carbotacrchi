@@ -128,6 +128,11 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "Model / ModelGroup token extraction", "kbcha": "title parsing (e.g. G80, NX4)"},
     ),
     FieldSpec(
+        name="variant", dtype=FieldType.STRING, filterable=True,
+        category="identity", description="Model variant / sub-designation (e.g. E300, 730Ld, Boxster S)",
+        sources={"encar": "_extract_variant heuristic + set_variant rules"},
+    ),
+    FieldSpec(
         name="trim", dtype=FieldType.STRING, filterable=True, tracked=True,
         category="identity", description="Trim / grade",
         sources={"encar": "BadgeDetail", "kbcha": "title trim-tokens"},

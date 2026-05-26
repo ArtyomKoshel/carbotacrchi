@@ -19,40 +19,41 @@ class NormalizeEncarTaxonomy extends Command
 
     protected $description = 'Normalize Encar model taxonomy: clean model, infer generation, and fill empty trim where possible';
 
-    private const GEN_NON_CHASSIS_TOKENS = [
+    private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
+    private const MODEL_PREFIX_RE = '/^(?:더\s+뉴|더|올\s+뉴|올뉴|뉴|신형)\s+/u';
+
+    private const DEFAULT_GEN_NON_CHASSIS = [
         'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
         'AWD', 'FWD', 'RWD', '4WD', '2WD',
     ];
-
-    private const GEN_EXCLUDE_TOKENS = [
-        'V6', 'V8', 'V10', 'V12',
-        'Q4',
+    private const DEFAULT_GEN_EXCLUDE = [
+        'V6', 'V8', 'V10', 'V12', 'Q4',
         'VS380', 'CW700', 'EL300', 'G330',
     ];
-
-    private const FUEL_TOKEN_MAP = [
-        '가솔린'     => 'gasoline',
-        '디젤'       => 'diesel',
-        '하이브리드'  => 'hybrid',
-        'HEV'        => 'hybrid',
-        'PHEV'       => 'plugin_hybrid',
-        'LPG'        => 'lpg',
-        '전기'       => 'electric',
-        'EV'         => 'electric',
+    private const DEFAULT_ENGINE_FAMILY = [
+        'GDI', 'T-GDI', 'TGDI', 'GDE', 'MPI', 'MPFI',
+        'TFSI', 'TSI', 'FSI',
+        'TDI', 'CRDI', 'VGT', 'TCI', 'E-VGT',
+        'FHEV', 'HEV', 'LPI', 'LPE', 'EV', 'BEV',
+        '4MATIC', '블루텍', 'GTE', 'LPLI', '4TRONIC',
+    ];
+    private const DEFAULT_VARIANT_EXCLUDE = [
+        'EV', 'BEV', 'HEV', 'FHEV',
+        'GDI', 'TDI', 'MPI', 'CRDI', 'VGT', 'TCI', 'TFSI', 'TSI', 'FSI',
+        'GDE', 'GTE', 'LPLI', 'LPE', 'LPI',
+        '4WD', '2WD', 'AWD', 'FWD', 'RWD',
+        'V6', 'V8', 'V10', 'V12', 'LPG',
     ];
 
-    private const DRIVE_TOKEN_MAP = [
-        '2WD'    => '2wd',
-        '4WD'    => '4wd',
-        'AWD'    => 'awd',
-        'FWD'    => 'fwd',
-        'RWD'    => 'rwd',
-        'xDrive' => 'awd',
-        'sDrive' => 'rwd',
-    ];
+    private ?array $termSets = null;
 
-    private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
-    private const MODEL_PREFIX_RE = '/^(?:더\s+뉴|더|올\s+뉴|올뉴|뉴|신형)\s+/u';
+    private function getTermSets(): array
+    {
+        if ($this->termSets === null) {
+            $this->termSets = app(TaxonomyTermService::class)->getSets('encar');
+        }
+        return $this->termSets;
+    }
 
     public function handle(TaxonomyRuleEngine $ruleEngine, TaxonomySuggestionService $suggestions, TaxonomyTermService $termService): int
     {
@@ -75,6 +76,7 @@ class NormalizeEncarTaxonomy extends Command
         $generationUpdates = 0;
         $unknownTailHits = [];
         $techSpecUpdates = 0;
+        $variantUpdates = 0;
         $samples = [];
 
         $baseQuery = DB::table('lots')
@@ -100,6 +102,7 @@ class NormalizeEncarTaxonomy extends Command
             &$generationUpdates,
             &$unknownTailHits,
             &$techSpecUpdates,
+            &$variantUpdates,
             &$samples
         ) {
             foreach ($rows as $row) {
@@ -111,17 +114,19 @@ class NormalizeEncarTaxonomy extends Command
 
                 $rawData = $this->decodeRawData($row->raw_data ?? null);
                 $modelGroup = is_array($rawData) ? ($rawData['model_group_kr'] ?? null) : null;
+                $badgeKr = is_array($rawData) ? (string) ($rawData['badge_kr'] ?? '') : '';
 
                 [$normalizedModel, $generation, $inferredTrim, $inferredPackage, $unknownTail, $strippedTokens] = $this->normalizeModelTaxonomy((string) $row->model, $modelGroup);
 
                 $rulePatch = $ruleEngine->apply([
-                    'source' => (string) $row->source,
-                    'lot_id' => (string) $row->id,
-                    'make' => (string) ($row->make ?? ''),
-                    'model_raw' => (string) $row->model,
-                    'model' => $normalizedModel,
-                    'generation' => $generation,
-                    'trim' => $inferredTrim,
+                    'source'      => (string) $row->source,
+                    'lot_id'      => (string) $row->id,
+                    'make'        => (string) ($row->make ?? ''),
+                    'model_raw'   => (string) $row->model,
+                    'badge_raw'   => $badgeKr,
+                    'model'       => $normalizedModel,
+                    'generation'  => $generation,
+                    'trim'        => $inferredTrim,
                     'unknown_tail' => $unknownTail,
                 ], false);
 
@@ -137,36 +142,41 @@ class NormalizeEncarTaxonomy extends Command
                 if (array_key_exists('unknown_tail', $rulePatch)) {
                     $unknownTail = $rulePatch['unknown_tail'];
                 }
+                $ruleFuel = $rulePatch['fuel'] ?? null;
+                $ruleDriveType = $rulePatch['drive_type'] ?? null;
+                $ruleVariant = $rulePatch['variant'] ?? null;
 
                 if ($unknownTail) {
                     $unknownTailHits[$unknownTail] = ($unknownTailHits[$unknownTail] ?? 0) + 1;
                     $this->upsertAnomalyQueue((string) $row->source, (string) ($row->make ?? ''), (string) $row->id, (string) $row->model, $unknownTail, $suggestions);
                 }
 
+                $normalizedModel = $this->cleanTechSpecTokensFromModel($normalizedModel);
+                $heuristicVariant = $this->extractVariant($normalizedModel);
+                if ($heuristicVariant !== null) {
+                    $normalizedModel = trim(str_replace($heuristicVariant, '', $normalizedModel));
+                    $normalizedModel = $this->normalizeSpace($normalizedModel);
+                }
+
                 $patch = [];
 
-                $techSpecs = $this->parseTechSpecsFromStrippedTokens($strippedTokens);
+                $fullSearchStr = trim($row->model . ' ' . $badgeKr);
+                $engineVol = $this->extractEngineVolume($fullSearchStr);
                 $techSpecAdded = false;
-                if (!empty($techSpecs)) {
-                    if (isset($techSpecs['fuel']) && ($row->fuel === null || $row->fuel === '')) {
-                        $patch['fuel'] = $techSpecs['fuel'];
-                        $techSpecAdded = true;
-                    }
-                    if (isset($techSpecs['drive_type']) && ($row->drive_type === null || $row->drive_type === '')) {
-                        $patch['drive_type'] = $techSpecs['drive_type'];
-                        $techSpecAdded = true;
-                    }
-                    if (isset($techSpecs['engine_volume']) && $row->engine_volume === null) {
-                        $patch['engine_volume'] = $techSpecs['engine_volume'];
-                        $techSpecAdded = true;
-                    }
+                if ($ruleFuel !== null && ($row->fuel === null || $row->fuel === '')) {
+                    $patch['fuel'] = $ruleFuel;
+                    $techSpecAdded = true;
+                }
+                if ($ruleDriveType !== null && ($row->drive_type === null || $row->drive_type === '')) {
+                    $patch['drive_type'] = $ruleDriveType;
+                    $techSpecAdded = true;
+                }
+                if ($engineVol !== null && $row->engine_volume === null) {
+                    $patch['engine_volume'] = $engineVol;
+                    $techSpecAdded = true;
                 }
                 if ($techSpecAdded) {
                     $techSpecUpdates++;
-                    $mergedRawData = ($rawData ?? []);
-                    $mergedRawData['stripped_model_tokens'] = $strippedTokens;
-                    $mergedRawData['tech_specs_from_model'] = $techSpecs;
-                    $patch['raw_data'] = json_encode($mergedRawData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 }
                 if ($normalizedModel !== '' && $normalizedModel !== (string) $row->model) {
                     $patch['model'] = $normalizedModel;
@@ -177,8 +187,15 @@ class NormalizeEncarTaxonomy extends Command
                 }
 
                 $trimCurrent = trim((string) ($row->trim ?? ''));
-                if ($trimCurrent === '' && $inferredTrim) {
+                $trimIsNull = $trimCurrent === '' || $trimCurrent === '(세부등급 없음)';
+                if ($trimIsNull && $inferredTrim) {
                     $patch['trim'] = $inferredTrim;
+                }
+
+                $variantCurrent = trim((string) ($row->variant ?? ''));
+                $resolvedVariant = $ruleVariant ?? $heuristicVariant;
+                if ($variantCurrent === '' && $resolvedVariant !== null) {
+                    $patch['variant'] = $resolvedVariant;
                 }
 
                 if ($patch === []) {
@@ -195,18 +212,24 @@ class NormalizeEncarTaxonomy extends Command
                 if (isset($patch['generation'])) {
                     $generationUpdates++;
                 }
+                if (isset($patch['variant'])) {
+                    $variantUpdates++;
+                }
 
                 if (count($samples) < 40) {
                     $samples[] = [
-                        'id' => $row->id,
-                        'old_model' => $row->model,
-                        'new_model' => $patch['model'] ?? $row->model,
-                        'old_trim' => $row->trim,
-                        'new_trim' => $patch['trim'] ?? $row->trim,
+                        'id'             => $row->id,
+                        'old_model'      => $row->model,
+                        'new_model'      => $patch['model'] ?? $row->model,
+                        'old_trim'       => $row->trim,
+                        'new_trim'       => $patch['trim'] ?? $row->trim,
                         'old_generation' => $row->generation,
                         'new_generation' => $patch['generation'] ?? $row->generation,
+                        'new_variant'    => $patch['variant'] ?? $row->variant ?? null,
+                        'new_fuel'       => $patch['fuel'] ?? null,
+                        'new_drive'      => $patch['drive_type'] ?? null,
                         'package_inferred' => $inferredPackage,
-                        'unknown_tail' => $unknownTail,
+                        'unknown_tail'   => $unknownTail,
                     ];
                 }
 
@@ -226,6 +249,7 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("Model updates: {$modelUpdates}");
         $this->line("Generation updates: {$generationUpdates}");
         $this->line("Trim updates: {$trimUpdates}");
+        $this->line("Variant updates: {$variantUpdates}");
         $this->line("Tech spec updates: {$techSpecUpdates}");
         if ($apply) {
             $this->line("Updated: {$updated}");
@@ -245,12 +269,24 @@ class NormalizeEncarTaxonomy extends Command
                     (string) ($sample['old_generation'] ?? ''),
                     (string) ($sample['new_generation'] ?? '')
                 ));
-                if (!empty($sample['package_inferred']) || !empty($sample['unknown_tail'])) {
-                    $this->line(sprintf(
-                        '    package="%s" unknown_tail="%s"',
-                        (string) ($sample['package_inferred'] ?? ''),
-                        (string) ($sample['unknown_tail'] ?? '')
-                    ));
+                $extras = [];
+                if (!empty($sample['new_variant'])) {
+                    $extras[] = 'variant="' . $sample['new_variant'] . '"';
+                }
+                if (!empty($sample['new_fuel'])) {
+                    $extras[] = 'fuel="' . $sample['new_fuel'] . '"';
+                }
+                if (!empty($sample['new_drive'])) {
+                    $extras[] = 'drive="' . $sample['new_drive'] . '"';
+                }
+                if (!empty($sample['package_inferred'])) {
+                    $extras[] = 'package="' . $sample['package_inferred'] . '"';
+                }
+                if (!empty($sample['unknown_tail'])) {
+                    $extras[] = 'unknown_tail="' . $sample['unknown_tail'] . '"';
+                }
+                if (!empty($extras)) {
+                    $this->line('    ' . implode(' | ', $extras));
                 }
             }
         }
@@ -385,24 +421,64 @@ class NormalizeEncarTaxonomy extends Command
         return [trim(implode(' ', $tokens)), $stripped];
     }
 
-    private function parseTechSpecsFromStrippedTokens(array $tokens): array
+    private function cleanTechSpecTokensFromModel(string $model): string
     {
-        $specs = [];
+        $sets = $this->getTermSets();
+        $tailTokens = $sets['tail_powertrain_tokens'] ?? [];
+        $engineFamilyUpper = array_values(array_unique(array_merge(
+            array_map('strtoupper', self::DEFAULT_ENGINE_FAMILY),
+            array_map('strtoupper', $sets['engine_family_tokens'] ?? []),
+        )));
+        $tokens = preg_split('/\s+/u', $model) ?: [];
+        $clean = [];
+        foreach ($tokens as $t) {
+            if (in_array(strtoupper($t), $engineFamilyUpper, true)) {
+                continue;
+            }
+            if (in_array($t, $tailTokens, true)) {
+                continue;
+            }
+            if (preg_match('/^\d+(?:\.\d+)?(?:T|D|L)?$/i', $t)) {
+                continue;
+            }
+            $clean[] = $t;
+        }
+        $result = trim(implode(' ', $clean));
+        return $result !== '' ? $result : $model;
+    }
+
+    private function extractVariant(string $model): ?string
+    {
+        $variantRe = '/^(?:[A-Z]{1,4}\d{2,4}[a-z]{0,2}|\d{3,4}[A-Za-z]{1,3})$/u';
+        $sets = $this->getTermSets();
+        $excludeUpper = array_values(array_unique(array_merge(
+            array_map('strtoupper', self::DEFAULT_VARIANT_EXCLUDE),
+            array_map('strtoupper', $sets['variant_exclude'] ?? []),
+        )));
+        $tokens = preg_split('/\s+/u', $model) ?: [];
         foreach ($tokens as $tok) {
-            if (!isset($specs['fuel']) && isset(self::FUEL_TOKEN_MAP[$tok])) {
-                $specs['fuel'] = self::FUEL_TOKEN_MAP[$tok];
+            if (in_array(strtoupper($tok), $excludeUpper, true)) {
+                continue;
             }
-            if (!isset($specs['drive_type']) && isset(self::DRIVE_TOKEN_MAP[$tok])) {
-                $specs['drive_type'] = self::DRIVE_TOKEN_MAP[$tok];
+            if (preg_match($variantRe, $tok)) {
+                return $tok;
             }
-            if (!isset($specs['engine_volume']) && preg_match('/^(\d+(?:\.\d+)?)(?:T|D|L)?$/i', $tok, $m)) {
+        }
+        return null;
+    }
+
+    private function extractEngineVolume(string $text): ?float
+    {
+        $tokens = preg_split('/\s+/', $text) ?: [];
+        foreach ($tokens as $tok) {
+            if (preg_match('/^(\d+(?:\.\d+)?)(?:T|D|L)?$/i', $tok, $m)) {
                 $vol = (float) $m[1];
                 if ($vol >= 0.5 && $vol <= 10.0) {
-                    $specs['engine_volume'] = round($vol, 1);
+                    return round($vol, 1);
                 }
             }
         }
-        return $specs;
+        return null;
     }
 
     private function extractGeneration(string $model, ?string $modelGroup): array
@@ -456,11 +532,20 @@ class NormalizeEncarTaxonomy extends Command
 
         $upper = strtoupper($t);
 
-        if (in_array($upper, self::GEN_NON_CHASSIS_TOKENS, true)) {
+        $sets = $this->getTermSets();
+        $nonChassis = array_map('strtoupper', array_merge(
+            self::DEFAULT_GEN_NON_CHASSIS,
+            $sets['gen_non_chassis_tokens'] ?? [],
+        ));
+        if (in_array($upper, $nonChassis, true)) {
             return false;
         }
 
-        if (in_array($upper, self::GEN_EXCLUDE_TOKENS, true)) {
+        $excludeTokens = array_map('strtoupper', array_merge(
+            self::DEFAULT_GEN_EXCLUDE,
+            $sets['gen_exclude_tokens'] ?? [],
+        ));
+        if (in_array($upper, $excludeTokens, true)) {
             return false;
         }
 
