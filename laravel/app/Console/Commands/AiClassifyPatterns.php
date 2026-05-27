@@ -329,6 +329,15 @@ class AiClassifyPatterns extends Command
                 'action_value'   => $trim,
             ];
         }
+        // Variant: strict whitelist — only true performance submodels
+        $variantWhitelist = ['AMG', 'RS', 'M', 'N', 'JCW', 'STI', 'Type R', 'GR', 'GTI', 'R', '4S', 'GTS', 'Turbo S'];
+        if ($variant !== null && $variant !== '' && in_array($variant, $variantWhitelist, true)) {
+            $actions[] = [
+                'model_contains' => $variant,
+                'action'         => 'set_variant',
+                'action_value'   => $variant,
+            ];
+        }
         if ($package !== null && $package !== '') {
             $actions[] = [
                 'model_contains' => $package,
@@ -420,6 +429,7 @@ OUTPUT (JSON only, no markdown):
   "generation_code": string|null,
   "generation_label": string|null,
   "trim": string|null,
+  "variant": string|null,
   "package": string|null,
   "body_type": string|null,
   "parse_confidence": integer 0-100,
@@ -461,31 +471,52 @@ Both can be non-null at once (e.g. 페리세이드 디젠 알파 (LX2) 2세대 �
 If NOT explicitly present in string → null. NEVER infer.
 
 ━━━ FIELD 3: trim (strict string extraction only) ━━━
-Extract ONLY if grade name is explicitly present in the string:
-  Korean: 캘리그래피, 프레스티지, 노블레스, 인스퍼레이션, 익스클루시브, 모던, 르블랑, 시그니처, 퍼스트, 프리미엄
-  English: Prestige, Inspiration, Premium, Exclusive, Modern, HIGH, Luxury, Elegance, Signature
-  Brand: Inscription, R-Design, M Sport, AMG Line, S-Line, avantgarde, 아방가르드, F Sport, Polestar
-  NOT present → null. Set debug.trim_found accordingly.
+Extract grade name if EXPLICITLY present. NEVER silently drop — if you found it, always output it.
+  Korean: 캘리그래피, 프레스티지, 노블레스, 인스퍼레이션, 익스클루시브, 모던, 르블랑, 시그니처, 퍼스트, 프리미엄, 럭셔리
+  English: Prestige, Inspiration, Premium, Exclusive, Modern, HIGH, Luxury, Elegance, Signature, LTZ, LX, LE, RE, SE, PE
+  Brand: Inscription, R-Design, M Sport, AMG Line, S-Line, avantgarde, 아방가르드, F Sport, Polestar, ACTIV, RedLine, 레드라인
+  Compound trim: if you see "M 스포츠 플러스" → trim="M 스포츠", package="플러스"
+  CRITICAL: if trim token is found but you are unsure → still output it, just lower parse_confidence
+  NOT present → null.
 
-━━━ FIELD 4: package (strict extraction) ━━━
-Only if 패키지, 팩, Package suffix explicitly present.
+━━━ FIELD 4: variant (strict whitelist only) ━━━
+Extract ONLY if one of these EXACT performance submodel tokens is present in the string.
+This is a per-brand whitelist — same token means DIFFERENT things for different brands:
+  Universal variants: AMG, RS, M, N, JCW, STI, Type R, GR, GTI, R, 4S, GTS, Turbo S
+  Brand-specific:
+    Hyundai/Kia N → variant (performance submodel)
+    Audi RS → variant (performance submodel)
+    Mercedes AMG → variant (e.g. C63 AMG)
+    BMW M → variant (M3, M5 — NOT "M Sport" which is trim)
+    Chevrolet RS → trim (appearance package, NOT variant)
+    Chevrolet ACTIV → trim
+    Kia/Hyundai GT → variant only if it is the full submodel name (e.g. "i30 N", "Stinger GT")
+  Engine displacement tokens (300d, 520i, 45 TFSI, 2.0T) → NOT variant, ignore
+  NOT in whitelist → null.
 
-━━━ FIELD 5: body_type (knowledge, conditional) ━━━
-ONLY classify if model_clean confidence ≥ 80.
+━━━ FIELD 5: package (strict extraction) ━━━
+Only if 패키지, 팩, 플러스, Package suffix explicitly present, OR compound trim split (see FIELD 3).
+  특별 packages: 하이리무진 → package="하이리무진", 9인승 → package="9인승"
+
+━━━ FIELD 6: body_type (knowledge, conditional) ━━━
+ONLY classify if model_clean confidence ≥ 80. MUST be exactly ONE value from the enum below.
+NEVER output slash-separated values like "hatchback/crossover" or "van/minivan".
 If model_clean is ambiguous → body_type must be null.
-Use canonical model dictionary above. Set body_type_source="knowledge".
-  sedan: 아반떼, 쏘나타, 그랜저, K5, K8, G70, G80, G90, 3시리즈, 5시리즈, 7시리즈, E클래스, S클래스, C클래스, A4, A6, A8, ES, LS, S90
-  suv: 투싼, 싼타페, 코나, 팰리세이드, GV70, GV80, 스포티지, 쏘렌토, 셀토스, X3, X5, X6, X7, GLE, GLC, GLS, Q5, Q7, Q8, RX, NX, XC60, XC90
-  hatchback/crossover: 아이오닉5, 아이오닉6, EV6, i30, 골프
-  van/minivan: 카니발, 스타리아, 쏠라티, 그랜드 스타렉스
-  pickup: 포터, 봉고
-  coupe: 쿠페, 2시리즈, 4시리즈, C클래스 쿠페, CLA, CLS
+  sedan:      아반떼, 쏘나타, 그랜저, K5, K8, G70, G80, G90, 3시리즈, 5시리즈, 7시리즈, E클래스, S클래스, C클래스, A4, A6, A8, ES, LS, S90, 말리부, 임팔라
+  suv:        투싼, 싼타페, 코나, 팰리세이드, GV70, GV80, 스포티지, 쏘렌토, 셀토스, X3, X5, X6, X7, GLE, GLC, GLS, Q5, Q7, Q8, RX, NX, XC60, XC90, 토레스, 티볼리, 렉스턴, 코란도, QM6, 트래버스, 트랙스, 트랙스 크로스오버
+  hatchback:  i30, 골프, 폴로, 피에스타, 캐스퍼
+  crossover:  아이오닉5, 아이오닉6, EV6, EV9, 코나 일렉트릭, GV60
+  minivan:    카니발, 그랜드 스타렉스
+  van:        스타리아, 쏠라티, 레이, 포터 캡밴
+  pickup:     포터, 봉고
+  coupe:      2시리즈, 4시리즈, C클래스 쿠페, CLA, CLS, Z4
+  convertible: E클래스 카브리올레, C클래스 카브리올레
 
 ━━━ STRICT NULLS ━━━
-• fuel → DO NOT output (separate deterministic system handles this)
-• drive_type → DO NOT output (separate deterministic system handles this)
-• engine_volume → DO NOT output (separate deterministic system handles this)
-• When in doubt → null + lower confidence + add to ambiguity_flags
+• fuel → DO NOT output
+• drive_type → DO NOT output
+• engine_volume → DO NOT output
+• When in doubt about trim → output it anyway with lower confidence, do NOT drop silently
 PROMPT;
     }
 }
