@@ -108,29 +108,34 @@ class AiClassifyPatterns extends Command
                 continue;
             }
 
-            $confidence  = (int) round((float) ($result['confidence'] ?? 0));
-            $modelClean  = trim((string) ($result['model_clean'] ?? ''));
-            $generation  = $this->nullOrString($result['generation'] ?? null);
-            $trim        = $this->nullOrString($result['trim'] ?? null);
-            $variant     = $this->nullOrString($result['variant'] ?? null);
-            $package     = $this->nullOrString($result['package'] ?? null);
-            $bodyType    = $this->nullOrString($result['body_type'] ?? null);
-            $notes       = trim((string) ($result['notes'] ?? ''));
-            $debug       = $result['debug'] ?? [];
+            $modelClean    = trim((string) ($result['model_clean'] ?? ''));
+            $generationCode = $this->nullOrString($result['generation_code'] ?? null);
+            $generationLabel = $this->nullOrString($result['generation_label'] ?? null);
+            $generation    = $generationCode ?? $generationLabel;
+            $trim          = $this->nullOrString($result['trim'] ?? null);
+            $variant       = $this->nullOrString($result['variant'] ?? null);
+            $package       = $this->nullOrString($result['package'] ?? null);
+            $bodyType      = $this->nullOrString($result['body_type'] ?? null);
+            $parseConf     = (int) ($result['parse_confidence'] ?? 0);
+            $notes         = trim((string) ($result['notes'] ?? ''));
 
-            $genFound   = !empty($debug['generation_found']);
-            $breakdown  = $debug['confidence_breakdown'] ?? [];
-            $bonuses    = implode(', ', (array) ($breakdown['bonuses'] ?? []));
-            $penalties  = implode(', ', (array) ($breakdown['penalties'] ?? []));
+            // PHP-side deterministic data_completeness score
+            $completeness = 60;
+            if ($modelClean !== '') $completeness += 20;
+            if ($generationCode !== null) $completeness += 10;
+            if ($bodyType !== null) $completeness += 10;
+            if ($trim !== null) $completeness += 10;
+            if ($variant !== null) $completeness += 5;
+            $completeness = min(95, $completeness);
 
-            $this->line("    → conf={$confidence}% model_clean=\"{$modelClean}\" gen=\"{$generation}\" trim=\"{$trim}\" variant=\"{$variant}\" body=\"{$bodyType}\"");
+            $confidence = $completeness;
+
+            $this->line("    → parse={$parseConf}% compl={$completeness}% model_clean=\"{$modelClean}\" gen_code=\"{$generationCode}\" gen_label=\"{$generationLabel}\" trim=\"{$trim}\" body=\"{$bodyType}\"");
             if ($notes) $this->line("    → notes: {$notes}");
-            if ($bonuses)  $this->line("    → +bonuses: {$bonuses}");
-            if ($penalties) $this->line("    → -penalties: {$penalties}");
 
             if ($confidence >= $threshold) {
                 if (!$dryRun) {
-                    $created = $this->createRules($source, $make, $modelRaw, $modelClean, $generation, $trim, $variant, $package, $bodyType, $confidence);
+                    $created = $this->createRules($source, $make, $modelRaw, $modelClean, $generationCode, $generationLabel, $trim, $variant, $package, $bodyType, $confidence);
                     $rulesCreated += $created;
                     $this->line("    → AUTO-CREATED {$created} rule(s)");
                 } else {
@@ -216,7 +221,7 @@ class AiClassifyPatterns extends Command
 
     private function createRules(
         string $source, string $make, string $modelRaw, string $modelClean,
-        ?string $generation, ?string $trim, ?string $variant,
+        ?string $generationCode, ?string $generationLabel, ?string $trim, ?string $variant,
         ?string $package, ?string $bodyType,
         int $confidence
     ): int {
@@ -243,8 +248,10 @@ class AiClassifyPatterns extends Command
         if ($package !== null && $package !== '') {
             $actions[] = ['action' => 'set_package',    'action_value' => $package];
         }
-        if ($generation !== null && $generation !== '') {
-            $actions[] = ['action' => 'set_generation', 'action_value' => $generation];
+        if ($generationCode !== null && $generationCode !== '') {
+            $actions[] = ['action' => 'set_generation', 'action_value' => $generationCode];
+        } elseif ($generationLabel !== null && $generationLabel !== '') {
+            $actions[] = ['action' => 'set_generation', 'action_value' => $generationLabel];
         }
         if ($bodyType !== null && $bodyType !== '') {
             $actions[] = ['action' => 'set_body_type',  'action_value' => $bodyType];
@@ -306,49 +313,25 @@ class AiClassifyPatterns extends Command
     private function buildSystemPrompt(): string
     {
         return <<<'PROMPT'
-You are a Korean car listing structured extractor. You do NOT reason freely — you apply strict evidence-based rules.
+You are a deterministic Korean car listing parser. Extract structured fields ONLY from what is explicitly present in the text.
 
 INPUT: { make, model_raw, badge_raw } from Encar (Korean car marketplace).
 
 OUTPUT (JSON only, no markdown):
 {
   "model_clean": string,
-  "generation": string|null,
+  "generation_code": string|null,
+  "generation_label": string|null,
   "trim": string|null,
   "variant": string|null,
   "package": string|null,
   "body_type": string|null,
-  "confidence": integer 0-100,
-  "notes": string,
-  "debug": {
-    "model_clean_source": "string|knowledge",
-    "body_type_source": "string|knowledge|null",
-    "generation_found": true|false,
-    "trim_found": true|false,
-    "ambiguity_flags": []
-  }
+  "parse_confidence": integer 0-100,
+  "notes": string
 }
 
-━━━ CONFIDENCE SCORING ENGINE (positive signals only, no penalties for missing data) ━━━
-Start at base = 60. Add bonuses ONLY for what is explicitly found/mapped. Never subtract for missing fields.
-
-BONUSES (add to base):
-+20 if model_clean is fully matched in canonical dictionary
-+10 if generation token is explicitly found in string
-+10 if body_type is mapped from dictionary (model_clean known)
-+10 if trim is explicitly found in string
-+5  if variant is explicitly found in string
-
-PENALTIES (only for actual extraction uncertainty, NOT for missing fields):
--10 if multiple valid interpretations exist for model_clean (genuine ambiguity)
--20 if model_clean cannot be matched to dictionary and is uncertain
-
-HARD RULES:
-- NEVER subtract points because a field is absent (absent ≠ wrong)
-- NEVER penalize for missing generation, missing trim, missing variant
-- Maximum confidence = 95 (100 reserved for perfect explicit string match)
-
-Store breakdown in debug.confidence_breakdown: { base: 60, bonuses: ["..."], penalties: ["..."] }
+DO NOT compute bonuses or penalties. DO NOT evaluate completeness. Just extract.
+parse_confidence = your certainty about what you DID extract (not what is missing).
 
 ━━━ FIELD 1: model_clean (controlled knowledge allowed) ━━━
 Step 1 — detect base model name from string.
@@ -365,14 +348,21 @@ Step 4 — map to canonical OEM name using dictionary (set model_clean_source="k
   Lexus: ES, RX, NX, UX, LS, GX
 If no dictionary match → use string value as-is, set model_clean_source="string".
 
-━━━ FIELD 2: generation (strict string extraction only) ━━━
-Extract ONLY if explicitly present as a token in the string:
+━━━ FIELDS 2+3: generation_code and generation_label (TWO SEPARATE FIELDS) ━━━
+These are different classification systems — NEVER mix them.
+
+generation_code = OEM chassis/platform code (engineering identifier):
   Korean: GN7, DN8, CN7, NX4, RG3, IG, LF, YF, HG, TL, UM, QP, MX5, KA4, JK1, DL3, RS4, DH
   German: W213, W222, W205, G30, F10, F30, G20, C257, R231, G01, G05
   In parentheses: (G30), (DN8) → extract without parens
-  Generational: 3세대, 4세대, 신형, 구형
-  NOT explicitly present → null. NEVER infer from model knowledge alone.
-  Set debug.generation_found=true if found.
+  If NOT present → null.
+
+generation_label = marketing/generational label:
+  Examples: 3세대, 4세대, 5세대, 신형, 구형, 1세대
+  If NOT present → null.
+
+Both can be non-null at once (e.g. 페리세이드 디젠 알파 (LX2) 2세대 → code=LX2, label=2세대).
+If NOT explicitly present in string → null. NEVER infer.
 
 ━━━ FIELD 3: trim (strict string extraction only) ━━━
 Extract ONLY if grade name is explicitly present in the string:
