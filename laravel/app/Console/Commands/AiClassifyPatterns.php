@@ -275,48 +275,77 @@ class AiClassifyPatterns extends Command
     ): int {
         $created = 0;
         $notes   = "ai_classify_patterns conf={$confidence}%";
+        $makeVal = $make ?: null;
 
-        $ruleBase = [
-            'source'         => $source,
-            'make'           => $make ?: null,
-            'model_contains' => $modelRaw,
-            'priority'       => 85,
-            'is_active'      => true,
-            'notes'          => $notes,
-        ];
+        // Each action uses a token-level model_contains key (reusable across listings)
+        // instead of the full raw string (snapshot = non-reusable).
+        //
+        // generation code  → "$modelClean $generationCode"  e.g. "그랜저 IG"
+        // generation label → "$modelClean $generationLabel" e.g. "쏘렌토 4세대"
+        // trim / package   → "$trim" / "$package"           token with make scope
+        // body_type        → "$modelClean"                  model→body canonical lookup
+        // set_variant      → DISABLED (engine grades like 300d misclassified as variant)
 
         $actions = [];
 
-        if ($trim !== null && $trim !== '') {
-            $actions[] = ['action' => 'set_trim',       'action_value' => $trim];
+        if ($generationCode !== null && $generationCode !== '') {
+            $actions[] = [
+                'model_contains' => trim($modelClean . ' ' . $generationCode),
+                'action'         => 'set_generation',
+                'action_value'   => $generationCode,
+            ];
         }
-        if ($variant !== null && $variant !== '') {
-            $actions[] = ['action' => 'set_variant',    'action_value' => $variant];
+        if ($generationLabel !== null && $generationLabel !== '') {
+            $actions[] = [
+                'model_contains' => trim($modelClean . ' ' . $generationLabel),
+                'action'         => 'set_generation',
+                'action_value'   => $generationLabel,
+            ];
+        }
+        if ($trim !== null && $trim !== '') {
+            $actions[] = [
+                'model_contains' => $trim,
+                'action'         => 'set_trim',
+                'action_value'   => $trim,
+            ];
         }
         if ($package !== null && $package !== '') {
-            $actions[] = ['action' => 'set_package',    'action_value' => $package];
-        }
-        if ($generationCode !== null && $generationCode !== '') {
-            $actions[] = ['action' => 'set_generation', 'action_value' => $generationCode];
-        } elseif ($generationLabel !== null && $generationLabel !== '') {
-            $actions[] = ['action' => 'set_generation', 'action_value' => $generationLabel];
+            $actions[] = [
+                'model_contains' => $package,
+                'action'         => 'set_package',
+                'action_value'   => $package,
+            ];
         }
         if ($bodyType !== null && $bodyType !== '') {
-            $actions[] = ['action' => 'set_body_type',  'action_value' => $bodyType];
+            $actions[] = [
+                'model_contains' => $modelClean,
+                'action'         => 'set_body_type',
+                'action_value'   => $bodyType,
+            ];
         }
         // NOTE: fuel/drive_type/engine_volume are handled by deterministic rules (encar_rules_seed.sql)
+        // NOTE: set_variant disabled — engine grades (300d, 45 TFSI, 2.5T) are not variants
 
         foreach ($actions as $actionData) {
             $exists = TaxonomyRule::query()
                 ->where('source', $source)
-                ->where('make', $make ?: null)
-                ->where('model_contains', $modelRaw)
+                ->where('make', $makeVal)
+                ->where('model_contains', $actionData['model_contains'])
                 ->where('action', $actionData['action'])
                 ->where('is_active', true)
                 ->exists();
 
             if (!$exists) {
-                TaxonomyRule::create(array_merge($ruleBase, $actionData));
+                TaxonomyRule::create([
+                    'source'         => $source,
+                    'make'           => $makeVal,
+                    'model_contains' => $actionData['model_contains'],
+                    'action'         => $actionData['action'],
+                    'action_value'   => $actionData['action_value'],
+                    'priority'       => 85,
+                    'is_active'      => true,
+                    'notes'          => $notes,
+                ]);
                 $created++;
             }
         }
