@@ -16,7 +16,8 @@ class AiClassifyPatterns extends Command
         {--make=          : Filter by make (optional)}
         {--limit=50       : Number of unique patterns to process}
         {--confidence=90  : Auto-create rule threshold (0-100)}
-        {--dry-run        : Show results without saving}';
+        {--dry-run        : Show results without saving}
+        {--sleep=4        : Seconds to sleep between API calls (default 4 to stay under TPM limit)}';
 
     protected $description = 'AI-classify unique (make, model_kr_raw, badge_kr) patterns → auto-create rules or queue for review';
 
@@ -40,6 +41,7 @@ class AiClassifyPatterns extends Command
         $limit      = max(1, (int) $this->option('limit'));
         $threshold  = max(0, min(100, (int) $this->option('confidence')));
         $dryRun     = (bool) $this->option('dry-run');
+        $sleep      = max(0, (int) $this->option('sleep'));
 
         $this->info('AI Classify Patterns');
         $this->line("Mode: " . ($dryRun ? 'DRY-RUN' : 'APPLY'));
@@ -96,6 +98,10 @@ class AiClassifyPatterns extends Command
 
             $result = $this->classifyPattern($make, $modelRaw, $badgeRaw);
 
+            if ($sleep > 0) {
+                sleep($sleep);
+            }
+
             if ($result === null) {
                 $this->warn("    → AI error, skipping");
                 $failed++;
@@ -109,15 +115,17 @@ class AiClassifyPatterns extends Command
             $variant     = $this->nullOrString($result['variant'] ?? null);
             $package     = $this->nullOrString($result['package'] ?? null);
             $bodyType    = $this->nullOrString($result['body_type'] ?? null);
-            $fuel        = $this->nullOrString($result['fuel'] ?? null);
-            $driveType   = $this->nullOrString($result['drive_type'] ?? null);
             $notes       = trim((string) ($result['notes'] ?? ''));
+            $debug       = $result['debug'] ?? [];
 
-            $this->line("    → conf={$confidence}% model_clean=\"{$modelClean}\" trim=\"{$trim}\" variant=\"{$variant}\" body=\"{$bodyType}\" notes=\"{$notes}\"");
+            $knowledgeFlags = implode(', ', array_keys(array_filter((array) $debug)));
+            $this->line("    → conf={$confidence}% model_clean=\"{$modelClean}\" trim=\"{$trim}\" variant=\"{$variant}\" body=\"{$bodyType}\"");
+            if ($notes) $this->line("    → notes: {$notes}");
+            if ($knowledgeFlags) $this->line("    → knowledge used: {$knowledgeFlags}");
 
             if ($confidence >= $threshold) {
                 if (!$dryRun) {
-                    $created = $this->createRules($source, $make, $modelRaw, $modelClean, $generation, $trim, $variant, $package, $bodyType, $fuel, $driveType, $confidence);
+                    $created = $this->createRules($source, $make, $modelRaw, $modelClean, $generation, $trim, $variant, $package, $bodyType, $confidence);
                     $rulesCreated += $created;
                     $this->line("    → AUTO-CREATED {$created} rule(s)");
                 } else {
@@ -146,7 +154,7 @@ class AiClassifyPatterns extends Command
         return 0;
     }
 
-    private function classifyPattern(string $make, string $modelRaw, string $badgeRaw): ?array
+    private function classifyPattern(string $make, string $modelRaw, string $badgeRaw, int $attempt = 0): ?array
     {
         $input = json_encode([
             'make'      => $make,
@@ -171,6 +179,13 @@ class AiClassifyPatterns extends Command
                     ],
                 ]);
 
+            if ($response->status() === 429 && $attempt < 3) {
+                $waitSec = $this->parseRetryAfter($response->body());
+                $this->line("    ⏳ Rate limited, waiting {$waitSec}s...");
+                sleep($waitSec);
+                return $this->classifyPattern($make, $modelRaw, $badgeRaw, $attempt + 1);
+            }
+
             if (!$response->successful()) {
                 Log::warning('[AiClassifyPatterns] API error: ' . $response->status() . ' ' . $response->body());
                 return null;
@@ -185,10 +200,19 @@ class AiClassifyPatterns extends Command
         }
     }
 
+    private function parseRetryAfter(string $body): int
+    {
+        // Parse "Please try again in 1.565s" from Groq error
+        if (preg_match('/try again in (\d+\.?\d*)s/', $body, $m)) {
+            return (int) ceil((float) $m[1]) + 1;
+        }
+        return 10;
+    }
+
     private function createRules(
         string $source, string $make, string $modelRaw, string $modelClean,
         ?string $generation, ?string $trim, ?string $variant,
-        ?string $package, ?string $bodyType, ?string $fuel, ?string $driveType,
+        ?string $package, ?string $bodyType,
         int $confidence
     ): int {
         $created = 0;
@@ -220,12 +244,7 @@ class AiClassifyPatterns extends Command
         if ($bodyType !== null && $bodyType !== '') {
             $actions[] = ['action' => 'set_body_type',  'action_value' => $bodyType];
         }
-        if ($fuel !== null && $fuel !== '') {
-            $actions[] = ['action' => 'set_fuel',       'action_value' => $fuel];
-        }
-        if ($driveType !== null && $driveType !== '') {
-            $actions[] = ['action' => 'set_drive_type', 'action_value' => $driveType];
-        }
+        // NOTE: fuel/drive_type/engine_volume are handled by deterministic rules (encar_rules_seed.sql)
 
         foreach ($actions as $actionData) {
             $exists = TaxonomyRule::query()
@@ -282,31 +301,74 @@ class AiClassifyPatterns extends Command
     private function buildSystemPrompt(): string
     {
         return <<<'PROMPT'
-You are an expert in Korean car marketplace (Encar) taxonomy normalization. Use your full knowledge of car models, trim levels, and specifications worldwide.
+You are a Korean car listing parser. Your job is structured extraction — NOT free reasoning about cars.
 
-Given a car listing (make + raw model string + badge string from Encar), extract all available taxonomy fields.
+INPUT: { make, model_raw, badge_raw } from Korean car marketplace Encar.
 
-Return JSON only (no markdown):
+OUTPUT (JSON only, no markdown):
 {
-  "model_clean": "base model name only — strip out engine displacement, fuel type, drive type, trim level, variant code. Keep only the core model name.",
-  "generation": "chassis or generation code if you can identify one (e.g. G30, DN8, W213, RG3, F10, 3세대) or null",
-  "trim": "trim/grade level name as used by this manufacturer (e.g. 프레스티지, HIGH, Inscription, M Sport, 아방가르드) or null",
-  "variant": "short sub-model performance code that is part of the model identity — like S, SD, JCW, N, GT, 4S, GTS, AMG, RS, M, e-tron. NOT engine displacement numbers. or null",
-  "package": "option/equipment package name if present or null",
-  "body_type": "body style you know for this model (use English lowercase: sedan, suv, hatchback, coupe, convertible, wagon, van, minivan, pickup, crossover, etc.) or null",
-  "fuel": "fuel type you know for this model/variant (use English lowercase: gasoline, diesel, hybrid, electric, lpg, plugin_hybrid, hydrogen) or null",
-  "drive_type": "drivetrain you know for this model/variant (fwd, rwd, awd, 4wd) or null — use context clues like AWD/4WD/xDrive/quattro/4MATIC tokens",
-  "engine_volume": numeric displacement in liters as float (e.g. 2.0, 3.5) if you can identify it, or null,
-  "confidence": integer 0-100 reflecting your certainty across ALL fields — lower if ambiguous,
-  "notes": "one sentence explaining your reasoning or noting anything uncertain"
+  "model_clean": string,
+  "generation": string|null,
+  "trim": string|null,
+  "variant": string|null,
+  "package": string|null,
+  "body_type": string|null,
+  "confidence": integer 0-100,
+  "notes": string,
+  "debug": { "used_knowledge_model_clean": bool, "used_knowledge_body_type": bool }
 }
 
-Key rules:
-- model_clean is the most important field — it must be clean and correct
-- variant is only SHORT codes that are part of the model name (S, JCW, N, AMG) — NOT full trim names
-- trim is the equipment grade name (can be Korean or English)
-- If the badge string contains generation info (e.g. "3세대"), use that for generation field
-- Use your knowledge of the specific make/model to fill body_type, fuel, drive_type even if not stated in the string
+━━━ LAYER 1: STRICT STRING EXTRACTION (no inference allowed) ━━━
+
+generation → extract ONLY if an explicit chassis/generation code is present in the string:
+  • Korean gen codes: GN7, DN8, CN7, NX4, RG3, IG, LF, YF, HG, TL, UM, QP, PE
+  • German chassis: W213, W222, G30, F10, F30, C257, R231
+  • Token in parentheses like (G30), or standalone before/after model name
+  • "3세대", "4세대" → set as "3세대" etc.
+  • If NOT explicitly present → null. NEVER guess.
+
+trim → extract ONLY if an explicit grade name is present:
+  • Korean grades: 캘리그래피, 프레스티지, 노블레스, 인스퍼레이션, 익스클루시브, 모던, 르블랑, 시그니처, 퍼스트
+  • English grades: Prestige, Inspiration, Premium, Exclusive, Modern, HIGH, Luxury, Elegance
+  • Brand grades: Inscription, R-Design, Polestar, M Sport, AMG Line, S-Line, avantgarde, 아방가르드
+  • If NOT in string → null.
+
+variant → extract ONLY if a short standalone sub-model code is present:
+  • Valid: S, SD, N, AMG, RS, M, JCW, GT, GTS, 4S, e-tron, R-Line, T-Roc
+  • NOT engine displacement (2.0, 3.5), NOT fuel tokens (HEV, EV, GDI)
+  • If NOT in string → null.
+
+package → extract ONLY if a package/option name is explicitly present (패키지, 팩, Package suffix).
+
+━━━ LAYER 2: CONTROLLED KNOWLEDGE (only 2 fields) ━━━
+
+model_clean → USE knowledge to:
+  1. Strip noise: 더 뉴, 올 뉴, 뉴, (generation codes), engine size tokens, fuel tokens, drivetrain tokens
+  2. Map to canonical OEM model family using this dictionary:
+  Hyundai: 아반떼(CN7/AD/MD)→아반떼, 쏘나타(DN8/LF/YF)→쏘나타, 그랜저(GN7/IG/HG)→그랜저,
+           투싼(NX4/TL)→투싼, 싼타페(TM/CM)→싼타페, 코나→코나, 아이오닉→아이오닉, 팰리세이드→팰리세이드
+  Kia: K5(DL3/JF)→K5, K7/K8→K8, 스포티지(NQ5/QL)→스포티지, 쏘렌토(MQ4/UM)→쏘렌토,
+       카니발(KA4)→카니발, EV6→EV6, 모닝→모닝, 레이→레이
+  Genesis: GV80(RG3)→GV80, GV70(JK1)→GV70, G80(RG3/DH)→G80, G90→G90, G70→G70
+  BMW: 3시리즈/3 Series→3시리즈, 5시리즈→5시리즈, 7시리즈→7시리즈, X3→X3, X5→X5
+  Mercedes: E클래스/E-Class/E클 (W213/W212)→E클래스, S클래스→S클래스, C클래스→C클래스, GLE→GLE, GLC→GLC
+  Set debug.used_knowledge_model_clean=true if you used knowledge (not just string stripping).
+
+body_type → USE knowledge to classify make+model_clean:
+  sedan: 아반떼, 쏘나타, 그랜저, K5, K7, K8, G70, G80, G90, 3시리즈, 5시리즈, 7시리즈, E클래스, S클래스, C클래스
+  suv: 투싼, 싼타페, 코나, 팰리세이드, GV70, GV80, 스포티지, 쏘렌토, X3, X5, GLE, GLC, 셀토스, 베뉴
+  hatchback: 아이오닉5(if not specified), 아이오닉6, i30, 폴로, 골프, 해치백
+  van/minivan: 카니발, 스타리아, 쏠라티, 그랜드 스타렉스
+  pickup: 포터, 봉고
+  coupe: 쿠페 variants, 2시리즈 쿠페, C클래스 쿠페
+  Set debug.used_knowledge_body_type=true.
+
+━━━ LAYER 3: STRICT NULLS ━━━
+• fuel → DO NOT output (handled by separate system)
+• drive_type → DO NOT output (handled by separate system)
+• engine_volume → DO NOT output (handled by separate system)
+• confidence: reflect only model_clean + trim + generation + variant accuracy
+• If uncertain about ANY field → set it null, lower confidence
 PROMPT;
     }
 }
