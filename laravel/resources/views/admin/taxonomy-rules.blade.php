@@ -114,24 +114,39 @@
     <h3 class="text-sm text-gray-300 font-semibold mb-3">Очередь аномалий</h3>
     <table class="w-full text-xs text-gray-300">
       <thead class="text-gray-500 border-b border-gray-800">
-        <tr><th class="text-left py-2">Хвост</th><th class="text-left py-2">Встречалось</th><th class="text-left py-2">Подсказка</th></tr>
+        <tr>
+          <th class="text-left py-2">Хвост</th>
+          <th class="text-left py-2">Встречалось</th>
+          <th class="text-left py-2">Подсказка</th>
+          @if(session('admin_role') === 'super')
+          <th class="text-left py-2 w-40">AI</th>
+          @endif
+        </tr>
       </thead>
       <tbody>
         @foreach($queue as $row)
-          <tr class="border-b border-gray-800 align-top">
+          <tr class="border-b border-gray-800 align-top" id="qrow-{{ $row->id }}">
             <td class="py-2">
-              <div class="text-white">{{ $row->unknown_tail }}</div>
+              <div class="text-white font-medium">{{ $row->unknown_tail }}</div>
               <div class="text-gray-500">{{ $row->make ?: '—' }} · {{ $row->reason ?: '—' }}</div>
-              <div class="text-gray-600">{{ $row->sample_model_raw ?: '' }}</div>
+              <div class="text-gray-600 italic">{{ $row->sample_model_raw ?: '' }}</div>
             </td>
             <td class="py-2">
               <div>{{ $row->seen_count }}</div>
               <div class="text-gray-500">{{ optional($row->last_seen_at)->diffForHumans() }}</div>
-              <div class="text-gray-600">{{ $row->status === 'new' ? 'новая' : ($row->status === 'rule_created' ? 'правило создано' : 'игнор') }}</div>
+              <div class="text-gray-600">
+                @if($row->status === 'new') новая
+                @elseif($row->status === 'rule_created') правило создано
+                @elseif($row->status === 'ai_reviewed') <span class="text-violet-400">AI проверено</span>
+                @else игнор
+                @endif
+              </div>
             </td>
             <td class="py-2">
-              <div>{{ $row->suggested_action ? ($actionLabels[$row->suggested_action] ?? $row->suggested_action) : '—' }}</div>
-              <div class="text-gray-500">{{ $row->suggested_value ?: '—' }} ({{ $row->suggestion_confidence !== null ? number_format($row->suggestion_confidence * 100, 0).'%' : '—' }})</div>
+              <div id="qsugg-{{ $row->id }}">
+                <div>{{ $row->suggested_action ? ($actionLabels[$row->suggested_action] ?? $row->suggested_action) : '—' }}</div>
+                <div class="text-gray-500">{{ $row->suggested_value ?: '—' }} ({{ $row->suggestion_confidence !== null ? number_format($row->suggestion_confidence * 100, 0).'%' : '—' }})</div>
+              </div>
               @if(session('admin_role') === 'super')
                 <form method="post" action="{{ route('admin.taxonomy.queue.create-rule', $row->id) }}" class="mt-1 inline-block">
                   @csrf
@@ -144,6 +159,17 @@
                 </form>
               @endif
             </td>
+            @if(session('admin_role') === 'super')
+            <td class="py-2">
+              <button
+                onclick="aiClassify({{ $row->id }}, '{{ csrf_token() }}')"
+                id="aibtn-{{ $row->id }}"
+                class="px-2 py-1 rounded bg-violet-700 hover:bg-violet-600 text-white text-xs font-medium whitespace-nowrap">
+                🤖 Спросить AI
+              </button>
+              <div id="airesult-{{ $row->id }}" class="mt-1 text-xs hidden"></div>
+            </td>
+            @endif
           </tr>
         @endforeach
       </tbody>
@@ -151,4 +177,51 @@
     <div class="mt-3">{{ $queue->links() }}</div>
   </div>
 </div>
+
+<script>
+async function aiClassify(id, csrf) {
+  const btn = document.getElementById('aibtn-' + id);
+  const box = document.getElementById('airesult-' + id);
+  btn.disabled = true;
+  btn.textContent = '⏳ Запрос...';
+  box.className = 'mt-1 text-xs';
+  box.textContent = '';
+
+  try {
+    const res = await fetch(`/admin/taxonomy/queue/${id}/ai-classify`, {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      box.textContent = '❌ ' + data.error;
+      box.className = 'mt-1 text-xs text-red-400';
+    } else {
+      const typeColors = { trim: 'text-green-400', package: 'text-blue-400', variant: 'text-yellow-400', body_style: 'text-orange-400', model_suffix: 'text-cyan-400', noise: 'text-gray-400' };
+      const color = typeColors[data.type] || 'text-gray-300';
+      const pct = Math.round((data.confidence || 0) * 100);
+      box.innerHTML =
+        `<div class="${color} font-semibold">${data.type} · ${pct}%</div>` +
+        `<div class="text-gray-300">→ "${data.value}"</div>` +
+        `<div class="text-gray-500 mt-1 italic">${data.reason || ''}</div>`;
+      box.className = 'mt-1 text-xs';
+
+      // Update suggestion cell
+      const sugg = document.getElementById('qsugg-' + id);
+      if (sugg) {
+        sugg.innerHTML =
+          `<div class="${color}">${data.action || data.type}</div>` +
+          `<div class="text-gray-400">${data.value} (${pct}%)</div>`;
+      }
+    }
+  } catch (e) {
+    box.textContent = '❌ ' + e.message;
+    box.className = 'mt-1 text-xs text-red-400';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🤖 Спросить AI';
+}
+</script>
 @endsection
