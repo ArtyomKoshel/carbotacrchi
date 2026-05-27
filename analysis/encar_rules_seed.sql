@@ -571,6 +571,163 @@ LEFT JOIN taxonomy_terms x
 WHERE x.id IS NULL;
 
 
+-- ── 10. taxonomy_rules: badge_contains → set_trim ──────────────────────────
+--       Bootstrap-generated rules (DB IDs 851-965). Not make+model_contains scoped.
+--       Priority 60 (below model_contains=85, above fuel=80... actually below fuel rules).
+
+INSERT IGNORE INTO taxonomy_rules
+    (source, make, model_contains, badge_contains, unknown_tail, action, action_value, priority, is_active, notes, created_at, updated_at)
+SELECT
+    'encar', m.make, m.model_contains, m.badge_contains, NULL,
+    'set_trim', m.action_value,
+    60, 1,
+    'badge_contains bootstrap seed', NOW(), NOW()
+FROM (
+    -- BMW
+    SELECT 'BMW' AS make, '2시리즈' AS model_contains, '럭셔리'                         AS badge_contains, '럭셔리'                         AS action_value
+    UNION ALL SELECT 'BMW', '2시리즈',        '온라인 익스클루시브',                     '온라인 익스클루시브'
+    UNION ALL SELECT 'BMW', '4시리즈',        '럭셔리',                                  '럭셔리'
+    UNION ALL SELECT 'BMW', '4시리즈',        '온라인 익스클루시브',                     '온라인 익스클루시브'
+    UNION ALL SELECT 'BMW', '4시리즈',        '퍼포먼스',                                '퍼포먼스'
+    UNION ALL SELECT 'BMW', '4시리즈',        '스페셜',                                  '스페셜'
+    UNION ALL SELECT 'BMW', '6시리즈',        '익스클루시브',                            '익스클루시브'
+    UNION ALL SELECT 'BMW', 'X1',             '프리미엄',                                '프리미엄'
+    UNION ALL SELECT 'BMW', 'X3',             'M 스포츠 온라인 익스클루시브 에디션',     'M 스포츠 온라인 익스클루시브 에디션'
+    UNION ALL SELECT 'BMW', 'X3',             '온라인 익스클루시브 에디션',              '온라인 익스클루시브 에디션'
+    UNION ALL SELECT 'BMW', 'X3',             '럭셔리',                                  '럭셔리'
+    UNION ALL SELECT 'BMW', 'X4',             '온라인 익스클루시브 에디션',              '온라인 익스클루시브 에디션'
+    UNION ALL SELECT 'BMW', 'X4',             'M 스포츠 온라인 익스클루시브 에디션',     'M 스포츠 온라인 익스클루시브 에디션'
+    UNION ALL SELECT 'BMW', 'X4',             'M 스포츠 프로 스페셜 에디션',             'M 스포츠 프로 스페셜 에디션'
+    UNION ALL SELECT 'BMW', 'X5',             '퍼포먼스',                                '퍼포먼스'
+    UNION ALL SELECT 'BMW', 'X5',             'M 스포츠 온라인 익스클루시브 에디션',     'M 스포츠 온라인 익스클루시브 에디션'
+    UNION ALL SELECT 'BMW', 'X6',             'M 스포츠 온라인 익스클루시브',            'M 스포츠 온라인 익스클루시브'
+    UNION ALL SELECT 'BMW', 'X6',             'M 스포츠 프로 스페셜 에디션',             'M 스포츠 프로 스페셜 에디션'
+    UNION ALL SELECT 'BMW', 'X7',             'M 스포츠 온라인 익스클루시브 에디션',     'M 스포츠 온라인 익스클루시브 에디션'
+    UNION ALL SELECT 'BMW', 'iX',             '스페셜',                                  '스페셜'
+    UNION ALL SELECT 'BMW', '그란투리스모 (GT)', '럭셔리',                               '럭셔리'
+    UNION ALL SELECT 'BMW', '그란투리스모 (GT)', 'M 스포츠 프리미엄',                    'M 스포츠 프리미엄'
+    UNION ALL SELECT 'BMW', '그란투리스모 (GT)', '프리미어',                             '프리미어'
+    UNION ALL SELECT 'BMW', '그란투리스모 (GT)', '익스클루시브',                         '익스클루시브'
+    UNION ALL SELECT 'BMW', '그란투리스모 (GT)', '프리미엄',                             '프리미엄'
+    -- 닛산
+    UNION ALL SELECT '닛산', '맥시마',        '플래티넘',                                '플래티넘'
+    -- 도요타
+    UNION ALL SELECT '도요타', '86',          '프리미엄',                                '프리미엄'
+    -- 랜드로버
+    UNION ALL SELECT '랜드로버', '디스커버리',           'HSE',    'HSE'
+    UNION ALL SELECT '랜드로버', '디스커버리',           '럭셔리', '럭셔리'
+    UNION ALL SELECT '랜드로버', '디스커버리 스포츠',    '럭셔리', '럭셔리'
+    UNION ALL SELECT '랜드로버', '디펜더',               'HSE',    'HSE'
+    UNION ALL SELECT '랜드로버', '레인지로버 벨라',      'HSE',    'HSE'
+    UNION ALL SELECT '랜드로버', '레인지로버 스포츠',    'HSE',    'HSE'
+    UNION ALL SELECT '랜드로버', '레인지로버 이보크',    'HSE',    'HSE'
+    UNION ALL SELECT '랜드로버', '프리랜더',             'HSE',    'HSE'
+    -- 렉서스
+    UNION ALL SELECT '렉서스', 'LX',  'VIP',    'VIP'
+    UNION ALL SELECT '렉서스', 'NX',  '프리미엄', '프리미엄'
+    UNION ALL SELECT '렉서스', 'NX',  '럭셔리',   '럭셔리'
+    -- 르노
+    UNION ALL SELECT '르노', 'QM3',   '시그니처', '시그니처'
+    UNION ALL SELECT '르노', 'QM6',   '시그니처', '시그니처'
+    UNION ALL SELECT '르노', 'XM3',   '시그니처', '시그니처'
+    -- 마세라티
+    UNION ALL SELECT '마세라티', '르반떼', '프리미엄', '프리미엄'
+    UNION ALL SELECT '마세라티', '르반떼', '럭셔리',   '럭셔리'
+    -- 미니
+    UNION ALL SELECT '미니', '페이스맨', '기본형', '기본형'
+    -- 벤츠
+    UNION ALL SELECT '벤츠', 'AMG GT',    '스페셜',    '스페셜'
+    UNION ALL SELECT '벤츠', 'CLA-클래스', 'AMG Line', 'AMG Line'
+    UNION ALL SELECT '벤츠', 'CLS-클래스', 'AMG Line', 'AMG Line'
+    UNION ALL SELECT '벤츠', 'E-클래스',   '아방가르드', '아방가르드'
+    UNION ALL SELECT '벤츠', 'E-클래스',   '익스클루시브', '익스클루시브'
+    UNION ALL SELECT '벤츠', 'E-클래스',   'AMG Line', 'AMG Line'
+    UNION ALL SELECT '벤츠', 'E-클래스',   '엘레강스',  '엘레강스'
+    UNION ALL SELECT '벤츠', 'E-클래스',   '프리미어',  '프리미어'
+    UNION ALL SELECT '벤츠', 'EQC',        '프리미엄',  '프리미엄'
+    UNION ALL SELECT '벤츠', 'GLA-클래스', '프리미엄',  '프리미엄'
+    UNION ALL SELECT '벤츠', 'GLC-클래스', '프리미엄',  '프리미엄'
+    UNION ALL SELECT '벤츠', 'GLC-클래스', 'AMG Line', 'AMG Line'
+    UNION ALL SELECT '벤츠', 'GLC-클래스', '아방가르드', '아방가르드'
+    UNION ALL SELECT '벤츠', 'GLE-클래스', '프리미엄',  '프리미엄'
+    UNION ALL SELECT '벤츠', 'GLE-클래스', 'AMG Line', 'AMG Line'
+    UNION ALL SELECT '벤츠', 'GLK-클래스', '프리미엄',  '프리미엄'
+    UNION ALL SELECT '벤츠', 'S-클래스',   'AMG Line', 'AMG Line'
+    UNION ALL SELECT '벤츠', 'S-클래스',   '퍼포먼스',  '퍼포먼스'
+    -- 쉐보레
+    UNION ALL SELECT '쉐보레', '볼트 EUV', '프리미어', '프리미어'
+    UNION ALL SELECT '쉐보레', '볼트 EV',  '프리미어', '프리미어'
+    UNION ALL SELECT '쉐보레', '볼트 EV',  '디럭스',   '디럭스'
+    UNION ALL SELECT '쉐보레', '이쿼녹스', '프리미어', '프리미어'
+    UNION ALL SELECT '쉐보레', '캡티바',   '프리미엄', '프리미엄'
+    UNION ALL SELECT '쉐보레', '캡티바',   '디럭스',   '디럭스'
+    UNION ALL SELECT '쉐보레', '트래버스', '프리미어', '프리미어'
+    UNION ALL SELECT '쉐보레', '트래버스', '프리미엄', '프리미엄'
+    -- 아우디
+    UNION ALL SELECT '아우디', 'Q2',       '프리미엄', '프리미엄'
+    UNION ALL SELECT '아우디', 'Q4 e-트론','프리미엄', '프리미엄'
+    UNION ALL SELECT '아우디', 'Q6 e-트론','프리미엄', '프리미엄'
+    UNION ALL SELECT '아우디', 'Q8',       '프리미엄', '프리미엄'
+    UNION ALL SELECT '아우디', 'R8',       '퍼포먼스', '퍼포먼스'
+    UNION ALL SELECT '아우디', 'RS6',      '퍼포먼스', '퍼포먼스'
+    UNION ALL SELECT '아우디', 'RS7',      '퍼포먼스', '퍼포먼스'
+    -- 인피니티
+    UNION ALL SELECT '인피니티', 'Q30',    '프리미엄', '프리미엄'
+    UNION ALL SELECT '인피니티', 'Q50',    '프리미엄', '프리미엄'
+    UNION ALL SELECT '인피니티', 'QX70',   '스페셜',   '스페셜'
+    -- 재규어
+    UNION ALL SELECT '재규어', 'F-PACE',   '프레스티지', '프레스티지'
+    UNION ALL SELECT '재규어', 'XE',       '프레스티지', '프레스티지'
+    -- 제네시스
+    UNION ALL SELECT '제네시스', 'GV60',   '스탠다드', '스탠다드'
+    -- 캐딜락
+    UNION ALL SELECT '캐딜락', 'CT6',  '플래티넘',   '플래티넘'
+    UNION ALL SELECT '캐딜락', 'CT6',  '프리미엄',   '프리미엄'
+    UNION ALL SELECT '캐딜락', 'CTS',  '프리미엄',   '프리미엄'
+    UNION ALL SELECT '캐딜락', 'CTS',  '프리미엄 플러스', '프리미엄 플러스'
+    UNION ALL SELECT '캐딜락', 'CTS',  '럭셔리',     '럭셔리'
+    UNION ALL SELECT '캐딜락', 'XT5',  '프리미엄',   '프리미엄'
+    UNION ALL SELECT '캐딜락', 'XT5',  '프리미엄 플러스', '프리미엄 플러스'
+    UNION ALL SELECT '캐딜락', 'XT5',  '플래티넘',   '플래티넘'
+    -- 테슬라
+    UNION ALL SELECT '테슬라', '모델 3', '퍼포먼스', '퍼포먼스'
+    UNION ALL SELECT '테슬라', '모델 3', '스탠다드', '스탠다드'
+    UNION ALL SELECT '테슬라', '모델 Y', '프리미엄', '프리미엄'
+    UNION ALL SELECT '테슬라', '모델 Y', '스탠다드', '스탠다드'
+    UNION ALL SELECT '테슬라', '모델 Y', '퍼포먼스', '퍼포먼스'
+    -- 포드
+    UNION ALL SELECT '포드', '머스탱',     '프리미엄', '프리미엄'
+    UNION ALL SELECT '포드', '쿠가',       '트렌디',   '트렌디'
+    -- 폭스바겐
+    UNION ALL SELECT '폭스바겐', '골프',   '프리미엄',   '프리미엄'
+    UNION ALL SELECT '폭스바겐', '골프',   '프레스티지', '프레스티지'
+    UNION ALL SELECT '폭스바겐', '아테온', '프레스티지', '프레스티지'
+    UNION ALL SELECT '폭스바겐', '아테온', '프리미엄',   '프리미엄'
+    UNION ALL SELECT '폭스바겐', '티록',   '프리미엄',   '프리미엄'
+    UNION ALL SELECT '폭스바겐', '티록',   '프레스티지', '프레스티지'
+    -- 푸조
+    UNION ALL SELECT '푸조', '2008', 'GT Line', 'GT Line'
+    UNION ALL SELECT '푸조', '208',  'GT Line', 'GT Line'
+    UNION ALL SELECT '푸조', '5008', 'GT Line', 'GT Line'
+    -- 현대
+    UNION ALL SELECT '현대', '넥쏘',   '모던',     '모던'
+    UNION ALL SELECT '현대', '넥쏘',   '프리미엄', '프리미엄'
+    UNION ALL SELECT '현대', '베뉴',   '모던',     '모던'
+    UNION ALL SELECT '현대', '아슬란', '익스클루시브', '익스클루시브'
+    UNION ALL SELECT '현대', '아슬란', '모던',     '모던'
+    UNION ALL SELECT '현대', '엑센트', '프리미어', '프리미어'
+) m
+LEFT JOIN taxonomy_rules r
+  ON  r.source = 'encar'
+  AND COALESCE(r.make, '')           = COALESCE(m.make, '')
+  AND COALESCE(r.model_contains, '') = COALESCE(m.model_contains, '')
+  AND COALESCE(r.badge_contains, '') = COALESCE(m.badge_contains, '')
+  AND r.action                       = 'set_trim'
+  AND COALESCE(r.action_value, '')   = COALESCE(m.action_value, '')
+  AND r.is_active = 1
+WHERE r.id IS NULL;
+
+
 -- ── Quick sanity check ─────────────────────────────────────────────────────
 
 SELECT
