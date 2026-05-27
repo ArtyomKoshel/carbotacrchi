@@ -278,31 +278,31 @@ class AiClassifyPatterns extends Command
     private function buildSystemPrompt(): string
     {
         return <<<'PROMPT'
-You are an expert in Korean car marketplace (Encar) taxonomy normalization.
+You are an expert in Korean car marketplace (Encar) taxonomy normalization. Use your full knowledge of car models, trim levels, and specifications worldwide.
 
-Given a car listing with make, raw model string, and badge string, parse all taxonomy fields.
+Given a car listing (make + raw model string + badge string from Encar), extract all available taxonomy fields.
 
 Return JSON only (no markdown):
 {
-  "model_clean": "base model name only — no engine/fuel/drive/trim tokens",
-  "generation": "chassis or generation code if present (e.g. G30, DN8, W213, RG3) or null",
-  "trim": "trim/grade level name (e.g. 프레스티지, HIGH, Inscription, M스포츠) or null",
-  "variant": "performance sub-model code like S, SD, JCW, N, GT, 4S, GTS, or null. NOT engine displacement.",
-  "package": "option package name (패키지, 팩, Package) or null",
-  "body_type": "one of: sedan|suv|hatchback|coupe|convertible|wagon|van|minivan|pickup or null",
-  "fuel": "one of: gasoline|diesel|hybrid|electric|lpg|plugin_hybrid or null",
-  "drive_type": "one of: fwd|rwd|awd|4wd or null",
-  "engine_volume": numeric liters (e.g. 2.0) or null,
-  "confidence": integer 0-100 (how certain you are about ALL fields combined),
-  "notes": "one sentence explanation"
+  "model_clean": "base model name only — strip out engine displacement, fuel type, drive type, trim level, variant code. Keep only the core model name.",
+  "generation": "chassis or generation code if you can identify one (e.g. G30, DN8, W213, RG3, F10, 3세대) or null",
+  "trim": "trim/grade level name as used by this manufacturer (e.g. 프레스티지, HIGH, Inscription, M Sport, 아방가르드) or null",
+  "variant": "short sub-model performance code that is part of the model identity — like S, SD, JCW, N, GT, 4S, GTS, AMG, RS, M, e-tron. NOT engine displacement numbers. or null",
+  "package": "option/equipment package name if present or null",
+  "body_type": "body style you know for this model (use English lowercase: sedan, suv, hatchback, coupe, convertible, wagon, van, minivan, pickup, crossover, etc.) or null",
+  "fuel": "fuel type you know for this model/variant (use English lowercase: gasoline, diesel, hybrid, electric, lpg, plugin_hybrid, hydrogen) or null",
+  "drive_type": "drivetrain you know for this model/variant (fwd, rwd, awd, 4wd) or null — use context clues like AWD/4WD/xDrive/quattro/4MATIC tokens",
+  "engine_volume": numeric displacement in liters as float (e.g. 2.0, 3.5) if you can identify it, or null,
+  "confidence": integer 0-100 reflecting your certainty across ALL fields — lower if ambiguous,
+  "notes": "one sentence explaining your reasoning or noting anything uncertain"
 }
 
-Rules:
-- model_clean must NOT include engine displacement (2.0, 3.5), fuel type (가솔린, 디젤), drive type (2WD, AWD), trim, or variant
-- generation codes are alphanumeric chassis codes typically in parentheses like (G30) or standalone like W213, DN8
-- variant is a SHORT sub-model code (1-4 chars) like S, SD, JCW, N, GT, RS, AMG — NOT full trim names
-- trim is the grade/equipment level name
-- confidence should reflect uncertainty — if unclear, score lower
+Key rules:
+- model_clean is the most important field — it must be clean and correct
+- variant is only SHORT codes that are part of the model name (S, JCW, N, AMG) — NOT full trim names
+- trim is the equipment grade name (can be Korean or English)
+- If the badge string contains generation info (e.g. "3세대"), use that for generation field
+- Use your knowledge of the specific make/model to fill body_type, fuel, drive_type even if not stated in the string
 PROMPT;
     }
 }
