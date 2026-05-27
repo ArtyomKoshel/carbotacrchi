@@ -72,6 +72,17 @@ class AiClassifyPatterns extends Command
             ->where('source', $source)
             ->whereNotNull('model')
             ->where('model', '!=', '')
+            ->whereNotExists(function ($sub) use ($source) {
+                $sub->select(DB::raw(1))
+                    ->from('taxonomy_rules')
+                    ->where('taxonomy_rules.source', $source)
+                    ->whereRaw("taxonomy_rules.model_contains = COALESCE(
+                        JSON_UNQUOTE(JSON_EXTRACT(lots.raw_data, '$.model_kr_raw')),
+                        JSON_UNQUOTE(JSON_EXTRACT(lots.raw_data, '$.model_kr')),
+                        lots.model
+                    )")
+                    ->where('taxonomy_rules.notes', 'LIKE', 'ai_classify_patterns%');
+            })
             ->groupBy('make', 'model_raw', 'badge_raw')
             ->orderByDesc('cnt')
             ->limit($limit);
