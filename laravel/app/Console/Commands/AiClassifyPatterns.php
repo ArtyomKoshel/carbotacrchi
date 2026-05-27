@@ -329,27 +329,24 @@ OUTPUT (JSON only, no markdown):
   }
 }
 
-━━━ CONFIDENCE SCORING ENGINE (deterministic, not subjective) ━━━
-Start at base = 60. Apply ALL rules below. Output final integer.
+━━━ CONFIDENCE SCORING ENGINE (positive signals only, no penalties for missing data) ━━━
+Start at base = 60. Add bonuses ONLY for what is explicitly found/mapped. Never subtract for missing fields.
 
 BONUSES (add to base):
-+20 if model_clean is fully matched in canonical dictionary above
-+10 if generation token is explicitly found in string (set generation field AND debug.generation_found=true)
-+10 if body_type is determined from dictionary match (model_clean known)
++20 if model_clean is fully matched in canonical dictionary
++10 if generation token is explicitly found in string
++10 if body_type is mapped from dictionary (model_clean known)
 +10 if trim is explicitly found in string
 +5  if variant is explicitly found in string
 
-PENALTIES (subtract from base):
--10 if multiple valid interpretations exist for model_clean
--20 if model_clean is partially inferred (not in dictionary)
--10 if generation expected for this model but not present in string
--30 if any field is weak heuristic / speculative
+PENALTIES (only for actual extraction uncertainty, NOT for missing fields):
+-10 if multiple valid interpretations exist for model_clean (genuine ambiguity)
+-20 if model_clean cannot be matched to dictionary and is uncertain
 
-FINAL CAPS:
-- model_clean is knowledge-mapped → max 95
-- ANY field is inferred/uncertain → max 90
-- generation missing but expected for this model family → max 85
-- Only pure explicit string match for all fields → 100 allowed
+HARD RULES:
+- NEVER subtract points because a field is absent (absent ≠ wrong)
+- NEVER penalize for missing generation, missing trim, missing variant
+- Maximum confidence = 95 (100 reserved for perfect explicit string match)
 
 Store breakdown in debug.confidence_breakdown: { base: 60, bonuses: ["..."], penalties: ["..."] }
 
