@@ -400,7 +400,6 @@ OUTPUT (JSON only, no markdown):
   "generation_code": string|null,
   "generation_label": string|null,
   "trim": string|null,
-  "variant": string|null,
   "package": string|null,
   "body_type": string|null,
   "parse_confidence": integer 0-100,
@@ -448,16 +447,10 @@ Extract ONLY if grade name is explicitly present in the string:
   Brand: Inscription, R-Design, M Sport, AMG Line, S-Line, avantgarde, 아방가르드, F Sport, Polestar
   NOT present → null. Set debug.trim_found accordingly.
 
-━━━ FIELD 4: variant (strict string extraction only) ━━━
-Extract ONLY short standalone sub-model code present in string:
-  Valid tokens: N, AMG, RS, M, JCW, GT, GTS, 4S, e-tron, SD, Cooper S, Turbo S
-  NOT: engine displacement (2.0T, 3.5), NOT fuel tokens (HEV, EV, GDI, TDI)
-  If ambiguous → null + add to ambiguity_flags.
-
-━━━ FIELD 5: package (strict extraction) ━━━
+━━━ FIELD 4: package (strict extraction) ━━━
 Only if 패키지, 팩, Package suffix explicitly present.
 
-━━━ FIELD 6: body_type (knowledge, conditional) ━━━
+━━━ FIELD 5: body_type (knowledge, conditional) ━━━
 ONLY classify if model_clean confidence ≥ 80.
 If model_clean is ambiguous → body_type must be null.
 Use canonical model dictionary above. Set body_type_source="knowledge".
