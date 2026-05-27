@@ -49,13 +49,17 @@ class AiClassifyPatterns extends Command
         $query = DB::table('lots')
             ->select([
                 'make',
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.model_kr_raw')) AS model_raw"),
-                DB::raw("JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.badge_kr'))     AS badge_raw"),
+                DB::raw("COALESCE(
+                    JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.model_kr_raw')),
+                    JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.model_kr')),
+                    model
+                ) AS model_raw"),
+                DB::raw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.badge_kr')), '') AS badge_raw"),
                 DB::raw('COUNT(*) AS cnt'),
             ])
             ->where('source', $source)
-            ->whereNotNull('raw_data')
-            ->whereRaw("JSON_EXTRACT(raw_data, '$.model_kr_raw') IS NOT NULL")
+            ->whereNotNull('model')
+            ->where('model', '!=', '')
             ->groupBy('make', 'model_raw', 'badge_raw')
             ->orderByDesc('cnt')
             ->limit($limit);
