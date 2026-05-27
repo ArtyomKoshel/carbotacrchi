@@ -39,10 +39,11 @@ SELECT '-- taxonomy_rules' AS sql_line
 UNION ALL
 SELECT CONCAT(
     'INSERT IGNORE INTO `taxonomy_rules` ',
-    '(`source`,`make`,`model_contains`,`unknown_tail`,`action`,`action_value`,`priority`,`is_active`,`notes`,`created_at`,`updated_at`) VALUES (',
+    '(`source`,`make`,`model_contains`,`badge_contains`,`unknown_tail`,`action`,`action_value`,`priority`,`is_active`,`notes`,`created_at`,`updated_at`) VALUES (',
     QUOTE(source), ',',
     IF(make            IS NULL, 'NULL', QUOTE(make)),            ',',
     IF(model_contains  IS NULL, 'NULL', QUOTE(model_contains)),  ',',
+    IF(badge_contains  IS NULL, 'NULL', QUOTE(badge_contains)),  ',',
     IF(unknown_tail    IS NULL, 'NULL', QUOTE(unknown_tail)),     ',',
     QUOTE(action), ',',
     IF(action_value    IS NULL, 'NULL', QUOTE(action_value)),     ',',

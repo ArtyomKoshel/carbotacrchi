@@ -185,6 +185,7 @@ with open(out_path, "w", encoding="utf-8") as f:
     f.write("-- For models where BadgeDetail is always null, trim is in Badge string\n")
     f.write("-- ══════════════════════════════════════════════════════════════\n\n")
     if set_trim_rules:
+        f.write("DELETE FROM taxonomy_rules WHERE source='encar' AND action='set_trim' AND badge_contains IS NOT NULL;\n\n")
         f.write("INSERT INTO taxonomy_rules\n")
         f.write("  (source, action, make, model_contains, badge_contains, action_value, priority, created_at, updated_at)\n")
         f.write("VALUES\n")
