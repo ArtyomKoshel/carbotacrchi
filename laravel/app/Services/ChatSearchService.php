@@ -482,9 +482,10 @@ class ChatSearchService
             ];
         }
 
-        $filtersBlock = implode("\n", $filterDescriptions);
-        $makesBlock = $this->buildMakesContext();
-        $today = date('Y-m-d');
+        $filtersBlock   = implode("\n", $filterDescriptions);
+        $makesBlock      = $this->buildMakesContext();
+        $trimExamples    = $this->buildTrimExamplesForPrompt();
+        $today           = date('Y-m-d');
 
         return <<<PROMPT
 Ты — парсер поисковых запросов для автомобилей на корейских аукционах. Пользователь пишет свободный текст на русском/английском, ты извлекаешь параметры поиска и возвращаешь JSON.
@@ -518,7 +519,7 @@ class ChatSearchService
 21. "без страховых"/"0 страховых" → insuranceCountMax: 0
 22. "не затоплена"/"без утоплений" → floodHistory: false
 23. Если указано точное число для range-поля (пробег, цена, год, объем) БЕЗ слов "от/до", ставь Min и Max равными
-24. Комплектация/trim: возвращай как написано в DB (корейское или английское название). Примеры: "Noblesse"→"노블레스", "Signature"→"시그니처", "Prestige"→"프레스티지", "Premium"→"프리미엄", "Luxury"→"럭셔리", "Modern"→"모던"
+24. Комплектация/trim: всегда возвращай корейское значение из DB. Маппинг EN→KR: {$trimExamples}
 25. Поколение/generation: "G30", "W213", "CN7", "NQ5" и т.д. → generation: "G30"
 26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi и т.д.
 27. "свежие"/"новые объявления"/"за последнюю неделю"/"за месяц" → listedAfter: "YYYY-MM-DD" (вычисли дату от текущей)
@@ -541,6 +542,24 @@ User: "привет как дела"
 User: "тойота камри 2.5 белая"
 → {"make": "Toyota", "model": "Camry", "engineMin": 2.5, "engineMax": 2.5, "colors": ["White"]}
 PROMPT;
+    }
+
+    private function buildTrimExamplesForPrompt(): string
+    {
+        try {
+            $map = \App\Models\Translation::promptMap('trim');
+            if (empty($map)) {
+                return '"Prestige"→"프레스티지", "Premium"→"프리미엄", "Noblesse"→"노블레스", "Luxury"→"럭셔리", "Signature"→"시그니처", "Modern"→"모던"';
+            }
+            $parts = [];
+            foreach ($map as $en => $kr) {
+                $parts[] = '"' . $en . '"→"' . $kr . '"';
+                if (count($parts) >= 50) break;
+            }
+            return implode(', ', $parts);
+        } catch (\Throwable) {
+            return '"Prestige"→"프레스티지", "Premium"→"프리미엄", "Noblesse"→"노블레스", "Luxury"→"럭셔리", "Signature"→"시그니처", "Modern"→"모던"';
+        }
     }
 
     private function buildMakesContext(): string

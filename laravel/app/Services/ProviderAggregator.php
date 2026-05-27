@@ -225,7 +225,17 @@ class ProviderAggregator
         }
 
         if ($query->trim) {
-            $builder->where('trim', $query->trim);
+            $krVariants = \App\Models\Translation::resolveKorean($query->trim, 'trim');
+            if (!empty($krVariants)) {
+                $builder->where(function ($q) use ($query, $krVariants) {
+                    $q->whereIn('trim', $krVariants)->orWhere('trim', $query->trim);
+                });
+            } else {
+                $builder->where(function ($q) use ($query) {
+                    $q->where('trim', $query->trim)
+                      ->orWhere('trim', 'like', '%' . $query->trim . '%');
+                });
+            }
         }
         if ($query->vin) {
             $builder->where('vin', $query->vin);

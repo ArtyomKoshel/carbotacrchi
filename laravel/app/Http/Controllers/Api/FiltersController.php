@@ -162,8 +162,9 @@ class FiltersController extends Controller
 
     public function trims(Request $request): JsonResponse
     {
-        $make = trim((string) $request->query('make', ''));
-        $model = trim((string) $request->query('model', ''));
+        $make   = trim((string) $request->query('make', ''));
+        $model  = trim((string) $request->query('model', ''));
+        $locale = trim((string) $request->query('locale', 'en')) ?: 'en';
         $sources = config('auction.sources', ['encar', 'kbcha']);
         $sources = is_array($sources) ? $sources : ['encar', 'kbcha'];
 
@@ -189,7 +190,12 @@ class FiltersController extends Controller
             ->values()
             ->toArray();
 
-        return response()->json(['ok' => true, 'data' => ['trims' => array_values(array_unique($trims))]]);
+        $trimOptions = TaxonomyLocalizer::trimOptions($trims, $locale);
+
+        return response()->json(['ok' => true, 'data' => [
+            'trims'       => $trims,
+            'trimOptions' => $trimOptions,
+        ]]);
     }
 
     public function context(Request $request): JsonResponse
@@ -264,7 +270,7 @@ class FiltersController extends Controller
                 'models' => $models,
                 'modelOptions' => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $models),
                 'trims' => $trims,
-                'trimOptions' => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $trims),
+                'trimOptions' => TaxonomyLocalizer::trimOptions($trims, $locale),
                 'generations' => $generations,
                 'generationOptions' => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $generations),
                 'bodyTypes' => $bodyTypes,

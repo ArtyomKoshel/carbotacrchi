@@ -119,7 +119,7 @@ const Results = (() => {
             ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>`  : ''}
             ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>`           : ''}
             ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>`      : ''}
-            ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(lot.trim)}</span>`         : ''}
+            ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(Taxonomy.label('trim', lot.trim))}</span>` : ''}
             ${cardFields.has('generation') && lot.generation ? `<span class="lot-card__tag">🧬 ${escHtml(lot.generation)}</span>` : ''}
           </div>
         </div>

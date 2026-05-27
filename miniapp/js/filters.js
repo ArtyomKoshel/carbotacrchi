@@ -350,10 +350,12 @@ const Filters = (() => {
     const model = state.model;
     const reqId = ++trimRequestSeq;
     try {
-      const data = await API.getTrims(make, model, 'ru');
+      const data = await API.getTrims(make, model, 'en');
       if (reqId !== trimRequestSeq) return;
       if (make !== state.make || model !== state.model) return;
-      renderTrimSelect(data?.trims ?? []);
+      const trimOpts = data?.trimOptions ?? [];
+      Taxonomy.ingestTrims(trimOpts);
+      renderTrimSelect(trimOpts.length ? trimOpts : (data?.trims ?? []));
     } catch (e) {
       if (reqId !== trimRequestSeq) return;
       renderTrimSelect([]);
@@ -373,7 +375,10 @@ const Filters = (() => {
     }
     wrap.style.display = '';
     sel.innerHTML = '<option value="">Любая комплектация</option>' +
-      trimOptions.map(o => `<option value="${o.value}"${state.trim===o.value?' selected':''}>${o.label}</option>`).join('');
+      trimOptions.map(o => {
+        const lbl = Taxonomy.label('trim', o.value) || o.label || o.value;
+        return `<option value="${o.value}"${state.trim===o.value?' selected':''}>${lbl}</option>`;
+      }).join('');
     sel.onchange = () => { state.trim = sel.value; };
   }
 

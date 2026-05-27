@@ -4,6 +4,7 @@ const Taxonomy = (() => {
     transmission: {},
     fuel: {},
     drive_type: {},
+    trim: {},
   };
 
   function normalizeOptionItems(items = []) {
@@ -32,6 +33,11 @@ const Taxonomy = (() => {
     indexField('transmission', data?.transmissionOptions ?? data?.transmissions ?? []);
     indexField('fuel', data?.fuelTypeOptions ?? data?.fuelTypes ?? []);
     indexField('drive_type', data?.driveTypeOptions ?? data?.driveTypes ?? []);
+    indexField('trim', data?.trimOptions ?? []);
+  }
+
+  function ingestTrims(trimOptions) {
+    indexField('trim', trimOptions ?? []);
   }
 
   function label(field, value) {
@@ -50,6 +56,7 @@ const Taxonomy = (() => {
 
   return {
     ingestFilters,
+    ingestTrims,
     label,
     options,
     normalizeOptionItems,

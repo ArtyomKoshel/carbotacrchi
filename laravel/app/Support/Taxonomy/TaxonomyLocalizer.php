@@ -18,6 +18,52 @@ final class TaxonomyLocalizer
     }
 
     /**
+     * Localize Korean trim values using the translations DB table.
+     * Returns [{value: kr, label: en|ru}] sorted by label.
+     *
+     * @param  array<int, string> $krValues
+     * @return array<int, array{value: string, label: string}>
+     */
+    public static function trimOptions(array $krValues, string $locale = 'en'): array
+    {
+        if (empty($krValues)) {
+            return [];
+        }
+
+        $byKr = [];
+        try {
+            $rows = \App\Models\Translation::where('category', 'trim')
+                ->whereIn('kr', $krValues)
+                ->get(['kr', 'en', 'ru']);
+
+            foreach ($rows as $row) {
+                $label = ($locale === 'ru')
+                    ? ($row->ru ?? $row->en ?? null)
+                    : ($row->en ?? null);
+                if ($label !== null && $label !== '') {
+                    $byKr[$row->kr] = $label;
+                }
+            }
+        } catch (\Throwable) {
+        }
+
+        $result = [];
+        $seen   = [];
+        foreach ($krValues as $kr) {
+            $kr = trim((string) $kr);
+            if ($kr === '' || isset($seen[$kr])) {
+                continue;
+            }
+            $seen[$kr] = true;
+            $result[]  = ['value' => $kr, 'label' => $byKr[$kr] ?? $kr];
+        }
+
+        usort($result, static fn (array $a, array $b): int => strcmp($a['label'], $b['label']));
+
+        return $result;
+    }
+
+    /**
      * @param array<int, string> $values
      * @return array<int, array{value: string, label: string}>
      */
