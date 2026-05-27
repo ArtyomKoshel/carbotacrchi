@@ -27,6 +27,7 @@ class CarLot:
     body_type: str | None = None
     drive_type: str | None = None
     engine_volume: float | None = None
+    cylinders: int | None = None
     color: str | None = None
     seat_color: str | None = None
     trim: str | None = None
@@ -130,6 +131,7 @@ class CarLot:
             "trim": self.trim,
             "package": self.package,
             "engine_volume": self.engine_volume,
+            "cylinders": self.cylinders,
             "lien_status": self.lien_status,
             "seizure_status": self.seizure_status,
             "total_loss_history": self.total_loss_history,

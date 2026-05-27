@@ -350,7 +350,7 @@ class LotRepository:
             INSERT INTO lots (
                 id, source, make, model, model_en, generation, year, price, mileage, vin,
                 body_type, transmission, fuel, drive_type,
-                engine_volume,
+                engine_volume, cylinders,
                 lien_status, seizure_status,
                 has_accident, flood_history, total_loss_history,
                 owners_count, insurance_count,
@@ -366,7 +366,7 @@ class LotRepository:
             ) VALUES (
                 %(id)s, %(source)s, %(make)s, %(model)s, %(model_en)s, %(generation)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
                 %(body_type)s, %(transmission)s, %(fuel)s, %(drive_type)s,
-                %(engine_volume)s,
+                %(engine_volume)s, %(cylinders)s,
                 %(lien_status)s, %(seizure_status)s,
                 %(has_accident)s, %(flood_history)s, %(total_loss_history)s,
                 %(owners_count)s, %(insurance_count)s,
@@ -389,6 +389,7 @@ class LotRepository:
                 fuel=COALESCE(VALUES(fuel), fuel),
                 drive_type=COALESCE(VALUES(drive_type), drive_type),
                 engine_volume=COALESCE(VALUES(engine_volume), engine_volume),
+                cylinders=COALESCE(VALUES(cylinders), cylinders),
                 color=COALESCE(VALUES(color), color),
                 seat_color=COALESCE(VALUES(seat_color), seat_color),
                 location=VALUES(location), `trim`=COALESCE(VALUES(`trim`), `trim`),

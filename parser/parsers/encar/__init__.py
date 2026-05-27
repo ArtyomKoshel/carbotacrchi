@@ -476,6 +476,18 @@ def _extract_variant(model: str) -> tuple[str, str | None]:
     return model, None
 
 
+_CYLINDER_TOKEN_RE = _re.compile(r'\b(V6|V8|V10|V12|W12|W16|I4|I6)\b', _re.IGNORECASE)
+_CYLINDER_MAP = {'V6': 6, 'V8': 8, 'V10': 10, 'V12': 12, 'W12': 12, 'W16': 16, 'I4': 4, 'I6': 6}
+
+
+def _extract_cylinders(text: str) -> int | None:
+    """Extract cylinder count from V6/V8/V12/W12 tokens in model/badge string."""
+    m = _CYLINDER_TOKEN_RE.search(text)
+    if m:
+        return _CYLINDER_MAP.get(m.group(1).upper())
+    return None
+
+
 def _extract_engine_volume(text: str) -> float | None:
     """Scan full string for engine volume token (e.g. 2.0, 1.6T, 3.5)."""
     for tok in text.split():
@@ -725,6 +737,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         None,
     )
     lot_engine_volume = _extract_engine_volume(f"{model} {badge}")
+    lot_cylinders = _extract_cylinders(f"{model} {badge}")
     lot_variant = rule_variant or heuristic_variant
     # extract special tags from the raw model string (장애인용, 캠핑카 etc.)
     _special_found = [t for t in _get_special_tags() if t in model]
@@ -767,6 +780,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         seat_color=norm.color(item.get("SeatColor")),
         drive_type=lot_drive_type,
         engine_volume=lot_engine_volume,
+        cylinders=lot_cylinders,
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",
