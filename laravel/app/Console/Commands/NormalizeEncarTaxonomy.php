@@ -498,6 +498,18 @@ class NormalizeEncarTaxonomy extends Command
             array_map('strtoupper', $sets['variant_exclude'] ?? []),
         )));
         $tokens = preg_split('/\s+/u', $model) ?: [];
+
+        // Detect 2-token Audi-style variants: "{number} {TFSI|TDI|TSI}" e.g. "55 TFSI", "45 TFSI"
+        $engineFamilyTwo = ['TFSI', 'TDI', 'TSI', 'CRDI', 'T-GDI'];
+        for ($i = 0; $i < count($tokens) - 1; $i++) {
+            if (
+                preg_match('/^\d{2,3}$/', $tokens[$i])
+                && in_array(strtoupper($tokens[$i + 1]), $engineFamilyTwo, true)
+            ) {
+                return $tokens[$i] . ' ' . $tokens[$i + 1];
+            }
+        }
+
         foreach ($tokens as $tok) {
             if (in_array(strtoupper($tok), $excludeUpper, true)) {
                 continue;

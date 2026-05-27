@@ -201,9 +201,9 @@ FROM (
     UNION ALL SELECT 'MPI'         UNION ALL SELECT 'TSI'       UNION ALL SELECT 'FSI'
     UNION ALL SELECT 'CRDi'        UNION ALL SELECT 'VGT'       UNION ALL SELECT 'TCI'
     UNION ALL SELECT 'FHEV'        UNION ALL SELECT 'LPI'       UNION ALL SELECT 'BEV'
-    UNION ALL SELECT '4MATIC'      UNION ALL SELECT '블루텍'    UNION ALL SELECT 'GTe'
-    UNION ALL SELECT 'LPLI'        UNION ALL SELECT 'LPe'       UNION ALL SELECT '4TRONIC'
-    UNION ALL SELECT '콰트로'
+    UNION ALL SELECT '4MATIC'      UNION ALL SELECT '4MATIC+'    UNION ALL SELECT '블루텍'
+    UNION ALL SELECT 'GTe'         UNION ALL SELECT 'LPLI'       UNION ALL SELECT 'LPe'
+    UNION ALL SELECT '4TRONIC'     UNION ALL SELECT '콰트로'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'tail_powertrain_token' AND x.term = t.term
@@ -324,6 +324,23 @@ FROM (
     -- Land Rover
     UNION ALL SELECT 'SVR'         UNION ALL SELECT 'SVX'
     UNION ALL SELECT 'HSE'         UNION ALL SELECT 'SE'
+    -- Special edition suffix (언차티드 에디션, 삼바 에디션, 하이랜드 에디션, ...)
+    UNION ALL SELECT '에디션'
+    -- VW/Audi trim line
+    UNION ALL SELECT 'R-라인'
+    -- BMW trim levels (multi-token → 2-token tail extraction)
+    UNION ALL SELECT 'M 스포츠'        UNION ALL SELECT 'M 스포츠 프로'
+    UNION ALL SELECT 'xLine'           UNION ALL SELECT '퍼포먼스'
+    UNION ALL SELECT '럭셔리'          UNION ALL SELECT '익스클루시브'
+    UNION ALL SELECT '온라인 익스클루시브'
+    -- Mercedes trim/line
+    UNION ALL SELECT 'AMG'             UNION ALL SELECT 'AMG Line'
+    UNION ALL SELECT '아방가르드'      UNION ALL SELECT '엘레강스'
+    -- Porsche performance trims
+    UNION ALL SELECT 'GTS'             UNION ALL SELECT 'Turbo S'
+    UNION ALL SELECT 'Turbo'           UNION ALL SELECT 'GT3'
+    UNION ALL SELECT 'GT3 RS'          UNION ALL SELECT 'Carrera'
+    UNION ALL SELECT '컴페티션'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'trim_hint' AND x.term = t.term
@@ -391,6 +408,7 @@ FROM (
     UNION ALL SELECT ' RWD',            'rwd'
     UNION ALL SELECT 'xDrive',          'awd'
     UNION ALL SELECT '4MATIC',          'awd'
+    UNION ALL SELECT '4MATIC+',         'awd'
     UNION ALL SELECT 'sDrive',          'rwd'
     UNION ALL SELECT '4TRONIC',         '4wd'
     UNION ALL SELECT 'QUATTRO',         'awd'
