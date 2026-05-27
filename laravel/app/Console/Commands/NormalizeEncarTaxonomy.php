@@ -519,6 +519,8 @@ class NormalizeEncarTaxonomy extends Command
         foreach ($tokens as $t) {
             if (in_array(strtoupper($t), $engineFamilyUpper, true)) continue;
             if (in_array($t, $tailTokens, true)) continue;
+            // Decimal engine displacements (2.0, 1.6T, 2.2d) — safe to strip, never model name parts
+            if (preg_match('/^\d+\.\d+[TDLtdl]?$/', $t)) continue;
             $clean[] = $t;
         }
         $result = trim(implode(' ', $clean));
@@ -720,8 +722,16 @@ class NormalizeEncarTaxonomy extends Command
             return null;
         }
 
+        $cnt = count($tokens);
+        // Check longest tail first (3 → 2 → 1) so "AMG 패키지 플러스" beats "패키지 플러스"
+        if ($cnt >= 3) {
+            $tail3 = implode(' ', array_slice($tokens, -3));
+            if ($tail3 !== '' && preg_match(self::UNKNOWN_TAIL_HINT_RE, $tail3)) {
+                return $tail3;
+            }
+        }
         $tail2 = implode(' ', array_slice($tokens, -2));
-        $tail1 = $tokens[count($tokens) - 1] ?? '';
+        $tail1 = $tokens[$cnt - 1] ?? '';
         if ($tail2 !== '' && preg_match(self::UNKNOWN_TAIL_HINT_RE, $tail2)) {
             return $tail2;
         }

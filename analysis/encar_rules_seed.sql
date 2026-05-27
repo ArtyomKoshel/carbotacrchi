@@ -42,7 +42,12 @@ FROM (
     UNION ALL SELECT 'LT 래더패키지'
     UNION ALL SELECT '래더패키지'
     UNION ALL SELECT '레더 패키지'
+    UNION ALL SELECT '래더 패키지'
     UNION ALL SELECT 'AMG 패키지'
+    UNION ALL SELECT 'AMG 스포츠패키지'
+    UNION ALL SELECT 'AMG 스포츠 패키지'
+    UNION ALL SELECT 'AMG 패키지 플러스'
+    UNION ALL SELECT 'M 스포츠 패키지'
     UNION ALL SELECT '디자인 패키지'
     UNION ALL SELECT '런치팩'
     UNION ALL SELECT '카본패키지'
@@ -213,6 +218,10 @@ FROM (
     UNION ALL SELECT '4TRONIC'     UNION ALL SELECT '콰트로'
     -- Mercedes diesel suffixes
     UNION ALL SELECT 'CDI'         UNION ALL SELECT 'd'
+    -- Volvo mild-hybrid/combustion powertrain codes (B=petrol-mild, T=petrol-turbo, D=diesel, P=performance)
+    UNION ALL SELECT 'B3'    UNION ALL SELECT 'B4'    UNION ALL SELECT 'B5'    UNION ALL SELECT 'B6'
+    UNION ALL SELECT 'T4'    UNION ALL SELECT 'T5'    UNION ALL SELECT 'T6'    UNION ALL SELECT 'T8'
+    UNION ALL SELECT 'D4'    UNION ALL SELECT 'D5'    UNION ALL SELECT 'P8'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'tail_powertrain_token' AND x.term = t.term
@@ -359,6 +368,14 @@ FROM (
     UNION ALL SELECT 'N 스포츠'
     -- Compound edition forms (no space, caught as single token)
     UNION ALL SELECT '온라인에디션'
+    -- Volvo trim grades (standalone suffix)
+    UNION ALL SELECT '플러스'          UNION ALL SELECT '얼티메이트'
+    UNION ALL SELECT '인스크립션'      UNION ALL SELECT '모멘텀'
+    UNION ALL SELECT '크리에이티비티'
+    -- Renault Korea standalone grade
+    UNION ALL SELECT 'R-플러스'
+    -- Renault Korea Bold editions
+    UNION ALL SELECT '볼드에디션'      UNION ALL SELECT '더 볼드'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'trim_hint' AND x.term = t.term
