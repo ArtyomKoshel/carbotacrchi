@@ -284,10 +284,18 @@ class NormalizeEncarTaxonomy extends Command
             return true;
         };
 
+        $total = (clone $baseQuery)->count();
+        $this->line("Total lots to process: {$total}");
+
         if ($random) {
             $processRow($baseQuery->inRandomOrder()->get());
         } else {
-            $baseQuery->orderBy('id')->chunkById($chunk, $processRow, 'id', 'id');
+            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$processed, $total) {
+                $result = $processRow($rows);
+                $pct = $total > 0 ? round($processed / $total * 100) : 0;
+                $this->line("  [{$pct}%] processed {$processed}/{$total} ...");
+                return $result;
+            }, 'id', 'id');
         }
 
         $this->line('');
