@@ -40,6 +40,13 @@ FROM (
     SELECT '터보 패키지'  AS term
     UNION ALL SELECT '플래티넘 패키지'
     UNION ALL SELECT 'LT 래더패키지'
+    UNION ALL SELECT '래더패키지'
+    UNION ALL SELECT '레더 패키지'
+    UNION ALL SELECT 'AMG 패키지'
+    UNION ALL SELECT '디자인 패키지'
+    UNION ALL SELECT '런치팩'
+    UNION ALL SELECT '카본패키지'
+    UNION ALL SELECT '컨테퍼러리팩'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'package_hint' AND x.term = t.term
@@ -345,6 +352,11 @@ FROM (
     UNION ALL SELECT '컴페티션'
     -- Common Korean trim used by almost all brands
     UNION ALL SELECT '프리미엄'
+    -- Performance/sport trims (single-char N is Hyundai N brand)
+    UNION ALL SELECT '스포츠'          UNION ALL SELECT '스타일'
+    UNION ALL SELECT 'N'               UNION ALL SELECT 'N 라인'
+    UNION ALL SELECT 'GT-Line'         UNION ALL SELECT 'F Sport'
+    UNION ALL SELECT 'N 스포츠'
     -- Compound edition forms (no space, caught as single token)
     UNION ALL SELECT '온라인에디션'
 ) t

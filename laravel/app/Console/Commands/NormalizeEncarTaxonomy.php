@@ -48,6 +48,12 @@ class NormalizeEncarTaxonomy extends Command
         'FHEV', 'HEV', 'LPI', 'LPE', 'EV', 'BEV',
         '4MATIC', '블루텍', 'GTE', 'LPLI', '4TRONIC',
     ];
+    private const BODY_STYLE_TOKENS = [
+        '쿠페', '카브리올레', '컨버터블', '왜건', '해치백', '픽업', '밴',
+        'Coupe', 'Cabriolet', 'Convertible', 'Wagon',
+        '5도어', '4도어', '3도어', '2도어',
+    ];
+
     private const DEFAULT_VARIANT_EXCLUDE = [
         'EV', 'BEV', 'HEV', 'FHEV',
         'GDI', 'TDI', 'MPI', 'CRDI', 'VGT', 'TCI', 'TFSI', 'TSI', 'FSI',
@@ -418,7 +424,8 @@ class NormalizeEncarTaxonomy extends Command
 
     private function normalizeModelTaxonomy(string $modelRaw, ?string $modelGroup): array
     {
-        [$modelNoNoise, $strippedTokens] = $this->stripTailNoiseWithTokens($this->normalizeSpace($modelRaw));
+        $prepared = $this->splitCompoundDriveTokens($this->normalizeSpace($modelRaw));
+        [$modelNoNoise, $strippedTokens] = $this->stripTailNoiseWithTokens($prepared);
         [$modelNoGen, $generation] = $this->extractGeneration($modelNoNoise, $modelGroup);
         [$modelClean, $inferredTrim, $inferredPackage] = $this->splitModelTrimPackage($modelNoGen);
         $unknownTail = $this->detectUnknownTail($modelNoGen, $inferredTrim, $inferredPackage);
@@ -428,6 +435,13 @@ class NormalizeEncarTaxonomy extends Command
             : ($modelNoNoise !== '' ? $modelNoNoise : $this->normalizeSpace($modelRaw));
 
         return [$finalModel, $generation, $inferredTrim, $inferredPackage, $unknownTail, $strippedTokens];
+    }
+
+    private function splitCompoundDriveTokens(string $model): string
+    {
+        // Split BMW/Volvo compound tokens: xDrive40i → xDrive 40i, sDrive20i → sDrive 20i
+        $result = preg_replace('/\b(xDrive|sDrive)(\d{2,3}[a-z]?)\b/u', '$1 $2', $model);
+        return is_string($result) ? $result : $model;
     }
 
     private function normalizeSpace(string $value): string
@@ -480,9 +494,31 @@ class NormalizeEncarTaxonomy extends Command
             if (in_array($t, $tailTokens, true)) {
                 continue;
             }
-            if (preg_match('/^\d{1,2}(?:\.\d+)?(?:T|D|L)?$/i', $t)) {
+            if (preg_match('/^\d+\.\d+[TDL]?$|^\d+[TDL]$/i', $t)) {
                 continue;
             }
+            if (in_array($t, self::BODY_STYLE_TOKENS, true)) {
+                continue;
+            }
+            $clean[] = $t;
+        }
+        $result = trim(implode(' ', $clean));
+        return $result !== '' ? $result : $model;
+    }
+
+    private function stripKnownWordsFromModel(string $model): string
+    {
+        $sets = $this->getTermSets();
+        $tailTokens = $sets['tail_powertrain_tokens'] ?? [];
+        $engineFamilyUpper = array_values(array_unique(array_merge(
+            array_map('strtoupper', self::DEFAULT_ENGINE_FAMILY),
+            array_map('strtoupper', $sets['engine_family_tokens'] ?? []),
+        )));
+        $tokens = preg_split('/\s+/u', $model) ?: [];
+        $clean = [];
+        foreach ($tokens as $t) {
+            if (in_array(strtoupper($t), $engineFamilyUpper, true)) continue;
+            if (in_array($t, $tailTokens, true)) continue;
             $clean[] = $t;
         }
         $result = trim(implode(' ', $clean));
@@ -677,8 +713,8 @@ class NormalizeEncarTaxonomy extends Command
             return null;
         }
 
-        // Run on cleaned model so drive tokens (2WD, 4WD, xDrive...) don't pollute tail2
-        $cleaned = $this->cleanTechSpecTokensFromModel($modelNoGen);
+        // Strip only known word tokens (drive/powertrain) — not numeric — to avoid eating model name digits like "아토 3"
+        $cleaned = $this->stripKnownWordsFromModel($modelNoGen);
         $tokens = preg_split('/\s+/u', $cleaned) ?: [];
         if (count($tokens) < 2) {
             return null;
