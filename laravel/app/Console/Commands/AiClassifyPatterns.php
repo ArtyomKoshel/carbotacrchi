@@ -212,11 +212,15 @@ class AiClassifyPatterns extends Command
 
     private function parseRetryAfter(string $body): int
     {
-        // Parse "Please try again in 1.565s" from Groq error
+        // "3m33.408s" format
+        if (preg_match('/try again in (\d+)m(\d+\.?\d*)s/', $body, $m)) {
+            return (int)$m[1] * 60 + (int) ceil((float) $m[2]) + 1;
+        }
+        // "1.565s" format
         if (preg_match('/try again in (\d+\.?\d*)s/', $body, $m)) {
             return (int) ceil((float) $m[1]) + 1;
         }
-        return 10;
+        return 15;
     }
 
     private function createRules(
