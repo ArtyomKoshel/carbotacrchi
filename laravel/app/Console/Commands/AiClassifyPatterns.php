@@ -21,20 +21,30 @@ class AiClassifyPatterns extends Command
 
     protected $description = 'AI-classify unique (make, model_kr_raw, badge_kr) patterns → auto-create rules or queue for review';
 
-    private string $apiKey;
     private string $apiUrl;
     private string $aiModel;
+    private array  $apiKeys = [];
+    private int    $keyIndex = 0;
 
     public function handle(): int
     {
-        $this->apiKey   = config('ai.api_key', '');
-        $this->apiUrl   = config('ai.api_url', '');
-        $this->aiModel  = config('ai.model', '');
+        $this->apiUrl  = config('ai.api_url', '');
+        $this->aiModel = config('ai.model', '');
 
-        if (empty($this->apiKey)) {
-            $this->error('AI_API_KEY not configured.');
+        // Build key pool: AI_API_KEYS (comma-separated) + AI_API_KEY as fallback
+        $pool = array_values(array_filter(config('ai.api_keys', [])));
+        $single = config('ai.api_key', '');
+        if ($single !== '' && !in_array($single, $pool, true)) {
+            $pool[] = $single;
+        }
+        $this->apiKeys = $pool;
+
+        if (empty($this->apiKeys)) {
+            $this->error('No AI API keys configured (AI_API_KEY or AI_API_KEYS).');
             return 1;
         }
+
+        $this->line("Key pool: " . count($this->apiKeys) . " key(s)");
 
         $source     = $this->option('source');
         $makeFilter = trim((string) $this->option('make'));
@@ -172,10 +182,12 @@ class AiClassifyPatterns extends Command
             'badge_raw' => $badgeRaw !== '' ? $badgeRaw : null,
         ], JSON_UNESCAPED_UNICODE);
 
+        $currentKey = $this->apiKeys[$this->keyIndex % count($this->apiKeys)];
+
         try {
             $response = Http::timeout(30)
                 ->withHeaders([
-                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Authorization' => 'Bearer ' . $currentKey,
                     'Content-Type'  => 'application/json',
                 ])
                 ->post($this->apiUrl, [
@@ -189,11 +201,30 @@ class AiClassifyPatterns extends Command
                     ],
                 ]);
 
-            if ($response->status() === 429 && $attempt < 3) {
-                $waitSec = $this->parseRetryAfter($response->body());
-                $this->line("    ⏳ Rate limited, waiting {$waitSec}s...");
-                sleep($waitSec);
-                return $this->classifyPattern($make, $modelRaw, $badgeRaw, $attempt + 1);
+            if ($response->status() === 429) {
+                $keyCount = count($this->apiKeys);
+                $triedKeys = $attempt % $keyCount;
+
+                // Rotate to next key first
+                $this->keyIndex++;
+                $nextKeyIdx = $this->keyIndex % $keyCount;
+
+                if ($triedKeys < $keyCount - 1) {
+                    // Still have untried keys — rotate without waiting
+                    $this->line("    🔄 Key #{$triedKeys} rate limited → rotating to key #" . ($triedKeys + 1));
+                    return $this->classifyPattern($make, $modelRaw, $badgeRaw, $attempt + 1);
+                }
+
+                if ($attempt < $keyCount * 2) {
+                    // All keys tried once — wait and retry from next key
+                    $waitSec = $this->parseRetryAfter($response->body());
+                    $this->line("    ⏳ All keys rate limited, waiting {$waitSec}s...");
+                    sleep($waitSec);
+                    return $this->classifyPattern($make, $modelRaw, $badgeRaw, $attempt + 1);
+                }
+
+                Log::warning('[AiClassifyPatterns] All keys exhausted: ' . $response->body());
+                return null;
             }
 
             if (!$response->successful()) {
