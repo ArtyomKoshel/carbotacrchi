@@ -120,9 +120,8 @@ class NormalizeEncarTaxonomy extends Command
             $this->line('Filter: only-empty (trim IS NULL or empty)');
         }
 
-        if ($limit > 0) {
-            $baseQuery->limit($limit);
-        }
+        // Note: ->limit() is intentionally NOT applied here because chunkById
+        // overrides it internally. The limit is enforced in the chunk callback below.
 
         $processRow = function ($rows) use (
             $apply,
@@ -297,13 +296,16 @@ class NormalizeEncarTaxonomy extends Command
         };
 
         $total = (clone $baseQuery)->count();
+        if ($limit > 0 && $limit < $total) {
+            $total = $limit;
+        }
         $this->line("Total lots to process: {$total}");
         $startTime = microtime(true);
 
         if ($random) {
             $processRow($baseQuery->inRandomOrder()->get());
         } else {
-            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$processed, $total, $startTime) {
+            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$processed, $total, $startTime, $limit) {
                 $result = $processRow($rows);
                 $pct = $total > 0 ? round($processed / $total * 100) : 0;
                 $elapsed = round(microtime(true) - $startTime);
@@ -311,6 +313,9 @@ class NormalizeEncarTaxonomy extends Command
                     ? round(($elapsed / $processed) * ($total - $processed)) . 's'
                     : '?';
                 $this->line("  [{$pct}%] {$processed}/{$total} | elapsed {$elapsed}s | ETA ~{$eta}");
+                if ($limit > 0 && $processed >= $limit) {
+                    return false;
+                }
                 return $result;
             }, 'id', 'id');
         }
