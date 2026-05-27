@@ -25,6 +25,7 @@ class AiClassifyPatterns extends Command
     private string $aiModel;
     private array  $apiKeys = [];
     private int    $keyIndex = 0;
+    private array  $bannedKeys = [];
 
     public function handle(): int
     {
@@ -195,7 +196,12 @@ class AiClassifyPatterns extends Command
             'badge_raw' => $badgeRaw !== '' ? $badgeRaw : null,
         ], JSON_UNESCAPED_UNICODE);
 
-        $currentKey = $this->apiKeys[$this->keyIndex % count($this->apiKeys)];
+        $activeKeys = array_values(array_diff($this->apiKeys, $this->bannedKeys));
+        if (empty($activeKeys)) {
+            Log::error('[AiClassifyPatterns] No active API keys remaining.');
+            return null;
+        }
+        $currentKey = $activeKeys[$this->keyIndex % count($activeKeys)];
 
         try {
             $response = Http::timeout(30)
@@ -214,13 +220,27 @@ class AiClassifyPatterns extends Command
                     ],
                 ]);
 
+            // 400 organization_restricted → blacklist key permanently and rotate
+            if ($response->status() === 400 && str_contains($response->body(), 'organization_restricted')) {
+                $this->bannedKeys[] = $currentKey;
+                $this->keyIndex++;
+                $activeKeys = array_diff($this->apiKeys, $this->bannedKeys);
+                if (empty($activeKeys)) {
+                    $this->error('All API keys are banned/restricted.');
+                    return null;
+                }
+                $this->warn("    🚫 Key banned (org restricted) → rotating to next key (" . count($activeKeys) . " remaining)");
+                return $this->classifyPattern($make, $modelRaw, $badgeRaw, $attempt + 1);
+            }
+
             if ($response->status() === 429) {
-                $keyCount = count($this->apiKeys);
+                $activeKeys = array_diff($this->apiKeys, $this->bannedKeys);
+                $keyCount = count($activeKeys);
+                if ($keyCount === 0) { return null; }
                 $triedKeys = $attempt % $keyCount;
 
                 // Rotate to next key first
                 $this->keyIndex++;
-                $nextKeyIdx = $this->keyIndex % $keyCount;
 
                 if ($triedKeys < $keyCount - 1) {
                     // Still have untried keys — rotate without waiting
