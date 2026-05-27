@@ -33,7 +33,7 @@ _PAGE_SIZE = 100
 _BATCH_SIZE = 20   # batch_details API hard-caps at 20 items
 _MAX_SAFE_OFFSET = 9900  # Encar search API (Elasticsearch) caps at ~10k results per query
 
-_ENGINE_TOKEN_RE = _re.compile(r'^\d+(?:\.\d+)?(?:T|D|L)?$', _re.IGNORECASE)
+_ENGINE_TOKEN_RE = _re.compile(r'^\d{1,2}(?:\.\d+)?(?:T|D|L)?$', _re.IGNORECASE)
 _GEN_PAREN_RE = _re.compile(r'\(([A-Za-z0-9]{2,6})\)')
 _GEN_TOKEN_RE = _re.compile(r'^[A-Z]{1,3}\d{1,3}$')
 _SEAT_TOKEN_RE = _re.compile(r'^\d{1,2}인승$')
@@ -55,21 +55,31 @@ _DEFAULT_TAIL_POWERTRAIN_TOKENS: frozenset[str] = frozenset({
     '터보', 'TCe', 'TFSI', 'TDI', 'e-VGT', '(택시형)', '(렌터카)', '(영업용)',
     'GDI', 'T-GDI', 'GDe', 'GDi', 'MPI', 'TSI', 'FSI',
     'CRDi', 'VGT', 'TCI', 'FHEV', 'LPI', 'LPi', 'BEV',
-    '4MATIC', '블루텍', 'GTe', 'LPLI', 'LPe', '4TRONIC',
+    '4MATIC', '블루텍', 'GTe', 'LPLI', 'LPe', '4TRONIC', '콰트로',
 })
 
 _DEFAULT_GEN_NON_CHASSIS_TOKENS: frozenset[str] = frozenset({
     'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
     'AWD', 'FWD', 'RWD', '4WD', '2WD',
+    # Genesis model codes (look like chassis codes but are model names)
+    'G70', 'G80', 'G90', 'GV70', 'GV80', 'GV90', 'EQ900',
+    # Volvo model codes
+    'XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40',
+    # Volvo engine designations (D=diesel, T=petrol, B=mild-hybrid)
+    'D3', 'D4', 'D5', 'T4', 'T5', 'T6', 'T8', 'B4', 'B5', 'B6',
 })
 
 _DEFAULT_GEN_EXCLUDE_TOKENS: frozenset[str] = frozenset({
     'V6', 'V8', 'V10', 'V12',
     'Q4',
     'VS380', 'CW700', 'EL300', 'G330',
+    # Genesis engine grade codes (G + displacement): NOT generation codes
+    'G300', 'G350', 'G380', 'G400', 'G450',
+    # Hyundai Grandeur engine+gen combined tokens
+    'HG300', 'HG330',
 })
 
-_VARIANT_RE = _re.compile(r'^(?:[A-Z]{1,4}\d{2,4}[a-z]{0,2}|\d{3,4}[A-Za-z]{1,3})$')
+_VARIANT_RE = _re.compile(r'^(?:[A-Z]{1,4}\d{2,4}[a-zA-Z]{0,2}|\d{2,4}[A-Za-z]{1,3})$')
 
 _DEFAULT_VARIANT_EXCLUDE: frozenset[str] = frozenset({
     'EV', 'BEV', 'HEV', 'FHEV',
@@ -78,6 +88,10 @@ _DEFAULT_VARIANT_EXCLUDE: frozenset[str] = frozenset({
     '4WD', '2WD', 'AWD', 'FWD', 'RWD',
     'AWD4', 'V6', 'V8', 'V10', 'V12',
     'TCE', 'LPG',
+    # Genesis model codes
+    'G70', 'G80', 'G90', 'GV70', 'GV80', 'GV90', 'EQ900',
+    # Volvo model codes
+    'XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40',
 })
 
 _DEFAULT_SPECIAL_TAGS: frozenset[str] = frozenset({'장애인용', '리무진', '캠핑카'})
@@ -90,6 +104,7 @@ _DEFAULT_PACKAGE_HINTS: tuple[str, ...] = (
 _DEFAULT_TRIM_HINTS: tuple[str, ...] = (
     '캘리그래피 블랙에디션', '마스터즈 그래비티', '익스클루시브 스페셜',
     '프레스티지 스페셜', '노블레스 스페셜', '프리미엄 초이스',
+    '디자인 퓨어 엑셀런스',
     '캘리그래피', '인스퍼레이션', '익스클루시브', '프레스티지', '시그니처',
     '노블레스', '프리미엄', '모던', '스마트', '럭셔리',
     '르블랑', '고급형', '기본형', '비즈니스 2', '비즈니스 1', '모빌리티',
@@ -615,8 +630,8 @@ def _normalize_model_taxonomy(
     model_no_noise, stripped_tokens = _strip_tail_noise(_re.sub(r'\s+', ' ', model_raw or '').strip())
     model_no_gen, generation = _extract_generation(model_no_noise, model_group)
     model_clean, inferred_trim, inferred_package = _split_model_trim_package(model_no_gen)
-    model_clean = _clean_tech_spec_tokens_from_model(model_clean)
     model_clean, variant = _extract_variant(model_clean)
+    model_clean = _clean_tech_spec_tokens_from_model(model_clean)
     unknown_tail = _detect_unknown_tail(model_no_gen, model_clean, inferred_trim, inferred_package)
     return (
         model_clean or model_no_noise or (model_raw or '').strip(),
@@ -741,6 +756,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         generation=generation,
         variant=lot_variant,
         trim=trim or None,
+        package=inferred_package or None,
         year=year,
         price=price_raw,
         mileage=mileage,

@@ -13,6 +13,7 @@ class TaxonomyRule extends Model
         'source',
         'make',
         'model_contains',
+        'badge_contains',
         'unknown_tail',
         'action',
         'action_value',

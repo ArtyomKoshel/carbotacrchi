@@ -133,6 +133,11 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "_extract_variant heuristic + set_variant rules"},
     ),
     FieldSpec(
+        name="package", dtype=FieldType.STRING, filterable=True,
+        category="identity", description="Option package (e.g. M 스포츠, AMG Line, xLine)",
+        sources={"encar": "_split_model_trim_package package hint extraction"},
+    ),
+    FieldSpec(
         name="trim", dtype=FieldType.STRING, filterable=True, tracked=True,
         category="identity", description="Trim / grade",
         sources={"encar": "BadgeDetail", "kbcha": "title trim-tokens"},

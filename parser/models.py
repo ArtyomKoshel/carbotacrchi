@@ -30,6 +30,7 @@ class CarLot:
     color: str | None = None
     seat_color: str | None = None
     trim: str | None = None
+    package: str | None = None    # Option package (e.g. M 스포츠, AMG Line, xLine)
 
     # Location & links
     location: str | None = None
@@ -127,6 +128,7 @@ class CarLot:
             "color": self.color,
             "seat_color": self.seat_color,
             "trim": self.trim,
+            "package": self.package,
             "engine_volume": self.engine_volume,
             "lien_status": self.lien_status,
             "seizure_status": self.seizure_status,

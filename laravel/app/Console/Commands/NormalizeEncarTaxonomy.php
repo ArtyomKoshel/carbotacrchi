@@ -26,10 +26,20 @@ class NormalizeEncarTaxonomy extends Command
     private const DEFAULT_GEN_NON_CHASSIS = [
         'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
         'AWD', 'FWD', 'RWD', '4WD', '2WD',
+        // Genesis model codes
+        'G70', 'G80', 'G90', 'GV70', 'GV80', 'GV90', 'EQ900',
+        // Volvo model codes
+        'XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40',
+        // Volvo engine designations (diesel/petrol/mild-hybrid)
+        'D3', 'D4', 'D5', 'T4', 'T5', 'T6', 'T8', 'B4', 'B5', 'B6',
     ];
     private const DEFAULT_GEN_EXCLUDE = [
         'V6', 'V8', 'V10', 'V12', 'Q4',
         'VS380', 'CW700', 'EL300', 'G330',
+        // Genesis engine grade codes
+        'G300', 'G350', 'G380', 'G400', 'G450',
+        // Hyundai Grandeur engine+gen tokens
+        'HG300', 'HG330',
     ];
     private const DEFAULT_ENGINE_FAMILY = [
         'GDI', 'T-GDI', 'TGDI', 'GDE', 'MPI', 'MPFI',
@@ -44,6 +54,10 @@ class NormalizeEncarTaxonomy extends Command
         'GDE', 'GTE', 'LPLI', 'LPE', 'LPI',
         '4WD', '2WD', 'AWD', 'FWD', 'RWD',
         'V6', 'V8', 'V10', 'V12', 'LPG',
+        // Genesis model codes
+        'G70', 'G80', 'G90', 'GV70', 'GV80', 'GV90', 'EQ900',
+        // Volvo model codes
+        'XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40',
     ];
 
     private ?array $termSets = null;
@@ -80,6 +94,7 @@ class NormalizeEncarTaxonomy extends Command
         $unknownTailHits = [];
         $techSpecUpdates = 0;
         $variantUpdates = 0;
+        $packageUpdates = 0;
         $samples = [];
 
         $baseQuery = DB::table('lots')
@@ -105,6 +120,7 @@ class NormalizeEncarTaxonomy extends Command
             &$unknownTailHits,
             &$techSpecUpdates,
             &$variantUpdates,
+            &$packageUpdates,
             &$samples
         ) {
             foreach ($rows as $row) {
@@ -153,12 +169,12 @@ class NormalizeEncarTaxonomy extends Command
                     $this->upsertAnomalyQueue((string) $row->source, (string) ($row->make ?? ''), (string) $row->id, (string) $row->model, $unknownTail, $suggestions);
                 }
 
-                $normalizedModel = $this->cleanTechSpecTokensFromModel($normalizedModel);
                 $heuristicVariant = $this->extractVariant($normalizedModel);
                 if ($heuristicVariant !== null) {
                     $normalizedModel = trim(str_replace($heuristicVariant, '', $normalizedModel));
                     $normalizedModel = $this->normalizeSpace($normalizedModel);
                 }
+                $normalizedModel = $this->cleanTechSpecTokensFromModel($normalizedModel);
 
                 $patch = [];
 
@@ -190,6 +206,15 @@ class NormalizeEncarTaxonomy extends Command
 
                 $trimCurrent = trim((string) ($row->trim ?? ''));
                 $trimIsNull = $trimCurrent === '' || $trimCurrent === '(세부등급 없음)';
+
+                // If trim is actually a generation code (e.g. E46, B8, 2세대) move it to generation
+                $genCurrent = trim((string) ($row->generation ?? ''));
+                if (!$trimIsNull && $genCurrent === '' && $this->trimIsGenerationCode($trimCurrent)) {
+                    $patch['generation'] = $trimCurrent;
+                    $patch['trim'] = null;
+                    $trimIsNull = true;
+                }
+
                 if ($trimIsNull && $inferredTrim) {
                     $patch['trim'] = $inferredTrim;
                 }
@@ -198,6 +223,11 @@ class NormalizeEncarTaxonomy extends Command
                 $resolvedVariant = $ruleVariant ?? $heuristicVariant;
                 if ($variantCurrent === '' && $resolvedVariant !== null) {
                     $patch['variant'] = $resolvedVariant;
+                }
+
+                $packageCurrent = trim((string) ($row->package ?? ''));
+                if ($packageCurrent === '' && $inferredPackage) {
+                    $patch['package'] = $inferredPackage;
                 }
 
                 if ($patch === []) {
@@ -216,6 +246,9 @@ class NormalizeEncarTaxonomy extends Command
                 }
                 if (isset($patch['variant'])) {
                     $variantUpdates++;
+                }
+                if (isset($patch['package'])) {
+                    $packageUpdates++;
                 }
 
                 if (count($samples) < 40) {
@@ -258,6 +291,7 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("Generation updates: {$generationUpdates}");
         $this->line("Trim updates: {$trimUpdates}");
         $this->line("Variant updates: {$variantUpdates}");
+        $this->line("Package updates: {$packageUpdates}");
         $this->line("Tech spec updates: {$techSpecUpdates}");
         if ($apply) {
             $this->line("Updated: {$updated}");
@@ -417,7 +451,7 @@ class NormalizeEncarTaxonomy extends Command
             $tail = $tokens[count($tokens) - 1];
             if (
                 in_array($tail, $tailTokens, true)
-                || preg_match('/^\d+(?:\.\d+)?(?:T|D|L)?$/i', $tail)
+                || preg_match('/^\d{1,2}(?:\.\d+)?(?:T|D|L)?$/i', $tail)
                 || preg_match('/^\d{1,2}인승$/u', $tail)
             ) {
                 array_unshift($stripped, array_pop($tokens));
@@ -446,7 +480,7 @@ class NormalizeEncarTaxonomy extends Command
             if (in_array($t, $tailTokens, true)) {
                 continue;
             }
-            if (preg_match('/^\d+(?:\.\d+)?(?:T|D|L)?$/i', $t)) {
+            if (preg_match('/^\d{1,2}(?:\.\d+)?(?:T|D|L)?$/i', $t)) {
                 continue;
             }
             $clean[] = $t;
@@ -457,7 +491,7 @@ class NormalizeEncarTaxonomy extends Command
 
     private function extractVariant(string $model): ?string
     {
-        $variantRe = '/^(?:[A-Z]{1,4}\d{2,4}[a-z]{0,2}|\d{3,4}[A-Za-z]{1,3})$/u';
+        $variantRe = '/^(?:[A-Z]{1,4}\d{2,4}[a-zA-Z]{0,2}|\d{2,4}[A-Za-z]{1,3})$/u';
         $sets = $this->getTermSets();
         $excludeUpper = array_values(array_unique(array_merge(
             array_map('strtoupper', self::DEFAULT_VARIANT_EXCLUDE),
@@ -646,5 +680,19 @@ class NormalizeEncarTaxonomy extends Command
         }
 
         return null;
+    }
+
+    private function trimIsGenerationCode(string $trim): bool
+    {
+        // Korean generation labels: 1세대, 2세대, 3세대 ...
+        if (preg_match('/^\d+세대$/u', $trim)) {
+            return true;
+        }
+        // Western chassis codes: E46, B8, W222, F10, 4G etc.
+        // Must match generation pattern but not be a known variant or trim word
+        if ($this->isGenerationToken($trim)) {
+            return true;
+        }
+        return false;
     }
 }

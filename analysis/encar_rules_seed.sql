@@ -203,6 +203,7 @@ FROM (
     UNION ALL SELECT 'FHEV'        UNION ALL SELECT 'LPI'       UNION ALL SELECT 'BEV'
     UNION ALL SELECT '4MATIC'      UNION ALL SELECT '블루텍'    UNION ALL SELECT 'GTe'
     UNION ALL SELECT 'LPLI'        UNION ALL SELECT 'LPe'       UNION ALL SELECT '4TRONIC'
+    UNION ALL SELECT '콰트로'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'tail_powertrain_token' AND x.term = t.term
@@ -318,6 +319,8 @@ FROM (
     -- Korean trim names
     UNION ALL SELECT '리미티드'    UNION ALL SELECT '아방가르드'
     UNION ALL SELECT '그란루쏘'   UNION ALL SELECT '엘레강스'
+    -- BMW luxury packages
+    UNION ALL SELECT '디자인 퓨어 엑셀런스'
     -- Land Rover
     UNION ALL SELECT 'SVR'         UNION ALL SELECT 'SVX'
     UNION ALL SELECT 'HSE'         UNION ALL SELECT 'SE'
@@ -392,6 +395,7 @@ FROM (
     UNION ALL SELECT '4TRONIC',         '4wd'
     UNION ALL SELECT 'QUATTRO',         'awd'
     UNION ALL SELECT 'quattro',         'awd'
+    UNION ALL SELECT '콰트로',           'awd'
 ) m
 LEFT JOIN taxonomy_rules r
   ON  r.source           = 'encar'
@@ -402,6 +406,94 @@ LEFT JOIN taxonomy_rules r
   AND COALESCE(r.action_value, '')    = COALESCE(m.drive_value, '')
   AND r.is_active = 1
 WHERE r.id IS NULL;
+
+
+-- ── 8. taxonomy_rules: set_trim for known unknown_tail patterns ───────────
+
+INSERT IGNORE INTO taxonomy_rules
+    (source, make, model_contains, unknown_tail, action, action_value, priority, is_active, notes, created_at, updated_at)
+SELECT 'encar', NULL, NULL, r.unknown_tail, 'set_trim', r.trim_value, 90, 1, 'unknown_tail trim seed', NOW(), NOW()
+FROM (
+    SELECT 'AMG 에디션'       AS unknown_tail, 'AMG 에디션'       AS trim_value
+    UNION ALL SELECT '제트 패키지',              '제트 패키지'
+    UNION ALL SELECT '딜라이트 플러스',          '딜라이트 플러스'
+    UNION ALL SELECT 'W 스페셜',                 'W 스페셜'
+    UNION ALL SELECT '2.3 ST-라인',              'ST-라인'
+    UNION ALL SELECT 'e-VGT 스타일',             '스타일'
+    UNION ALL SELECT '메이필드 에디션',          '메이필드 에디션'
+    UNION ALL SELECT '시티팝 에디션',            '시티팝 에디션'
+    UNION ALL SELECT '80주년 에디션',            '80주년 에디션'
+    UNION ALL SELECT '파이널 에디션',            '파이널 에디션'
+    UNION ALL SELECT '언테임드 에디션',          '언테임드 에디션'
+    UNION ALL SELECT 'AWD 에디션',               '에디션'
+) r
+LEFT JOIN taxonomy_rules x
+  ON x.source = 'encar' AND COALESCE(x.unknown_tail,'') = r.unknown_tail AND x.action = 'set_trim'
+WHERE x.id IS NULL;
+
+-- Ford ST-라인: model_contains rule (covers all engine variants: 1.0, 1.5, 2.3 ST-라인)
+INSERT IGNORE INTO taxonomy_rules
+    (source, make, model_contains, unknown_tail, action, action_value, priority, is_active, notes, created_at, updated_at)
+SELECT 'encar', 'Ford', ' ST-라인', NULL, 'set_trim', 'ST-라인', 85, 1, 'Ford ST-Line trim seed', NOW(), NOW()
+FROM dual
+WHERE NOT EXISTS (
+    SELECT 1 FROM taxonomy_rules
+    WHERE source = 'encar' AND make = 'Ford'
+      AND model_contains = ' ST-라인' AND action = 'set_trim'
+);
+
+
+-- ── 9. taxonomy_terms: Genesis + Volvo model/engine codes ──────────────────
+--      Prevents model names & engine designations from being misidentified.
+
+INSERT IGNORE INTO taxonomy_terms
+    (source, term_type, term, priority, is_active, created_at, updated_at)
+SELECT 'encar', 'gen_non_chassis_token', t.term, 100, 1, NOW(), NOW()
+FROM (
+    -- Genesis model codes
+    SELECT 'G70'  AS term  UNION ALL SELECT 'G80'   UNION ALL SELECT 'G90'
+    UNION ALL SELECT 'GV70'              UNION ALL SELECT 'GV80'  UNION ALL SELECT 'GV90'
+    UNION ALL SELECT 'EQ900'
+    -- Volvo model codes
+    UNION ALL SELECT 'XC40'             UNION ALL SELECT 'XC60'  UNION ALL SELECT 'XC90'
+    UNION ALL SELECT 'S60'              UNION ALL SELECT 'S90'
+    UNION ALL SELECT 'V60'              UNION ALL SELECT 'V90'   UNION ALL SELECT 'C40'
+    -- Volvo engine designations (D=diesel, T=petrol, B=mild-hybrid)
+    UNION ALL SELECT 'D3'   UNION ALL SELECT 'D4'   UNION ALL SELECT 'D5'
+    UNION ALL SELECT 'T4'   UNION ALL SELECT 'T5'   UNION ALL SELECT 'T6'   UNION ALL SELECT 'T8'
+    UNION ALL SELECT 'B4'   UNION ALL SELECT 'B5'   UNION ALL SELECT 'B6'
+) t
+LEFT JOIN taxonomy_terms x
+  ON x.source = 'encar' AND x.term_type = 'gen_non_chassis_token' AND x.term = t.term
+WHERE x.id IS NULL;
+
+-- Genesis engine grade codes (G + displacement) → gen_exclude_token
+INSERT IGNORE INTO taxonomy_terms
+    (source, term_type, term, priority, is_active, created_at, updated_at)
+SELECT 'encar', 'gen_exclude_token', t.term, 100, 1, NOW(), NOW()
+FROM (
+    SELECT 'G300' AS term  UNION ALL SELECT 'G350'  UNION ALL SELECT 'G380'
+    UNION ALL SELECT 'G400'             UNION ALL SELECT 'G450'
+    UNION ALL SELECT 'HG300'            UNION ALL SELECT 'HG330'
+) t
+LEFT JOIN taxonomy_terms x
+  ON x.source = 'encar' AND x.term_type = 'gen_exclude_token' AND x.term = t.term
+WHERE x.id IS NULL;
+
+INSERT IGNORE INTO taxonomy_terms
+    (source, term_type, term, priority, is_active, created_at, updated_at)
+SELECT 'encar', 'variant_exclude', t.term, 100, 1, NOW(), NOW()
+FROM (
+    SELECT 'G70'  AS term  UNION ALL SELECT 'G80'   UNION ALL SELECT 'G90'
+    UNION ALL SELECT 'GV70'              UNION ALL SELECT 'GV80'  UNION ALL SELECT 'GV90'
+    UNION ALL SELECT 'EQ900'
+    UNION ALL SELECT 'XC40'             UNION ALL SELECT 'XC60'  UNION ALL SELECT 'XC90'
+    UNION ALL SELECT 'S60'              UNION ALL SELECT 'S90'
+    UNION ALL SELECT 'V60'              UNION ALL SELECT 'V90'   UNION ALL SELECT 'C40'
+) t
+LEFT JOIN taxonomy_terms x
+  ON x.source = 'encar' AND x.term_type = 'variant_exclude' AND x.term = t.term
+WHERE x.id IS NULL;
 
 
 -- ── Quick sanity check ─────────────────────────────────────────────────────

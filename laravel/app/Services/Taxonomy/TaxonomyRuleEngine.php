@@ -23,6 +23,7 @@ class TaxonomyRuleEngine
             'make' => trim((string) ($context['make'] ?? '')),
             'model' => trim((string) ($context['model'] ?? '')),
             'model_raw' => $searchStr,
+            'badge_raw' => $badgeRaw,
             'generation' => $this->nullable($context['generation'] ?? null),
             'trim' => $this->nullable($context['trim'] ?? null),
             'unknown_tail' => $this->nullable($context['unknown_tail'] ?? null),
@@ -112,6 +113,11 @@ class TaxonomyRuleEngine
 
         $tail = trim((string) ($rule->unknown_tail ?? ''));
         if ($tail !== '' && mb_strtolower((string) $state['unknown_tail']) !== mb_strtolower($tail)) {
+            return false;
+        }
+
+        $badgeContains = trim((string) ($rule->badge_contains ?? ''));
+        if ($badgeContains !== '' && mb_stripos($state['badge_raw'], $badgeContains) === false) {
             return false;
         }
 
