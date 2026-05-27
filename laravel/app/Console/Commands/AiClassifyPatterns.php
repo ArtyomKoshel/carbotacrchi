@@ -301,9 +301,9 @@ class AiClassifyPatterns extends Command
     private function buildSystemPrompt(): string
     {
         return <<<'PROMPT'
-You are a Korean car listing parser. Your job is structured extraction — NOT free reasoning about cars.
+You are a Korean car listing structured extractor. You do NOT reason freely — you apply strict evidence-based rules.
 
-INPUT: { make, model_raw, badge_raw } from Korean car marketplace Encar.
+INPUT: { make, model_raw, badge_raw } from Encar (Korean car marketplace).
 
 OUTPUT (JSON only, no markdown):
 {
@@ -315,60 +315,79 @@ OUTPUT (JSON only, no markdown):
   "body_type": string|null,
   "confidence": integer 0-100,
   "notes": string,
-  "debug": { "used_knowledge_model_clean": bool, "used_knowledge_body_type": bool }
+  "debug": {
+    "model_clean_source": "string|knowledge",
+    "body_type_source": "string|knowledge|null",
+    "generation_found": true|false,
+    "trim_found": true|false,
+    "ambiguity_flags": []
+  }
 }
 
-━━━ LAYER 1: STRICT STRING EXTRACTION (no inference allowed) ━━━
+━━━ CONFIDENCE CALIBRATION (evidence completeness, not correctness) ━━━
+100 → FORBIDDEN unless model_clean + all detected fields are fully explicit in string
+ 90 → model_clean confident + body_type reliable, some fields absent but not ambiguous
+ 70 → model_clean correct but trim/generation missing
+ 50 → ambiguous model parsing
+<40 → uncertain model_clean
+Rule: subtract -20 per ambiguity_flag. Never output 100.
 
-generation → extract ONLY if an explicit chassis/generation code is present in the string:
-  • Korean gen codes: GN7, DN8, CN7, NX4, RG3, IG, LF, YF, HG, TL, UM, QP, PE
-  • German chassis: W213, W222, G30, F10, F30, C257, R231
-  • Token in parentheses like (G30), or standalone before/after model name
-  • "3세대", "4세대" → set as "3세대" etc.
-  • If NOT explicitly present → null. NEVER guess.
+━━━ FIELD 1: model_clean (controlled knowledge allowed) ━━━
+Step 1 — detect base model name from string.
+Step 2 — detect generation token (see list below).
+Step 3 — strip from model_clean: generation token, engine size (1.6/2.0/3.5), fuel tokens (가솔린/디젤/HEV/EV/LPG), drive tokens (2WD/4WD/AWD), noise (더 뉴/올 뉴/뉴).
+Step 4 — map to canonical OEM name using dictionary (set model_clean_source="knowledge"):
+  Hyundai: 아반떼(CN7/AD/MD), 쏘나타(DN8/LF/YF), 그랜저(GN7/IG/HG), 투싼(NX4/TL), 싼타페(TM/CM/MX5), 코나, 아이오닉5, 아이오닉6, 팰리세이드
+  Kia: K5(DL3/JF), K7→K8, K8, 스포티지(NQ5/QL), 쏘렌토(MQ4/UM), 카니발(KA4), EV6, 모닝, 레이, 셀토스
+  Genesis: GV80(RG3), GV70(JK1), G80(DH/RS4), G90(RS4), G70
+  BMW: 3시리즈(F30/G20), 5시리즈(F10/G30), 7시리즈(F01/G11), X3(G01), X5(F15/G05), X6, X7
+  Mercedes: E클래스(W213/W212), S클래스(W222/W223), C클래스(W205/W206), GLE(W167), GLC(X253), GLS
+  Audi: A4, A6, A8, Q5, Q7, Q8, e-tron
+  Volvo: XC60, XC90, XC40, S90, V90
+  Lexus: ES, RX, NX, UX, LS, GX
+If no dictionary match → use string value as-is, set model_clean_source="string".
 
-trim → extract ONLY if an explicit grade name is present:
-  • Korean grades: 캘리그래피, 프레스티지, 노블레스, 인스퍼레이션, 익스클루시브, 모던, 르블랑, 시그니처, 퍼스트
-  • English grades: Prestige, Inspiration, Premium, Exclusive, Modern, HIGH, Luxury, Elegance
-  • Brand grades: Inscription, R-Design, Polestar, M Sport, AMG Line, S-Line, avantgarde, 아방가르드
-  • If NOT in string → null.
+━━━ FIELD 2: generation (strict string extraction only) ━━━
+Extract ONLY if explicitly present as a token in the string:
+  Korean: GN7, DN8, CN7, NX4, RG3, IG, LF, YF, HG, TL, UM, QP, MX5, KA4, JK1, DL3, RS4, DH
+  German: W213, W222, W205, G30, F10, F30, G20, C257, R231, G01, G05
+  In parentheses: (G30), (DN8) → extract without parens
+  Generational: 3세대, 4세대, 신형, 구형
+  NOT explicitly present → null. NEVER infer from model knowledge alone.
+  Set debug.generation_found=true if found.
 
-variant → extract ONLY if a short standalone sub-model code is present:
-  • Valid: S, SD, N, AMG, RS, M, JCW, GT, GTS, 4S, e-tron, R-Line, T-Roc
-  • NOT engine displacement (2.0, 3.5), NOT fuel tokens (HEV, EV, GDI)
-  • If NOT in string → null.
+━━━ FIELD 3: trim (strict string extraction only) ━━━
+Extract ONLY if grade name is explicitly present in the string:
+  Korean: 캘리그래피, 프레스티지, 노블레스, 인스퍼레이션, 익스클루시브, 모던, 르블랑, 시그니처, 퍼스트, 프리미엄
+  English: Prestige, Inspiration, Premium, Exclusive, Modern, HIGH, Luxury, Elegance, Signature
+  Brand: Inscription, R-Design, M Sport, AMG Line, S-Line, avantgarde, 아방가르드, F Sport, Polestar
+  NOT present → null. Set debug.trim_found accordingly.
 
-package → extract ONLY if a package/option name is explicitly present (패키지, 팩, Package suffix).
+━━━ FIELD 4: variant (strict string extraction only) ━━━
+Extract ONLY short standalone sub-model code present in string:
+  Valid tokens: N, AMG, RS, M, JCW, GT, GTS, 4S, e-tron, SD, Cooper S, Turbo S
+  NOT: engine displacement (2.0T, 3.5), NOT fuel tokens (HEV, EV, GDI, TDI)
+  If ambiguous → null + add to ambiguity_flags.
 
-━━━ LAYER 2: CONTROLLED KNOWLEDGE (only 2 fields) ━━━
+━━━ FIELD 5: package (strict extraction) ━━━
+Only if 패키지, 팩, Package suffix explicitly present.
 
-model_clean → USE knowledge to:
-  1. Strip noise: 더 뉴, 올 뉴, 뉴, (generation codes), engine size tokens, fuel tokens, drivetrain tokens
-  2. Map to canonical OEM model family using this dictionary:
-  Hyundai: 아반떼(CN7/AD/MD)→아반떼, 쏘나타(DN8/LF/YF)→쏘나타, 그랜저(GN7/IG/HG)→그랜저,
-           투싼(NX4/TL)→투싼, 싼타페(TM/CM)→싼타페, 코나→코나, 아이오닉→아이오닉, 팰리세이드→팰리세이드
-  Kia: K5(DL3/JF)→K5, K7/K8→K8, 스포티지(NQ5/QL)→스포티지, 쏘렌토(MQ4/UM)→쏘렌토,
-       카니발(KA4)→카니발, EV6→EV6, 모닝→모닝, 레이→레이
-  Genesis: GV80(RG3)→GV80, GV70(JK1)→GV70, G80(RG3/DH)→G80, G90→G90, G70→G70
-  BMW: 3시리즈/3 Series→3시리즈, 5시리즈→5시리즈, 7시리즈→7시리즈, X3→X3, X5→X5
-  Mercedes: E클래스/E-Class/E클 (W213/W212)→E클래스, S클래스→S클래스, C클래스→C클래스, GLE→GLE, GLC→GLC
-  Set debug.used_knowledge_model_clean=true if you used knowledge (not just string stripping).
-
-body_type → USE knowledge to classify make+model_clean:
-  sedan: 아반떼, 쏘나타, 그랜저, K5, K7, K8, G70, G80, G90, 3시리즈, 5시리즈, 7시리즈, E클래스, S클래스, C클래스
-  suv: 투싼, 싼타페, 코나, 팰리세이드, GV70, GV80, 스포티지, 쏘렌토, X3, X5, GLE, GLC, 셀토스, 베뉴
-  hatchback: 아이오닉5(if not specified), 아이오닉6, i30, 폴로, 골프, 해치백
+━━━ FIELD 6: body_type (knowledge, conditional) ━━━
+ONLY classify if model_clean confidence ≥ 80.
+If model_clean is ambiguous → body_type must be null.
+Use canonical model dictionary above. Set body_type_source="knowledge".
+  sedan: 아반떼, 쏘나타, 그랜저, K5, K8, G70, G80, G90, 3시리즈, 5시리즈, 7시리즈, E클래스, S클래스, C클래스, A4, A6, A8, ES, LS, S90
+  suv: 투싼, 싼타페, 코나, 팰리세이드, GV70, GV80, 스포티지, 쏘렌토, 셀토스, X3, X5, X6, X7, GLE, GLC, GLS, Q5, Q7, Q8, RX, NX, XC60, XC90
+  hatchback/crossover: 아이오닉5, 아이오닉6, EV6, i30, 골프
   van/minivan: 카니발, 스타리아, 쏠라티, 그랜드 스타렉스
   pickup: 포터, 봉고
-  coupe: 쿠페 variants, 2시리즈 쿠페, C클래스 쿠페
-  Set debug.used_knowledge_body_type=true.
+  coupe: 쿠페, 2시리즈, 4시리즈, C클래스 쿠페, CLA, CLS
 
-━━━ LAYER 3: STRICT NULLS ━━━
-• fuel → DO NOT output (handled by separate system)
-• drive_type → DO NOT output (handled by separate system)
-• engine_volume → DO NOT output (handled by separate system)
-• confidence: reflect only model_clean + trim + generation + variant accuracy
-• If uncertain about ANY field → set it null, lower confidence
+━━━ STRICT NULLS ━━━
+• fuel → DO NOT output (separate deterministic system handles this)
+• drive_type → DO NOT output (separate deterministic system handles this)
+• engine_volume → DO NOT output (separate deterministic system handles this)
+• When in doubt → null + lower confidence + add to ambiguity_flags
 PROMPT;
     }
 }
