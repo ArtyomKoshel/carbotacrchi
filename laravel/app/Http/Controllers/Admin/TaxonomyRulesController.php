@@ -307,4 +307,47 @@ PROMPT;
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function approveHighConfidence(Request $request): JsonResponse
+    {
+        if (session('admin_role') !== 'super') {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $items = TaxonomyAnomalyQueue::query()
+            ->where('status', 'ai_reviewed')
+            ->whereNotNull('suggested_action')
+            ->whereNotNull('suggested_value')
+            ->where('suggestion_confidence', '>=', 0.90)
+            ->get();
+
+        $created = 0;
+        foreach ($items as $item) {
+            $exists = TaxonomyRule::query()
+                ->where('source', $item->source ?? 'encar')
+                ->where('make', $item->make ?? null)
+                ->where('unknown_tail', $item->unknown_tail)
+                ->where('action', $item->suggested_action)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$exists) {
+                TaxonomyRule::create([
+                    'source'       => $item->source ?? 'encar',
+                    'make'         => $item->make ?: null,
+                    'unknown_tail' => $item->unknown_tail,
+                    'action'       => $item->suggested_action,
+                    'action_value' => $item->suggested_value,
+                    'priority'     => 90,
+                    'is_active'    => true,
+                    'notes'        => 'auto-approved conf=' . round(($item->suggestion_confidence ?? 0) * 100) . '%',
+                ]);
+                $created++;
+            }
+
+            $item->update(['status' => 'rule_created']);
+        }
+
+        return response()->json(['created' => $created, 'processed' => $items->count()]);
+    }
 }

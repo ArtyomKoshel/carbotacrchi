@@ -182,6 +182,7 @@ class NormalizeEncarTaxonomy extends Command
                 $ruleFuel = $rulePatch['fuel'] ?? null;
                 $ruleDriveType = $rulePatch['drive_type'] ?? null;
                 $ruleVariant = $rulePatch['variant'] ?? null;
+                $ruleBodyType = $rulePatch['body_type'] ?? null;
 
                 if ($unknownTail) {
                     $unknownTailHits[$unknownTail] = ($unknownTailHits[$unknownTail] ?? 0) + 1;
@@ -207,6 +208,10 @@ class NormalizeEncarTaxonomy extends Command
                 }
                 if ($ruleDriveType !== null && ($row->drive_type === null || $row->drive_type === '')) {
                     $patch['drive_type'] = $ruleDriveType;
+                    $techSpecAdded = true;
+                }
+                if ($ruleBodyType !== null && ($row->body_type === null || $row->body_type === '')) {
+                    $patch['body_type'] = $ruleBodyType;
                     $techSpecAdded = true;
                 }
                 if ($engineVol !== null && $row->engine_volume === null) {

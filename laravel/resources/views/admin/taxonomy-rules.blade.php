@@ -111,7 +111,17 @@
   </div>
 
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 overflow-auto">
-    <h3 class="text-sm text-gray-300 font-semibold mb-3">Очередь аномалий</h3>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm text-gray-300 font-semibold">Очередь аномалий</h3>
+      @if(session('admin_role') === 'super')
+      <button
+        onclick="approveAllHighConfidence('{{ csrf_token() }}')"
+        id="approve-all-btn"
+        class="px-3 py-1 rounded bg-green-700 hover:bg-green-600 text-white text-xs font-medium">
+        ✅ Approve all (≥90%)
+      </button>
+      @endif
+    </div>
     <table class="w-full text-xs text-gray-300">
       <thead class="text-gray-500 border-b border-gray-800">
         <tr>
@@ -226,6 +236,31 @@ async function aiClassify(id, csrf) {
 
   btn.disabled = false;
   btn.textContent = '🤖 Спросить AI';
+}
+
+async function approveAllHighConfidence(csrf) {
+  const btn = document.getElementById('approve-all-btn');
+  if (!confirm('Создать правила для всех AI-reviewed записей с confidence ≥ 90%?')) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Создаю...';
+
+  try {
+    const res = await fetch('/admin/taxonomy/queue/approve-high-confidence', {
+      method: 'POST',
+      headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+    });
+    const data = await res.json();
+    if (data.created !== undefined) {
+      btn.textContent = `✅ Создано: ${data.created} правил`;
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      btn.textContent = '❌ ' + (data.error || 'Ошибка');
+      btn.disabled = false;
+    }
+  } catch (e) {
+    btn.textContent = '❌ ' + e.message;
+    btn.disabled = false;
+  }
 }
 </script>
 @endsection

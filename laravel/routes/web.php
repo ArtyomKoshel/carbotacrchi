@@ -68,7 +68,8 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::delete('/taxonomy/rules/{id}',        [TaxonomyRulesController::class, 'deleteRule'])->name('taxonomy.rules.delete');
     Route::patch('/taxonomy/queue/{id}',         [TaxonomyRulesController::class, 'updateQueue'])->name('taxonomy.queue.update');
     Route::post('/taxonomy/queue/{id}/create-rule', [TaxonomyRulesController::class, 'createRuleFromQueue'])->name('taxonomy.queue.create-rule');
-    Route::post('/taxonomy/queue/{id}/ai-classify', [TaxonomyRulesController::class, 'aiClassifyQueue'])->name('taxonomy.queue.ai-classify');
+    Route::post('/taxonomy/queue/{id}/ai-classify',   [TaxonomyRulesController::class, 'aiClassifyQueue'])->name('taxonomy.queue.ai-classify');
+    Route::post('/taxonomy/queue/approve-high-confidence', [TaxonomyRulesController::class, 'approveHighConfidence'])->name('taxonomy.queue.approve-high-confidence');
 
     // Lots browse
     Route::get('/lots-browse',                   [AdminLotsController::class, 'browse'])->name('lots-browse');

@@ -30,6 +30,7 @@ class TaxonomyRuleEngine
             'fuel' => null,
             'drive_type' => null,
             'variant' => null,
+            'body_type' => null,
         ];
 
         foreach ($this->rules() as $rule) {
@@ -74,6 +75,7 @@ class TaxonomyRuleEngine
             'fuel' => $state['fuel'],
             'drive_type' => $state['drive_type'],
             'variant' => $state['variant'],
+            'body_type' => $state['body_type'],
         ];
     }
 
@@ -163,6 +165,16 @@ class TaxonomyRuleEngine
             case 'set_variant':
                 if ($state['variant'] === null && $value !== '') {
                     $state['variant'] = $value;
+                    $suffix = ' ' . $value;
+                    if (str_ends_with($state['model'], $suffix)) {
+                        $state['model'] = trim(substr($state['model'], 0, -strlen($suffix)));
+                    }
+                }
+                break;
+
+            case 'set_body_type':
+                if ($state['body_type'] === null && $value !== '') {
+                    $state['body_type'] = $value;
                 }
                 break;
 
