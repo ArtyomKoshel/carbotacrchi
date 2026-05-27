@@ -15,7 +15,7 @@ class AiClassifyPatterns extends Command
         {--source=encar   : Source filter}
         {--make=          : Filter by make (optional)}
         {--limit=50       : Number of unique patterns to process}
-        {--confidence=90  : Auto-create rule threshold (0-100)}
+        {--confidence=50  : Auto-create rule threshold (0-100)}
         {--dry-run        : Show results without saving}
         {--sleep=4        : Seconds to sleep between API calls (default 4 to stay under TPM limit)}';
 
@@ -129,13 +129,15 @@ class AiClassifyPatterns extends Command
             $parseConf     = (int) ($result['parse_confidence'] ?? 0);
             $notes         = trim((string) ($result['notes'] ?? ''));
 
-            // PHP-side deterministic data_completeness score
-            $completeness = 60;
-            if ($modelClean !== '') $completeness += 20;
-            if ($generationCode !== null) $completeness += 10;
-            if ($bodyType !== null) $completeness += 10;
-            if ($trim !== null) $completeness += 10;
-            if ($variant !== null) $completeness += 5;
+            // PHP-side deterministic completeness score (additive from 0)
+            // Reflects only what was actually extracted — not dictionary knowledge alone
+            $completeness = 0;
+            if ($modelClean !== '') $completeness += 40;           // model identified
+            if ($generationCode !== null) $completeness += 20;     // chassis code explicit
+            elseif ($generationLabel !== null) $completeness += 15; // generational label explicit
+            if ($trim !== null) $completeness += 15;               // trim grade explicit
+            if ($variant !== null) $completeness += 10;            // variant code explicit
+            if ($bodyType !== null) $completeness += 10;           // body from dictionary
             $completeness = min(95, $completeness);
 
             $confidence = $completeness;
