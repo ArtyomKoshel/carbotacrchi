@@ -14,9 +14,10 @@ class NormalizeEncarTaxonomy extends Command
     protected $signature = 'lots:normalize-encar-taxonomy
         {--apply : Persist updates (default mode is dry-run)}
         {--limit=0 : Max lots to scan (0 = no limit)}
-        {--chunk=1000 : Chunk size for scanning rows}
+        {--chunk=2000 : Chunk size for scanning rows}
         {--source=encar : Source to process (kept for flexibility)}
-        {--random : Sample lots in random order (for quick dry-run iteration)}';
+        {--random : Sample lots in random order (for quick dry-run iteration)}
+        {--only-empty : Only process lots with empty trim/generation (much faster)}';
 
     protected $description = 'Normalize Encar model taxonomy: clean model, infer generation, and fill empty trim where possible';
 
@@ -103,10 +104,21 @@ class NormalizeEncarTaxonomy extends Command
         $packageUpdates = 0;
         $samples = [];
 
+        $onlyEmpty = (bool) $this->option('only-empty');
+
         $baseQuery = DB::table('lots')
             ->where('source', $source)
             ->whereNotNull('model')
             ->where('model', '!=', '');
+
+        if ($onlyEmpty) {
+            $baseQuery->where(function ($q) {
+                $q->whereNull('trim')
+                  ->orWhere('trim', '')
+                  ->orWhere('trim', '(세부등급 없음)');
+            });
+            $this->line('Filter: only-empty (trim IS NULL or empty)');
+        }
 
         if ($limit > 0) {
             $baseQuery->limit($limit);
@@ -286,14 +298,19 @@ class NormalizeEncarTaxonomy extends Command
 
         $total = (clone $baseQuery)->count();
         $this->line("Total lots to process: {$total}");
+        $startTime = microtime(true);
 
         if ($random) {
             $processRow($baseQuery->inRandomOrder()->get());
         } else {
-            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$processed, $total) {
+            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$processed, $total, $startTime) {
                 $result = $processRow($rows);
                 $pct = $total > 0 ? round($processed / $total * 100) : 0;
-                $this->line("  [{$pct}%] processed {$processed}/{$total} ...");
+                $elapsed = round(microtime(true) - $startTime);
+                $eta = ($processed > 0 && $total > $processed)
+                    ? round(($elapsed / $processed) * ($total - $processed)) . 's'
+                    : '?';
+                $this->line("  [{$pct}%] {$processed}/{$total} | elapsed {$elapsed}s | ETA ~{$eta}");
                 return $result;
             }, 'id', 'id');
         }
@@ -529,6 +546,8 @@ class NormalizeEncarTaxonomy extends Command
             if (in_array($t, $tailTokens, true)) continue;
             // Decimal engine displacements (2.0, 1.6T, 2.2d) — safe to strip, never model name parts
             if (preg_match('/^\d+\.\d+[TDLtdl]?$/', $t)) continue;
+            // Audi/MB engine grade codes (35, 40, 45, 50, 55, 60, 65) — only appear as premium brand powertrain grades
+            if (preg_match('/^[3-6][05]$/', $t)) continue;
             $clean[] = $t;
         }
         $result = trim(implode(' ', $clean));
@@ -732,7 +751,8 @@ class NormalizeEncarTaxonomy extends Command
 
         $cnt = count($tokens);
         // Check longest tail first (3 → 2 → 1) so "AMG 패키지 플러스" beats "패키지 플러스"
-        if ($cnt >= 3) {
+        // Require cnt>=4 for 3-token check: ensures at least 1 token remains as model root
+        if ($cnt >= 4) {
             $tail3 = implode(' ', array_slice($tokens, -3));
             if ($tail3 !== '' && preg_match(self::UNKNOWN_TAIL_HINT_RE, $tail3)) {
                 return $tail3;

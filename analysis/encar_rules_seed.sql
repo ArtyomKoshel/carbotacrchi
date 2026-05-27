@@ -52,6 +52,15 @@ FROM (
     UNION ALL SELECT '런치팩'
     UNION ALL SELECT '카본패키지'
     UNION ALL SELECT '컨테퍼러리팩'
+    -- Sport/adventure/special packages from dry-run
+    UNION ALL SELECT '어드벤처 패키지'
+    UNION ALL SELECT '캠퍼 패키지'
+    UNION ALL SELECT '라이트 패키지'
+    UNION ALL SELECT '스포츠 패키지'
+    UNION ALL SELECT '프리미엄 패키지'
+    UNION ALL SELECT '리저브 제트 패키지'
+    UNION ALL SELECT '쿠페 프리미엄 패키지'
+    UNION ALL SELECT '바이작 패키지'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'package_hint' AND x.term = t.term
@@ -376,6 +385,19 @@ FROM (
     UNION ALL SELECT 'R-플러스'
     -- Renault Korea Bold editions
     UNION ALL SELECT '볼드에디션'      UNION ALL SELECT '더 볼드'
+    -- Mercedes AMG line (Korean) — fixes EQA250/EQB300/EQS450+ leaking into tail
+    UNION ALL SELECT 'AMG 라인'
+    -- VW/Audi sport lines
+    UNION ALL SELECT '스포트라인'      UNION ALL SELECT '디자인라인'
+    -- Edition types from dry-run
+    UNION ALL SELECT '블랙에디션'      UNION ALL SELECT '런치에디션'
+    UNION ALL SELECT 'ED에디션'               UNION ALL SELECT '퍼스트에디션'
+    UNION ALL SELECT '온라인 에디션'     UNION ALL SELECT '그린에디션'
+    -- Grade suffixes that lose prefix after 2.0/GDI stripping
+    UNION ALL SELECT '케어플러스'      UNION ALL SELECT '레드라인'
+    -- Hyundai/Kia special grade suffixes
+    UNION ALL SELECT '스마트 스페셜'  UNION ALL SELECT 'W 스페셜'
+    UNION ALL SELECT '온라인 스페셜'  UNION ALL SELECT '스페셜'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'trim_hint' AND x.term = t.term
