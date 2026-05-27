@@ -677,7 +677,9 @@ class NormalizeEncarTaxonomy extends Command
             return null;
         }
 
-        $tokens = preg_split('/\s+/u', $modelNoGen) ?: [];
+        // Run on cleaned model so drive tokens (2WD, 4WD, xDrive...) don't pollute tail2
+        $cleaned = $this->cleanTechSpecTokensFromModel($modelNoGen);
+        $tokens = preg_split('/\s+/u', $cleaned) ?: [];
         if (count($tokens) < 2) {
             return null;
         }

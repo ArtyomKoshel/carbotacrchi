@@ -204,6 +204,8 @@ FROM (
     UNION ALL SELECT '4MATIC'      UNION ALL SELECT '4MATIC+'    UNION ALL SELECT '블루텍'
     UNION ALL SELECT 'GTe'         UNION ALL SELECT 'LPLI'       UNION ALL SELECT 'LPe'
     UNION ALL SELECT '4TRONIC'     UNION ALL SELECT '콰트로'
+    -- Mercedes diesel suffixes
+    UNION ALL SELECT 'CDI'         UNION ALL SELECT 'd'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'tail_powertrain_token' AND x.term = t.term
@@ -341,6 +343,10 @@ FROM (
     UNION ALL SELECT 'Turbo'           UNION ALL SELECT 'GT3'
     UNION ALL SELECT 'GT3 RS'          UNION ALL SELECT 'Carrera'
     UNION ALL SELECT '컴페티션'
+    -- Common Korean trim used by almost all brands
+    UNION ALL SELECT '프리미엄'
+    -- Compound edition forms (no space, caught as single token)
+    UNION ALL SELECT '온라인에디션'
 ) t
 LEFT JOIN taxonomy_terms x
   ON x.source = 'encar' AND x.term_type = 'trim_hint' AND x.term = t.term
