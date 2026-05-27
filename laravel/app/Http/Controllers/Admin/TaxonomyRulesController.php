@@ -216,21 +216,27 @@ class TaxonomyRulesController extends Controller
         }
 
         $prompt = <<<'PROMPT'
-You are an expert in Korean car marketplace (Encar) taxonomy. A token at the end of a car model string could not be automatically classified. Determine what it represents.
+You are an expert in Korean car marketplace (Encar) taxonomy. A token at the end of a car model string could not be automatically classified. Determine what it represents and provide a useful explanation in Russian.
 
 Fields: make, model (full original string from Encar), tail (the unclassified token).
 
-Use your knowledge of Korean and global car trims, option packages, engine variants, generations, and body styles.
+IMPORTANT: The tail sometimes includes the model name as a prefix (e.g., tail="코란도 R-플러스" for Korando model). In that case, strip the model prefix — the actual token is "R-플러스" which is a trim, not a model_suffix.
 
 Classify "tail" as one of:
-- "trim": grade/trim level (프레스티지, 노블레스, 스포츠, AMG, N라인, 모던, 에디션 variants, GT-Line, F Sport, etc.)
+- "trim": grade/trim level (프레스티지, 노블레스, 스포츠, AMG, N라인, 모던, 에디션 variants, GT-Line, F Sport, R-플러스, etc.)
 - "package": option package (패키지, 팩, 래더패키지, AMG패키지, 디자인패키지, 런치팩, etc.)
 - "variant": engine/performance code (320d, S500L, 55 TFSI, 2.0T, xDrive40i, etc.)
 - "body_style": body type (쿠페, 해치백, 왜건, 카브리올레, 4도어, etc.)
 - "model_suffix": sub-model name that belongs in model field (뉴 라이즈, 더 볼드, 마이스터, etc.)
 - "noise": irrelevant, remove
 
-Return JSON: {"type":"...","value":"...","confidence":0.0-1.0,"reason":"one sentence"}
+Return JSON with these fields:
+- "type": classification type (one of above)
+- "value": the clean token (strip model name prefix if present, strip drive tokens like 2WD/4WD)
+- "confidence": 0.0-1.0
+- "translation_en": English translation/meaning of the token (e.g. "R-Plus", "Sport", "Prestige", "Long Range Edition")
+- "context": 1-2 sentences in Russian explaining what this trim/package/variant means for this car model, which years, what it includes or how it differs from base trim. Be specific and informative.
+- "reason": one sentence in Russian explaining why you chose this classification
 PROMPT;
 
         $input = json_encode([
@@ -288,11 +294,13 @@ PROMPT;
             ]);
 
             return response()->json([
-                'type'       => $result['type'],
-                'value'      => $result['value'] ?? $row->unknown_tail,
-                'action'     => $suggested_action,
-                'confidence' => $confidence,
-                'reason'     => $result['reason'] ?? '',
+                'type'           => $result['type'],
+                'value'          => $result['value'] ?? $row->unknown_tail,
+                'action'         => $suggested_action,
+                'confidence'     => $confidence,
+                'translation_en' => $result['translation_en'] ?? null,
+                'context'        => $result['context'] ?? null,
+                'reason'         => $result['reason'] ?? '',
             ]);
         } catch (\Throwable $e) {
             Log::error('[TaxonomyAI] ' . $e->getMessage());

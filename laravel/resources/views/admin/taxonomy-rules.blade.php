@@ -198,14 +198,18 @@ async function aiClassify(id, csrf) {
       box.textContent = '❌ ' + data.error;
       box.className = 'mt-1 text-xs text-red-400';
     } else {
+      const typeLabels = { trim: 'комплектация', package: 'пакет опций', variant: 'вариант двигателя', body_style: 'тип кузова', model_suffix: 'часть модели', noise: 'шум' };
       const typeColors = { trim: 'text-green-400', package: 'text-blue-400', variant: 'text-yellow-400', body_style: 'text-orange-400', model_suffix: 'text-cyan-400', noise: 'text-gray-400' };
       const color = typeColors[data.type] || 'text-gray-300';
       const pct = Math.round((data.confidence || 0) * 100);
+      const label = typeLabels[data.type] || data.type;
+      const enPart = data.translation_en ? ` <span class="text-gray-400">(${data.translation_en})</span>` : '';
       box.innerHTML =
-        `<div class="${color} font-semibold">${data.type} · ${pct}%</div>` +
-        `<div class="text-gray-300">→ "${data.value}"</div>` +
-        `<div class="text-gray-500 mt-1 italic">${data.reason || ''}</div>`;
-      box.className = 'mt-1 text-xs';
+        `<div class="${color} font-semibold">${label} · ${pct}%</div>` +
+        `<div class="text-white mt-0.5">"${data.value}"${enPart}</div>` +
+        (data.context ? `<div class="text-gray-300 mt-1">${data.context}</div>` : '') +
+        `<div class="text-gray-500 mt-1 italic text-xs">${data.reason || ''}</div>`;
+      box.className = 'mt-1 text-xs max-w-xs';
 
       // Update suggestion cell
       const sugg = document.getElementById('qsugg-' + id);
