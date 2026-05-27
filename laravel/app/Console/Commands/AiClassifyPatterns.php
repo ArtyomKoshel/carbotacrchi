@@ -346,28 +346,6 @@ class AiClassifyPatterns extends Command
         // NOTE: fuel/drive_type/engine_volume are handled by deterministic rules (encar_rules_seed.sql)
         // NOTE: set_variant disabled — engine grades (300d, 45 TFSI, 2.5T) are not variants
 
-        // Anchor rule: model_contains = full raw string, used by WHERE NOT EXISTS pre-filter
-        // to detect already-processed patterns on subsequent runs. Priority 1 = never fires first.
-        $anchorExists = TaxonomyRule::query()
-            ->where('source', $source)
-            ->where('make', $makeVal)
-            ->where('model_contains', $modelRaw)
-            ->where('notes', 'LIKE', 'ai_classify_patterns%')
-            ->exists();
-        if (!$anchorExists) {
-            TaxonomyRule::create([
-                'source'         => $source,
-                'make'           => $makeVal,
-                'model_contains' => $modelRaw,
-                'action'         => 'set_body_type',
-                'action_value'   => $bodyType ?? '',
-                'priority'       => 1,
-                'is_active'      => false,
-                'notes'          => $notes . ' [anchor]',
-            ]);
-            $created++;
-        }
-
         foreach ($actions as $actionData) {
             $exists = TaxonomyRule::query()
                 ->where('source', $source)
