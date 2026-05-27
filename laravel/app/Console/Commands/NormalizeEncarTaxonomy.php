@@ -102,6 +102,7 @@ class NormalizeEncarTaxonomy extends Command
         $techSpecUpdates = 0;
         $variantUpdates = 0;
         $packageUpdates = 0;
+        $cylinderUpdates = 0;
         $samples = [];
 
         $onlyEmpty = (bool) $this->option('only-empty');
@@ -138,6 +139,7 @@ class NormalizeEncarTaxonomy extends Command
             &$techSpecUpdates,
             &$variantUpdates,
             &$packageUpdates,
+            &$cylinderUpdates,
             &$samples
         ) {
             foreach ($rows as $row) {
@@ -191,6 +193,7 @@ class NormalizeEncarTaxonomy extends Command
                     $normalizedModel = trim(str_replace($heuristicVariant, '', $normalizedModel));
                     $normalizedModel = $this->normalizeSpace($normalizedModel);
                 }
+                $normalizedModel = $this->stripCylinderTokenFromModel($normalizedModel);
                 $normalizedModel = $this->cleanTechSpecTokensFromModel($normalizedModel);
 
                 $patch = [];
@@ -209,6 +212,11 @@ class NormalizeEncarTaxonomy extends Command
                 if ($engineVol !== null && $row->engine_volume === null) {
                     $patch['engine_volume'] = $engineVol;
                     $techSpecAdded = true;
+                }
+                $cylinders = $this->extractCylinders($fullSearchStr);
+                if ($cylinders !== null && ($row->cylinders ?? null) === null) {
+                    $patch['cylinders'] = $cylinders;
+                    $cylinderUpdates++;
                 }
                 if ($techSpecAdded) {
                     $techSpecUpdates++;
@@ -328,6 +336,7 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("Trim updates: {$trimUpdates}");
         $this->line("Variant updates: {$variantUpdates}");
         $this->line("Package updates: {$packageUpdates}");
+        $this->line("Cylinder updates: {$cylinderUpdates}");
         $this->line("Tech spec updates: {$techSpecUpdates}");
         if ($apply) {
             $this->line("Updated: {$updated}");
@@ -505,6 +514,27 @@ class NormalizeEncarTaxonomy extends Command
         }
 
         return [trim(implode(' ', $tokens)), $stripped];
+    }
+
+    private const CYLINDER_TOKEN_RE = '/\b(V6|V8|V10|V12|W12|W16|I4|I6)\b/i';
+
+    private function extractCylinders(string $text): ?int
+    {
+        if (preg_match(self::CYLINDER_TOKEN_RE, $text, $m)) {
+            $map = [
+                'V6' => 6, 'V8' => 8, 'V10' => 10, 'V12' => 12,
+                'W12' => 12, 'W16' => 16, 'I4' => 4, 'I6' => 6,
+            ];
+            return $map[strtoupper($m[1])] ?? null;
+        }
+        return null;
+    }
+
+    private function stripCylinderTokenFromModel(string $model): string
+    {
+        return $this->normalizeSpace(
+            preg_replace(self::CYLINDER_TOKEN_RE, ' ', $model) ?? $model
+        );
     }
 
     private function cleanTechSpecTokensFromModel(string $model): string
