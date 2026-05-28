@@ -164,9 +164,35 @@ class NormalizeEncarTaxonomy extends Command
                     'unknown_tail' => null,
                 ], false);
 
+                // Merge rule engine output.
+                // model is special: the engine always echoes it back unchanged when no rule
+                // fires — only accept the value when it actually differs from what went in.
+                $preRuleModel = $patch['model'] ?? $modelRaw;
                 foreach (['model', 'generation', 'trim', 'fuel', 'drive_type', 'body_type', 'variant', 'package'] as $f) {
-                    if (array_key_exists($f, $rulePatch) && $rulePatch[$f] !== null) {
-                        $patch[$f] = $rulePatch[$f];
+                    if (!array_key_exists($f, $rulePatch) || $rulePatch[$f] === null) {
+                        continue;
+                    }
+                    if ($f === 'model' && $rulePatch['model'] === $preRuleModel) {
+                        continue; // engine echoed model unchanged — don't pollute the patch
+                    }
+                    $patch[$f] = $rulePatch[$f];
+                }
+
+                // Strip any field whose new value already matches the current DB row.
+                // Prevents inflated counts and spurious updated_at touches.
+                foreach (array_keys($patch) as $f) {
+                    $dbVal  = $row->$f ?? null;
+                    $newVal = $patch[$f];
+                    if (is_float($newVal)) {
+                        $dbVal = $dbVal !== null ? (float) $dbVal : null;
+                    } elseif (is_int($newVal)) {
+                        $dbVal = $dbVal !== null ? (int) $dbVal : null;
+                    } else {
+                        $dbVal  = (string) ($dbVal ?? '');
+                        $newVal = (string) $newVal;
+                    }
+                    if ($newVal === $dbVal) {
+                        unset($patch[$f]);
                     }
                 }
 
