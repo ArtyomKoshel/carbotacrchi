@@ -99,6 +99,136 @@ class CatalogImport extends Command
             'i4'  => null, 'i6'  => null,  // inline-4 / inline-6
             'h4'  => null, 'h6'  => null,  // Subaru horizontally-opposed
         ],
+        // ── Engine/powertrain grade codes stripped from grade_kr to get trim_kr ──
+        // These codes appear as LEADING tokens in grade strings and are NOT trim names.
+        // (e.g. "E200 아방가르드" → strip "e200" → trim "아방가르드")
+        'grade_spec_code' => [
+            // ── Mercedes-Benz ────────────────────────────────────────────────
+            // E-Class
+            'e180' => null, 'e200' => null, 'e200d' => null,
+            'e220' => null, 'e220d' => null, 'e250' => null, 'e250d' => null,
+            'e300' => null, 'e300d' => null, 'e300e' => null,
+            'e350' => null, 'e350d' => null, 'e400' => null, 'e450' => null,
+            'e43' => null, 'e53' => null, 'e63' => null,
+            // C-Class
+            'c180' => null, 'c200' => null, 'c200d' => null,
+            'c220d' => null, 'c250' => null, 'c250d' => null,
+            'c300' => null, 'c300d' => null, 'c350e' => null,
+            'c43' => null, 'c63' => null,
+            // S-Class
+            's350' => null, 's350d' => null, 's400' => null, 's400d' => null,
+            's450' => null, 's500' => null, 's560' => null, 's560l' => null,
+            's580' => null, 's600' => null, 's63' => null, 's65' => null,
+            // GLE
+            'gle300d' => null, 'gle350d' => null, 'gle400d' => null,
+            'gle450' => null, 'gle53' => null, 'gle63' => null,
+            // GLC
+            'glc200' => null, 'glc220d' => null, 'glc250' => null,
+            'glc300' => null, 'glc300e' => null, 'glc43' => null, 'glc63' => null,
+            // GLS
+            'gls350d' => null, 'gls400d' => null, 'gls450' => null, 'gls63' => null,
+            // CLA
+            'cla180' => null, 'cla200' => null, 'cla250' => null,
+            'cla35' => null, 'cla45' => null,
+            // CLS
+            'cls300d' => null, 'cls350d' => null, 'cls400d' => null,
+            'cls450' => null, 'cls53' => null, 'cls63' => null,
+            // GLA / GLB
+            'gla200' => null, 'gla250' => null, 'gla35' => null, 'gla45' => null,
+            'glb200d' => null, 'glb220d' => null, 'glb250' => null, 'glb35' => null,
+            // ── BMW ──────────────────────────────────────────────────────────
+            // 2-Series
+            '216d' => null, '218d' => null, '218i' => null,
+            '220d' => null, '220i' => null, '225d' => null,
+            '228i' => null, '230d' => null, '230e' => null, '230i' => null,
+            'm235i' => null, 'm240i' => null,
+            // 3-Series
+            '316d' => null, '316i' => null, '318d' => null, '318i' => null,
+            '320d' => null, '320i' => null, '323i' => null,
+            '325d' => null, '325i' => null, '328d' => null, '328i' => null,
+            '330d' => null, '330e' => null, '330i' => null,
+            '335d' => null, '335i' => null, 'm340d' => null, 'm340i' => null,
+            // 4-Series
+            '418d' => null, '418i' => null, '420d' => null, '420i' => null,
+            '425d' => null, '428d' => null, '428i' => null,
+            '430d' => null, '430i' => null, '435d' => null, '435i' => null,
+            '440i' => null, 'm440d' => null, 'm440i' => null,
+            // 5-Series
+            '518d' => null, '520d' => null, '520i' => null,
+            '523d' => null, '525d' => null, '525i' => null,
+            '528d' => null, '528i' => null, '530d' => null, '530e' => null, '530i' => null,
+            '535d' => null, '535i' => null, '540d' => null, '540i' => null,
+            '545e' => null, '550i' => null, 'm550d' => null, 'm550i' => null,
+            // 7-Series
+            '730d' => null, '730i' => null, '735i' => null,
+            '740d' => null, '740i' => null, '740ld' => null, '740li' => null,
+            '745e' => null, '745le' => null,
+            '750e' => null, '750i' => null, '750li' => null,
+            '760i' => null, '760li' => null, 'm760i' => null,
+            // X-series combined tokens (xDriveXXi/d appear as single token in grade_kr)
+            'xdrive18d' => null, 'xdrive18i' => null,
+            'xdrive20d' => null, 'xdrive20i' => null,
+            'xdrive25d' => null, 'xdrive25i' => null,
+            'xdrive28i' => null, 'xdrive30d' => null, 'xdrive30e' => null, 'xdrive30i' => null,
+            'xdrive35d' => null, 'xdrive35i' => null,
+            'xdrive40d' => null, 'xdrive40e' => null, 'xdrive40i' => null,
+            'xdrive45e' => null, 'xdrive50i' => null,
+            'sdrive18d' => null, 'sdrive18i' => null,
+            'sdrive20d' => null, 'sdrive20i' => null, 'sdrive28i' => null, 'sdrive30i' => null,
+            // ── Audi ─────────────────────────────────────────────────────────
+            '35tfsi' => null, '40tfsi' => null, '45tfsi' => null,
+            '50tfsi' => null, '55tfsi' => null, '60tfsi' => null,
+            '30tdi' => null, '35tdi' => null, '40tdi' => null, '45tdi' => null,
+            '50tdi' => null, '55tdi' => null,
+            // ── Hyundai Grandeur composite gen+engine tokens ─────────────────
+            'hg220' => null, 'hg240' => null, 'hg260' => null,
+            // hg300/hg330 already in gen_exclude; repeat here for grade stripping
+            'hg300' => null, 'hg330' => null,
+            // ── Genesis power-output codes ────────────────────────────────────
+            // g300/g350/g400 already in gen_exclude; repeat for grade stripping
+            'g300' => null, 'g330' => null, 'g350' => null, 'g380' => null,
+            'g400' => null, 'g400d' => null, 'g450' => null,
+            // ── SsangYong / KG Mobility engine codes ─────────────────────────
+            'vs380' => null, 'cw700' => null, 'el300' => null,
+            // ── Land Rover ────────────────────────────────────────────────────
+            'sdv6' => null, 'sdv8' => null,
+            'td4' => null, 'td6' => null, 'td8' => null,
+            'si4' => null, 'si6' => null,
+            'd200' => null, 'd250' => null, 'd300' => null, 'd350' => null,
+            'p250' => null, 'p300' => null, 'p400' => null, 'p525' => null,
+            // ── Lexus ─────────────────────────────────────────────────────────
+            '700h' => null, '500h' => null, '450h' => null, '300h' => null,
+            // ── Volvo engine codes (separate from model/trim designations) ────
+            't2' => null, 't3' => null,
+            // Note: t4/t5/t6/t8/b4/b5/b6/d3/d4/d5 are in gen_non_chassis
+            // because they're used as both engine codes AND trim-level prefixes (B5 프로).
+        ],
+        // ── Engine displacement tokens stripped from grade_kr ─────────────
+        'grade_engine_vol' => [
+            // Plain decimal volumes common in Korean market
+            '1.0' => null, '1.2' => null, '1.4' => null, '1.5' => null,
+            '1.6' => null, '1.8' => null, '2.0' => null, '2.2' => null,
+            '2.4' => null, '2.5' => null, '2.7' => null, '3.0' => null,
+            '3.3' => null, '3.5' => null, '3.8' => null, '4.0' => null,
+            '4.4' => null, '4.7' => null, '5.0' => null, '5.5' => null,
+            '6.0' => null, '6.3' => null, '6.5' => null,
+            // With T/D/L suffix
+            '1.0t' => null, '1.2t' => null, '1.4t' => null, '1.5t' => null,
+            '1.6t' => null, '2.0t' => null, '2.0d' => null,
+            '2.2d' => null, '2.5t' => null, '3.0t' => null, '3.0d' => null,
+            '3.5t' => null, '4.4t' => null, '5.0l' => null,
+        ],
+        // ── Korean generation label tokens: 1세대, 2세대 … stripped from grade_kr ─
+        'grade_gen_label' => [
+            '1세대' => null, '2세대' => null, '3세대' => null, '4세대' => null,
+            '5세대' => null, '6세대' => null, '7세대' => null, '8세대' => null,
+        ],
+        // ── Korean seat-count tokens stripped from grade_kr ───────────────
+        'grade_seat' => [
+            '5인승' => null, '6인승' => null, '7인승' => null, '8인승' => null,
+            '9인승' => null, '10인승' => null, '11인승' => null, '12인승' => null,
+            '13인승' => null, '14인승' => null, '15인승' => null,
+        ],
         // ── Korean model name marketing prefixes — stripped to get canonical name ─
         // Sorted by specificity: multi-word before single-word (handled at runtime)
         'model_prefix' => [

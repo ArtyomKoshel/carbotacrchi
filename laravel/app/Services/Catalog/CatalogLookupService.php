@@ -235,14 +235,14 @@ class CatalogLookupService
         if ($this->specTokenSet === null) {
             $maps = $this->tokenMaps();
             $this->specTokenSet = [];
-            foreach (['fuel', 'drive', 'engine_family'] as $type) {
+            // All spec token types from catalog — nothing hardcoded here.
+            foreach ([
+                'fuel', 'drive', 'engine_family', 'cylinder_config',
+                'grade_spec_code', 'grade_engine_vol', 'grade_gen_label', 'grade_seat',
+            ] as $type) {
                 foreach (array_keys($maps[$type] ?? []) as $token) {
                     $this->specTokenSet[mb_strtolower((string) $token)] = true;
                 }
-            }
-            // Cylinder config codes (V6, V8, I4, I6 …) from DB
-            foreach (array_keys($maps['cylinder_config'] ?? []) as $token) {
-                $this->specTokenSet[mb_strtolower((string) $token)] = true;
             }
         }
 
@@ -250,20 +250,9 @@ class CatalogLookupService
         $keep   = [];
 
         foreach ($tokens as $tok) {
-            $lower = mb_strtolower($tok);
-
-            if (isset($this->specTokenSet[$lower])) {
+            if (isset($this->specTokenSet[mb_strtolower($tok)])) {
                 continue;
             }
-            // Engine displacement: 1.6, 2.2, 3.5 …
-            if (preg_match('/^\d+\.\d+$/u', $tok)) {
-                continue;
-            }
-            // Seat count: 5인승, 7인승
-            if (preg_match('/^\d{1,2}인승$/u', $tok)) {
-                continue;
-            }
-
             $keep[] = $tok;
         }
 
