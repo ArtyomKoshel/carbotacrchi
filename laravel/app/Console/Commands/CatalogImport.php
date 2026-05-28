@@ -102,12 +102,14 @@ class CatalogImport extends Command
         // ── Korean model name marketing prefixes — stripped to get canonical name ─
         // Sorted by specificity: multi-word before single-word (handled at runtime)
         'model_prefix' => [
-            '더 뉴'  => null,  // "The New" facelift
-            '올 뉴'  => null,  // "All New" full redesign
-            '올뉴'   => null,  // "All New" (no-space variant)
-            '더'     => null,  // standalone "더" (older Hyundai/Kia)
-            '뉴'     => null,  // "New" (older models)
-            '신형'   => null,  // "New model" / revised
+            '더 넥스트' => null,  // "The Next" (Chevrolet 더 넥스트 스파크/말리부/크루즈)
+            '더 뉴'     => null,  // "The New" facelift
+            '올 뉴'     => null,  // "All New" full redesign
+            '베리 뉴'   => null,  // "Very New" (Renault Samsung SM3/QM3 older marketing)
+            '올뉴'      => null,  // "All New" (no-space variant)
+            '더'        => null,  // standalone "더" (older Hyundai/Kia)
+            '뉴'        => null,  // "New" (older models)
+            '신형'      => null,  // "New model" / revised
         ],
         // ── Hard-exclude specific tokens from generation detection ────────
         'gen_exclude' => [
