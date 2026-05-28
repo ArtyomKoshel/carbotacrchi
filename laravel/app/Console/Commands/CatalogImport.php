@@ -95,7 +95,8 @@ class CatalogImport extends Command
             'ix' => null, 'i3' => null, 'i4' => null, 'i5' => null, 'i7' => null,
         ],
         // ── Cylinder configuration codes — stripped from grade_kr to get trim_kr ─
-        // (V6, V8, etc. are engine config, not trim names)
+        // mapped_value = null (token key IS the count: 'v8' → 8 → lots.cylinders).
+        // Layer 2 parses the int directly: preg_match('/^[a-z](\d+)$/', 'v8') → 8
         'cylinder_config' => [
             'v6'  => null, 'v8'  => null, 'v10' => null, 'v12' => null,
             'w12' => null, 'w16' => null,
@@ -383,6 +384,8 @@ class CatalogImport extends Command
             '스포츠패키지' => null,
         ],
         // ── Engine displacement tokens stripped from grade_kr ─────────────
+        // mapped_value = null (token key IS the numeric value).
+        // Layer 2 parses the float directly from the token: '2.0t' → 2.0 → lots.engine_volume
         'grade_engine_vol' => [
             // Plain decimal volumes common in Korean market
             '1.0' => null, '1.2' => null, '1.4' => null, '1.5' => null,

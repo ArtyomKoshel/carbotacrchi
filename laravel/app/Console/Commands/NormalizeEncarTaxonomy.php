@@ -175,13 +175,28 @@ class NormalizeEncarTaxonomy extends Command
                         if (($row->body_type ?? '') === '' && !isset($patch['body_type']) && isset($bodyMap[$tok])) {
                             $patch['body_type'] = $bodyMap[$tok]; continue;
                         }
-                        // Spec / engine tokens: strip but don't store (catalog miss = no columns)
-                        if (isset($specCodeMap[$tok]) || isset($engineVolMap[$tok])
-                            || isset($engFamMap[$tok]) || isset($cylMap[$tok])
+                        // Engine volume: token key IS the value (e.g. '2.0t' → 2.0, '2.2d' → 2.2)
+                        if (isset($engineVolMap[$tok])) {
+                            if ($row->engine_volume === null && !isset($patch['engine_volume'])
+                                && preg_match('/^(\d+\.\d+)/u', $rawTok, $m)) {
+                                $patch['engine_volume'] = (float) $m[1];
+                            }
+                            continue;
+                        }
+                        // Cylinder count: token key contains count (e.g. 'v8' → 8, 'w12' → 12, 'i6' → 6)
+                        if (isset($cylMap[$tok])) {
+                            if (($row->cylinders ?? null) === null && !isset($patch['cylinders'])
+                                && preg_match('/^[a-z](\d+)$/u', $tok, $m)) {
+                                $patch['cylinders'] = (int) $m[1];
+                            }
+                            continue;
+                        }
+                        // Other spec/engine tokens: strip, nothing to store
+                        if (isset($specCodeMap[$tok]) || isset($engFamMap[$tok])
                             || isset($genLabelMap[$tok]) || isset($seatMap[$tok])) {
                             continue;
                         }
-                        // Engine volume numeric pattern (e.g. "2.0", "3.5")
+                        // Bare numeric engine volume not in grade_engine_vol map
                         if (preg_match('/^(\d+\.\d+)$/u', $rawTok, $m)) {
                             $v = (float) $m[1];
                             if ($v >= 0.5 && $v <= 10.0) {
