@@ -263,7 +263,7 @@ class NormalizeEncarTaxonomy extends Command
         TaxonomyAnomalyQueue::query()->create([
             'source'              => $source,
             'make'                => $make,
-            'unknown_tail'        => null,
+            'unknown_tail'        => $modelRaw,
             'reason'              => $reason,
             'sample_lot_id'       => $lotId,
             'sample_model_raw'    => $modelRaw,
