@@ -53,7 +53,6 @@ class NormalizeEncarTaxonomy extends Command
              'engine_volume', 'seat_count', 'cylinders'],
             0
         );
-        $samples = [];
 
         $baseQuery = DB::table('lots')
             ->where('source', $source)
@@ -76,7 +75,7 @@ class NormalizeEncarTaxonomy extends Command
 
         $processRow = function ($rows) use (
             $apply, $limit, $source, $ruleEngine, $suggestions, $tokenMaps, $modelPrefixes,
-            &$counts, &$samples
+            &$counts
         ) {
             foreach ($rows as $row) {
                 if ($limit > 0 && $counts['processed'] >= $limit) {
@@ -207,14 +206,6 @@ class NormalizeEncarTaxonomy extends Command
                     }
                 }
 
-                $samples[] = [
-                    'id'      => $row->id,
-                    'model'   => $row->model . ' → ' . ($patch['model'] ?? $row->model),
-                    'trim'    => ($row->trim ?? '') . ' → ' . ($patch['trim'] ?? $row->trim ?? ''),
-                    'gen'     => ($row->generation ?? '') . ' → ' . ($patch['generation'] ?? $row->generation ?? ''),
-                    'catalog' => $catalogResult !== null ? 'HIT' : 'MISS',
-                ];
-
                 if ($apply) {
                     $patch['updated_at'] = now();
                     DB::table('lots')->where('id', $row->id)->update($patch);
@@ -249,15 +240,6 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("  engine_vol={$counts['engine_volume']}  seats={$counts['seat_count']}  cyl={$counts['cylinders']}");
         if ($apply) {
             $this->line("Updated:      {$counts['updated']}");
-        }
-
-        if (!empty($samples)) {
-            $this->line('');
-            $this->line('Samples:');
-            foreach ($samples as $s) {
-                $this->line(sprintf('#%s [%s] %s | trim: %s | gen: %s',
-                    $s['id'], $s['catalog'], $s['model'], $s['trim'], $s['gen']));
-            }
         }
 
         return self::SUCCESS;
