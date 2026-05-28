@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\TaxonomyAnomalyQueue;
+use App\Services\Catalog\CatalogLookupService;
 use App\Services\Taxonomy\TaxonomyRuleEngine;
 use App\Services\Taxonomy\TaxonomySuggestionService;
-use App\Services\Taxonomy\TaxonomyTermService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -15,318 +15,198 @@ class NormalizeEncarTaxonomy extends Command
         {--apply : Persist updates (default mode is dry-run)}
         {--limit=0 : Max lots to scan (0 = no limit)}
         {--chunk=2000 : Chunk size for scanning rows}
-        {--source=encar : Source to process (kept for flexibility)}
-        {--random : Sample lots in random order (for quick dry-run iteration)}
-        {--only-empty : Only process lots with empty trim/generation (much faster)}';
+        {--source=encar : Source to process}
+        {--random : Sample lots in random order}
+        {--only-empty : Only process lots where trim IS NULL or empty}';
 
-    protected $description = 'Normalize Encar model taxonomy: clean model, infer generation, and fill empty trim where possible';
+    protected $description = 'Normalize Encar lot fields using catalog lookup + rule engine';
 
-    private const UNKNOWN_TAIL_HINT_RE = '/(에디션|라인|스페셜|패키지|플러스|스타일|셀렉션)$/u';
-    private const MODEL_PREFIX_RE = '/^(?:더\s+뉴|더|올\s+뉴|올뉴|뉴|신형)\s+/u';
+    private CatalogLookupService $catalog;
 
-    private const DEFAULT_GEN_NON_CHASSIS = [
-        'EV', 'HEV', 'PHEV', 'GDI', 'TDI', 'TFSI', 'MPI',
-        'AWD', 'FWD', 'RWD', '4WD', '2WD',
-        // Genesis model codes
-        'G70', 'G80', 'G90', 'GV70', 'GV80', 'GV90', 'EQ900',
-        // Volvo model codes
-        'XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40',
-        // Volvo engine designations (diesel/petrol/mild-hybrid)
-        'D3', 'D4', 'D5', 'T4', 'T5', 'T6', 'T8', 'B4', 'B5', 'B6',
-    ];
-    private const DEFAULT_GEN_EXCLUDE = [
-        'V6', 'V8', 'V10', 'V12', 'Q4',
-        'VS380', 'CW700', 'EL300', 'G330',
-        // Genesis engine grade codes
-        'G300', 'G350', 'G380', 'G400', 'G450',
-        // Hyundai Grandeur engine+gen tokens
-        'HG300', 'HG330',
-    ];
-    private const DEFAULT_ENGINE_FAMILY = [
-        'GDI', 'T-GDI', 'TGDI', 'GDE', 'MPI', 'MPFI',
-        'TFSI', 'TSI', 'FSI',
-        'TDI', 'CRDI', 'VGT', 'TCI', 'E-VGT',
-        'FHEV', 'HEV', 'LPI', 'LPE', 'EV', 'BEV',
-        '4MATIC', '블루텍', 'GTE', 'LPLI', '4TRONIC',
-    ];
-    private const BODY_STYLE_TOKENS = [
-        '쿠페', '카브리올레', '컨버터블', '왜건', '해치백', '픽업', '밴',
-        'Coupe', 'Cabriolet', 'Convertible', 'Wagon',
-        '5도어', '4도어', '3도어', '2도어',
-    ];
+    public function handle(
+        TaxonomyRuleEngine       $ruleEngine,
+        TaxonomySuggestionService $suggestions,
+        CatalogLookupService     $catalog,
+    ): int {
+        $this->catalog = $catalog;
 
-    private const DEFAULT_VARIANT_EXCLUDE = [
-        'EV', 'BEV', 'HEV', 'FHEV',
-        'GDI', 'TDI', 'MPI', 'CRDI', 'VGT', 'TCI', 'TFSI', 'TSI', 'FSI',
-        'GDE', 'GTE', 'LPLI', 'LPE', 'LPI',
-        '4WD', '2WD', 'AWD', 'FWD', 'RWD',
-        'V6', 'V8', 'V10', 'V12', 'LPG',
-        // Genesis model codes
-        'G70', 'G80', 'G90', 'GV70', 'GV80', 'GV90', 'EQ900',
-        // Volvo model codes
-        'XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40',
-    ];
-
-    private ?array $termSets = null;
-
-    private function getTermSets(): array
-    {
-        if ($this->termSets === null) {
-            $this->termSets = app(TaxonomyTermService::class)->getSets('encar');
-        }
-        return $this->termSets;
-    }
-
-    public function handle(TaxonomyRuleEngine $ruleEngine, TaxonomySuggestionService $suggestions, TaxonomyTermService $termService): int
-    {
-        $apply = (bool) $this->option('apply');
-        $limit = max(0, (int) $this->option('limit'));
-        $chunk = max(100, (int) $this->option('chunk'));
+        $apply  = (bool) $this->option('apply');
+        $limit  = max(0, (int) $this->option('limit'));
+        $chunk  = max(100, (int) $this->option('chunk'));
         $source = (string) $this->option('source');
-
         $random = (bool) $this->option('random');
 
         $this->info('Normalize Encar Taxonomy');
-        $this->line('Mode: ' . ($apply ? 'APPLY' : 'DRY-RUN') . ($random ? ' [RANDOM SAMPLE]' : ''));
-        $this->line("Source: {$source}, Chunk: {$chunk}, Limit: " . ($limit ?: 'all'));
+        $this->line('Mode: ' . ($apply ? 'APPLY' : 'DRY-RUN') . ($random ? ' [RANDOM]' : ''));
+        $this->line("Source: {$source}  Chunk: {$chunk}  Limit: " . ($limit ?: 'all'));
 
-        $termSets = $termService->getSets($source);
+        // Load token maps once for the whole run
+        $tokenMaps = $this->catalog->tokenMaps();
 
-        $processed = 0;
-        $wouldUpdate = 0;
-        $updated = 0;
-        $modelUpdates = 0;
-        $trimUpdates = 0;
-        $generationUpdates = 0;
-        $unknownTailHits = [];
-        $techSpecUpdates = 0;
-        $variantUpdates = 0;
-        $packageUpdates = 0;
-        $cylinderUpdates = 0;
+        // Build model-prefix list sorted by length desc (longer phrases match before single words)
+        $modelPrefixes = array_keys($tokenMaps['model_prefix'] ?? []);
+        usort($modelPrefixes, static fn($a, $b) => mb_strlen($b) - mb_strlen($a));
+
+        $counts = array_fill_keys(
+            ['processed', 'wouldUpdate', 'updated', 'catalogHits', 'anomalies',
+             'model', 'generation', 'trim', 'fuel', 'drive', 'body',
+             'engine_volume', 'seat_count', 'cylinders'],
+            0
+        );
         $samples = [];
-
-        $onlyEmpty = (bool) $this->option('only-empty');
 
         $baseQuery = DB::table('lots')
             ->where('source', $source)
             ->whereNotNull('model')
             ->where('model', '!=', '');
 
-        if ($onlyEmpty) {
+        if ($this->option('only-empty')) {
             $baseQuery->where(function ($q) {
-                $q->whereNull('trim')
-                  ->orWhere('trim', '')
-                  ->orWhere('trim', '(세부등급 없음)');
+                $q->whereNull('trim')->orWhere('trim', '')->orWhere('trim', '(세부등급 없음)');
             });
-            $this->line('Filter: only-empty (trim IS NULL or empty)');
+            $this->line('Filter: only-empty');
         }
 
-        // Note: ->limit() is intentionally NOT applied here because chunkById
-        // overrides it internally. The limit is enforced in the chunk callback below.
+        $total     = (clone $baseQuery)->count();
+        $startTime = microtime(true);
+        if ($limit > 0 && $limit < $total) {
+            $total = $limit;
+        }
+        $this->line("Total: {$total}");
 
         $processRow = function ($rows) use (
-            $apply,
-            $limit,
-            $ruleEngine,
-            $suggestions,
-            &$processed,
-            &$wouldUpdate,
-            &$updated,
-            &$modelUpdates,
-            &$trimUpdates,
-            &$generationUpdates,
-            &$unknownTailHits,
-            &$techSpecUpdates,
-            &$variantUpdates,
-            &$packageUpdates,
-            &$cylinderUpdates,
-            &$samples
+            $apply, $limit, $ruleEngine, $suggestions, $tokenMaps, $modelPrefixes,
+            &$counts, &$samples
         ) {
             foreach ($rows as $row) {
-                if ($limit > 0 && $processed >= $limit) {
+                if ($limit > 0 && $counts['processed'] >= $limit) {
                     return false;
                 }
+                $counts['processed']++;
 
-                $processed++;
-
-                $rawData = $this->decodeRawData($row->raw_data ?? null);
-                $modelGroup = is_array($rawData) ? ($rawData['model_group_kr'] ?? null) : null;
-                $badgeKr = is_array($rawData) ? (string) ($rawData['badge_kr'] ?? '') : '';
-
-                [$normalizedModel, $generation, $inferredTrim, $inferredPackage, $unknownTail, $strippedTokens] = $this->normalizeModelTaxonomy((string) $row->model, $modelGroup);
-
-                $rulePatch = $ruleEngine->apply([
-                    'source'      => (string) $row->source,
-                    'lot_id'      => (string) $row->id,
-                    'make'        => (string) ($row->make ?? ''),
-                    'model_raw'   => (string) $row->model,
-                    'badge_raw'   => $badgeKr,
-                    'model'       => $normalizedModel,
-                    'generation'  => $generation,
-                    'trim'        => $inferredTrim,
-                    'unknown_tail' => $unknownTail,
-                ], false);
-
-                if (array_key_exists('model', $rulePatch)) {
-                    $normalizedModel = (string) $rulePatch['model'];
-                }
-                if (array_key_exists('generation', $rulePatch)) {
-                    $generation = $rulePatch['generation'];
-                }
-                if (array_key_exists('trim', $rulePatch)) {
-                    $inferredTrim = $rulePatch['trim'];
-                }
-                if (array_key_exists('unknown_tail', $rulePatch)) {
-                    $unknownTail = $rulePatch['unknown_tail'];
-                }
-                $ruleFuel = $rulePatch['fuel'] ?? null;
-                $ruleDriveType = $rulePatch['drive_type'] ?? null;
-                $ruleVariant = $rulePatch['variant'] ?? null;
-                $ruleBodyType = $rulePatch['body_type'] ?? null;
-
-                if ($unknownTail) {
-                    $unknownTailHits[$unknownTail] = ($unknownTailHits[$unknownTail] ?? 0) + 1;
-                    $this->upsertAnomalyQueue((string) $row->source, (string) ($row->make ?? ''), (string) $row->id, (string) $row->model, $unknownTail, $suggestions);
-                }
-
-                $heuristicVariant = $this->extractVariant($normalizedModel);
-                if ($heuristicVariant !== null) {
-                    $normalizedModel = trim(str_replace($heuristicVariant, '', $normalizedModel));
-                    $normalizedModel = $this->normalizeSpace($normalizedModel);
-                }
-                $normalizedModel = $this->stripCylinderTokenFromModel($normalizedModel);
-                $normalizedModel = $this->cleanTechSpecTokensFromModel($normalizedModel);
+                $rawData  = $this->decodeRawData($row->raw_data ?? null);
+                $badgeKr  = is_array($rawData) ? (string) ($rawData['badge_kr'] ?? '') : '';
+                $modelRaw = (string) $row->model;
+                $makeEn   = (string) ($row->make ?? '');
+                $fullStr  = trim($modelRaw . ' ' . $badgeKr);
 
                 $patch = [];
 
-                $fullSearchStr = trim($row->model . ' ' . $badgeKr);
-                $engineVol = $this->extractEngineVolume($fullSearchStr);
-                $techSpecAdded = false;
-                if ($ruleFuel !== null && ($row->fuel === null || $row->fuel === '')) {
-                    $patch['fuel'] = $ruleFuel;
-                    $techSpecAdded = true;
-                }
-                if ($ruleDriveType !== null && ($row->drive_type === null || $row->drive_type === '')) {
-                    $patch['drive_type'] = $ruleDriveType;
-                    $techSpecAdded = true;
-                }
-                if ($ruleBodyType !== null && ($row->body_type === null || $row->body_type === '')) {
-                    $patch['body_type'] = $ruleBodyType;
-                    $techSpecAdded = true;
-                }
-                if ($engineVol !== null && $row->engine_volume === null) {
-                    $patch['engine_volume'] = $engineVol;
-                    $techSpecAdded = true;
-                }
-                $cylinders = $this->extractCylinders($fullSearchStr);
-                if ($cylinders !== null && ($row->cylinders ?? null) === null) {
-                    $patch['cylinders'] = $cylinders;
-                    $cylinderUpdates++;
-                }
-                if ($techSpecAdded) {
-                    $techSpecUpdates++;
-                }
-                if ($normalizedModel !== '' && $normalizedModel !== (string) $row->model) {
-                    $patch['model'] = $normalizedModel;
+                // ── Layer 1: Catalog lookup ──────────────────────────────
+                $catalogResult = $this->catalog->lookup($makeEn, $modelRaw);
+
+                if ($catalogResult !== null) {
+                    $counts['catalogHits']++;
+
+                    $cleanModel = $this->stripModelPrefix($catalogResult->modelKr, $modelPrefixes);
+                    if ($cleanModel !== $modelRaw && $cleanModel !== '') {
+                        $patch['model'] = $cleanModel;
+                    }
+                    if (($row->generation ?? '') === '' && $catalogResult->generation !== null) {
+                        $patch['generation'] = $catalogResult->generation;
+                    }
+                    $trimCurrent = trim((string) ($row->trim ?? ''));
+                    $trimIsNull  = $trimCurrent === '' || $trimCurrent === '(세부등급 없음)';
+                    if ($trimIsNull && $catalogResult->trimKr !== null && $catalogResult->trimKr !== '') {
+                        $patch['trim'] = $catalogResult->trimKr;
+                    }
+                    if (($row->fuel ?? '') === '' && $catalogResult->fuelType !== null) {
+                        $patch['fuel'] = $catalogResult->fuelType;
+                    }
+                    if (($row->drive_type ?? '') === '' && $catalogResult->driveType !== null) {
+                        $patch['drive_type'] = $catalogResult->driveType;
+                    }
+                    if ($row->engine_volume === null && $catalogResult->engineVolume !== null) {
+                        $patch['engine_volume'] = $catalogResult->engineVolume;
+                    }
+                    if (($row->seat_count ?? null) === null && $catalogResult->seatCount !== null) {
+                        $patch['seat_count'] = $catalogResult->seatCount;
+                    }
+                    if (($row->cylinders ?? null) === null && $catalogResult->cylinders !== null) {
+                        $patch['cylinders'] = $catalogResult->cylinders;
+                    }
+                    if (($row->body_type ?? '') === '' && $catalogResult->bodyHint !== null) {
+                        $patch['body_type'] = $catalogResult->bodyHint;
+                    }
+                } else {
+                    // ── Layer 2: Token map fallback (for catalog misses) ──
+                    $fuelMap  = $tokenMaps['fuel']  ?? [];
+                    $driveMap = $tokenMaps['drive'] ?? [];
+                    $bodyMap  = $tokenMaps['body']  ?? [];
+
+                    foreach (preg_split('/\s+/u', mb_strtolower($fullStr)) ?: [] as $tok) {
+                        if (($row->fuel ?? '') === '' && !isset($patch['fuel']) && isset($fuelMap[$tok])) {
+                            $patch['fuel'] = $fuelMap[$tok];
+                        }
+                        if (($row->drive_type ?? '') === '' && !isset($patch['drive_type']) && isset($driveMap[$tok])) {
+                            $patch['drive_type'] = $driveMap[$tok];
+                        }
+                        if (($row->body_type ?? '') === '' && !isset($patch['body_type']) && isset($bodyMap[$tok])) {
+                            $patch['body_type'] = $bodyMap[$tok];
+                        }
+                    }
+
+                    // Queue for AI + catalog enrichment
+                    $this->upsertAnomalyQueue($source, $makeEn, (string) $row->id, $modelRaw, $suggestions);
+                    $counts['anomalies']++;
                 }
 
-                if (($row->generation === null || $row->generation === '') && $generation) {
-                    $patch['generation'] = $generation;
-                }
+                // ── Layer 3: Rule engine (overrides, edge cases) ─────────
+                $rulePatch = $ruleEngine->apply([
+                    'source'      => $source,
+                    'lot_id'      => (string) $row->id,
+                    'make'        => $makeEn,
+                    'model_raw'   => $modelRaw,
+                    'badge_raw'   => $badgeKr,
+                    'model'       => $patch['model'] ?? $modelRaw,
+                    'generation'  => $patch['generation'] ?? ($row->generation ?? null),
+                    'trim'        => $patch['trim'] ?? ($row->trim ?? null),
+                    'unknown_tail' => null,
+                ], false);
 
-                $trimCurrent = trim((string) ($row->trim ?? ''));
-                $trimIsNull = $trimCurrent === '' || $trimCurrent === '(세부등급 없음)';
-
-                // If trim is actually a generation code (e.g. E46, B8, 2세대) move it to generation
-                $genCurrent = trim((string) ($row->generation ?? ''));
-                if (!$trimIsNull && $genCurrent === '' && $this->trimIsGenerationCode($trimCurrent)) {
-                    $patch['generation'] = $trimCurrent;
-                    $patch['trim'] = null;
-                    $trimIsNull = true;
-                }
-
-                if ($trimIsNull && $inferredTrim) {
-                    $patch['trim'] = $inferredTrim;
-                }
-
-                $variantCurrent = trim((string) ($row->variant ?? ''));
-                $resolvedVariant = $ruleVariant ?? $heuristicVariant;
-                if ($variantCurrent === '' && $resolvedVariant !== null) {
-                    $patch['variant'] = $resolvedVariant;
-                }
-
-                $packageCurrent = trim((string) ($row->package ?? ''));
-                if ($packageCurrent === '' && $inferredPackage) {
-                    $patch['package'] = $inferredPackage;
+                foreach (['model', 'generation', 'trim', 'fuel', 'drive_type', 'body_type', 'variant', 'package'] as $f) {
+                    if (array_key_exists($f, $rulePatch) && $rulePatch[$f] !== null) {
+                        $patch[$f] = $rulePatch[$f];
+                    }
                 }
 
                 if ($patch === []) {
                     continue;
                 }
 
-                $wouldUpdate++;
-                if (isset($patch['model'])) {
-                    $modelUpdates++;
-                }
-                if (isset($patch['trim'])) {
-                    $trimUpdates++;
-                }
-                if (isset($patch['generation'])) {
-                    $generationUpdates++;
-                }
-                if (isset($patch['variant'])) {
-                    $variantUpdates++;
-                }
-                if (isset($patch['package'])) {
-                    $packageUpdates++;
+                $counts['wouldUpdate']++;
+                foreach (['model', 'generation', 'trim', 'fuel', 'drive_type', 'body_type', 'engine_volume', 'seat_count', 'cylinders'] as $f) {
+                    if (isset($patch[$f])) {
+                        $counts[$f]++;
+                    }
                 }
 
-                if (count($samples) < 40) {
-                    $samples[] = [
-                        'id'             => $row->id,
-                        'old_model'      => $row->model,
-                        'new_model'      => $patch['model'] ?? $row->model,
-                        'old_trim'       => $row->trim,
-                        'new_trim'       => $patch['trim'] ?? $row->trim,
-                        'old_generation' => $row->generation,
-                        'new_generation' => $patch['generation'] ?? $row->generation,
-                        'new_variant'    => $patch['variant'] ?? $row->variant ?? null,
-                        'new_fuel'       => $patch['fuel'] ?? null,
-                        'new_drive'      => $patch['drive_type'] ?? null,
-                        'package_inferred' => $inferredPackage,
-                        'unknown_tail'   => $unknownTail,
-                    ];
-                }
+                $samples[] = [
+                    'id'      => $row->id,
+                    'model'   => $row->model . ' → ' . ($patch['model'] ?? $row->model),
+                    'trim'    => ($row->trim ?? '') . ' → ' . ($patch['trim'] ?? $row->trim ?? ''),
+                    'gen'     => ($row->generation ?? '') . ' → ' . ($patch['generation'] ?? $row->generation ?? ''),
+                    'catalog' => $catalogResult !== null ? 'HIT' : 'MISS',
+                ];
 
                 if ($apply) {
                     $patch['updated_at'] = now();
                     DB::table('lots')->where('id', $row->id)->update($patch);
-                    $updated++;
+                    $counts['updated']++;
                 }
             }
-
             return true;
         };
 
-        $total = (clone $baseQuery)->count();
-        if ($limit > 0 && $limit < $total) {
-            $total = $limit;
-        }
-        $this->line("Total lots to process: {$total}");
-        $startTime = microtime(true);
-
         if ($random) {
-            $processRow($baseQuery->inRandomOrder()->get());
+            $processRow($baseQuery->inRandomOrder()->limit($limit ?: PHP_INT_MAX)->get());
         } else {
-            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$processed, $total, $startTime, $limit) {
+            $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$counts, $total, $startTime, $limit) {
                 $result = $processRow($rows);
-                $pct = $total > 0 ? round($processed / $total * 100) : 0;
+                $pct     = $total > 0 ? round($counts['processed'] / $total * 100) : 0;
                 $elapsed = round(microtime(true) - $startTime);
-                $eta = ($processed > 0 && $total > $processed)
-                    ? round(($elapsed / $processed) * ($total - $processed)) . 's'
-                    : '?';
-                $this->line("  [{$pct}%] {$processed}/{$total} | elapsed {$elapsed}s | ETA ~{$eta}");
-                if ($limit > 0 && $processed >= $limit) {
+                $this->line("  [{$pct}%] {$counts['processed']}/{$total} | {$elapsed}s | catalog_hits={$counts['catalogHits']} anomalies={$counts['anomalies']}");
+                if ($limit > 0 && $counts['processed'] >= $limit) {
                     return false;
                 }
                 return $result;
@@ -334,124 +214,90 @@ class NormalizeEncarTaxonomy extends Command
         }
 
         $this->line('');
-        $this->line("Processed: {$processed}");
-        $this->line("Would update: {$wouldUpdate}");
-        $this->line("Model updates: {$modelUpdates}");
-        $this->line("Generation updates: {$generationUpdates}");
-        $this->line("Trim updates: {$trimUpdates}");
-        $this->line("Variant updates: {$variantUpdates}");
-        $this->line("Package updates: {$packageUpdates}");
-        $this->line("Cylinder updates: {$cylinderUpdates}");
-        $this->line("Tech spec updates: {$techSpecUpdates}");
+        $this->line("Processed:    {$counts['processed']}");
+        $this->line("Would update: {$counts['wouldUpdate']}");
+        $this->line("Catalog hits: {$counts['catalogHits']}");
+        $this->line("Anomalies:    {$counts['anomalies']}");
+        $this->line("  model={$counts['model']}  gen={$counts['generation']}  trim={$counts['trim']}");
+        $this->line("  fuel={$counts['fuel']}  drive={$counts['drive_type']}  body={$counts['body_type']}");
+        $this->line("  engine_vol={$counts['engine_volume']}  seats={$counts['seat_count']}  cyl={$counts['cylinders']}");
         if ($apply) {
-            $this->line("Updated: {$updated}");
+            $this->line("Updated:      {$counts['updated']}");
         }
 
         if (!empty($samples)) {
             $this->line('');
-            $this->line('Sample changes:');
-            foreach ($samples as $sample) {
-                $this->line(sprintf(
-                    '#%s model: "%s" -> "%s" | trim: "%s" -> "%s" | gen: "%s" -> "%s"',
-                    $sample['id'],
-                    (string) $sample['old_model'],
-                    (string) $sample['new_model'],
-                    (string) ($sample['old_trim'] ?? ''),
-                    (string) ($sample['new_trim'] ?? ''),
-                    (string) ($sample['old_generation'] ?? ''),
-                    (string) ($sample['new_generation'] ?? '')
-                ));
-                $extras = [];
-                if (!empty($sample['new_variant'])) {
-                    $extras[] = 'variant="' . $sample['new_variant'] . '"';
-                }
-                if (!empty($sample['new_fuel'])) {
-                    $extras[] = 'fuel="' . $sample['new_fuel'] . '"';
-                }
-                if (!empty($sample['new_drive'])) {
-                    $extras[] = 'drive="' . $sample['new_drive'] . '"';
-                }
-                if (!empty($sample['package_inferred'])) {
-                    $extras[] = 'package="' . $sample['package_inferred'] . '"';
-                }
-                if (!empty($sample['unknown_tail'])) {
-                    $extras[] = 'unknown_tail="' . $sample['unknown_tail'] . '"';
-                }
-                if (!empty($extras)) {
-                    $this->line('    ' . implode(' | ', $extras));
-                }
-            }
-        }
-
-        if (!empty($unknownTailHits)) {
-            arsort($unknownTailHits);
-            $this->line('');
-            $this->line('Top unknown tail candidates:');
-            $shown = 0;
-            foreach ($unknownTailHits as $tail => $count) {
-                $this->line(sprintf('  %s => %d', $tail, $count));
-                $shown++;
-                if ($shown >= 25) {
-                    break;
-                }
+            $this->line('Samples:');
+            foreach ($samples as $s) {
+                $this->line(sprintf('#%s [%s] %s | trim: %s | gen: %s',
+                    $s['id'], $s['catalog'], $s['model'], $s['trim'], $s['gen']));
             }
         }
 
         return self::SUCCESS;
     }
 
-    private function upsertAnomalyQueue(string $source, string $make, string $lotId, string $modelRaw, string $unknownTail, TaxonomySuggestionService $suggestions): void
-    {
-        $source = trim($source) === '' ? 'encar' : trim($source);
-        $make = $this->nullableString($make);
-        $unknownTail = trim($unknownTail);
-        if ($unknownTail === '') {
-            return;
-        }
+    private function upsertAnomalyQueue(
+        string $source, string $make, string $lotId,
+        string $modelRaw, TaxonomySuggestionService $suggestions
+    ): void {
+        $source = trim($source) ?: 'encar';
+        $make   = trim($make) ?: null;
 
-        $reason = 'model_tail_not_matched_by_known_trim_package_patterns';
+        $reason = 'catalog_miss';
         $row = TaxonomyAnomalyQueue::query()
             ->where('source', $source)
             ->where('make', $make)
-            ->where('unknown_tail', $unknownTail)
+            ->where('sample_model_raw', $modelRaw)
             ->where('reason', $reason)
             ->first();
 
         if ($row) {
-            $row->seen_count = (int) $row->seen_count + 1;
+            $row->seen_count  = (int) $row->seen_count + 1;
             $row->last_seen_at = now();
-            if ($row->sample_lot_id === null) {
-                $row->sample_lot_id = $lotId;
-            }
-            if ($row->sample_model_raw === null) {
-                $row->sample_model_raw = $modelRaw;
-            }
             $row->save();
             return;
         }
 
-        $s = $suggestions->suggest($unknownTail, $modelRaw);
+        $s = $suggestions->suggest('', $modelRaw);
         TaxonomyAnomalyQueue::query()->create([
-            'source' => $source,
-            'make' => $make,
-            'unknown_tail' => $unknownTail,
-            'reason' => $reason,
-            'sample_lot_id' => $lotId,
-            'sample_model_raw' => $modelRaw,
-            'seen_count' => 1,
-            'first_seen_at' => now(),
-            'last_seen_at' => now(),
-            'status' => 'new',
-            'suggested_action' => $s['action'],
-            'suggested_value' => $s['value'],
+            'source'              => $source,
+            'make'                => $make,
+            'unknown_tail'        => null,
+            'reason'              => $reason,
+            'sample_lot_id'       => $lotId,
+            'sample_model_raw'    => $modelRaw,
+            'seen_count'          => 1,
+            'first_seen_at'       => now(),
+            'last_seen_at'        => now(),
+            'status'              => 'new',
+            'suggested_action'    => $s['action'],
+            'suggested_value'     => $s['value'],
             'suggestion_confidence' => $s['confidence'],
         ]);
     }
 
-    private function nullableString(string $value): ?string
+    /**
+     * Strip a known marketing prefix from the beginning of a model name.
+     * Prefixes come from catalog_token_maps (type = model_prefix), sorted by length desc.
+     *
+     * Examples: "더 뉴 아반떼" → "아반떼", "올뉴 K5" → "K5", "뉴 SM6" → "SM6"
+     *
+     * @param string[] $prefixes  Sorted by mb_strlen desc (longer first)
+     */
+    private function stripModelPrefix(string $model, array $prefixes): string
     {
-        $v = trim($value);
-        return $v === '' ? null : $v;
+        $model = trim($model);
+        foreach ($prefixes as $prefix) {
+            $candidate = $prefix . ' ';
+            if (mb_strpos($model, $candidate) === 0) {
+                $stripped = trim(mb_substr($model, mb_strlen($candidate)));
+                if ($stripped !== '') {
+                    return $stripped;
+                }
+            }
+        }
+        return $model;
     }
 
     private function decodeRawData(mixed $rawData): ?array
@@ -464,363 +310,5 @@ class NormalizeEncarTaxonomy extends Command
         }
         $decoded = json_decode($rawData, true);
         return is_array($decoded) ? $decoded : null;
-    }
-
-    private function normalizeModelTaxonomy(string $modelRaw, ?string $modelGroup): array
-    {
-        $prepared = $this->splitCompoundDriveTokens($this->normalizeSpace($modelRaw));
-        [$modelNoNoise, $strippedTokens] = $this->stripTailNoiseWithTokens($prepared);
-        [$modelNoGen, $generation] = $this->extractGeneration($modelNoNoise, $modelGroup);
-        [$modelClean, $inferredTrim, $inferredPackage] = $this->splitModelTrimPackage($modelNoGen);
-        $unknownTail = $this->detectUnknownTail($modelNoGen, $inferredTrim, $inferredPackage);
-
-        $finalModel = $modelClean !== ''
-            ? $modelClean
-            : ($modelNoNoise !== '' ? $modelNoNoise : $this->normalizeSpace($modelRaw));
-
-        return [$finalModel, $generation, $inferredTrim, $inferredPackage, $unknownTail, $strippedTokens];
-    }
-
-    private function splitCompoundDriveTokens(string $model): string
-    {
-        // Split BMW/Volvo compound tokens: xDrive40i → xDrive 40i, sDrive20i → sDrive 20i
-        $result = preg_replace('/\b(xDrive|sDrive)(\d{2,3}[a-z]?)\b/u', '$1 $2', $model);
-        return is_string($result) ? $result : $model;
-    }
-
-    private function normalizeSpace(string $value): string
-    {
-        $value = preg_replace('/\s+/u', ' ', trim($value));
-        return is_string($value) ? $value : trim($value ?? '');
-    }
-
-    private function stripTailNoiseWithTokens(string $model): array
-    {
-        if ($model === '') {
-            return ['', []];
-        }
-
-        $termSets = app(TaxonomyTermService::class)->getSets('encar');
-        $tailTokens = $termSets['tail_powertrain_tokens'] ?? [];
-
-        $tokens = preg_split('/\s+/u', $model) ?: [];
-        $stripped = [];
-        while (!empty($tokens)) {
-            $tail = $tokens[count($tokens) - 1];
-            if (
-                in_array($tail, $tailTokens, true)
-                || preg_match('/^\d{1,2}(?:\.\d+)?(?:T|D|L)?$/i', $tail)
-                || preg_match('/^\d{1,2}인승$/u', $tail)
-            ) {
-                array_unshift($stripped, array_pop($tokens));
-                continue;
-            }
-            break;
-        }
-
-        return [trim(implode(' ', $tokens)), $stripped];
-    }
-
-    private const CYLINDER_TOKEN_RE = '/\b(V6|V8|V10|V12|W12|W16|I4|I6)\b/i';
-
-    private function extractCylinders(string $text): ?int
-    {
-        if (preg_match(self::CYLINDER_TOKEN_RE, $text, $m)) {
-            $map = [
-                'V6' => 6, 'V8' => 8, 'V10' => 10, 'V12' => 12,
-                'W12' => 12, 'W16' => 16, 'I4' => 4, 'I6' => 6,
-            ];
-            return $map[strtoupper($m[1])] ?? null;
-        }
-        return null;
-    }
-
-    private function stripCylinderTokenFromModel(string $model): string
-    {
-        return $this->normalizeSpace(
-            preg_replace(self::CYLINDER_TOKEN_RE, ' ', $model) ?? $model
-        );
-    }
-
-    private function cleanTechSpecTokensFromModel(string $model): string
-    {
-        $sets = $this->getTermSets();
-        $tailTokens = $sets['tail_powertrain_tokens'] ?? [];
-        $engineFamilyUpper = array_values(array_unique(array_merge(
-            array_map('strtoupper', self::DEFAULT_ENGINE_FAMILY),
-            array_map('strtoupper', $sets['engine_family_tokens'] ?? []),
-        )));
-        $tokens = preg_split('/\s+/u', $model) ?: [];
-        $clean = [];
-        foreach ($tokens as $t) {
-            if (in_array(strtoupper($t), $engineFamilyUpper, true)) {
-                continue;
-            }
-            if (in_array($t, $tailTokens, true)) {
-                continue;
-            }
-            if (preg_match('/^\d+\.\d+[TDL]?$|^\d+[TDL]$/i', $t)) {
-                continue;
-            }
-            if (in_array($t, self::BODY_STYLE_TOKENS, true)) {
-                continue;
-            }
-            $clean[] = $t;
-        }
-        $result = trim(implode(' ', $clean));
-        return $result !== '' ? $result : $model;
-    }
-
-    private function stripKnownWordsFromModel(string $model): string
-    {
-        $sets = $this->getTermSets();
-        $tailTokens = $sets['tail_powertrain_tokens'] ?? [];
-        $engineFamilyUpper = array_values(array_unique(array_merge(
-            array_map('strtoupper', self::DEFAULT_ENGINE_FAMILY),
-            array_map('strtoupper', $sets['engine_family_tokens'] ?? []),
-        )));
-        $tokens = preg_split('/\s+/u', $model) ?: [];
-        $clean = [];
-        foreach ($tokens as $t) {
-            if (in_array(strtoupper($t), $engineFamilyUpper, true)) continue;
-            if (in_array($t, $tailTokens, true)) continue;
-            // Decimal engine displacements (2.0, 1.6T, 2.2d) — safe to strip, never model name parts
-            if (preg_match('/^\d+\.\d+[TDLtdl]?$/', $t)) continue;
-            // Audi/MB engine grade codes (35, 40, 45, 50, 55, 60, 65) — only appear as premium brand powertrain grades
-            if (preg_match('/^[3-6][05]$/', $t)) continue;
-            $clean[] = $t;
-        }
-        $result = trim(implode(' ', $clean));
-        return $result !== '' ? $result : $model;
-    }
-
-    private function extractVariant(string $model): ?string
-    {
-        $variantRe = '/^(?:[A-Z]{1,4}\d{2,4}[a-zA-Z]{0,2}|\d{2,4}[A-Za-z]{1,3})$/u';
-        $sets = $this->getTermSets();
-        $excludeUpper = array_values(array_unique(array_merge(
-            array_map('strtoupper', self::DEFAULT_VARIANT_EXCLUDE),
-            array_map('strtoupper', $sets['variant_exclude'] ?? []),
-        )));
-        $tokens = preg_split('/\s+/u', $model) ?: [];
-
-        // Detect 2-token Audi-style variants: "{number} {TFSI|TDI|TSI}" e.g. "55 TFSI", "45 TFSI"
-        $engineFamilyTwo = ['TFSI', 'TDI', 'TSI', 'CRDI', 'T-GDI'];
-        for ($i = 0; $i < count($tokens) - 1; $i++) {
-            if (
-                preg_match('/^\d{2,3}$/', $tokens[$i])
-                && in_array(strtoupper($tokens[$i + 1]), $engineFamilyTwo, true)
-            ) {
-                return $tokens[$i] . ' ' . $tokens[$i + 1];
-            }
-        }
-
-        foreach ($tokens as $tok) {
-            if (in_array(strtoupper($tok), $excludeUpper, true)) {
-                continue;
-            }
-            if (preg_match($variantRe, $tok)) {
-                return $tok;
-            }
-        }
-        return null;
-    }
-
-    private function extractEngineVolume(string $text): ?float
-    {
-        $tokens = preg_split('/\s+/', $text) ?: [];
-        foreach ($tokens as $tok) {
-            if (preg_match('/^(\d+(?:\.\d+)?)(?:T|D|L)?$/i', $tok, $m)) {
-                $vol = (float) $m[1];
-                if ($vol >= 0.5 && $vol <= 10.0) {
-                    return round($vol, 1);
-                }
-            }
-        }
-        return null;
-    }
-
-    private function extractGeneration(string $model, ?string $modelGroup): array
-    {
-        $cleaned = $this->normalizeSpace($model);
-        $generation = null;
-
-        if (preg_match('/\(([A-Za-z0-9]{2,6})\)/', $cleaned, $m)) {
-            $generation = $m[1];
-            $cleaned = trim((string) preg_replace('/\(([A-Za-z0-9]{2,6})\)/', '', $cleaned));
-            $cleaned = $this->normalizeSpace($cleaned);
-        }
-
-        if ($generation === null && $modelGroup) {
-            $parts = preg_split('/\s+/', str_replace('/', ' ', $modelGroup)) ?: [];
-            foreach ($parts as $part) {
-                if ($this->isGenerationToken($part) && !$this->looksLikeModelPrefix($cleaned, $part)) {
-                    $generation = $part;
-                    break;
-                }
-            }
-        }
-
-        if ($generation === null && $cleaned !== '') {
-            $parts = preg_split('/\s+/', $cleaned) ?: [];
-            foreach ($parts as $i => $part) {
-                if ($this->isGenerationToken($part) && !$this->looksLikeModelPrefix($cleaned, $part)) {
-                    $generation = $part;
-                    unset($parts[$i]);
-                    $cleaned = $this->normalizeSpace(implode(' ', $parts));
-                    break;
-                }
-            }
-        }
-
-        if ($generation !== null && $cleaned !== '') {
-            $parts = preg_split('/\s+/', $cleaned) ?: [];
-            $parts = array_values(array_filter($parts, fn (string $t): bool => $t !== $generation));
-            $cleaned = $this->normalizeSpace(implode(' ', $parts));
-        }
-
-        return [$cleaned, $generation];
-    }
-
-    private function isGenerationToken(string $token): bool
-    {
-        $t = trim($token);
-        if ($t === '') {
-            return false;
-        }
-
-        $upper = strtoupper($t);
-
-        $sets = $this->getTermSets();
-        $nonChassis = array_map('strtoupper', array_merge(
-            self::DEFAULT_GEN_NON_CHASSIS,
-            $sets['gen_non_chassis_tokens'] ?? [],
-        ));
-        if (in_array($upper, $nonChassis, true)) {
-            return false;
-        }
-
-        $excludeTokens = array_map('strtoupper', array_merge(
-            self::DEFAULT_GEN_EXCLUDE,
-            $sets['gen_exclude_tokens'] ?? [],
-        ));
-        if (in_array($upper, $excludeTokens, true)) {
-            return false;
-        }
-
-        if (preg_match('/^V\d{1,2}$/', $upper) === 1) {
-            return false;
-        }
-
-        if (preg_match('/^Q\d$/', $upper) === 1) {
-            return false;
-        }
-
-        return preg_match('/^[A-Z]{1,3}\d{1,3}$/', $upper) === 1;
-    }
-
-    private function looksLikeModelPrefix(string $modelText, string $candidate): bool
-    {
-        $text = $this->normalizeSpace($modelText);
-        $cand = trim($candidate);
-        if ($text === '' || $cand === '') {
-            return false;
-        }
-
-        if ($text === $cand || str_starts_with($text, $cand . ' ')) {
-            return true;
-        }
-
-        $stripped = $this->normalizeSpace((string) preg_replace(self::MODEL_PREFIX_RE, '', $text));
-
-        return $stripped === $cand || str_starts_with($stripped, $cand . ' ');
-    }
-
-    private function extractSuffixHint(string $text, array $hints): array
-    {
-        $normalized = $this->normalizeSpace($text);
-        if ($normalized === '') {
-            return ['', null];
-        }
-
-        usort($hints, fn (string $a, string $b): int => strlen($b) <=> strlen($a));
-        foreach ($hints as $hint) {
-            if ($normalized === $hint) {
-                return [$normalized, null];
-            }
-
-            $suffix = ' ' . $hint;
-            if (str_ends_with($normalized, $suffix)) {
-                $base = trim(substr($normalized, 0, strlen($normalized) - strlen($suffix)));
-                return [$base, $hint];
-            }
-        }
-
-        return [$normalized, null];
-    }
-
-    private function splitModelTrimPackage(string $model): array
-    {
-        $normalized = $this->normalizeSpace($model);
-        if ($normalized === '') {
-            return ['', null, null];
-        }
-
-        $termSets = app(TaxonomyTermService::class)->getSets('encar');
-        $packageHints = $termSets['package_hints'] ?? [];
-        $trimHints = $termSets['trim_hints'] ?? [];
-
-        [$baseAfterPackage, $package] = $this->extractSuffixHint($normalized, $packageHints);
-        [$baseAfterTrim, $trim] = $this->extractSuffixHint($baseAfterPackage, $trimHints);
-
-        return [$baseAfterTrim, $trim, $package];
-    }
-
-    private function detectUnknownTail(string $modelNoGen, ?string $inferredTrim, ?string $inferredPackage): ?string
-    {
-        if ($inferredTrim || $inferredPackage) {
-            return null;
-        }
-
-        // Strip only known word tokens (drive/powertrain) — not numeric — to avoid eating model name digits like "아토 3"
-        $cleaned = $this->stripKnownWordsFromModel($modelNoGen);
-        $tokens = preg_split('/\s+/u', $cleaned) ?: [];
-        if (count($tokens) < 2) {
-            return null;
-        }
-
-        $cnt = count($tokens);
-        // Check longest tail first (3 → 2 → 1) so "AMG 패키지 플러스" beats "패키지 플러스"
-        // Require cnt>=4 for 3-token check: ensures at least 1 token remains as model root
-        if ($cnt >= 4) {
-            $tail3 = implode(' ', array_slice($tokens, -3));
-            if ($tail3 !== '' && preg_match(self::UNKNOWN_TAIL_HINT_RE, $tail3)) {
-                return $tail3;
-            }
-        }
-        $tail2 = implode(' ', array_slice($tokens, -2));
-        $tail1 = $tokens[$cnt - 1] ?? '';
-        if ($tail2 !== '' && preg_match(self::UNKNOWN_TAIL_HINT_RE, $tail2)) {
-            return $tail2;
-        }
-        if ($tail1 !== '' && preg_match(self::UNKNOWN_TAIL_HINT_RE, $tail1)) {
-            return $tail1;
-        }
-
-        return null;
-    }
-
-    private function trimIsGenerationCode(string $trim): bool
-    {
-        // Korean generation labels: 1세대, 2세대, 3세대 ...
-        if (preg_match('/^\d+세대$/u', $trim)) {
-            return true;
-        }
-        // Western chassis codes: E46, B8, W222, F10, 4G etc.
-        // Must match generation pattern but not be a known variant or trim word
-        if ($this->isGenerationToken($trim)) {
-            return true;
-        }
-        return false;
     }
 }

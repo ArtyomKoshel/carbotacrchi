@@ -1,0 +1,1031 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\CatalogGrade;
+use App\Models\CatalogModel;
+use App\Models\CatalogModelGeneration;
+use App\Models\CatalogSubGrade;
+use App\Models\CatalogTokenMap;
+use App\Support\Taxonomy\TaxonomyCatalog;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+class CatalogImport extends Command
+{
+    protected $signature = 'catalog:import
+        {--file= : Absolute path to encar_taxonomy_raw.json (default: ../analysis/encar_taxonomy_raw.json)}
+        {--fresh : Truncate tables before import}
+        {--skip-generations : Skip seeding built-in generation codes}
+        {--skip-tokens : Skip seeding built-in token maps}';
+
+    protected $description = 'Import encar_taxonomy_raw.json and seed known generation codes into catalog tables';
+
+    /**
+     * Seed data for catalog_token_maps.
+     * null mapped_value = exclusion list (token matches the pattern but is NOT that thing).
+     * string mapped_value = canonical value (token → value).
+     */
+    private const TOKEN_MAP_SEED = [
+        // ── Fuel type detection ──────────────────────────────────────────
+        'fuel' => [
+            '디젤' => 'diesel', 'diesel' => 'diesel',
+            '가솔린' => 'gasoline', 'gasoline' => 'gasoline', 'petrol' => 'gasoline',
+            'lpi' => 'lpg', 'lpe' => 'lpg', 'lpg' => 'lpg', '바이퓨얼' => 'lpg',
+            'hev' => 'hybrid', '하이브리드' => 'hybrid',
+            'phev' => 'plugin_hybrid', 'plug-in' => 'plugin_hybrid',
+            'ev' => 'electric', '전기' => 'electric', 'bev' => 'electric',
+            '수소' => 'hydrogen', 'fcev' => 'hydrogen',
+            'mhev' => 'mild_hybrid',
+        ],
+        // ── Drive type detection ─────────────────────────────────────────
+        'drive' => [
+            '2wd' => 'fwd', 'fwd' => 'fwd', 'ff' => 'fwd',
+            '4wd' => 'awd', 'awd' => 'awd', '4x4' => 'awd',
+            '콰트로' => 'awd', 'quattro' => 'awd',
+            'xdrive' => 'awd',      // BMW
+            '4matic' => 'awd',      // Mercedes-Benz
+            'e-four' => 'awd',      // Toyota hybrid
+            'sdrive' => 'rwd', 'rwd' => 'rwd', 'fr' => 'rwd',
+        ],
+        // ── Body type detection ──────────────────────────────────────────
+        'body' => [
+            '쿠페' => 'coupe', 'coupe' => 'coupe',
+            '카브리올레' => 'convertible', '컨버터블' => 'convertible',
+            'cabriolet' => 'convertible', 'convertible' => 'convertible',
+            '로드스터' => 'convertible', 'roadster' => 'convertible',
+            '왜건' => 'wagon', 'wagon' => 'wagon', 'estate' => 'wagon', '투어링' => 'wagon',
+            '해치백' => 'hatchback', '5도어' => 'hatchback', 'hatchback' => 'hatchback',
+            '세단' => 'sedan', 'sedan' => 'sedan', 'saloon' => 'sedan',
+            '픽업' => 'pickup', 'pickup' => 'pickup',
+            '밴' => 'van', 'van' => 'van',
+            '리무진' => 'limousine',
+            'suv' => 'suv',
+            'crossover' => 'crossover',     // EV crossovers (아이오닉5, EV6, GV60) — AI may return
+            'minivan'   => 'minivan',        // 미니밴 (카니발, 스타렉스) — AI may return
+        ],
+        // ── Tokens that look like generation codes but are NOT ───────────
+        // (used to protect isGenerationToken from false positives)
+        'gen_non_chassis' => [
+            // Powertrain / fuel system
+            'ev' => null, 'hev' => null, 'phev' => null, 'bev' => null, 'fhev' => null, 'mhev' => null,
+            'gdi' => null, 'tdi' => null, 'tfsi' => null, 'mpi' => null, 'tsi' => null, 'fsi' => null,
+            'crdi' => null, 'vgt' => null, 'tci' => null, 'lpi' => null, 'lpg' => null, 'lpe' => null,
+            'cng' => null,
+            // Drive
+            'awd' => null, 'fwd' => null, 'rwd' => null, '4wd' => null, '2wd' => null,
+            // Genesis model codes (model names, not chassis)
+            'g70' => null, 'g80' => null, 'g90' => null,
+            'gv60' => null, 'gv70' => null, 'gv80' => null, 'gv90' => null, 'eq900' => null,
+            // Kia EV model codes (model names that look like chassis codes)
+            'ev6' => null, 'ev9' => null, 'ev3' => null,
+            // Volvo model designations
+            'xc40' => null, 'xc60' => null, 'xc90' => null,
+            's60' => null, 's90' => null, 'v60' => null, 'v90' => null, 'c40' => null,
+            // Volvo engine/powertrain codes
+            'd3' => null, 'd4' => null, 'd5' => null,
+            't4' => null, 't5' => null, 't6' => null, 't8' => null,
+            'b4' => null, 'b5' => null, 'b6' => null,
+            // Audi model series
+            'q3' => null, 'q5' => null, 'q7' => null, 'q8' => null,
+            // BMW i-series / ix
+            'ix' => null, 'i3' => null, 'i4' => null, 'i5' => null, 'i7' => null,
+        ],
+        // ── Cylinder configuration codes — stripped from grade_kr to get trim_kr ─
+        // (V6, V8, etc. are engine config, not trim names)
+        'cylinder_config' => [
+            'v6'  => null, 'v8'  => null, 'v10' => null, 'v12' => null,
+            'w12' => null, 'w16' => null,
+            'i4'  => null, 'i6'  => null,  // inline-4 / inline-6
+            'h4'  => null, 'h6'  => null,  // Subaru horizontally-opposed
+        ],
+        // ── Korean model name marketing prefixes — stripped to get canonical name ─
+        // Sorted by specificity: multi-word before single-word (handled at runtime)
+        'model_prefix' => [
+            '더 뉴'  => null,  // "The New" facelift
+            '올 뉴'  => null,  // "All New" full redesign
+            '올뉴'   => null,  // "All New" (no-space variant)
+            '더'     => null,  // standalone "더" (older Hyundai/Kia)
+            '뉴'     => null,  // "New" (older models)
+            '신형'   => null,  // "New model" / revised
+        ],
+        // ── Hard-exclude specific tokens from generation detection ────────
+        'gen_exclude' => [
+            'v6' => null, 'v8' => null, 'v10' => null, 'v12' => null,
+            'w12' => null, 'w16' => null, 'q4' => null,
+            // Genesis engine grade codes (power outputs, not chassis)
+            'g300' => null, 'g350' => null, 'g380' => null, 'g400' => null, 'g450' => null,
+            // Hyundai Grandeur composite tokens (gen+engine)
+            'hg300' => null, 'hg330' => null,
+            // SsangYong engine codes
+            'vs380' => null, 'cw700' => null, 'el300' => null, 'g330' => null,
+        ],
+        // ── Engine family tokens — strip from model name string ───────────
+        'engine_family' => [
+            'gdi' => null, 't-gdi' => null, 'tgdi' => null, 'gde' => null,
+            'mpi' => null, 'mpfi' => null,
+            'tfsi' => null, 'tsi' => null, 'fsi' => null,
+            'tdi' => null, 'crdi' => null, 'vgt' => null, 'tci' => null, 'e-vgt' => null,
+            'fhev' => null, 'hev' => null, 'lpi' => null, 'lpe' => null,
+            'ev' => null, 'bev' => null,
+            '4matic' => null, '블루텍' => null, 'gte' => null, 'lpli' => null, '4tronic' => null,
+            'skyactiv' => null, 'vtec' => null, 'cvvt' => null, 'dohc' => null, 'sohc' => null,
+        ],
+        // ── Tokens that match variant pattern but are NOT variants ────────
+        'variant_exclude' => [
+            'ev' => null, 'bev' => null, 'hev' => null, 'fhev' => null, 'mhev' => null,
+            'gdi' => null, 'tdi' => null, 'mpi' => null, 'crdi' => null,
+            'vgt' => null, 'tci' => null, 'tfsi' => null, 'tsi' => null, 'fsi' => null,
+            'gde' => null, 'gte' => null, 'lpli' => null, 'lpe' => null, 'lpi' => null,
+            '4wd' => null, '2wd' => null, 'awd' => null, 'fwd' => null, 'rwd' => null,
+            'v6' => null, 'v8' => null, 'v10' => null, 'v12' => null, 'lpg' => null,
+            'g70' => null, 'g80' => null, 'g90' => null,
+            'gv70' => null, 'gv80' => null, 'gv90' => null, 'eq900' => null,
+            'xc40' => null, 'xc60' => null, 'xc90' => null,
+            's60' => null, 's90' => null, 'v60' => null, 'v90' => null, 'c40' => null,
+        ],
+
+        // ── Performance variant whitelist (AI post-validator) ─────────────
+        // mapped_value = canonical display casing returned to the caller
+        'variant_whitelist' => [
+            // Mercedes-AMG
+            'amg'          => 'AMG',
+            'black series' => 'Black Series',
+            // Audi RS
+            'rs'  => 'RS',
+            'rs3' => 'RS3', 'rs4' => 'RS4', 'rs5' => 'RS5',
+            'rs6' => 'RS6', 'rs7' => 'RS7', 'rs q3' => 'RS Q3', 'rs q5' => 'RS Q5',
+            // BMW M
+            'm'           => 'M',
+            'competition'  => 'Competition',
+            'cs'          => 'CS',
+            'm performance' => 'M Performance',
+            // Hyundai/Genesis N
+            'n' => 'N',
+            'n performance' => 'N Performance',
+            // MINI JCW
+            'jcw' => 'JCW',
+            // Subaru STI / WRX
+            'sti' => 'STI',
+            'wrx' => 'WRX',
+            // Honda Type R / Si
+            'type r' => 'Type R',
+            'type s' => 'Type S',
+            // Toyota GR / TRD
+            'gr'  => 'GR',
+            'trd' => 'TRD',
+            // VW GTI / R
+            'gti' => 'GTI',
+            'r'   => 'R',
+            // Porsche
+            '4s'      => '4S',
+            'gts'     => 'GTS',
+            'turbo'   => 'Turbo',
+            'turbo s' => 'Turbo S',
+            'gt3'     => 'GT3',
+            'gt3 rs'  => 'GT3 RS',
+            'gt4'     => 'GT4',
+            // Nissan
+            'nismo' => 'Nismo',
+            // Chevrolet SS
+            'ss' => 'SS',
+            // Kia / Hyundai GT (K5 GT, Stinger GT)
+            'gt' => 'GT',
+        ],
+
+        // ── Trim level whitelist (AI post-validator) ──────────────────────
+        // mapped_value = canonical display form; null = token only used as membership check
+        'trim_whitelist' => [
+            // ── Hyundai grade names ────────────────────────────────────────
+            '스마트'       => '스마트',        // Smart (base)
+            '모던'         => '모던',          // Modern
+            '프리미엄'     => '프리미엄',      // Premium
+            '익스클루시브' => '익스클루시브',  // Exclusive
+            '노블레스'     => '노블레스',      // Noblesse
+            '캘리그래피'   => '캘리그래피',   // Calligraphy (Sonata/Grandeur top)
+            '인스퍼레이션' => '인스퍼레이션', // Inspiration (Tucson/Santa Fe)
+            '아너스'       => '아너스',        // Honors (Grandeur GN7 — confirmed danawa)
+            '하이클래스'   => '하이클래스',   // Hi-Class (older Grandeur/Sonata)
+            '하이테크'     => '하이테크',      // Hi-Tech
+            '트렌드'       => '트렌드',        // Trend
+            '글로시'       => '글로시',        // Glossy (Sonata special)
+            '파퓰러'       => '파퓰러',        // Popular (Avante etc.)
+            '밸류'         => '밸류',          // Value
+            '어드벤처'     => '어드벤처',      // Adventure (Tucson NX4 — confirmed danawa)
+            '블랙잉크'     => '블랙잉크',      // Black Ink appearance pkg (Grandeur/Santa Fe)
+            '블랙익스테리어' => '블랙익스테리어', // Black Exterior pkg (Santa Fe MX5)
+            // ── Kia grade names ────────────────────────────────────────────
+            '트렌디'       => '트렌디',        // Trendy (K5 base — confirmed danawa)
+            '프레스티지'   => '프레스티지',    // Prestige
+            '시그니처'     => '시그니처',      // Signature (top)
+            '마스터피스'   => '마스터피스',    // Masterpiece (K9 top)
+            '그래비티'     => '그래비티',      // Gravity (Sorento MQ4 off-road — confirmed danawa)
+            '아웃도어'     => '아웃도어',      // Outdoor (Carnival KA4 — confirmed danawa)
+            // ── Kia appearance packages (trim, NOT variant) ────────────────
+            'x-line'       => 'X-Line',        // Kia X-Line off-road appearance
+            'x 라인'       => 'X-Line',
+            '엑스라인'     => 'X-Line',
+            'gt-line'      => 'GT-Line',        // Kia GT-Line sporty appearance
+            'gt 라인'      => 'GT-Line',
+            'gt라인'       => 'GT-Line',
+            // ── Hyundai appearance packages (trim, NOT variant) ────────────
+            'n line'       => 'N Line',         // Hyundai N Line appearance (≠ N variant!)
+            'n 라인'       => 'N Line',
+            'n라인'        => 'N Line',
+            // ── Genesis grade names ────────────────────────────────────────
+            '럭셔리'       => '럭셔리',        // Luxury
+            '디스팅션'     => '디스팅션',      // Distinction (top)
+            '르블랑'       => '르블랑',        // Le Blanc (G80/G90)
+            '임프레션'     => '임프레션',      // Impression
+            '퍼스트'       => '퍼스트',        // First Edition
+            // ── Palisade-specific ──────────────────────────────────────────
+            'vip'          => 'VIP',            // Palisade VIP (top, confirmed danawa)
+            'h-pick'       => 'H-Pick',         // Santa Fe H-Pick (hybrid special)
+            // ── Shared Korean trims ────────────────────────────────────────
+            '디럭스'       => '디럭스',        // Deluxe (older models)
+            '스탠다드'     => '스탠다드',      // Standard
+            '스페셜'       => '스페셜',        // Special edition
+            '스포츠'       => '스포츠',        // Sport (appearance)
+            '액티브'       => '액티브',        // Active (Chevrolet/Renault)
+            '레드라인'     => '레드라인',      // RedLine (Chevrolet)
+            '리미티드'     => '리미티드',      // Limited
+            '어반'         => '어반',          // Urban
+            // ── Chevrolet Korea ────────────────────────────────────────────
+            'ls'     => 'LS',
+            'lt'     => 'LT',
+            'ltz'    => 'LTZ',
+            'activ'  => 'ACTIV',
+            'redline' => 'RedLine',
+            'premier' => 'Premier',
+            // ── BMW trims ──────────────────────────────────────────────────
+            'm sport'   => 'M Sport',
+            'm 스포츠'  => 'M 스포츠',
+            'sport line' => 'Sport Line',
+            'luxury line' => 'Luxury Line',
+            'xline'     => 'xLine',
+            'x라인'     => 'xLine',
+            'advantage' => 'Advantage',
+            'm sport pack'    => 'M Sport Pack',      // BMW F30 Korea (older 3-Series)
+            'm 스포츠 팩'     => 'M Sport Pack',
+            'm sport package' => 'M Sport Package',   // BMW G20 Korea (current 3-Series)
+            'm 스포츠 패키지' => 'M Sport Package',
+            'm sport pro'     => 'M Sport Pro',       // BMW M Sport Pro (enhanced visual)
+            'm 스포츠 프로'   => 'M Sport Pro',
+            '럭셔리 라인'     => 'Luxury Line',       // BMW Luxury Line (Korean label for Luxury Line)
+            // ── Mercedes trims ─────────────────────────────────────────────
+            'amg line'   => 'AMG Line',
+            'amg 라인'   => 'AMG Line',
+            'avantgarde' => 'Avantgarde',
+            '아방가르드' => '아방가르드',
+            'exclusive'  => 'Exclusive',
+            'style'      => 'Style',
+            // ── Audi trims ─────────────────────────────────────────────────
+            's-line'  => 'S-Line',
+            's 라인'  => 'S-Line',
+            'dynamic'     => 'Dynamic',
+            'technik'     => 'Technik',
+            'advanced'    => 'Advanced',       // Audi Advanced (Q5 2025 — confirmed danawa)
+            // ── Volkswagen trims ───────────────────────────────────────────
+            'progressive' => 'Progressive',   // VW Golf 8 / Tiguan Korea trim
+            'elegance'    => 'Elegance',       // VW Arteon Korea trim
+            // ── Volvo trims ────────────────────────────────────────────────
+            'momentum'    => 'Momentum',
+            'inscription' => 'Inscription',
+            'r-design'    => 'R-Design',
+            'cross country' => 'Cross Country',
+            'polestar'    => 'Polestar',
+            'core'        => 'Core',           // Volvo Core base trim (2022+ XC60/XC90)
+            'plus'        => 'Plus',           // Volvo Plus mid trim (2022+ XC60/XC90)
+            'ultra'       => 'Ultra',          // Volvo Ultra top trim (2022+ XC60/XC90)
+            // ── Lexus trims ────────────────────────────────────────────────
+            'f sport'   => 'F Sport',
+            'f 스포츠'  => 'F Sport',
+            'luxury'    => 'Luxury',
+            'prestige'  => 'Prestige',
+            'executive' => 'Executive',
+            // ── Toyota/Honda/Nissan ────────────────────────────────────────
+            'le'      => 'LE',
+            'se'      => 'SE',
+            'xle'     => 'XLE',
+            'limited' => 'Limited',
+            'touring' => 'Touring',
+            'sport'   => 'Sport',
+            // ── Generic English trims used across brands ───────────────────
+            'premium'   => 'Premium',
+            'signature' => 'Signature',
+            'modern'    => 'Modern',
+            'lx'        => 'LX',
+            'ex'        => 'EX',
+            're'        => 'RE',
+            'pe'        => 'PE',
+            'mx'        => 'MX',
+        ],
+
+        // ── Model name → body type (AI post-validator fallback) ───────────
+        // token = lowercase Korean/English model name, mapped_value = body type
+        'model_body_hint' => [
+            // ── Hyundai 현대 ───────────────────────────────────────────────
+            '아반떼'          => 'sedan',
+            '쏘나타'          => 'sedan',
+            '그랜저'          => 'sedan',
+            '쏘나타 n 라인'   => 'sedan',
+            '아슬란'          => 'sedan',
+            '아이오닉6'       => 'sedan',      // fastback sedan shape
+            '제네시스 쿠페'   => 'coupe',
+            '벨로스터'        => 'coupe',
+            'i10'             => 'hatchback',
+            'i20'             => 'hatchback',
+            'i30'             => 'hatchback',
+            '아이오닉'        => 'hatchback',  // 1세대 Ioniq hybrid/EV
+            '캐스퍼'          => 'hatchback',
+            '모닝'            => 'hatchback',
+            '투싼'            => 'suv',
+            '싼타페'          => 'suv',
+            '팰리세이드'      => 'suv',
+            '코나'            => 'suv',
+            '베뉴'            => 'suv',
+            '넥쏘'            => 'suv',        // hydrogen SUV
+            '아이오닉5'       => 'crossover',  // CUV / crossover
+            '아이오닉7'       => 'suv',
+            '카니발'          => 'minivan',
+            '스타리아'        => 'van',
+            '그랜드 스타렉스' => 'minivan',
+            '스타렉스'        => 'van',
+            '쏠라티'          => 'van',
+            '포터'            => 'pickup',
+            // ── Kia 기아 ──────────────────────────────────────────────────
+            'k3'             => 'sedan',
+            'k5'             => 'sedan',
+            'k7'             => 'sedan',
+            'k8'             => 'sedan',
+            'k9'             => 'sedan',
+            '스팅어'         => 'sedan',       // gran turismo fastback
+            '스포티지'        => 'suv',
+            '쏘렌토'          => 'suv',
+            '셀토스'          => 'suv',
+            '니로'            => 'crossover',
+            'ev6'             => 'crossover',
+            'ev9'             => 'suv',
+            '봉고'            => 'pickup',
+            '레이'            => 'van',
+            '카렌스'          => 'minivan',
+            '쏘울'            => 'hatchback',
+            // ── Genesis 제네시스 ───────────────────────────────────────────
+            'g70'   => 'sedan',
+            'g80'   => 'sedan',
+            'g90'   => 'sedan',
+            'gv60'  => 'crossover',
+            'gv70'  => 'suv',
+            'gv80'  => 'suv',
+            'gv90'  => 'suv',
+            'eq900' => 'sedan',              // Genesis EQ900 = G90 1st gen
+            // ── SsangYong/KGM 쌍용 ────────────────────────────────────────
+            '티볼리'   => 'suv',
+            '렉스턴'   => 'suv',
+            '코란도'   => 'suv',
+            '토레스'   => 'suv',
+            '무쏘'     => 'suv',
+            '이스타나' => 'van',
+            // ── Renault Samsung 르노삼성 ────────────────────────────────────
+            'sm3'  => 'sedan',
+            'sm5'  => 'sedan',
+            'sm6'  => 'sedan',
+            'sm7'  => 'sedan',
+            'qm3'  => 'suv',
+            'qm5'  => 'suv',
+            'qm6'  => 'suv',
+            'xm3'  => 'suv',
+            // ── GM Korea / Chevrolet 쉐보레 ────────────────────────────────
+            '말리부'        => 'sedan',
+            '임팔라'        => 'sedan',
+            '크루즈'        => 'sedan',
+            '스파크'        => 'hatchback',
+            '아베오'        => 'sedan',
+            '볼트'          => 'hatchback',
+            '이쿼녹스'      => 'suv',
+            '트래버스'      => 'suv',
+            '트랙스'        => 'suv',
+            '트레일블레이저' => 'suv',
+            '타호'          => 'suv',
+            '레조'          => 'minivan',
+            // ── BMW ───────────────────────────────────────────────────────
+            '1시리즈' => 'hatchback',
+            '2시리즈' => 'coupe',        // F22/G42 coupe; F45 MPV less common
+            '3시리즈' => 'sedan',
+            '4시리즈' => 'coupe',
+            '5시리즈' => 'sedan',
+            '6시리즈' => 'coupe',
+            '7시리즈' => 'sedan',
+            '8시리즈' => 'coupe',
+            'm2'      => 'coupe',
+            'm3'      => 'sedan',
+            'm4'      => 'coupe',
+            'm5'      => 'sedan',
+            'm6'      => 'coupe',
+            'm8'      => 'coupe',
+            'z3'      => 'convertible',
+            'z4'      => 'convertible',
+            'x1'      => 'suv',
+            'x2'      => 'suv',
+            'x3'      => 'suv',
+            'x3 m'    => 'suv',
+            'x4'      => 'suv',
+            'x5'      => 'suv',
+            'x5 m'    => 'suv',
+            'x6'      => 'suv',
+            'x6 m'    => 'suv',
+            'x7'      => 'suv',
+            'ix'      => 'suv',
+            'ix3'     => 'suv',
+            'i3'      => 'hatchback',
+            'i4'      => 'sedan',
+            'i7'      => 'sedan',
+            // ── Mercedes-Benz 벤츠 ────────────────────────────────────────
+            'a클래스'  => 'hatchback',
+            'b클래스'  => 'hatchback',
+            'c클래스'  => 'sedan',
+            'e클래스'  => 'sedan',
+            's클래스'  => 'sedan',
+            'cla'      => 'sedan',       // 4-door coupe
+            'cls'      => 'sedan',
+            'sl'       => 'convertible',
+            'slc'      => 'convertible',
+            'slk'      => 'convertible',
+            'gla'      => 'suv',
+            'glb'      => 'suv',
+            'glc'      => 'suv',
+            'gle'      => 'suv',
+            'gls'      => 'suv',
+            'g클래스'  => 'suv',
+            'g바겐'    => 'suv',
+            'eqa'      => 'suv',
+            'eqb'      => 'suv',
+            'eqc'      => 'suv',
+            'eqe'      => 'sedan',
+            'eqs'      => 'sedan',
+            'eqs suv'  => 'suv',
+            'amg gt'   => 'coupe',
+            // ── Audi 아우디 ───────────────────────────────────────────────
+            'a1'  => 'hatchback',
+            'a3'  => 'hatchback',
+            'a4'  => 'sedan',
+            'a5'  => 'coupe',
+            'a6'  => 'sedan',
+            'a7'  => 'sedan',            // sportback fastback
+            'a8'  => 'sedan',
+            'q2'  => 'suv',
+            'q3'  => 'suv',
+            'q4'  => 'suv',
+            'q5'  => 'suv',
+            'q7'  => 'suv',
+            'q8'  => 'suv',
+            'e-tron' => 'suv',
+            'e-tron gt' => 'sedan',
+            'r8'  => 'coupe',
+            'tt'  => 'coupe',
+            's3'  => 'hatchback',
+            's4'  => 'sedan',
+            's5'  => 'coupe',
+            's6'  => 'sedan',
+            's7'  => 'sedan',
+            's8'  => 'sedan',
+            'rs3' => 'hatchback',
+            'rs4' => 'wagon',
+            'rs5' => 'coupe',
+            'rs6' => 'wagon',
+            'rs7' => 'sedan',
+            'sq5'   => 'suv',                // Audi SQ5 — performance SUV
+            'sq7'   => 'suv',                // Audi SQ7 — performance SUV
+            'sq8'   => 'suv',                // Audi SQ8 — performance SUV
+            'rs q3' => 'suv',               // Audi RS Q3 — performance compact SUV
+            'rs q5' => 'suv',               // Audi RS Q5 — performance mid SUV
+            // ── Volkswagen 폭스바겐 ───────────────────────────────────────
+            '폴로'   => 'hatchback',
+            '골프'   => 'hatchback',
+            '아테온' => 'sedan',
+            '파사트' => 'sedan',
+            '아르테온' => 'sedan',
+            '제타'   => 'sedan',
+            '비틀'   => 'hatchback',
+            '투아렉' => 'suv',
+            '티구안' => 'suv',
+            'id.3'   => 'hatchback',
+            'id.4'   => 'suv',
+            'id.6'   => 'suv',
+            't-roc'  => 'suv',
+            't-cross' => 'suv',
+            // ── Volvo 볼보 ────────────────────────────────────────────────
+            's40'  => 'sedan',
+            's60'  => 'sedan',
+            's80'  => 'sedan',
+            's90'  => 'sedan',
+            'v40'  => 'hatchback',
+            'v50'  => 'wagon',
+            'v60'  => 'wagon',
+            'v90'  => 'wagon',
+            'xc40' => 'suv',
+            'xc60' => 'suv',
+            'xc70' => 'suv',
+            'xc90' => 'suv',
+            'c30'  => 'hatchback',
+            'c40'  => 'suv',            // C40 Recharge is a coupe-SUV
+            // ── Lexus 렉서스 ──────────────────────────────────────────────
+            'ct'  => 'hatchback',
+            'is'  => 'sedan',
+            'es'  => 'sedan',
+            'gs'  => 'sedan',
+            'ls'  => 'sedan',
+            'rc'  => 'coupe',
+            'lc'  => 'coupe',
+            'nx'  => 'suv',
+            'rx'  => 'suv',
+            'ux'  => 'suv',
+            'gx'  => 'suv',
+            'lx'  => 'suv',
+            'rz'  => 'suv',
+            // ── Toyota 도요타 ─────────────────────────────────────────────
+            '코롤라'   => 'sedan',
+            '캠리'     => 'sedan',
+            '아발론'   => 'sedan',
+            '프리우스' => 'hatchback',
+            '야리스'   => 'hatchback',
+            'rav4'     => 'suv',
+            '하이랜더' => 'suv',
+            '포춘어'   => 'suv',
+            '랜드크루저' => 'suv',
+            '하이에이스' => 'van',
+            'gr86'     => 'coupe',
+            'gr 수프라' => 'coupe',
+            '수프라'   => 'coupe',
+            'c-hr'     => 'suv',
+            // ── Honda 혼다 ────────────────────────────────────────────────
+            '시빅'   => 'sedan',
+            '어코드' => 'sedan',
+            '레전드' => 'sedan',
+            '인사이트' => 'sedan',
+            'cr-v'   => 'suv',
+            'hr-v'   => 'suv',
+            'pilot'  => 'suv',
+            'odyssey' => 'minivan',
+            // ── Porsche 포르쉐 ────────────────────────────────────────────
+            '911'      => 'coupe',
+            '718'          => 'coupe',      // 718 Cayman default
+            '718 케이맨'   => 'coupe',      // Porsche 718 Cayman (explicit)
+            '718 박스터'   => 'convertible', // Porsche 718 Boxster (explicit)
+            '박스터'       => 'convertible',
+            '케이맨'       => 'coupe',
+            '마칸'     => 'suv',
+            '카이엔'   => 'suv',
+            '파나메라' => 'sedan',
+            '타이칸'   => 'sedan',
+            'taycan cross turismo' => 'wagon',
+            // ── Land Rover 랜드로버 ───────────────────────────────────────
+            '레인지로버'         => 'suv',
+            '레인지로버 스포츠'  => 'suv',
+            '레인지로버 벨라'    => 'suv',
+            '레인지로버 이보크'  => 'suv',
+            '디스커버리'         => 'suv',
+            '디스커버리 스포츠'  => 'suv',
+            '디펜더'             => 'suv',
+            '프리랜더'           => 'suv',
+            // ── Jaguar 재규어 ─────────────────────────────────────────────
+            'xj'      => 'sedan',
+            'xf'      => 'sedan',
+            'xe'      => 'sedan',
+            'xk'      => 'coupe',
+            'f-type'  => 'coupe',
+            'f-pace'  => 'suv',
+            'e-pace'  => 'suv',
+            'i-pace'  => 'suv',
+            // ── MINI 미니 ─────────────────────────────────────────────────
+            '미니'           => 'hatchback',
+            'mini'           => 'hatchback',
+            'countryman'     => 'suv',
+            'clubman'        => 'wagon',
+            'paceman'        => 'suv',
+            'cabrio'         => 'convertible',
+            // ── Nissan / Infiniti ─────────────────────────────────────────
+            '알티마'   => 'sedan',
+            '맥시마'   => 'sedan',
+            '큐브'     => 'hatchback',
+            '티아나'   => 'sedan',
+            'qx50'     => 'suv',
+            'qx60'     => 'suv',
+            'qx70'     => 'suv',
+            'qx80'     => 'suv',
+            'q50'      => 'sedan',
+            'q70'      => 'sedan',
+            'fx'       => 'suv',
+            // ── Lincoln / Cadillac / American ─────────────────────────────
+            '링컨 컨티넨탈' => 'sedan',
+            '링컨 타운카'   => 'sedan',
+            '링컨 mks'      => 'sedan',
+            'escalade'      => 'suv',
+            'navigator'     => 'suv',
+        ],
+    ];
+
+    /**
+     * Known chassis/generation codes per model.
+     * Keyed by [make_kr, model_kr] → list of codes.
+     * Source: manufacturer documentation + public chassis-code references.
+     *
+     * @var array<string, list<string>>
+     */
+    private const GENERATION_SEED = [
+        // ── 현대 (Hyundai) ───────────────────────────────────────────────
+        '현대|그랜저'   => ['TG', 'HG', 'IG', 'GN7'],         // 4/5/6/7세대
+        '현대|소나타'   => ['EF', 'NF', 'YF', 'LF', 'DN8'], // 4–8세대
+        '현대|아반떼'   => ['XD', 'HD', 'MD', 'AD', 'CN7'], // 3–7세대
+        '현대|투싼'     => ['JM', 'LM', 'TL', 'NX4'],       // 1–4세대
+        '현대|싼타페'   => ['SM', 'CM', 'DM', 'TM', 'MX5'],    // 1–5세대
+        '현대|i30'      => ['FD', 'GD', 'PD'],               // 1–3세대
+        '현대|벨로스터' => ['FS'],
+        '현대|아이오닉' => ['AE'],                            // Ioniq 1세대 (hybrid/PHEV/EV)
+        '현대|아이오닉 5' => ['NE'],                          // Ioniq 5 (2021+, E-GMP)
+        '현대|아이오닉 6' => ['CE'],                          // Ioniq 6 (2022+, E-GMP)
+        '현대|코나'     => ['OS', 'SX2'],                     // 1/2세대
+        '현대|팰리세이드' => ['LX2'],
+        '현대|스타리아' => ['US4'],
+        '현대|베뉴'     => ['QX'],
+        '현대|아슬란'   => ['AG'],
+        '현대|넥쏘'     => ['FE'],                            // Nexo hydrogen SUV
+        '현대|제네시스 쿠페' => ['BK', 'BH3'],
+
+        // ── 기아 (Kia) ───────────────────────────────────────────────────
+        '기아|K5'       => ['MG', 'TF', 'JF', 'DL3'],       // 1–3세대
+        '기아|K7'       => ['VG', 'YG'],                     // 1–2세대
+        '기아|K8'       => ['GL3'],
+        '기아|K3'       => ['LD', 'TD', 'BD'],               // 1–3세대
+        '기아|K9'       => ['RI', 'RJ'],
+        '기아|스포티지' => ['SL', 'QL', 'NQ5'],              // 3–5세대
+        '기아|쏘렌토'   => ['BL', 'XM', 'UM', 'MQ4'],       // 1–4세대
+        '기아|모닝'     => ['SA', 'TA', 'JA'],               // 1–3세대
+        '기아|쏘울'     => ['AM', 'PS', 'SK3'],              // 1–3세대
+        '기아|니로'     => ['DE', 'SG2'],                    // 1–2세대
+        '기아|스팅어'   => ['CK'],
+        '기아|카니발'   => ['VQ', 'YP', 'KA4'],             // 2–4세대
+        '기아|레이'     => ['TAM'],
+        '기아|셀토스'   => ['SP2'],
+        '기아|봉고'     => ['PU'],
+        '기아|EV6'      => ['CV'],                           // EV6 (2021+, E-GMP)
+        '기아|EV9'      => ['MV'],                           // EV9 (2023+)
+        '기아|EV3'      => ['OV'],                           // EV3 (2024+)
+
+        // ── 제네시스 (Genesis) ───────────────────────────────────────────
+        '제네시스|G70'  => ['IK'],
+        '제네시스|G80'  => ['RG3', 'RG'],
+        '제네시스|G90'  => ['HI', 'RS4'],
+        '제네시스|GV70' => ['JK1'],
+        '제네시스|GV80' => ['JX1'],
+        '제네시스|GV60' => ['JW'],                           // GV60 EV (2021+)
+        '제네시스|GV90' => ['RS5'],                          // GV90 (2024+)
+
+        // ── BMW ──────────────────────────────────────────────────────────
+        'BMW|1시리즈'   => ['E87', 'F20', 'F40'],
+        'BMW|2시리즈'   => ['F22', 'F45', 'G42'],
+        'BMW|3시리즈'   => ['E30', 'E36', 'E46', 'E90', 'F30', 'G20'],
+        'BMW|4시리즈'   => ['F32', 'F36', 'G22'],
+        'BMW|5시리즈'   => ['E34', 'E39', 'E60', 'F10', 'G30'],
+        'BMW|6시리즈'   => ['E63', 'F12', 'G32'],
+        'BMW|7시리즈'   => ['E38', 'E65', 'F01', 'G11'],
+        'BMW|8시리즈'   => ['G14', 'G15'],
+        'BMW|X1'        => ['E84', 'F48', 'U11'],
+        'BMW|X2'        => ['F39', 'U10'],
+        'BMW|X3'        => ['E83', 'F25', 'G01', 'G45'],   // add G45 (4세대, 2024+)
+        'BMW|X4'        => ['F26', 'G02'],
+        'BMW|X5'        => ['E53', 'E70', 'F15', 'G05'],
+        'BMW|X6'        => ['E71', 'F16', 'G06'],
+        'BMW|X7'        => ['G07'],
+        'BMW|Z4'        => ['E85', 'E89', 'G29'],
+        'BMW|M3'        => ['E36', 'E46', 'E90', 'F80', 'G80'],
+        'BMW|M5'        => ['E34', 'E39', 'E60', 'F10', 'F90'],
+
+        // ── 벤츠 (Mercedes-Benz) ─────────────────────────────────────────
+        '벤츠|A클래스'  => ['W168', 'W169', 'W176', 'W177'],
+        '벤츠|B클래스'  => ['W245', 'W246', 'W247'],
+        '벤츠|C클래스'  => ['W202', 'W203', 'W204', 'W205', 'W206'],
+        '벤츠|E클래스'  => ['W210', 'W211', 'W212', 'W213', 'W214'],
+        '벤츠|S클래스'  => ['W140', 'W220', 'W221', 'W222', 'W223'],
+        '벤츠|GLC'      => ['X253', 'X254'],
+        '벤츠|GLE'      => ['W166', 'V167'],
+        '벤츠|GLS'      => ['X166', 'X167'],
+        '벤츠|CLA'      => ['C117', 'C118'],
+        '벤츠|CLS'      => ['C219', 'C218', 'C257'],
+        '벤츠|SL'       => ['R230', 'R231', 'R232'],
+        '벤츠|GLB'      => ['X247'],
+        '벤츠|EQC'      => ['N293'],
+        '벤츠|EQE'      => ['V295'],
+        '벤츠|EQS'      => ['V297'],
+
+        // ── 아우디 (Audi) ────────────────────────────────────────────────
+        '아우디|A3'     => ['8L', '8P', '8V', '8Y'],
+        '아우디|A4'     => ['B5', 'B6', 'B7', 'B8', 'B9'],
+        '아우디|A5'     => ['8T', 'F5'],
+        '아우디|A6'     => ['C5', 'C6', 'C7', 'C8'],
+        '아우디|A7'     => ['4G', 'C8'],
+        '아우디|A8'     => ['D2', 'D3', 'D4', 'D5'],
+        '아우디|Q3'     => ['8U', 'F3'],
+        '아우디|Q5'     => ['8R', 'FY'],
+        '아우디|Q7'     => ['4L', '4M'],
+        '아우디|Q8'     => ['4M'],
+        '아우디|TT'     => ['8N', '8J', 'FV'],
+
+        // ── 폭스바겐 (Volkswagen) ────────────────────────────────────────
+        '폭스바겐|골프'  => ['MK4', 'MK5', 'MK6', 'MK7', 'MK8'],
+        '폭스바겐|파사트' => ['B5', 'B6', 'B7', 'B8'],
+        '폭스바겐|티구안' => ['5N', 'AD1'],
+
+        // ── 볼보 (Volvo) ─────────────────────────────────────────────────
+        '볼보|S60'      => ['P24', 'Y20'],
+        '볼보|S90'      => ['P238'],
+        '볼보|V60'      => ['P24', 'Y20'],
+        '볼보|XC60'     => ['DZ', 'U'],
+        '볼보|XC90'     => ['C', 'LA'],
+
+        // ── 렉서스 (Lexus) ───────────────────────────────────────────────
+        '렉서스|ES'     => ['XV10', 'XV20', 'XV30', 'XV40', 'XV50', 'XV60', 'XV70'],
+        '렉서스|IS'     => ['XE10', 'XE20', 'XE30'],
+        '렉서스|RX'     => ['XU10', 'XU30', 'AL10', 'AL20'],
+        '렉서스|GS'     => ['S140', 'S160', 'S190'],
+        '렉서스|LS'     => ['F10', 'F20', 'F30', 'F40', 'F50'],
+        '렉서스|NX'     => ['AZ10', 'AZ20'],
+        '렉서스|UX'     => ['ZA10'],
+        '렉서스|LC'     => ['Z100'],
+
+        // ── 도요타 (Toyota) ──────────────────────────────────────────────
+        '도요타|캠리'   => ['XV30', 'XV40', 'XV50', 'XV70'],
+        '도요타|RAV4'   => ['XA10', 'XA20', 'XA30', 'XA40', 'XA50'],
+        '도요타|프리우스' => ['NHW10', 'NHW20', 'ZVW30', 'ZVW50', 'AXWH50'],
+
+        // ── 혼다 (Honda) ─────────────────────────────────────────────────
+        '혼다|어코드'   => ['CG', 'CM', 'CL', 'CP', 'CR', 'CV'],
+        '혼다|CR-V'     => ['RD', 'RE', 'RM', 'RW'],
+        '혼다|시빅'     => ['EK', 'EP', 'FD', 'FB', 'FC', 'FK'],
+
+        // ── 포르쉐 (Porsche) ─────────────────────────────────────────────
+        '포르쉐|카이엔' => ['9PA', '92A', '9YA'],
+        '포르쉐|파나메라' => ['970', '971'],
+        '포르쉐|911'    => ['993', '996', '997', '991', '992'],
+        '포르쉐|마칸'   => ['95B', 'J1'],
+        '포르쉐|타이칸' => ['J1'],
+
+        // ── 랜드로버 (Land Rover) ────────────────────────────────────────
+        '랜드로버|레인지로버' => ['L322', 'L405', 'L460'],
+        '랜드로버|레인지로버 스포츠' => ['L320', 'L494', 'L461'],
+        '랜드로버|디스커버리' => ['L319', 'L462'],
+        '랜드로버|디펜더' => ['L316', 'L663'],
+
+        // ── 재규어 (Jaguar) ──────────────────────────────────────────────
+        '재규어|XF'     => ['X250', 'X260'],
+        '재규어|XE'     => ['X760'],
+        '재규어|F-Pace' => ['X761'],
+        '재규어|E-Pace' => ['X540'],
+    ];
+
+    public function handle(): int
+    {
+        $file = $this->option('file') ?? base_path('../analysis/encar_taxonomy_raw.json');
+        if (!file_exists($file)) {
+            $this->error("File not found: {$file}");
+            return self::FAILURE;
+        }
+
+        $json = file_get_contents($file);
+        $raw  = $json ? json_decode($json, true) : null;
+        if (!is_array($raw)) {
+            $this->error('Failed to decode JSON');
+            return self::FAILURE;
+        }
+
+        $this->line('Rows in JSON: ' . count($raw));
+
+        if ($this->option('fresh')) {
+            $this->line('Truncating catalog tables...');
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            CatalogTokenMap::query()->truncate();
+            CatalogModelGeneration::query()->truncate();
+            CatalogSubGrade::query()->truncate();
+            CatalogGrade::query()->truncate();
+            CatalogModel::query()->truncate();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        }
+
+        $makeMap    = TaxonomyCatalog::normalizationMap('make');
+        $modelCache = [];
+        $gradeCache = [];
+        $newModels  = 0;
+        $newGrades  = 0;
+        $newSubGrades = 0;
+        $skipped    = 0;
+
+        foreach ($raw as $row) {
+            [$makeKr, $modelKr, $gradeKr, $subGrade] = $row;
+
+            if (empty($makeKr) || empty($modelKr) || empty($gradeKr)) {
+                $skipped++;
+                continue;
+            }
+
+            $gradeKr = $this->stripPlaceholder($gradeKr);
+            if ($gradeKr === '') {
+                $skipped++;
+                continue;
+            }
+
+            $makeEn   = $makeMap[$makeKr] ?? $makeKr;
+            $modelKey = "{$makeKr}|{$modelKr}";
+
+            if (!isset($modelCache[$modelKey])) {
+                $model = CatalogModel::firstOrCreate(
+                    ['make_kr' => $makeKr, 'model_kr' => $modelKr],
+                    ['make_en' => $makeEn]
+                );
+                $modelCache[$modelKey] = $model->id;
+                if ($model->wasRecentlyCreated) {
+                    $newModels++;
+                }
+            }
+            $modelId  = $modelCache[$modelKey];
+            $gradeKey = "{$modelId}|{$gradeKr}";
+
+            if (!isset($gradeCache[$gradeKey])) {
+                $attrs = $this->parseGradeAttrs($gradeKr);
+                $grade = CatalogGrade::firstOrCreate(
+                    ['model_id' => $modelId, 'grade_kr' => $gradeKr],
+                    $attrs
+                );
+                $gradeCache[$gradeKey] = $grade->id;
+                if ($grade->wasRecentlyCreated) {
+                    $newGrades++;
+                }
+            }
+            $gradeId = $gradeCache[$gradeKey];
+
+            if ($subGrade !== null) {
+                $subGrade = $this->stripPlaceholder((string) $subGrade);
+                if ($subGrade !== '') {
+                    $sub = CatalogSubGrade::firstOrCreate(
+                        ['grade_id' => $gradeId, 'sub_grade_kr' => $subGrade],
+                        ['type' => $this->classifySubGrade($subGrade)]
+                    );
+                    if ($sub->wasRecentlyCreated) {
+                        $newSubGrades++;
+                    }
+                }
+            }
+        }
+
+        $this->info("New models:     {$newModels}");
+        $this->info("New grades:     {$newGrades}");
+        $this->info("New sub-grades: {$newSubGrades}");
+        $this->info("Skipped rows:   {$skipped}");
+
+        if (!$this->option('skip-generations')) {
+            $newGen = $this->seedGenerationCodes($modelCache, $makeMap);
+            $this->info("New generation codes: {$newGen}");
+        }
+
+        if (!$this->option('skip-tokens')) {
+            $newTok = $this->seedTokenMaps();
+            $this->info("New token maps:       {$newTok}");
+        }
+
+        return self::SUCCESS;
+    }
+
+    private function seedTokenMaps(): int
+    {
+        $new = 0;
+        foreach (self::TOKEN_MAP_SEED as $tokenType => $entries) {
+            foreach ($entries as $token => $mappedValue) {
+                $row = CatalogTokenMap::firstOrCreate(
+                    ['token' => mb_strtolower((string) $token), 'token_type' => $tokenType],
+                    ['mapped_value' => $mappedValue]
+                );
+                if ($row->wasRecentlyCreated) {
+                    $new++;
+                }
+            }
+        }
+        return $new;
+    }
+
+    private function seedGenerationCodes(array $modelCache, array $makeMap): int
+    {
+        $new = 0;
+
+        foreach (self::GENERATION_SEED as $key => $codes) {
+            [$makeKr, $modelKr] = explode('|', $key, 2);
+
+            // Look up model_id — may already be in cache or need a DB query
+            $cacheKey = "{$makeKr}|{$modelKr}";
+            if (isset($modelCache[$cacheKey])) {
+                $modelId = $modelCache[$cacheKey];
+            } else {
+                $model = CatalogModel::where('make_kr', $makeKr)
+                    ->where('model_kr', $modelKr)
+                    ->first();
+                if ($model === null) {
+                    // Model not in DB (not in JSON either) — create a stub entry
+                    $makeEn  = $makeMap[$makeKr] ?? $makeKr;
+                    $model   = CatalogModel::firstOrCreate(
+                        ['make_kr' => $makeKr, 'model_kr' => $modelKr],
+                        ['make_en' => $makeEn]
+                    );
+                }
+                $modelId = $model->id;
+            }
+
+            foreach ($codes as $code) {
+                $gen = CatalogModelGeneration::firstOrCreate(
+                    ['model_id' => $modelId, 'code' => strtoupper($code)]
+                );
+                if ($gen->wasRecentlyCreated) {
+                    $new++;
+                }
+            }
+        }
+
+        return $new;
+    }
+
+    private function stripPlaceholder(string $v): string
+    {
+        $v = trim($v);
+        return (str_starts_with($v, '(') && str_ends_with($v, ')')) ? '' : $v;
+    }
+
+    private function classifySubGrade(string $value): string
+    {
+        if (preg_match('/^[A-Z]{1,4}\d{1,3}[A-Z]?$/', $value)) {
+            return 'generation';
+        }
+        if (preg_match('/^\d+세대$/u', $value)) {
+            return 'generation';
+        }
+        if (preg_match('/[가-힣]/u', $value)) {
+            return 'trim';
+        }
+        return 'unknown';
+    }
+
+    private function parseGradeAttrs(string $gradeKr): array
+    {
+        static $fuelMap  = null;
+        static $driveMap = null;
+        static $bodyMap  = null;
+
+        if ($fuelMap === null) {
+            $fuelMap  = self::TOKEN_MAP_SEED['fuel'];
+            $driveMap = self::TOKEN_MAP_SEED['drive'];
+            $bodyMap  = self::TOKEN_MAP_SEED['body'];
+        }
+
+        $fuel      = null;
+        $drive     = null;
+        $engineVol = null;
+        $seatCount = null;
+        $cylinders = null;
+        $bodyHint  = null;
+
+        $cylinderMap = ['V6' => 6, 'V8' => 8, 'V10' => 10, 'V12' => 12, 'W12' => 12, 'W16' => 16, 'I4' => 4, 'I6' => 6];
+
+        $tokens = preg_split('/\s+/u', $gradeKr) ?: [];
+        foreach ($tokens as $tok) {
+            $lower = mb_strtolower($tok);
+            $upper = strtoupper($tok);
+
+            if ($fuel === null && isset($fuelMap[$lower])) {
+                $fuel = $fuelMap[$lower];
+            }
+            if ($drive === null && isset($driveMap[$lower])) {
+                $drive = $driveMap[$lower];
+            }
+            if ($bodyHint === null && isset($bodyMap[$lower])) {
+                $bodyHint = $bodyMap[$lower];
+            }
+            if ($cylinders === null && isset($cylinderMap[$upper])) {
+                $cylinders = $cylinderMap[$upper];
+            }
+            if ($engineVol === null && preg_match('/^(\d+\.\d+)$/u', $tok, $m)) {
+                $v = (float) $m[1];
+                if ($v >= 0.5 && $v <= 10.0) {
+                    $engineVol = $v;
+                }
+            }
+            if ($seatCount === null && preg_match('/^(\d{1,2})인승$/u', $tok, $m)) {
+                $seatCount = (int) $m[1];
+            }
+        }
+
+        return [
+            'fuel_type'     => $fuel,
+            'drive_type'    => $drive,
+            'engine_volume' => $engineVol,
+            'seat_count'    => $seatCount,
+            'cylinders'     => $cylinders,
+            'body_hint'     => $bodyHint,
+        ];
+    }
+}

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\TaxonomyAnomalyQueue;
 use App\Models\TaxonomyRule;
+use App\Services\Catalog\CatalogLookupService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -26,11 +27,13 @@ class AiClassifyPatterns extends Command
     private array  $apiKeys = [];
     private int    $keyIndex = 0;
     private array  $bannedKeys = [];
+    private array  $tokenMaps = [];
 
-    public function handle(): int
+    public function handle(CatalogLookupService $catalog): int
     {
-        $this->apiUrl  = config('ai.api_url', '');
-        $this->aiModel = config('ai.model', '');
+        $this->tokenMaps = $catalog->tokenMaps();
+        $this->apiUrl    = config('ai.api_url', '');
+        $this->aiModel   = config('ai.model', '');
 
         // Build key pool: AI_API_KEYS (comma-separated) + AI_API_KEY as fallback
         $pool = array_values(array_filter(config('ai.api_keys', [])));
@@ -130,16 +133,55 @@ class AiClassifyPatterns extends Command
                 continue;
             }
 
-            $modelClean    = trim((string) ($result['model_clean'] ?? ''));
+            $modelClean     = trim((string) ($result['model_clean'] ?? ''));
             $generationCode = $this->nullOrString($result['generation_code'] ?? null);
             $generationLabel = $this->nullOrString($result['generation_label'] ?? null);
-            $generation    = $generationCode ?? $generationLabel;
-            $trim          = $this->nullOrString($result['trim'] ?? null);
-            $variant       = $this->nullOrString($result['variant'] ?? null);
-            $package       = $this->nullOrString($result['package'] ?? null);
-            $bodyType      = $this->nullOrString($result['body_type'] ?? null);
-            $parseConf     = (int) ($result['parse_confidence'] ?? 0);
-            $notes         = trim((string) ($result['notes'] ?? ''));
+            $generation     = $generationCode ?? $generationLabel;
+            $trim           = $this->nullOrString($result['trim'] ?? null);
+            $variant        = $this->nullOrString($result['variant'] ?? null);
+            $package        = $this->nullOrString($result['package'] ?? null);
+            $bodyType       = $this->nullOrString($result['body_type'] ?? null);
+            $parseConf      = (int) ($result['parse_confidence'] ?? 0);
+            $notes          = trim((string) ($result['notes'] ?? ''));
+
+            // ── PHP POST-VALIDATOR (data loaded from catalog_token_maps) ─────
+            $variantMap = $this->tokenMaps['variant_whitelist'] ?? [];
+            $trimMap    = $this->tokenMaps['trim_whitelist']    ?? [];
+            $bodyHints  = $this->tokenMaps['model_body_hint']   ?? [];
+
+            $trimLower    = $trim    !== null ? mb_strtolower($trim)    : null;
+            $variantLower = $variant !== null ? mb_strtolower($variant) : null;
+
+            // 1. trim contains a known variant token → move to variant, clear trim
+            if ($trimLower !== null && isset($variantMap[$trimLower])) {
+                $variant = $variantMap[$trimLower];
+                $trim    = null;
+                $variantLower = mb_strtolower($variant);
+                $trimLower    = null;
+            }
+            // variant contains a known trim token → move to trim, clear variant
+            if ($variantLower !== null && isset($trimMap[$variantLower])) {
+                $trim    = $trimMap[$variantLower];
+                $variant = null;
+            }
+            // variant not in whitelist → discard
+            if ($variantLower !== null && !isset($variantMap[$variantLower])) {
+                $variant = null;
+            } elseif ($variantLower !== null) {
+                $variant = $variantMap[$variantLower]; // normalize to canonical casing
+            }
+
+            // 2. Validate body_type is a known single enum value (derived from catalog_token_maps.body)
+            $validBodyTypes = array_unique(array_filter(array_values($this->tokenMaps['body'] ?? [])));
+            if ($bodyType !== null && !in_array($bodyType, $validBodyTypes, true)) {
+                $bodyType = null;
+            }
+
+            // 3. Enrich null body_type from catalog model_body_hint token map
+            if ($bodyType === null && $modelClean !== '') {
+                $bodyType = $bodyHints[mb_strtolower($modelClean)] ?? null;
+            }
+            // ─────────────────────────────────────────────────────────────────
 
             // PHP-side deterministic completeness score (additive from 0)
             // Reflects only what was actually extracted — not dictionary knowledge alone
@@ -329,9 +371,10 @@ class AiClassifyPatterns extends Command
                 'action_value'   => $trim,
             ];
         }
-        // Variant: strict whitelist — only true performance submodels
-        $variantWhitelist = ['AMG', 'RS', 'M', 'N', 'JCW', 'STI', 'Type R', 'GR', 'GTI', 'R', '4S', 'GTS', 'Turbo S'];
-        if ($variant !== null && $variant !== '' && in_array($variant, $variantWhitelist, true)) {
+        // Variant: only create a rule if the value is in the DB-driven variant_whitelist
+        // (same map used by the post-validator above — single source of truth)
+        $variantAllowed = array_values($this->tokenMaps['variant_whitelist'] ?? []);
+        if ($variant !== null && $variant !== '' && in_array($variant, $variantAllowed, true)) {
             $actions[] = [
                 'model_contains' => $variant,
                 'action'         => 'set_variant',
@@ -418,7 +461,11 @@ class AiClassifyPatterns extends Command
 
     private function buildSystemPrompt(): string
     {
-        return <<<'PROMPT'
+        // Build variant list from DB so the prompt stays in sync with catalog_token_maps.variant_whitelist
+        $variantValues = array_unique(array_values($this->tokenMaps['variant_whitelist'] ?? []));
+        $variantList   = implode(', ', $variantValues);
+
+        $prompt = <<<'PROMPT'
 You are a deterministic Korean car listing parser. Extract structured fields ONLY from what is explicitly present in the text.
 
 INPUT: { make, model_raw, badge_raw } from Encar (Korean car marketplace).
@@ -482,7 +529,7 @@ Extract grade name if EXPLICITLY present. NEVER silently drop — if you found i
 ━━━ FIELD 4: variant (strict whitelist only) ━━━
 Extract ONLY if one of these EXACT performance submodel tokens is present in the string.
 This is a per-brand whitelist — same token means DIFFERENT things for different brands:
-  Universal variants: AMG, RS, M, N, JCW, STI, Type R, GR, GTI, R, 4S, GTS, Turbo S
+  Allowed variants: {{VARIANT_LIST}}
   Brand-specific:
     Hyundai/Kia N → variant (performance submodel)
     Audi RS → variant (performance submodel)
@@ -512,11 +559,22 @@ If model_clean is ambiguous → body_type must be null.
   coupe:      2시리즈, 4시리즈, C클래스 쿠페, CLA, CLS, Z4
   convertible: E클래스 카브리올레, C클래스 카브리올레
 
+━━━ CONFLICT RESOLUTION — MANDATORY ━━━
+A token CANNOT be both trim and variant. Priority: variant > trim > package.
+  {{VARIANT_LIST}} → ALWAYS variant (never trim)
+  M 스포츠, M Sport, AMG Line, S-Line, 프레스티지, 노블레스, 시그니처, 아방가르드, LTZ, LX, LE, RE → ALWAYS trim (never variant)
+  플러스, 패키지, 팩 → ALWAYS package
+  Chevrolet RS, Chevrolet ACTIV → trim (NOT variant despite RS token)
+  BMW M → variant ONLY if standalone (M3, M5); "M 스포츠" → trim
+
 ━━━ STRICT NULLS ━━━
 • fuel → DO NOT output
 • drive_type → DO NOT output
 • engine_volume → DO NOT output
+• Do NOT invent semantic meaning. Do NOT explain tokens. Only classify using explicit string evidence and the enums above.
 • When in doubt about trim → output it anyway with lower confidence, do NOT drop silently
 PROMPT;
+
+        return str_replace('{{VARIANT_LIST}}', $variantList, $prompt);
     }
 }
