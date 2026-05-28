@@ -84,13 +84,30 @@ class NormalizeEncarTaxonomy extends Command
                 }
                 $counts['processed']++;
 
-                $rawData  = $this->decodeRawData($row->raw_data ?? null);
-                $badgeKr  = is_array($rawData) ? (string) ($rawData['badge_kr'] ?? '') : '';
+                $rawData  = $this->decodeRawData($row->raw_data ?? null) ?? [];
+                $badgeKr  = (string) ($rawData['badge_kr'] ?? '');
                 $modelRaw = (string) $row->model;
                 $makeEn   = (string) ($row->make ?? '');
                 $fullStr  = trim($modelRaw . ' ' . $badgeKr);
 
                 $patch = [];
+
+                // ── Preserve pre-normalisation snapshot (written ONCE, never overwritten) ──
+                // Captures the exact column values as they existed before this command
+                // ran for the first time, so we can always audit what the parser produced.
+                $rawDataDirty = false;
+                if (!isset($rawData['pre_norm'])) {
+                    $snap = [];
+                    foreach (['model','generation','trim','fuel','drive_type',
+                              'body_type','engine_volume','seat_count','variant'] as $_f) {
+                        $v = $row->$_f ?? null;
+                        if ($v !== null && $v !== '') {
+                            $snap[$_f] = $v;
+                        }
+                    }
+                    $rawData['pre_norm'] = $snap;
+                    $rawDataDirty = true;
+                }
 
                 // ── Layer 1: Catalog lookup ──────────────────────────────
                 $catalogResult = $this->catalog->lookup($makeEn, $modelRaw);
@@ -245,6 +262,11 @@ class NormalizeEncarTaxonomy extends Command
                     }
                 }
 
+                // Flush raw_data if pre_norm was just written
+                if ($rawDataDirty) {
+                    $patch['raw_data'] = json_encode($rawData, JSON_UNESCAPED_UNICODE);
+                }
+
                 if ($patch === []) {
                     continue;
                 }
@@ -262,7 +284,11 @@ class NormalizeEncarTaxonomy extends Command
 
                 if ($apply) {
                     $patch['updated_at'] = now();
-                    DB::table('lots')->where('id', $row->id)->update($patch);
+                    // raw_data is JSON — exclude from the scalar-comparison dedup above
+                    DB::table('lots')->where('id', $row->id)->update(
+                        array_diff_key($patch, ['raw_data' => true])
+                        + (isset($patch['raw_data']) ? ['raw_data' => $patch['raw_data']] : [])
+                    );
                     $counts['updated']++;
                 }
             }
