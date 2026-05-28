@@ -237,7 +237,7 @@ class CatalogLookupService
             $this->specTokenSet = [];
             // All spec token types from catalog — nothing hardcoded here.
             foreach ([
-                'fuel', 'drive', 'engine_family', 'cylinder_config',
+                'fuel', 'drive', 'body', 'engine_family', 'cylinder_config',
                 'grade_spec_code', 'grade_engine_vol', 'grade_gen_label', 'grade_seat',
             ] as $type) {
                 foreach (array_keys($maps[$type] ?? []) as $token) {
@@ -251,6 +251,10 @@ class CatalogLookupService
 
         foreach ($tokens as $tok) {
             if (isset($this->specTokenSet[mb_strtolower($tok)])) {
+                continue;
+            }
+            // Discard single-char tokens (e.g. 'd' from "520 d", 'i' from split codes)
+            if (mb_strlen($tok) <= 1) {
                 continue;
             }
             $keep[] = $tok;

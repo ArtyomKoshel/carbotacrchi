@@ -107,6 +107,13 @@ class CatalogImport extends Command
         // These codes appear as LEADING tokens in grade strings and are NOT trim names.
         // (e.g. "E200 아방가르드" → strip "e200" → trim "아방가르드")
         'grade_spec_code' => [
+            // ── Standalone diesel/petrol inline suffix ───────────────────────
+            // BMW/MB write engine suffix as separate token: "520 d xDrive", "E220 d"
+            // Single-char filter in extractTrimKr already handles this, but explicit is better.
+            'd' => null,
+            // ── Audi power class standalone numbers ──────────────────────────
+            // "45 TFSI 프리미엄" → TFSI stripped by engine_family, "45" stays without this
+            '35' => null, '40' => null, '45' => null, '50' => null, '55' => null, '60' => null,
             // ── Mercedes-Benz ────────────────────────────────────────────────
             // A-Class
             'a180' => null, 'a200' => null, 'a200d' => null,
@@ -166,7 +173,7 @@ class CatalogImport extends Command
             's500' => null, 's500l' => null,
             's550' => null, 's550l' => null, 's550v' => null,
             's560' => null, 's560el' => null, 's560l' => null,
-            's580e' => null, 's580l' => null,
+            's580' => null, 's580e' => null, 's580l' => null,
             's600' => null,
             's63' => null, 's63l' => null, 's65' => null,
             // SL / SLC
@@ -231,7 +238,8 @@ class CatalogImport extends Command
             'm50' => null, 'm50d' => null, 'm50i' => null,
             'm60' => null, 'm60i' => null,
             // X-series short tokens (appear without xDrive prefix in grade_kr)
-            '30d' => null, '40d' => null, '50i' => null,
+            '20i' => null, '25i' => null, '30i' => null, '30d' => null,
+            '35i' => null, '40i' => null, '40d' => null, '50i' => null,
             // X-series combined tokens (xDriveXXi/d appear as single token in grade_kr)
             'xdrive18d' => null, 'xdrive18i' => null,
             'xdrive20d' => null, 'xdrive20i' => null,
@@ -389,9 +397,9 @@ class CatalogImport extends Command
         'grade_engine_vol' => [
             // Plain decimal volumes common in Korean market
             '1.0' => null, '1.2' => null, '1.4' => null, '1.5' => null,
-            '1.6' => null, '1.8' => null, '2.0' => null, '2.2' => null,
+            '1.6' => null, '1.7' => null, '1.8' => null, '2.0' => null, '2.2' => null,
             '2.4' => null, '2.5' => null, '2.7' => null, '3.0' => null,
-            '3.3' => null, '3.5' => null, '3.8' => null, '4.0' => null,
+            '3.3' => null, '3.5' => null, '3.6' => null, '3.8' => null, '4.0' => null,
             '4.4' => null, '4.7' => null, '5.0' => null, '5.5' => null,
             '6.0' => null, '6.3' => null, '6.5' => null,
             // With T/D/L suffix (common in Genesis/Hyundai/Kia grades: "2.5T 스포츠")
@@ -553,6 +561,8 @@ class CatalogImport extends Command
             '4matic' => null, '블루텍' => null, 'gte' => null, 'lpli' => null, '4tronic' => null,
             'hemi' => null,  // Chrysler/Dodge Hemispherical engine branding
             'skyactiv' => null, 'vtec' => null, 'cvvt' => null, 'dohc' => null, 'sohc' => null,
+            'tce' => null,   // Renault TCe (Turbo petrol: TCe 130, TCe 260)
+            'hdi' => null, 'b-hdi' => null, 'e-hdi' => null, 'bluehdi' => null,  // PSA/Stellantis diesel
         ],
         // ── Tokens that match variant pattern but are NOT variants ────────
         'variant_exclude' => [
