@@ -75,7 +75,7 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("Total: {$total}");
 
         $processRow = function ($rows) use (
-            $apply, $limit, $ruleEngine, $suggestions, $tokenMaps, $modelPrefixes,
+            $apply, $limit, $source, $ruleEngine, $suggestions, $tokenMaps, $modelPrefixes,
             &$counts, &$samples
         ) {
             foreach ($rows as $row) {
