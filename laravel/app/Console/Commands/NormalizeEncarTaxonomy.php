@@ -49,7 +49,7 @@ class NormalizeEncarTaxonomy extends Command
 
         $counts = array_fill_keys(
             ['processed', 'wouldUpdate', 'updated', 'catalogHits', 'anomalies',
-             'model', 'generation', 'trim', 'fuel', 'drive', 'body',
+             'model', 'generation', 'trim', 'fuel', 'drive_type', 'body_type',
              'engine_volume', 'seat_count', 'cylinders'],
             0
         );
