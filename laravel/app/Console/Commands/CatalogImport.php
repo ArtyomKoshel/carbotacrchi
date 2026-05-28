@@ -397,6 +397,74 @@ class CatalogImport extends Command
             '9인승' => null, '10인승' => null, '11인승' => null, '12인승' => null,
             '13인승' => null, '14인승' => null, '15인승' => null,
         ],
+        // ── Known trim names — positive lookup for trim validation / Layer-2 extraction ─
+        // Tokens in this map are KEPT as trim (not stripped).
+        // Used to confirm the stripped remainder is a real trim, not noise.
+        'grade_trim_name' => [
+            // ── Hyundai (현대) ─────────────────────────────────────────────────
+            // Full hierarchy: 스마트 → 스타일 → 모던 → 프리미엄 → 르블랑 → 익스클루시브 → 아너스 → 캘리그래피
+            '스마트' => null, '스타일' => null, '모던' => null,
+            '프리미엄' => null, '르블랑' => null,
+            '익스클루시브' => null, '아너스' => null,
+            '캘리그래피' => null,
+            // older Hyundai trims
+            '디럭스' => null, '럭셔리' => null, '스탠다드' => null,
+            '트렌디' => null, '캐쥬얼' => null, '레포츠' => null,
+            '베이직' => null, '엔트리' => null,
+            // ── Kia (기아) ─────────────────────────────────────────────────────
+            // hierarchy: 트렌디 → 프레스티지 → 노블레스 → 시그니처 → 마스터피스
+            '트렌디' => null, '프레스티지' => null,
+            '노블레스' => null, '마스터피스' => null, '마스터즈' => null,
+            '시그니처' => null, '그래비티' => null,
+            // English trim codes shared across Kia/Renault/SsangYong
+            'se' => null, 'le' => null, 're' => null, 'pe' => null,
+            'ex' => null, 'lx' => null, 'rx' => null, 'kx' => null, 'tx' => null,
+            // ── Genesis (제네시스) ─────────────────────────────────────────────
+            // hierarchy: 프레스티지 → 스포츠 → 스포츠 플러스 → 어드밴스드 → 시그니처 → 캘리그래피
+            '어드밴스드' => null, '스포츠' => null,
+            // ── SsangYong / KG Mobility ───────────────────────────────────────
+            '헤리티지' => null, '인스파이어' => null,
+            // old Korando/Rexton grade codes
+            'vx' => null, 'dx' => null,
+            // ── Chevrolet (쉐보레) Korea ──────────────────────────────────────
+            'ls' => null, 'lt' => null, 'ltz' => null,
+            '프리미어' => null,   // Premier Korean spelling
+            '액티브' => null,     // Activ/Active
+            // ── BMW Korea ─────────────────────────────────────────────────────
+            // Sedan/Coupe: Pure / Sport / M Sport / Luxury / Executive / Urban / Comfort
+            '퓨어' => null, '어반' => null, '이그제큐티브' => null, '컴포트' => null,
+            // SUV add-on: xLine
+            // (M Sport, Luxury, Sport are multi-word or overlap with other brands — kept by default)
+            // ── Mercedes-Benz Korea ───────────────────────────────────────────
+            // Avantgarde / Exclusive / AMG Line / Elegance / Night / Premium
+            '아방가르드' => null, '익스클루시브' => null, '엘레강스' => null,
+            '내추럴' => null,  // older MB E-Class trim
+            // ── Audi Korea ────────────────────────────────────────────────────
+            // Premium / Premium Plus / Prestige / Comfort / Dynamic / Advanced
+            '어드밴스' => null, '다이나믹' => null,
+            // ── Volvo Korea ───────────────────────────────────────────────────
+            // Old: Momentum / Inscription / R-Design    New: Core / Plus / Ultimate
+            '모멘텀' => null, '인스크립션' => null,
+            '코어' => null, '얼티밋' => null,
+            // ── Volkswagen Korea ──────────────────────────────────────────────
+            '컴포트라인' => null, '트렌드라인' => null, '하이라인' => null,
+            // ── Land Rover / Range Rover Korea ───────────────────────────────
+            // SE / HSE / Autobiography / SVR / Dynamic SE / Dynamic HSE / First Edition
+            '오토바이오그래피' => null, '퍼스트에디션' => null,
+            // ── Renault Korea ─────────────────────────────────────────────────
+            '인텐스' => null, '라이프' => null, '리미티드' => null,
+            // ── Lexus Korea ───────────────────────────────────────────────────
+            // F Sport / Premium / Luxury / Executive / Version L
+            '버사체' => null,
+            // ── Toyota Korea ──────────────────────────────────────────────────
+            // LE / SE / XLE / XSE / GR Sport / Limited
+            '그랜드투어링' => null,
+            // ── General cross-brand trim words ───────────────────────────────
+            '플러스' => null,   // "스포츠 플러스", "인스크립션 플러스"
+            '스페셜' => null,   // "모던 스페셜"
+            '에디션' => null,   // "퍼스트 에디션", "30주년 에디션"
+            '리미티드' => null, // "Limited" used across many brands
+        ],
         // ── Korean model name marketing prefixes — stripped to get canonical name ─
         // Sorted by specificity: multi-word before single-word (handled at runtime)
         'model_prefix' => [

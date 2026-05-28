@@ -130,19 +130,68 @@ class NormalizeEncarTaxonomy extends Command
                     }
                 } else {
                     // ── Layer 2: Token map fallback (for catalog misses) ──
-                    $fuelMap  = $tokenMaps['fuel']  ?? [];
-                    $driveMap = $tokenMaps['drive'] ?? [];
-                    $bodyMap  = $tokenMaps['body']  ?? [];
+                    // Scan every token in fullStr, route matched tokens to columns,
+                    // keep unmatched tokens as trim candidates.
+                    $fuelMap      = $tokenMaps['fuel']          ?? [];
+                    $driveMap     = $tokenMaps['drive']         ?? [];
+                    $bodyMap      = $tokenMaps['body']          ?? [];
+                    $specCodeMap  = $tokenMaps['grade_spec_code']  ?? [];
+                    $engineVolMap = $tokenMaps['grade_engine_vol'] ?? [];
+                    $engFamMap    = $tokenMaps['engine_family']    ?? [];
+                    $cylMap       = $tokenMaps['cylinder_config']  ?? [];
+                    $genLabelMap  = $tokenMaps['grade_gen_label']  ?? [];
+                    $seatMap      = $tokenMaps['grade_seat']       ?? [];
+                    $trimNameMap  = $tokenMaps['grade_trim_name']  ?? [];
 
-                    foreach (preg_split('/\s+/u', mb_strtolower($fullStr)) ?: [] as $tok) {
+                    $trimTokens = [];
+                    $badgeStr   = trim($badgeKr);
+
+                    foreach (preg_split('/\s+/u', $badgeStr !== '' ? $badgeStr : $fullStr) ?: [] as $rawTok) {
+                        $tok = mb_strtolower($rawTok);
+
                         if (($row->fuel ?? '') === '' && !isset($patch['fuel']) && isset($fuelMap[$tok])) {
-                            $patch['fuel'] = $fuelMap[$tok];
+                            $patch['fuel'] = $fuelMap[$tok]; continue;
                         }
                         if (($row->drive_type ?? '') === '' && !isset($patch['drive_type']) && isset($driveMap[$tok])) {
-                            $patch['drive_type'] = $driveMap[$tok];
+                            $patch['drive_type'] = $driveMap[$tok]; continue;
                         }
                         if (($row->body_type ?? '') === '' && !isset($patch['body_type']) && isset($bodyMap[$tok])) {
-                            $patch['body_type'] = $bodyMap[$tok];
+                            $patch['body_type'] = $bodyMap[$tok]; continue;
+                        }
+                        // Spec / engine tokens: strip but don't store (catalog miss = no columns)
+                        if (isset($specCodeMap[$tok]) || isset($engineVolMap[$tok])
+                            || isset($engFamMap[$tok]) || isset($cylMap[$tok])
+                            || isset($genLabelMap[$tok]) || isset($seatMap[$tok])) {
+                            continue;
+                        }
+                        // Engine volume numeric pattern (e.g. "2.0", "3.5")
+                        if (preg_match('/^(\d+\.\d+)$/u', $rawTok, $m)) {
+                            $v = (float) $m[1];
+                            if ($v >= 0.5 && $v <= 10.0) {
+                                if ($row->engine_volume === null && !isset($patch['engine_volume'])) {
+                                    $patch['engine_volume'] = $v;
+                                }
+                                continue;
+                            }
+                        }
+                        // Seat count pattern (e.g. "7인승")
+                        if (preg_match('/^(\d{1,2})인승$/u', $rawTok, $m)) {
+                            if (($row->seat_count ?? null) === null && !isset($patch['seat_count'])) {
+                                $patch['seat_count'] = (int) $m[1];
+                            }
+                            continue;
+                        }
+                        // Everything else is a trim candidate
+                        $trimTokens[] = $rawTok;
+                    }
+
+                    // Compose trim from remaining tokens
+                    $trimCurrent = trim((string) ($row->trim ?? ''));
+                    $trimIsNull  = $trimCurrent === '' || $trimCurrent === '(세부등급 없음)';
+                    if ($trimIsNull && $trimTokens !== []) {
+                        $candidate = trim(implode(' ', $trimTokens));
+                        if ($candidate !== '') {
+                            $patch['trim'] = $candidate;
                         }
                     }
 
