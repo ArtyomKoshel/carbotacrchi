@@ -45,6 +45,9 @@ class CatalogImport extends Command
             '콰트로' => 'awd', 'quattro' => 'awd',
             'xdrive' => 'awd',      // BMW
             '4matic' => 'awd',      // Mercedes-Benz
+            '4tronic' => 'awd',     // Volvo
+            'htrac' => 'awd',       // Hyundai HTRAC
+            'e-htrac' => 'awd',     // Hyundai e-HTRAC (hybrid)
             'e-four' => 'awd',      // Toyota hybrid
             'sdrive' => 'rwd', 'rwd' => 'rwd', 'fr' => 'rwd',
         ],
@@ -361,6 +364,23 @@ class CatalogImport extends Command
             // ── MINI drive system (appears as token in grade_kr) ──────────────
             // ALL4 is MINI's AWD system — strip so "ALL4 JCW" → "JCW"
             'all4' => null,
+            // ── EV range / battery spec tokens ────────────────────────────────
+            // Appear as leading tokens in EV grade strings (Ioniq5/6, EV6, Tesla, Polestar)
+            '롱레인지' => null,             // Long Range
+            '익스텐디드레인지' => null,      // Extended Range
+            '스탠다드레인지' => null,        // Standard Range (compound form)
+            '싱글모터' => null,             // Single Motor
+            '듀얼모터' => null,             // Dual Motor
+            // ── Option package suffixes (appear AFTER trim name — strip to expose trim) ─
+            // e.g. "프레스티지 기술패키지" → strip "기술패키지" → "프레스티지"
+            '패키지' => null,              // fallback orphan token
+            '기술패키지' => null,
+            '컴포트패키지' => null,
+            '프리미엄패키지' => null,
+            '파노라마패키지' => null,
+            '스마트패키지' => null,
+            '드라이빙어시스턴스패키지' => null,
+            '스포츠패키지' => null,
         ],
         // ── Engine displacement tokens stripped from grade_kr ─────────────
         'grade_engine_vol' => [
@@ -454,16 +474,41 @@ class CatalogImport extends Command
             // ── Renault Korea ─────────────────────────────────────────────────
             '인텐스' => null, '라이프' => null, '리미티드' => null,
             // ── Lexus Korea ───────────────────────────────────────────────────
-            // F Sport / Premium / Luxury / Executive / Version L
+            // Supreme / Premium / Luxury / Luxury+ / Executive / F Sport / Takumi
+            '슈프림' => null,           // Supreme (older NX/RX/ES lower trim)
+            '럭셔리플러스' => null,      // Luxury Plus
+            '타쿠미' => null,           // Takumi (LC top trim)
+            'f스포츠' => null,          // F Sport (NX, RX, ES, LC)
             '버사체' => null,
             // ── Toyota Korea ──────────────────────────────────────────────────
-            // LE / SE / XLE / XSE / GR Sport / Limited
+            // LE / SE (already above), XLE / XSE (Prius, Camry, RAV4, Highlander)
+            'xle' => null, 'xse' => null,
             '그랜드투어링' => null,
+            // ── Kia EV-specific trims ─────────────────────────────────────────
+            '어스' => null,             // Earth (EV6 top trim)
+            // ── Porsche Korea ─────────────────────────────────────────────────
+            // 911: Carrera / GTS / Turbo / Targa / Spyder / GT3 / GT4
+            '카레라' => null,
+            '타르가' => null,
+            '스파이더' => null,          // open-top Porsche / Ferrari / Lambo
+            // ── Ferrari Korea ─────────────────────────────────────────────────
+            // 488 GTB / 488 GTS / F8 Tributo / Portofino / SF90 Stradale
+            'gtb' => null, 'gts' => null,
+            '트리부토' => null, '포르토피노' => null, '스트라달레' => null,
+            // ── Lamborghini Korea ─────────────────────────────────────────────
+            // Huracan: EVO / Performante / STO   Aventador: S / SVJ / Ultimae
+            '퍼포만테' => null, '슈퍼레제라' => null,
+            'evo' => null, 'sto' => null, 'svj' => null, 'ultimae' => null,
+            // ── Lincoln Korea ─────────────────────────────────────────────────
+            '리저브' => null,           // Reserve
+            '블랙레이블' => null,        // Black Label
+            // ── Mercedes-Benz special editions ───────────────────────────────
+            '나이트에디션' => null,
             // ── General cross-brand trim words ───────────────────────────────
             '플러스' => null,   // "스포츠 플러스", "인스크립션 플러스"
             '스페셜' => null,   // "모던 스페셜"
             '에디션' => null,   // "퍼스트 에디션", "30주년 에디션"
-            '리미티드' => null, // "Limited" used across many brands
+            '리미티드' => null,
         ],
         // ── Korean model name marketing prefixes — stripped to get canonical name ─
         // Sorted by specificity: multi-word before single-word (handled at runtime)
