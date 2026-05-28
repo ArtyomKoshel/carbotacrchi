@@ -323,6 +323,30 @@ class CatalogImport extends Command
             'rx350' => null, 'rx350h' => null, 'rx450h' => null, 'rx500h' => null,
             // UX
             'ux200' => null, 'ux250h' => null,
+            // ── Audi S/RS performance designations ────────────────────────────
+            // Appear as leading token when S/RS is in the grade_kr (e.g. "RS6 아반트")
+            'rs3' => null, 'rs4' => null, 'rs5' => null, 'rs6' => null, 'rs7' => null,
+            's3' => null, 's4' => null, 's5' => null, 's6' => null, 's7' => null, 's8' => null,
+            // ── Lamborghini LP engine codes ────────────────────────────────────
+            'lp550' => null, 'lp550-2' => null,
+            'lp560' => null, 'lp560-4' => null,
+            'lp570' => null, 'lp570-4' => null,
+            'lp580' => null, 'lp580-2' => null,
+            'lp610' => null, 'lp610-4' => null,
+            'lp620' => null, 'lp620-4' => null,
+            'lp640' => null, 'lp640-4' => null,
+            'lp700' => null, 'lp700-4' => null,
+            'lp720' => null, 'lp720-4' => null,
+            'lp740' => null, 'lp740-4' => null,
+            'lp750' => null, 'lp750-4' => null,
+            'lp770' => null, 'lp770-4' => null,
+            // ── Maserati AWD designation ──────────────────────────────────────────
+            'q4' => null,  // Maserati Q4 AWD system ("Q4 그란루쏘" → trim "그란루쏘")
+            // ── Cadillac engine/variant codes ─────────────────────────────────────
+            'ct4' => null, 'ct5' => null, 'ct6' => null,  // model codes in grade_kr
+            'xt4' => null, 'xt5' => null, 'xt6' => null,
+            // ── Renault Korea engine codes ─────────────────────────────────────────
+            're16' => null, 're19' => null, 're20' => null,  // Samsung SM/QM engine codes
             // ── MINI drive system (appears as token in grade_kr) ──────────────
             // ALL4 is MINI's AWD system — strip so "ALL4 JCW" → "JCW"
             'all4' => null,
@@ -336,11 +360,14 @@ class CatalogImport extends Command
             '3.3' => null, '3.5' => null, '3.8' => null, '4.0' => null,
             '4.4' => null, '4.7' => null, '5.0' => null, '5.5' => null,
             '6.0' => null, '6.3' => null, '6.5' => null,
-            // With T/D/L suffix
+            // With T/D/L suffix (common in Genesis/Hyundai/Kia grades: "2.5T 스포츠")
             '1.0t' => null, '1.2t' => null, '1.4t' => null, '1.5t' => null,
-            '1.6t' => null, '2.0t' => null, '2.0d' => null,
-            '2.2d' => null, '2.5t' => null, '3.0t' => null, '3.0d' => null,
-            '3.5t' => null, '4.4t' => null, '5.0l' => null,
+            '1.6t' => null, '1.8t' => null,
+            '2.0t' => null, '2.2t' => null, '2.4t' => null, '2.5t' => null,
+            '3.0t' => null, '3.3t' => null, '3.5t' => null, '4.0t' => null, '4.4t' => null,
+            '1.5d' => null, '1.6d' => null, '2.0d' => null, '2.2d' => null,
+            '2.4d' => null, '3.0d' => null, '3.5d' => null,
+            '5.0l' => null, '6.6l' => null, '6.75l' => null,
         ],
         // ── Korean generation label tokens: 1세대, 2세대 … stripped from grade_kr ─
         'grade_gen_label' => [
@@ -375,6 +402,12 @@ class CatalogImport extends Command
             'hg300' => null, 'hg330' => null,
             // SsangYong engine codes
             'vs380' => null, 'cw700' => null, 'el300' => null, 'g330' => null,
+            // Lamborghini LP codes (false-positive generation detection)
+            'lp550' => null, 'lp560' => null, 'lp570' => null, 'lp580' => null,
+            'lp610' => null, 'lp620' => null, 'lp640' => null, 'lp700' => null,
+            'lp720' => null, 'lp740' => null, 'lp750' => null, 'lp770' => null,
+            // Maserati Q4 AWD
+            'q4' => null,
         ],
         // ── Engine family tokens — strip from model name string ───────────
         'engine_family' => [
