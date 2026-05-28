@@ -253,10 +253,6 @@ class CatalogLookupService
             if (isset($this->specTokenSet[mb_strtolower($tok)])) {
                 continue;
             }
-            // Discard single-char tokens (e.g. 'd' from "520 d", 'i' from split codes)
-            if (mb_strlen($tok) <= 1) {
-                continue;
-            }
             $keep[] = $tok;
         }
 

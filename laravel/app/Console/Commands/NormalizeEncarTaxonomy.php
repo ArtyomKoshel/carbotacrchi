@@ -213,10 +213,8 @@ class NormalizeEncarTaxonomy extends Command
                             }
                             continue;
                         }
-                        // Everything else is a trim candidate (discard single-char tokens)
-                        if (mb_strlen($rawTok) > 1) {
-                            $trimTokens[] = $rawTok;
-                        }
+                        // Everything else is a trim candidate
+                        $trimTokens[] = $rawTok;
                     }
 
                     // Compose trim from remaining tokens

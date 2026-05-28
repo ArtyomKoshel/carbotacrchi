@@ -558,7 +558,7 @@ class CatalogImport extends Command
             'tdi' => null, 'crdi' => null, 'vgt' => null, 'tci' => null, 'e-vgt' => null,
             'fhev' => null, 'hev' => null, 'lpi' => null, 'lpe' => null,
             'ev' => null, 'bev' => null,
-            '4matic' => null, '블루텍' => null, 'gte' => null, 'lpli' => null, '4tronic' => null,
+            '4matic' => null, '4matic+' => null, '블루텍' => null, 'gte' => null, 'lpli' => null, '4tronic' => null,
             'hemi' => null,  // Chrysler/Dodge Hemispherical engine branding
             'skyactiv' => null, 'vtec' => null, 'cvvt' => null, 'dohc' => null, 'sohc' => null,
             'tce' => null,   // Renault TCe (Turbo petrol: TCe 130, TCe 260)
