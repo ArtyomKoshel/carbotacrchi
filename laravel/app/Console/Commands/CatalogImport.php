@@ -284,10 +284,48 @@ class CatalogImport extends Command
             '90d' => null, '100d' => null,  // Model S/X (older Long Range designators)
             // ── Chevrolet ─────────────────────────────────────────────────────
             'cl240' => null, 'el240' => null,  // Captiva/Lacetti engine codes
-            // ── Volvo engine codes (separate from model/trim designations) ────
-            't2' => null, 't3' => null,
-            // Note: t4/t5/t6/t8/b4/b5/b6/d3/d4/d5 are in gen_non_chassis
-            // because they're used as both engine codes AND trim-level prefixes (B5 프로).
+            // ── Volvo powertrain badges ───────────────────────────────────────
+            // D = diesel, T = petrol/PHEV, B = mild-hybrid
+            // All appear as LEADING tokens in grade_kr (e.g. "B5 인스크립션" → trim "인스크립션")
+            'd2' => null, 'd3' => null, 'd4' => null, 'd5' => null,
+            't2' => null, 't3' => null, 't4' => null, 't5' => null, 't6' => null, 't8' => null,
+            'b3' => null, 'b4' => null, 'b5' => null, 'b6' => null, 'b8' => null,
+            // ── Lexus model-grade codes ───────────────────────────────────────
+            // Appear as leading token in grade_kr (e.g. "IS250 F 스포츠" → trim "F 스포츠")
+            // CT
+            'ct200h' => null,
+            // ES
+            'es250' => null, 'es300' => null, 'es300h' => null, 'es330' => null, 'es350' => null,
+            // GS
+            'gs200t' => null, 'gs250' => null, 'gs300' => null, 'gs300h' => null,
+            'gs350' => null, 'gs400' => null, 'gs430' => null, 'gs450h' => null, 'gs460' => null,
+            // GX
+            'gx460' => null, 'gx470' => null, 'gx550' => null,
+            // HS
+            'hs250h' => null,
+            // IS
+            'is200t' => null, 'is250' => null, 'is300' => null, 'is300h' => null,
+            'is350' => null, 'is500' => null,
+            // LC
+            'lc500' => null, 'lc500h' => null,
+            // LS
+            'ls400' => null, 'ls430' => null, 'ls460' => null,
+            'ls500' => null, 'ls500h' => null, 'ls600h' => null, 'ls600hl' => null,
+            // LX
+            'lx450' => null, 'lx470' => null, 'lx570' => null, 'lx600' => null,
+            // NX
+            'nx200t' => null, 'nx250' => null, 'nx300' => null, 'nx300h' => null,
+            'nx350' => null, 'nx350h' => null, 'nx450h' => null,
+            // RC
+            'rc200t' => null, 'rc300' => null, 'rc300h' => null, 'rc350' => null,
+            // RX
+            'rx200t' => null, 'rx270' => null, 'rx300' => null, 'rx330' => null,
+            'rx350' => null, 'rx350h' => null, 'rx450h' => null, 'rx500h' => null,
+            // UX
+            'ux200' => null, 'ux250h' => null,
+            // ── MINI drive system (appears as token in grade_kr) ──────────────
+            // ALL4 is MINI's AWD system — strip so "ALL4 JCW" → "JCW"
+            'all4' => null,
         ],
         // ── Engine displacement tokens stripped from grade_kr ─────────────
         'grade_engine_vol' => [
