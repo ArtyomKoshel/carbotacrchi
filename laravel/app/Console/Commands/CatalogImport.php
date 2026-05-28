@@ -345,6 +345,17 @@ class CatalogImport extends Command
             // ── Cadillac engine/variant codes ─────────────────────────────────────
             'ct4' => null, 'ct5' => null, 'ct6' => null,  // model codes in grade_kr
             'xt4' => null, 'xt5' => null, 'xt6' => null,
+            // ── Infiniti old-generation model codes ──────────────────────────────
+            // Pre-Q/QX rename era; appear as leading token in grade_kr
+            'fx35' => null, 'fx37' => null, 'fx45' => null, 'fx50' => null,
+            'g25' => null, 'g35' => null, 'g37' => null,
+            'm35' => null, 'm35h' => null, 'm37' => null, 'm45' => null, 'm56' => null,
+            'ex35' => null, 'ex37' => null,
+            'jx35' => null, 'qx56' => null,
+            // ── Cylinder-config tokens as leading grade prefix ────────────────────
+            // e.g. Bentley "W12 스탠다드" → strip → "스탠다드"; Dodge "V8 SRT" → "SRT"
+            'v6' => null, 'v8' => null, 'v10' => null, 'v12' => null,
+            'w8' => null, 'w12' => null, 'w16' => null,
             // ── Renault Korea engine codes ─────────────────────────────────────────
             're16' => null, 're19' => null, 're20' => null,  // Samsung SM/QM engine codes
             // ── MINI drive system (appears as token in grade_kr) ──────────────
@@ -367,6 +378,12 @@ class CatalogImport extends Command
             '3.0t' => null, '3.3t' => null, '3.5t' => null, '4.0t' => null, '4.4t' => null,
             '1.5d' => null, '1.6d' => null, '2.0d' => null, '2.2d' => null,
             '2.4d' => null, '3.0d' => null, '3.5d' => null,
+            '1.3' => null, '1.3t' => null,
+            '2.3' => null, '2.3t' => null,
+            '3.9' => null, '3.9t' => null,
+            '4.6' => null, '4.6t' => null,
+            '5.6' => null, '5.6t' => null,
+            '6.2' => null, '6.4' => null, '6.6' => null, '6.75' => null,
             '5.0l' => null, '6.6l' => null, '6.75l' => null,
         ],
         // ── Korean generation label tokens: 1세대, 2세대 … stripped from grade_kr ─
@@ -418,6 +435,7 @@ class CatalogImport extends Command
             'fhev' => null, 'hev' => null, 'lpi' => null, 'lpe' => null,
             'ev' => null, 'bev' => null,
             '4matic' => null, '블루텍' => null, 'gte' => null, 'lpli' => null, '4tronic' => null,
+            'hemi' => null,  // Chrysler/Dodge Hemispherical engine branding
             'skyactiv' => null, 'vtec' => null, 'cvvt' => null, 'dohc' => null, 'sohc' => null,
         ],
         // ── Tokens that match variant pattern but are NOT variants ────────
