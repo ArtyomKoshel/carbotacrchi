@@ -53,6 +53,7 @@ class NormalizeEncarTaxonomy extends Command
              'engine_volume', 'seat_count', 'cylinders'],
             0
         );
+        $trimSamples = [];
 
         $baseQuery = DB::table('lots')
             ->where('source', $source)
@@ -75,7 +76,7 @@ class NormalizeEncarTaxonomy extends Command
 
         $processRow = function ($rows) use (
             $apply, $limit, $source, $ruleEngine, $suggestions, $tokenMaps, $modelPrefixes,
-            &$counts
+            &$counts, &$trimSamples
         ) {
             foreach ($rows as $row) {
                 if ($limit > 0 && $counts['processed'] >= $limit) {
@@ -205,6 +206,10 @@ class NormalizeEncarTaxonomy extends Command
                         $counts[$f]++;
                     }
                 }
+                if (!$apply && isset($patch['trim'])) {
+                    $v = (string) $patch['trim'];
+                    $trimSamples[$v] = ($trimSamples[$v] ?? 0) + 1;
+                }
 
                 if ($apply) {
                     $patch['updated_at'] = now();
@@ -240,6 +245,16 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("  engine_vol={$counts['engine_volume']}  seats={$counts['seat_count']}  cyl={$counts['cylinders']}");
         if ($apply) {
             $this->line("Updated:      {$counts['updated']}");
+        } else {
+            arsort($trimSamples);
+            $top = array_slice($trimSamples, 0, 30, true);
+            if (!empty($top)) {
+                $this->line('');
+                $this->line('Top proposed trim values (dry-run):');
+                foreach ($top as $val => $cnt) {
+                    $this->line(sprintf('  %4d × %s', $cnt, $val));
+                }
+            }
         }
 
         return self::SUCCESS;
