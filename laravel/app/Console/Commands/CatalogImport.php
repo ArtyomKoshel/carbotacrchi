@@ -7,6 +7,7 @@ use App\Models\CatalogModel;
 use App\Models\CatalogModelGeneration;
 use App\Models\CatalogSubGrade;
 use App\Models\CatalogTokenMap;
+use App\Models\CatalogTrim;
 use App\Support\Taxonomy\TaxonomyCatalog;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,8 @@ class CatalogImport extends Command
         {--file= : Absolute path to encar_taxonomy_raw.json (default: ../analysis/encar_taxonomy_raw.json)}
         {--fresh : Truncate tables before import}
         {--skip-generations : Skip seeding built-in generation codes}
-        {--skip-tokens : Skip seeding built-in token maps}';
+        {--skip-tokens : Skip seeding built-in token maps}
+        {--skip-trims : Skip seeding built-in catalog_trims}';
 
     protected $description = 'Import encar_taxonomy_raw.json and seed known generation codes into catalog tables';
 
@@ -1091,6 +1093,231 @@ class CatalogImport extends Command
     ];
 
     /**
+     * Seed data for catalog_trims.
+     * Format: trim_kr => [trim_en|null, make_en (''=>universal), priority]
+     *
+     * priority 100 = brand-specific (high confidence)
+     * priority  90 = brand-specific but common across variants
+     * priority  80 = universal (used by many brands)
+     */
+    /**
+     * Each entry: [trim_kr, trim_en|null, make_en ('' = universal), priority]
+     * List format (not associative) so the same trim_kr can appear for multiple makes.
+     */
+    private const CATALOG_TRIMS_SEED = [
+        // ── Universal (make_en = '') ──────────────────────────────────────
+        ['프레스티지',          'Prestige',         '',              90],
+        ['프리미엄',            'Premium',          '',              90],
+        ['노블레스',            'Noblesse',         '',              90],
+        ['시그니처',            'Signature',        '',              90],
+        ['캘리그래피',          'Calligraphy',      '',              90],
+        ['인스퍼레이션',        'Inspiration',      '',              90],
+        ['익스클루시브',        'Exclusive',        '',              90],
+        ['르블랑',              'Le Blanc',         '',              90],
+        ['모던',                'Modern',           '',              80],
+        ['스마트',              'Smart',            '',              80],
+        ['스타일',              'Style',            '',              80],
+        ['럭셔리',              'Luxury',           '',              80],
+        ['디럭스',              'Deluxe',           '',              80],
+        ['스탠다드',            'Standard',         '',              80],
+        ['트렌디',              'Trendy',           '',              80],
+        ['프리미어',            'Premier',          '',              80],
+        ['마스터즈',            'Masters',          '',              80],
+        ['마스터피스',          'Masterpiece',      '',              80],
+        ['플래티넘',            'Platinum',         '',              80],
+        ['그래비티',            'Gravity',          '',              80],
+        ['어드밴스드',          'Advanced',         '',              80],
+        ['아너스',              'Honors',           '',              80],
+        ['하이클래스',          'Hi-Class',         '',              80],
+        ['트렌드',              'Trend',            '',              80],
+        ['스포츠',              'Sport',            '',              80],
+        ['아웃도어',            'Outdoor',          '',              80],
+        ['리미티드',            'Limited',          '',              80],
+        ['스페셜',              'Special',          '',              80],
+        ['베이직',              'Basic',            '',              80],
+        ['어반',                'Urban',            '',              80],
+        ['액티브',              'Active',           '',              80],
+        ['레드라인',            'RedLine',          '',              80],
+        ['어드벤처',            'Adventure',        '',              80],
+        ['VIP',                 'VIP',              '',              80],
+        ['헤리티지',            'Heritage',         '',              80],
+        ['인스파이어',          'Inspire',          '',              80],
+        ['어스',                'Earth',            '',              80],
+        // Hyundai/Kia appearance packages
+        ['N Line',              'N Line',           '',              90],
+        ['N 라인',              'N Line',           '',              90],
+        ['GT-Line',             'GT-Line',          '',              90],
+        ['GT 라인',             'GT-Line',          '',              90],
+        ['X-Line',              'X-Line',           '',              90],
+        ['X 라인',              'X-Line',           '',              90],
+        // Renault Korea grades
+        ['RE',                  'RE',               '',              90],
+        ['LE',                  'LE',               '',              90],
+        ['SE',                  'SE',               '',              90],
+        ['PE',                  'PE',               '',              90],
+        ['RE Plus',             'RE Plus',          '',              90],
+        ['LE Plus',             'LE Plus',          '',              90],
+        ['인텐스',              'Intense',          '',              80],
+        ['라이프',              'Life',             '',              80],
+        ['HIGH',                'HIGH',             '',              80],
+        ['퍼스트',              'First',            '',              80],
+        ['노블레스 라이트',     'Noblesse Lite',    '',              90],
+        ['시그니처 블랙',       'Signature Black',  '',              90],
+        ['베스트 셀렉션',       'Best Selection',   '',              80],
+        ['알칸타라 에디션',     'Alcantara Edition','',              80],
+        ['퀀텀',                'Quantum',          '',              80],
+
+        // ── Chevrolet Korea ───────────────────────────────────────────────
+        ['LS',                  'LS',               'Chevrolet',     100],
+        ['LT',                  'LT',               'Chevrolet',     100],
+        ['LTZ',                 'LTZ',              'Chevrolet',     100],
+        ['ACTIV',               'ACTIV',            'Chevrolet',     100],
+        ['Premier',             'Premier',          'Chevrolet',     100],
+
+        // ── BMW ───────────────────────────────────────────────────────────
+        ['M 스포츠',            'M Sport',          'BMW',           100],
+        ['M 스포츠 프로',       'M Sport Pro',      'BMW',           100],
+        ['M 스포츠 플러스',     'M Sport Plus',     'BMW',           100],
+        ['M 스포츠 패키지',     'M Sport Package',  'BMW',           100],
+        ['M 퍼포먼스',          'M Performance',    'BMW',           100],
+        ['M Sport',             'M Sport',          'BMW',           100],
+        ['M Sport Pro',         'M Sport Pro',      'BMW',           100],
+        ['xLine',               'xLine',            'BMW',           100],
+        ['X라인',               'xLine',            'BMW',           100],
+        ['Luxury Line',         'Luxury Line',      'BMW',           100],
+        ['럭셔리 라인',         'Luxury Line',      'BMW',           100],
+        ['Sport Line',          'Sport Line',       'BMW',           100],
+        ['스포트라인',          'Sport Line',       'BMW',           100],
+        ['Advantage',           'Advantage',        'BMW',           100],
+        ['어드밴티지',          'Advantage',        'BMW',           100],
+        ['퓨어',                'Pure',             'BMW',           100],
+        ['이그제큐티브',        'Executive',        'BMW',           100],
+        ['컴포트',              'Comfort',          'BMW',           100],
+        ['온라인 익스클루시브', 'Online Exclusive', 'BMW',           100],
+        ['럭셔리 플러스',       'Luxury Plus',      'BMW',           100],
+        ['Luxury Plus',         'Luxury Plus',      'BMW',           100],
+
+        // ── Mercedes-Benz ─────────────────────────────────────────────────
+        ['아방가르드',          'Avantgarde',       'Mercedes-Benz', 100],
+        ['Avantgarde',          'Avantgarde',       'Mercedes-Benz', 100],
+        ['AMG Line',            'AMG Line',         'Mercedes-Benz', 100],
+        ['AMG 라인',            'AMG Line',         'Mercedes-Benz', 100],
+        ['엘레강스',            'Elegance',         'Mercedes-Benz', 100],
+        ['Elegance',            'Elegance',         'Mercedes-Benz', 100],
+        ['Style',               'Style',            'Mercedes-Benz', 100],
+        ['Night Edition',       'Night Edition',    'Mercedes-Benz', 100],
+        ['나이트에디션',        'Night Edition',    'Mercedes-Benz', 100],
+        ['아방가르드 플러스',   'Avantgarde Plus',  'Mercedes-Benz', 100],
+        ['Avantgarde Plus',     'Avantgarde Plus',  'Mercedes-Benz', 100],
+
+        // ── Audi ──────────────────────────────────────────────────────────
+        ['S-Line',              'S-Line',           'Audi',          100],
+        ['S 라인',              'S-Line',           'Audi',          100],
+        ['Dynamic',             'Dynamic',          'Audi',          100],
+        ['다이나믹',            'Dynamic',          'Audi',          100],
+        ['Technik',             'Technik',          'Audi',          100],
+        ['Advanced',            'Advanced',         'Audi',          100],
+        ['어드밴스',            'Advanced',         'Audi',          100],
+        ['S라인 블랙에디션',    'S-Line Black Edition', 'Audi',      100],
+        ['S-Line Black Edition','S-Line Black Edition', 'Audi',      100],
+
+        // ── Volkswagen ────────────────────────────────────────────────────
+        ['Progressive',         'Progressive',      'Volkswagen',    100],
+        ['프로그레시브',        'Progressive',      'Volkswagen',    100],
+        ['Elegance',            'Elegance',         'Volkswagen',    100],
+        ['하이라인',            'Highline',         'Volkswagen',    100],
+        ['컴포트라인',          'Comfortline',      'Volkswagen',    100],
+        ['트렌드라인',          'Trendline',        'Volkswagen',    100],
+        ['R-Line',              'R-Line',           'Volkswagen',    100],
+        ['R라인',               'R-Line',           'Volkswagen',    100],
+
+        // ── Volvo ─────────────────────────────────────────────────────────
+        ['Momentum',            'Momentum',         'Volvo',         100],
+        ['모멘텀',              'Momentum',         'Volvo',         100],
+        ['Inscription',         'Inscription',      'Volvo',         100],
+        ['인스크립션',          'Inscription',      'Volvo',         100],
+        ['R-Design',            'R-Design',         'Volvo',         100],
+        ['R디자인',             'R-Design',         'Volvo',         100],
+        ['Core',                'Core',             'Volvo',         100],
+        ['Plus',                'Plus',             'Volvo',         100],
+        ['Ultra',               'Ultra',            'Volvo',         100],
+        ['얼티밋',              'Ultimate',         'Volvo',         100],
+        ['Cross Country',       'Cross Country',    'Volvo',         100],
+        ['Polestar',            'Polestar',         'Volvo',         100],
+
+        // ── Lexus ─────────────────────────────────────────────────────────
+        ['F Sport',             'F Sport',          'Lexus',         100],
+        ['F 스포츠',            'F Sport',          'Lexus',         100],
+        ['슈프림',              'Supreme',          'Lexus',         100],
+        ['타쿠미',              'Takumi',           'Lexus',         100],
+        ['럭셔리플러스',        'Luxury Plus',      'Lexus',         100],
+        ['Executive',           'Executive',        'Lexus',         100],
+        ['버사체',              'Versace',          'Lexus',         100],
+
+        // ── Toyota ────────────────────────────────────────────────────────
+        ['XLE',                 'XLE',              'Toyota',        100],
+        ['XSE',                 'XSE',              'Toyota',        100],
+        ['Touring',             'Touring',          'Toyota',        100],
+        ['그랜드투어링',        'Grand Touring',    'Toyota',        100],
+
+        // ── Land Rover ────────────────────────────────────────────────────
+        ['HSE',                 'HSE',              'Land Rover',    100],
+        ['SE',                  'SE',               'Land Rover',    100],
+        ['Autobiography',       'Autobiography',    'Land Rover',    100],
+        ['오토바이오그래피',    'Autobiography',    'Land Rover',    100],
+        ['SVR',                 'SVR',              'Land Rover',    100],
+        ['SVX',                 'SVX',              'Land Rover',    100],
+
+        // ── Porsche ───────────────────────────────────────────────────────
+        ['Carrera',             'Carrera',          'Porsche',       100],
+        ['카레라',              'Carrera',          'Porsche',       100],
+        ['GTS',                 'GTS',              'Porsche',       100],
+        ['Turbo',               'Turbo',            'Porsche',       100],
+        ['Turbo S',             'Turbo S',          'Porsche',       100],
+        ['4S',                  '4S',               'Porsche',       100],
+        ['GT3',                 'GT3',              'Porsche',       100],
+        ['GT3 RS',              'GT3 RS',           'Porsche',       100],
+        ['GT4',                 'GT4',              'Porsche',       100],
+        ['Targa',               'Targa',            'Porsche',       100],
+        ['타르가',              'Targa',            'Porsche',       100],
+        ['Spyder',              'Spyder',           'Porsche',       100],
+        ['스파이더',            'Spyder',           'Porsche',       100],
+        ['컴페티션',            'Competition',      'Porsche',       100],
+        ['Competition',         'Competition',      'Porsche',       100],
+
+        // ── Lincoln ───────────────────────────────────────────────────────
+        ['Reserve',             'Reserve',          'Lincoln',       100],
+        ['리저브',              'Reserve',          'Lincoln',       100],
+        ['Black Label',         'Black Label',      'Lincoln',       100],
+        ['블랙레이블',          'Black Label',      'Lincoln',       100],
+
+        // ── MINI ──────────────────────────────────────────────────────────
+        ['JCW',                 'JCW',              'MINI',          100],
+
+        // ── Lamborghini ───────────────────────────────────────────────────
+        ['Performante',         'Performante',      'Lamborghini',   100],
+        ['퍼포만테',            'Performante',      'Lamborghini',   100],
+        ['EVO',                 'EVO',              'Lamborghini',   100],
+        ['STO',                 'STO',              'Lamborghini',   100],
+        ['SVJ',                 'SVJ',              'Lamborghini',   100],
+        ['Ultimae',             'Ultimae',          'Lamborghini',   100],
+        ['슈퍼레제라',          'Superleggera',     'Lamborghini',   100],
+
+        // ── Ferrari ───────────────────────────────────────────────────────
+        ['GTB',                 'GTB',              'Ferrari',       100],
+        ['GTS',                 'GTS',              'Ferrari',       100],
+        ['Tributo',             'Tributo',          'Ferrari',       100],
+        ['트리부토',            'Tributo',          'Ferrari',       100],
+
+        // ── SsangYong / KG Mobility ───────────────────────────────────────
+        ['VX',                  'VX',               'KG Mobility',   100],
+        ['DX',                  'DX',               'KG Mobility',   100],
+
+        // ── Kia EV-specific (higher priority than universal '어스') ─────────
+        ['어스',                'Earth',            'Kia',           100],
+    ];
+
+    /**
      * Known chassis/generation codes per model.
      * Keyed by [make_kr, model_kr] → list of codes.
      * Source: manufacturer documentation + public chassis-code references.
@@ -1139,7 +1366,7 @@ class CatalogImport extends Command
 
         // ── 제네시스 (Genesis) ───────────────────────────────────────────
         '제네시스|G70'  => ['IK'],
-        '제네시스|G80'  => ['RG3', 'RG'],
+        '제네시스|G80'  => ['DH', 'RG', 'RG3'],  // DH=현대 제네시스 세단 → 브랜드 분리 후 G80
         '제네시스|G90'  => ['HI', 'RS4'],
         '제네시스|GV70' => ['JK1'],
         '제네시스|GV80' => ['JX1'],
@@ -1151,9 +1378,9 @@ class CatalogImport extends Command
         'BMW|2시리즈'   => ['F22', 'F45', 'G42'],
         'BMW|3시리즈'   => ['E30', 'E36', 'E46', 'E90', 'F30', 'G20'],
         'BMW|4시리즈'   => ['F32', 'F36', 'G22'],
-        'BMW|5시리즈'   => ['E34', 'E39', 'E60', 'F10', 'G30'],
+        'BMW|5시리즈'   => ['E34', 'E39', 'E60', 'F10', 'G30', 'G60'],  // G60 = 8세대 2023+
         'BMW|6시리즈'   => ['E63', 'F12', 'G32'],
-        'BMW|7시리즈'   => ['E38', 'E65', 'F01', 'G11'],
+        'BMW|7시리즈'   => ['E38', 'E65', 'F01', 'G11', 'G12', 'G70'],  // G12=LWB G11, G70=7세대 2022+
         'BMW|8시리즈'   => ['G14', 'G15'],
         'BMW|X1'        => ['E84', 'F48', 'U11'],
         'BMW|X2'        => ['F39', 'U10'],
@@ -1173,7 +1400,7 @@ class CatalogImport extends Command
         '벤츠|E클래스'  => ['W210', 'W211', 'W212', 'W213', 'W214'],
         '벤츠|S클래스'  => ['W140', 'W220', 'W221', 'W222', 'W223'],
         '벤츠|GLC'      => ['X253', 'X254'],
-        '벤츠|GLE'      => ['W166', 'V167'],
+        '벤츠|GLE'      => ['W166', 'W167', 'V167'],  // W167=2019+ standard, V167=LWB
         '벤츠|GLS'      => ['X166', 'X167'],
         '벤츠|CLA'      => ['C117', 'C118'],
         '벤츠|CLS'      => ['C219', 'C218', 'C257'],
@@ -1268,6 +1495,7 @@ class CatalogImport extends Command
         if ($this->option('fresh')) {
             $this->line('Truncating catalog tables...');
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            CatalogTrim::query()->truncate();
             CatalogTokenMap::query()->truncate();
             CatalogModelGeneration::query()->truncate();
             CatalogSubGrade::query()->truncate();
@@ -1356,7 +1584,27 @@ class CatalogImport extends Command
             $this->info("New token maps:       {$newTok}");
         }
 
+        if (!$this->option('skip-trims')) {
+            $newTrims = $this->seedCatalogTrims();
+            $this->info("New catalog trims:    {$newTrims}");
+        }
+
         return self::SUCCESS;
+    }
+
+    private function seedCatalogTrims(): int
+    {
+        $new = 0;
+        foreach (self::CATALOG_TRIMS_SEED as [$trimKr, $trimEn, $makeEn, $priority]) {
+            $row = CatalogTrim::firstOrCreate(
+                ['trim_kr' => (string) $trimKr, 'make_en' => (string) $makeEn],
+                ['trim_en' => ($trimEn !== null && $trimEn !== '') ? $trimEn : null, 'priority' => $priority],
+            );
+            if ($row->wasRecentlyCreated) {
+                $new++;
+            }
+        }
+        return $new;
     }
 
     private function seedTokenMaps(): int
