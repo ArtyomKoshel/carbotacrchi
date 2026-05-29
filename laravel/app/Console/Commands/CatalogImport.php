@@ -31,14 +31,15 @@ class CatalogImport extends Command
     private const TOKEN_MAP_SEED = [
         // ── Fuel type detection ──────────────────────────────────────────
         'fuel' => [
-            '디젤' => 'diesel', 'diesel' => 'diesel',
-            '가솔린' => 'gasoline', 'gasoline' => 'gasoline', 'petrol' => 'gasoline',
+            '디젤' => 'diesel', 'diesel' => 'diesel', '경유' => 'diesel',
+            '가솔린' => 'gasoline', 'gasoline' => 'gasoline', 'petrol' => 'gasoline', '휘발유' => 'gasoline',
             'lpi' => 'lpg', 'lpe' => 'lpg', 'lpg' => 'lpg', '바이퓨얼' => 'lpg',
-            'hev' => 'hybrid', '하이브리드' => 'hybrid',
+            'hev' => 'hybrid', '하이브리드' => 'hybrid', 'hybrid' => 'hybrid',
             'phev' => 'plugin_hybrid', 'plug-in' => 'plugin_hybrid',
             'ev' => 'electric', '전기' => 'electric', 'bev' => 'electric',
             '수소' => 'hydrogen', 'fcev' => 'hydrogen',
             'mhev' => 'mild_hybrid',
+            'cng' => 'cng',
         ],
         // ── Drive type detection ─────────────────────────────────────────
         'drive' => [
@@ -51,7 +52,16 @@ class CatalogImport extends Command
             'htrac' => 'awd',       // Hyundai HTRAC
             'e-htrac' => 'awd',     // Hyundai e-HTRAC (hybrid)
             'e-four' => 'awd',      // Toyota hybrid
+            'e-awd' => 'awd',       // Hyundai/Kia EV AWD (아이오닉5, EV6, GV60)
+            '4matic+' => 'awd',     // Mercedes-Benz AMG 4MATIC+ (GLE53, E53, CLA45…)
+            's-awc' => 'awd',       // Mitsubishi Super All Wheel Control
+            '사륜구동' => 'awd',    // Korean "four-wheel drive"
+            '전륜구동' => 'fwd',    // Korean "front-wheel drive"
+            '후륜구동' => 'rwd',    // Korean "rear-wheel drive"
+            '이륜구동' => 'fwd',    // Korean "two-wheel drive" (colloquially means FWD)
             'sdrive' => 'rwd', 'rwd' => 'rwd', 'fr' => 'rwd',
+            '4모션' => 'awd',   // VW 4MOTION Korean rendering
+            'all4'  => 'awd',   // MINI ALL4 all-wheel drive
         ],
         // ── Body type detection ──────────────────────────────────────────
         'body' => [
@@ -121,6 +131,9 @@ class CatalogImport extends Command
             // BMW/MB write engine suffix as separate token: "520 d xDrive", "E220 d"
             // Single-char filter in extractTrimKr already handles this, but explicit is better.
             'd' => null,
+            // ── Mercedes-AMG sub-brand badge ──────────────────────────────────
+            // Standalone "AMG" token after grade_spec_code strips model code (e.g. "G63 AMG")
+            'amg' => null,
             // ── Audi power class standalone numbers ──────────────────────────
             // "45 TFSI 프리미엄" → TFSI stripped by engine_family, "45" stays without this
             '35' => null, '40' => null, '45' => null, '50' => null, '55' => null, '60' => null,
@@ -135,7 +148,7 @@ class CatalogImport extends Command
             'c220' => null, 'c220d' => null, 'c230' => null, 'c240' => null,
             'c250' => null, 'c250d' => null,
             'c300' => null, 'c300d' => null, 'c300e' => null, 'c350e' => null,
-            'c43' => null, 'c63' => null,
+            'c43' => null, 'c450' => null, 'c63' => null,
             // CLA
             'cla180' => null, 'cla200' => null, 'cla220' => null, 'cla250' => null,
             'cla35' => null, 'cla45' => null,
@@ -222,11 +235,11 @@ class CatalogImport extends Command
             '430d' => null, '430i' => null, '435d' => null, '435i' => null,
             '440i' => null, 'm440d' => null, 'm440i' => null,
             // 5-Series
-            '518d' => null, '520d' => null, '520i' => null,
+            '518d' => null, '520d' => null, '520e' => null, '520i' => null,
             '523d' => null, '525d' => null, '525i' => null,
             '528d' => null, '528i' => null, '530d' => null, '530e' => null, '530i' => null,
             '535d' => null, '535i' => null, '540d' => null, '540i' => null,
-            '545e' => null, '550i' => null, 'm550d' => null, 'm550i' => null,
+            '545e' => null, '550e' => null, '550i' => null, 'm550d' => null, 'm550i' => null,
             // 6-Series
             '620d' => null, '625d' => null, '628i' => null,
             '630d' => null, '630i' => null, '635d' => null,
@@ -267,9 +280,11 @@ class CatalogImport extends Command
             'sdrive18d' => null, 'sdrive18i' => null,
             'sdrive20d' => null, 'sdrive20i' => null, 'sdrive28i' => null, 'sdrive30i' => null,
             // iX / i-series electric
-            'edrive40' => null,
+            'edrive40' => null, 'edrive50' => null,
+            // BMW M-Performance powertrain codes (X5/X6/X7 M50i, iX M60, i4 M50 etc.)
+            'm50' => null, 'm50i' => null, 'm50d' => null, 'm60' => null, 'm60i' => null, 'm60d' => null,
             // ── Audi ─────────────────────────────────────────────────────────
-            '35tfsi' => null, '40tfsi' => null, '45tfsi' => null,
+            '30tfsi' => null, '35tfsi' => null, '40tfsi' => null, '45tfsi' => null,
             '50tfsi' => null, '55tfsi' => null, '60tfsi' => null,
             '30tdi' => null, '35tdi' => null, '40tdi' => null, '45tdi' => null,
             '50tdi' => null, '55tdi' => null,
@@ -306,7 +321,7 @@ class CatalogImport extends Command
             // ── Jaguar ────────────────────────────────────────────────────────
             '20d' => null, '25t' => null, '30d' => null,  // older Ingenium codes (F-Pace, XE, XF)
             // ── Lexus ─────────────────────────────────────────────────────────
-            '300h' => null, '450h' => null, '500h' => null,
+            '300h' => null, '450h' => null, '450h+' => null, '500h' => null,
             // 700h shared with Kia above
             // ── Tesla ─────────────────────────────────────────────────────────
             '90d' => null, '100d' => null,  // Model S/X (older Long Range designators)
@@ -558,6 +573,8 @@ class CatalogImport extends Command
         // ── Korean model name marketing prefixes — stripped to get canonical name ─
         // Sorted by specificity: multi-word before single-word (handled at runtime)
         'model_prefix' => [
+            '디 올 뉴'    => null,  // "The All New" (Kia/Hyundai EV marketing — 디 올 뉴 니로)
+            '어메이징 뉴' => null,  // "Amazing New" (older facelift marketing)
             '더 넥스트' => null,  // "The Next" (Chevrolet 더 넥스트 스파크/말리부/크루즈)
             '더 뉴'     => null,  // "The New" facelift
             '올 뉴'     => null,  // "All New" full redesign
@@ -594,9 +611,14 @@ class CatalogImport extends Command
             'ev' => null, 'bev' => null,
             '4matic' => null, '4matic+' => null, '블루텍' => null, 'gte' => null, 'lpli' => null, '4tronic' => null,
             'hemi' => null,  // Chrysler/Dodge Hemispherical engine branding
-            'skyactiv' => null, 'vtec' => null, 'cvvt' => null, 'dohc' => null, 'sohc' => null,
+            'skyactiv' => null, 'skyactiv-g' => null, 'skyactiv-d' => null, 'skyactiv-x' => null,
+            'vtec' => null, 'cvvt' => null, 'dohc' => null, 'sohc' => null,
             'tce' => null,   // Renault TCe (Turbo petrol: TCe 130, TCe 260)
             'hdi' => null, 'b-hdi' => null, 'e-hdi' => null, 'bluehdi' => null,  // PSA/Stellantis diesel
+            '터보'    => null,   // Korean powertrain descriptor (Porsche/BMW Turbo trim matched first via CATALOG_TRIMS)
+            'vvt'     => null,   // Hyundai VVT engine technology
+            'dci'     => null,   // Renault dCi diesel injection
+            'e-tech'  => null,   // Renault E-TECH hybrid system
         ],
         // ── Tokens that match variant pattern but are NOT variants ────────
         'variant_exclude' => [
@@ -1166,6 +1188,32 @@ class CatalogImport extends Command
         ['베스트 셀렉션',       'Best Selection',   '',              80],
         ['알칸타라 에디션',     'Alcantara Edition','',              80],
         ['퀀텀',                'Quantum',          '',              80],
+        // Hyundai trims in trim_whitelist but missing from catalog
+        ['하이테크',            'Hi-Tech',          '',              80],
+        ['글로시',              'Glossy',           '',              80],
+        ['파퓰러',              'Popular',          '',              80],
+        ['밸류',                'Value',            '',              80],
+        ['블랙잉크',            'Black Ink',        '',              80],
+        ['블랙익스테리어',      'Black Exterior',   '',              80],
+        ['H-Pick',              'H-Pick',           '',              80],
+        // Genesis trims
+        ['디스팅션',            'Distinction',      '',              90],
+        ['임프레션',            'Impression',       '',              80],
+        // Compound Prestige variants (priority ≥ 90 so they match before bare '프레스티지')
+        ['프레스티지 플러스',   'Prestige Plus',    '',              90],  // Santa Fe MX5 2025 bestseller
+        ['프레스티지 블랙',     'Prestige Black',   '',              90],  // Genesis G80/G90/GV80/GV80쿠페
+        ['프레스티지 컬렉션',   'Prestige Collection', '',           90],  // Genesis G90 top trim
+        // EV base trim (Kia EV6 / Ioniq 5/6 entry-level)
+        ['에어',                'Air',              'Kia',           100],
+        ['에어',                'Air',              'Hyundai',       100],
+        // No-space variants (some lots omit space: "N라인" not "N 라인")
+        ['N라인',               'N Line',           '',              90],
+        ['GT라인',              'GT-Line',          '',              90],
+        ['엑스라인',            'X-Line',           '',              90],
+        // Honda Korea — prevents 투어링/Trail Sport being misread as body=wagon
+        ['투어링',              'Touring',          'Honda',         100],  // Accord HEV 투어링
+        ['트레일스포츠',        'Trail Sport',      'Honda',         100],  // CR-V 2026
+        ['EX-L',                'EX-L',             'Honda',         100],
 
         // ── Chevrolet Korea ───────────────────────────────────────────────
         ['LS',                  'LS',               'Chevrolet',     100],
@@ -1312,6 +1360,71 @@ class CatalogImport extends Command
         // ── SsangYong / KG Mobility ───────────────────────────────────────
         ['VX',                  'VX',               'KG Mobility',   100],
         ['DX',                  'DX',               'KG Mobility',   100],
+        ['LX',                  'LX',               'KG Mobility',   100],  // Tivoli trim
+        ['IX',                  'IX',               'KG Mobility',   100],  // Tivoli Air trim
+        ['EX',                  'EX',               'KG Mobility',   100],  // Korando/Tivoli
+        ['MX',                  'MX',               'KG Mobility',   100],  // Korando trim
+        ['RX5',                 'RX5',              'KG Mobility',   100],  // Rexton grade
+        ['RX7',                 'RX7',              'KG Mobility',   100],  // Rexton grade (confirmed namu.wiki)
+        ['CX7',                 'CX7',              'KG Mobility',   100],  // Korando Sports grade
+        ['기어',                'Gear',             'KG Mobility',   100],  // Tivoli Armor trim
+        ['기어 플러스',         'Gear Plus',        'KG Mobility',   100],  // Tivoli Armor trim
+        ['기어 에디션',         'Gear Edition',     'KG Mobility',   100],  // Tivoli Armor trim
+
+        // ── MINI (official U25 3rd-gen Countryman trims confirmed Wikipedia) ─
+        ['에센셜',              'Essential',        'MINI',          100],
+        ['클래식',              'Classic',          'MINI',          100],
+        ['페이버드',            'Favoured',         'MINI',          100],
+        ['Essential',           'Essential',        'MINI',          100],
+        ['Classic',             'Classic',          'MINI',          100],
+        ['Favoured',            'Favoured',         'MINI',          100],
+
+        // ── Tesla Korea ──────────────────────────────────────────────────────
+        ['스탠다드 레인지',        'Standard Range',         'Tesla',  100],
+        ['스탠다드 레인지 플러스', 'Standard Range Plus',     'Tesla',  100],
+        ['롱레인지',               'Long Range',              'Tesla',  100],
+        ['퍼포먼스',               'Performance',             'Tesla',  100],
+
+        // ── Renault Korea ─────────────────────────────────────────────────────
+        ['에스프리 알핀',       'Esprit Alpine',    'Renault',       100],  // SM6/Arkana Alpine trim
+        ['노바 L',              'Nova L',           'Renault',       100],  // SM7 Nova series trim
+
+        // ── Hyundai additional ────────────────────────────────────────────────
+        ['라운지',              'Lounge',           'Hyundai',       100],  // Staria 라운지 trim
+        ['투어러',              'Tourer',           'Hyundai',       100],  // Staria 투어러 (avoid body=wagon)
+        ['케어플러스',          'Care Plus',        'Hyundai',       100],  // Sonata 케어플러스
+        ['디 에센셜',           'The Essential',    'Hyundai',       100],  // Casper entry trim
+        ['N',                   'N',                'Hyundai',       100],  // Ioniq 5 N / N-branded performance
+
+        // ── Kia additional ────────────────────────────────────────────────────
+        ['올 GT 플러스',        'All GT Plus',      'Kia',           100],  // K3 top trim
+        ['올 GT',               'All GT',           'Kia',           100],  // K3 trim
+        ['이그제큐티브',        'Executive',        'Kia',           100],  // K9 이그제큐티브
+
+        // ── Genesis ───────────────────────────────────────────────────────────
+        ['이그제큐티브',        'Executive',        'Genesis',       100],  // G90 최고 등급
+
+        // ── Lexus additional ──────────────────────────────────────────────────
+        ['이그제큐티브',        'Executive',        'Lexus',         100],  // ES/LS Korean rendering
+
+        // ── Mercedes-Benz additional ──────────────────────────────────────────
+        ['프로그레시브',        'Progressive',      'Mercedes-Benz', 100],  // A/C/E-Class trim
+        ['Progressive',         'Progressive',      'Mercedes-Benz', 100],
+        ['일렉트릭 아트',       'Electric Art',     'Mercedes-Benz', 100],  // EQS/EQE trim
+
+        // ── BMW additional ────────────────────────────────────────────────────
+        ['프로',                'Pro',              'BMW',           100],  // i4 M50 프로, i5 M60 프로
+        ['디자인 퓨어 엑셀런스', 'Design Pure Excellence', 'BMW',     100],  // 7-Series top trim
+
+        // ── Porsche (Korean rendering of performance trims) ───────────────────
+        ['터보',                'Turbo',            'Porsche',       100],  // Korean 터보 = Turbo trim
+        ['터보 S',              'Turbo S',          'Porsche',       100],  // Korean 터보 S
+
+        // ── Jeep ─────────────────────────────────────────────────────────────
+        ['론지튜드',            'Longitude',        'Jeep',          100],  // Renegade / Compass
+        ['론지튜드 하이',       'Longitude High',   'Jeep',          100],  // Renegade 최상위 트림
+        ['Longitude',           'Longitude',        'Jeep',          100],
+        ['Longitude High',      'Longitude High',   'Jeep',          100],
 
         // ── Kia EV-specific (higher priority than universal '어스') ─────────
         ['어스',                'Earth',            'Kia',           100],
