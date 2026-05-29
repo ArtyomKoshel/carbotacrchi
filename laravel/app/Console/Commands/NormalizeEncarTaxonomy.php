@@ -210,14 +210,11 @@ class NormalizeEncarTaxonomy extends Command
             return true;
         };
 
-        if ($random) {
-            $q = $baseQuery->inRandomOrder();
-            if ($limit > 0) {
-                $q->limit($limit);
-            }
-            $this->line('Random fetch' . ($limit > 0 ? ": {$limit}" : ': all') . ' lots...');
+        if ($random && $limit > 0) {
+            // Random + limit: safe — load N rows in random order
+            $this->line("Random fetch: {$limit} lots...");
             try {
-                $rows = $q->get();
+                $rows = $baseQuery->inRandomOrder()->limit($limit)->get();
                 $this->line('Fetched: ' . $rows->count() . ' lots, processing...');
                 $processRow($rows);
             } catch (\Throwable $e) {
@@ -226,6 +223,10 @@ class NormalizeEncarTaxonomy extends Command
                 return self::FAILURE;
             }
         } else {
+            // Sequential chunked processing (also used when --random without --limit to avoid OOM)
+            if ($random) {
+                $this->line('Note: --random without --limit uses sequential chunk order (ORDER BY RAND() on full table is unsafe)');
+            }
             $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$counts, $total, $startTime, $limit) {
                 $processRow($rows);
                 $pct     = $total > 0 ? round($counts['processed'] / $total * 100) : 0;
