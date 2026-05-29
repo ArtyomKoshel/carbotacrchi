@@ -211,7 +211,8 @@ class NormalizeEncarTaxonomy extends Command
         };
 
         if ($random) {
-            $processRow($baseQuery->inRandomOrder()->limit($limit ?: PHP_INT_MAX)->get());
+            $randomLimit = $limit ?: 10000;  // safety cap: never load entire table into memory
+            $processRow($baseQuery->inRandomOrder()->limit($randomLimit)->get());
         } else {
             $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$counts, $total, $startTime, $limit) {
                 $processRow($rows);
