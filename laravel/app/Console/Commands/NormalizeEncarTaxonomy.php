@@ -17,7 +17,8 @@ class NormalizeEncarTaxonomy extends Command
         {--chunk=2000 : Chunk size for scanning rows}
         {--source=encar : Source to process}
         {--random : Sample lots in random order}
-        {--only-empty : Only process lots where trim IS NULL or empty}';
+        {--only-empty : Only process lots where trim IS NULL or empty}
+        {--dump-trims= : Write all proposed trim values (sorted by freq) to this file path}';
 
     protected $description = 'Normalize Encar lot fields using catalog lookup + rule engine';
 
@@ -344,6 +345,16 @@ class NormalizeEncarTaxonomy extends Command
                 foreach ($top as $val => $cnt) {
                     $this->line(sprintf('  %4d × %s', $cnt, $val));
                 }
+            }
+            $dumpPath = $this->option('dump-trims');
+            if ($dumpPath && !empty($trimSamples)) {
+                $lines = [];
+                foreach ($trimSamples as $val => $cnt) {
+                    $lines[] = sprintf('%d\t%s', $cnt, $val);
+                }
+                file_put_contents($dumpPath, implode("\n", $lines) . "\n");
+                $this->line('');
+                $this->line("Trim dump written to: {$dumpPath} (" . count($trimSamples) . ' unique values)');
             }
         }
 
