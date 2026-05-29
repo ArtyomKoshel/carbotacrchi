@@ -63,6 +63,10 @@ class CatalogImport extends Command
             '픽업' => 'pickup', 'pickup' => 'pickup',
             '밴' => 'van', 'van' => 'van',
             '리무진' => 'limousine',
+            '하이리무진' => 'limousine',  // high-roof limousine (Starex/Staria variants)
+            '어린이보호차' => 'school_bus', // child protection vehicle (school bus conversion)
+            '앰뷸런스' => 'ambulance',     // ambulance conversion
+            '캠핑카' => 'camper',           // camper/RV conversion
             'suv' => 'suv',
             'crossover' => 'crossover',     // EV crossovers (아이오닉5, EV6, GV60) — AI may return
             'minivan'   => 'minivan',        // 미니밴 (카니발, 스타렉스) — AI may return
@@ -240,6 +244,12 @@ class CatalogImport extends Command
             // X-series short tokens (appear without xDrive prefix in grade_kr)
             '20i' => null, '25i' => null, '30i' => null, '30d' => null,
             '35i' => null, '40i' => null, '40d' => null, '50i' => null,
+            // BMW short PHEV/diesel codes (newer short-badge format: "30e M 스포츠", "18d xLine")
+            '18d' => null, '18i' => null, '20e' => null, '25e' => null, '30e' => null,
+            '40e' => null, '45e' => null, '50e' => null, '60e' => null,
+            // BMW bare power-class numbers (newer catalog format: "20 M 스포츠", "30 럭셔리")
+            '18' => null, '20' => null, '25' => null, '30' => null, '40' => null,
+            '120' => null, '220' => null, '228' => null,
             // X-series combined tokens (xDriveXXi/d appear as single token in grade_kr)
             'xdrive18d' => null, 'xdrive18i' => null,
             'xdrive20d' => null, 'xdrive20i' => null,
@@ -416,6 +426,16 @@ class CatalogImport extends Command
             '5.6' => null, '5.6t' => null,
             '6.2' => null, '6.4' => null, '6.6' => null, '6.75' => null,
             '5.0l' => null, '6.6l' => null, '6.75l' => null,
+            // Additional volumes seen in Korean market data
+            '0.6' => null,  // kei-car / micro (Spark, Alto, N-BOX)
+            '2.9' => null,  // Maserati, SsangYong (2.9T biturbo)
+            '3.5l' => null, // L-suffix form (e.g. F150 3.5L)
+            '3.7' => null,  // Infiniti, older Jeep Grand Cherokee
+            '4.8' => null,  // BMW X5 4.8i
+            '5.2' => null,  // Lamborghini Huracan (5.2 NA)
+            '5.3' => null,  // GM 5.3L V8 (Silverado, Tahoe, Suburban)
+            '5.7' => null,  // Dodge Hemi, older Chevrolet
+            '6.7' => null,  // Bentley Mulsanne 6.75 short form + Ford PowerStroke
         ],
         // ── Korean generation label tokens: 1세대, 2세대 … stripped from grade_kr ─
         'grade_gen_label' => [

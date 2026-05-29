@@ -164,8 +164,17 @@ class NormalizeEncarTaxonomy extends Command
                     $trimTokens = [];
                     $badgeStr   = trim($badgeKr);
 
-                    foreach (preg_split('/\s+/u', $badgeStr !== '' ? $badgeStr : $fullStr) ?: [] as $rawTok) {
+                    // Strip business/purpose annotations before token split
+                    $scanStr = $badgeStr !== '' ? $badgeStr : $fullStr;
+                    $scanStr = preg_replace('/\s*\([^)]*(?:렌터카|장애인용|특장업체|수출형|캠핑카)[^)]*\)\s*/u', ' ', $scanStr) ?? $scanStr;
+
+                    foreach (preg_split('/\s+/u', $scanStr) ?: [] as $rawTok) {
                         $tok = mb_strtolower($rawTok);
+
+                        // Skip bare parenthetical tokens
+                        if (preg_match('/^\([^)]*\)$/u', $rawTok)) {
+                            continue;
+                        }
 
                         if (($row->fuel ?? '') === '' && !isset($patch['fuel']) && isset($fuelMap[$tok])) {
                             $patch['fuel'] = $fuelMap[$tok]; continue;

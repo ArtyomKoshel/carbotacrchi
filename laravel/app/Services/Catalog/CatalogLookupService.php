@@ -246,11 +246,18 @@ class CatalogLookupService
             }
         }
 
+        // Strip parenthetical business/purpose annotations before tokenising
+        $gradeKr = preg_replace('/\s*\([^)]*(?:렌터카|장애인용|특장업체|수출형|캠핑카)[^)]*\)\s*/u', ' ', $gradeKr) ?? $gradeKr;
+
         $tokens = preg_split('/\s+/u', trim($gradeKr)) ?: [];
         $keep   = [];
 
         foreach ($tokens as $tok) {
             if (isset($this->specTokenSet[mb_strtolower($tok)])) {
+                continue;
+            }
+            // Skip bare parenthetical tokens that survived the regex above
+            if (preg_match('/^\([^)]*\)$/u', $tok)) {
                 continue;
             }
             $keep[] = $tok;
