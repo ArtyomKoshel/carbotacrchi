@@ -67,6 +67,10 @@ class CatalogImport extends Command
             '어린이보호차' => 'school_bus', // child protection vehicle (school bus conversion)
             '앰뷸런스' => 'ambulance',     // ambulance conversion
             '캠핑카' => 'camper',           // camper/RV conversion
+            '그란쿠페' => 'coupe',          // Gran Coupe (BMW 4/6/8시리즈 그란쿠페)
+            '그란카브리오' => 'convertible', // Gran Cabrio (Maserati)
+            '스포트백' => 'hatchback',       // Sportback (Audi A5, VW Arteon)
+            '카브리오' => 'convertible',     // Cabrio short form (MINI, Fiat)
             'suv' => 'suv',
             'crossover' => 'crossover',     // EV crossovers (아이오닉5, EV6, GV60) — AI may return
             'minivan'   => 'minivan',        // 미니밴 (카니발, 스타렉스) — AI may return
@@ -400,6 +404,13 @@ class CatalogImport extends Command
             '스마트패키지' => null,
             '드라이빙어시스턴스패키지' => null,
             '스포츠패키지' => null,
+            // ── Vehicle purpose / sales channel annotations (appear without parens in some listings) ──
+            '장애인용' => null,    // disabled person vehicle
+            '렌터카' => null,      // rental car
+            '특장업체' => null,    // special bodywork converter
+            '수출형' => null,      // export model
+            '구조변경' => null,    // structural modification
+            '택시형' => null,      // taxi model
         ],
         // ── Engine displacement tokens stripped from grade_kr ─────────────
         // mapped_value = null (token key IS the numeric value).
@@ -444,6 +455,7 @@ class CatalogImport extends Command
         ],
         // ── Korean seat-count tokens stripped from grade_kr ───────────────
         'grade_seat' => [
+            '2인승' => null, '4인승' => null,  // 2-seaters (sports/kei) and 4-seat configs
             '5인승' => null, '6인승' => null, '7인승' => null, '8인승' => null,
             '9인승' => null, '10인승' => null, '11인승' => null, '12인승' => null,
             '13인승' => null, '14인승' => null, '15인승' => null,
