@@ -211,8 +211,20 @@ class NormalizeEncarTaxonomy extends Command
         };
 
         if ($random) {
-            $randomLimit = $limit ?: 10000;  // safety cap: never load entire table into memory
-            $processRow($baseQuery->inRandomOrder()->limit($randomLimit)->get());
+            $q = $baseQuery->inRandomOrder();
+            if ($limit > 0) {
+                $q->limit($limit);
+            }
+            $this->line('Random fetch' . ($limit > 0 ? ": {$limit}" : ': all') . ' lots...');
+            try {
+                $rows = $q->get();
+                $this->line('Fetched: ' . $rows->count() . ' lots, processing...');
+                $processRow($rows);
+            } catch (\Throwable $e) {
+                $this->error('FATAL: ' . $e->getMessage());
+                $this->error($e->getFile() . ':' . $e->getLine());
+                return self::FAILURE;
+            }
         } else {
             $baseQuery->orderBy('id')->chunkById($chunk, function ($rows) use ($processRow, &$counts, $total, $startTime, $limit) {
                 $processRow($rows);
