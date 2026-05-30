@@ -306,6 +306,7 @@ class ImportEncarOptions extends Command
         }
 
         $catalog = [];
+        $placeholderNames = 0;
 
         foreach (array_chunk($ids, 20) as $batchIds) {
             $resp = Http::timeout(25)
@@ -340,8 +341,7 @@ class ImportEncarOptions extends Command
                     continue;
                 }
 
-                foreach (['standard', 'choice', 'paid', 'color', 'package'] as $group) {
-                    $items = $options[$group] ?? [];
+                foreach ($options as $group => $items) {
                     if (!is_array($items)) {
                         continue;
                     }
@@ -368,11 +368,15 @@ class ImportEncarOptions extends Command
                             ?? $item['optionName']
                             ?? null;
 
-                        if ($code === null || $name === null || $name === '') {
+                        if ($code === null) {
                             continue;
                         }
 
                         $code = (string) $code;
+                        if ($name === null || $name === '') {
+                            $name = '옵션 ' . $code;
+                            $placeholderNames++;
+                        }
 
                         if (!isset($catalog[$code])) {
                             $catalog[$code] = [
@@ -384,6 +388,13 @@ class ImportEncarOptions extends Command
                     }
                 }
             }
+        }
+
+        if ($placeholderNames > 0) {
+            Log::warning('[ImportEncarOptions] Fallback imported options with placeholder names (name missing in API payload)', [
+                'placeholder_count' => $placeholderNames,
+                'total_codes'       => count($catalog),
+            ]);
         }
 
         return array_values($catalog);
