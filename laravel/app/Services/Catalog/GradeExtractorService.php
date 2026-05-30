@@ -254,41 +254,59 @@ class GradeExtractorService
         foreach ($tokens as $rawTok) {
             $tok = mb_strtolower($rawTok);
 
-            // Skip bare parenthetical tokens
+            // Skip bare parenthetical tokens "(foo)"
             if (preg_match('/^\([^)]*\)$/u', $rawTok)) {
                 continue;
             }
 
-            // Fuel fallback (only if not already set by catalog_grades)
-            if ($result->fuel === null && isset($fuelMap[$tok]) && $fuelMap[$tok] !== true) {
-                $result->fuel = $fuelMap[$tok];
-                continue;
+            // Normalise paren-suffixed tokens before map lookups.
+            // Korean grade strings often attach engine-tech annotations directly to the fuel
+            // or drive word without a space: "디젤(e-VGT)", "가솔린(GDI)", "2WD(e-AWD)".
+            // Stripping the trailing (...) lets the bare word hit its map entry.
+            $tn = ($tok !== '' && str_contains($tok, '('))
+                ? (string) preg_replace('/\s*\([^)]*\)$/u', '', $tok)
+                : $tok;   // $tn = token-normalised (paren suffix stripped)
+
+            // ── Fuel ────────────────────────────────────────────────────────
+            $fuelVal = $fuelMap[$tn] ?? $fuelMap[$tok] ?? null;
+            if ($fuelVal !== null && $fuelVal !== true) {
+                if ($result->fuel === null) {
+                    $result->fuel = $fuelVal;
+                }
+                continue; // always strip fuel tokens even when fuel already known
             }
-            // Drive fallback
-            if ($result->driveType === null && isset($driveMap[$tok]) && $driveMap[$tok] !== true) {
-                $result->driveType = $driveMap[$tok];
-                continue;
+            // ── Drive ────────────────────────────────────────────────────────
+            $driveVal = $driveMap[$tn] ?? $driveMap[$tok] ?? null;
+            if ($driveVal !== null && $driveVal !== true) {
+                if ($result->driveType === null) {
+                    $result->driveType = $driveVal;
+                }
+                continue; // always strip drive tokens
             }
-            // Body fallback
-            if ($result->bodyType === null && isset($bodyMap[$tok]) && $bodyMap[$tok] !== true) {
-                $result->bodyType = $bodyMap[$tok];
-                continue;
+            // ── Body ─────────────────────────────────────────────────────────
+            $bodyVal = $bodyMap[$tn] ?? $bodyMap[$tok] ?? null;
+            if ($bodyVal !== null && $bodyVal !== true) {
+                if ($result->bodyType === null) {
+                    $result->bodyType = $bodyVal;
+                }
+                continue; // always strip body tokens
             }
-            // Engine volume — extract numeric value from token like "2.0t", "2.2d"
-            if (isset($engineVolMap[$tok])) {
+            // ── Engine volume (e.g. "2.0t", "2.2d") ─────────────────────────
+            if (isset($engineVolMap[$tn]) || isset($engineVolMap[$tok])) {
                 if ($result->engineVolume === null && preg_match('/^(\d+\.\d+)/u', $rawTok, $m)) {
                     $result->engineVolume = (float) $m[1];
                 }
-                continue; // always strip vol tokens
+                continue;
             }
-            // Cylinder config — extract count from "v8", "w12", "i6"
-            if (isset($cylMap[$tok])) {
-                if ($result->cylinders === null && preg_match('/^[a-z](\d+)$/u', $tok, $m)) {
+            // ── Cylinder config (e.g. "v8", "w12") ───────────────────────────
+            if (isset($cylMap[$tn]) || isset($cylMap[$tok])) {
+                $cylTok = isset($cylMap[$tn]) ? $tn : $tok;
+                if ($result->cylinders === null && preg_match('/^[a-z](\d+)$/u', $cylTok, $m)) {
                     $result->cylinders = (int) $m[1];
                 }
                 continue;
             }
-            // Bare numeric engine volume (e.g. "2.0")
+            // ── Bare decimal engine volume (e.g. "2.0") ───────────────────────
             if (preg_match('/^(\d+\.\d+)$/u', $rawTok, $m)) {
                 $v = (float) $m[1];
                 if ($v >= 0.5 && $v <= 10.0) {
@@ -298,14 +316,17 @@ class GradeExtractorService
                     continue;
                 }
             }
-            // Seat count pattern "7인승"
+            // ── Seat count "7인승" ─────────────────────────────────────────────
             if (preg_match('/^(\d{1,2})인승$/u', $rawTok, $m)) {
                 $result->seatCount ??= (int) $m[1];
                 continue;
             }
-            // Strip-only maps (spec codes, engine family, gen labels, seats, prefixes)
-            if (isset($specCodeMap[$tok]) || isset($engFamMap[$tok])
-                || isset($genLabelMap[$tok]) || isset($prefixMap[$tok])) {
+            // ── Strip-only maps (spec codes, engine family, gen labels, prefixes) ─
+            // Check both normalised and original form.
+            if (isset($specCodeMap[$tn])  || isset($specCodeMap[$tok])
+                || isset($engFamMap[$tn]) || isset($engFamMap[$tok])
+                || isset($genLabelMap[$tn]) || isset($genLabelMap[$tok])
+                || isset($prefixMap[$tn])  || isset($prefixMap[$tok])) {
                 continue;
             }
 
@@ -343,6 +364,8 @@ class GradeExtractorService
         // Match token surrounded by spaces / parens / start / end
         $pattern = '/(?<![^\s(])' . preg_quote($token, '/') . '(?![^\s)])/u';
         $result  = preg_replace($pattern, ' ', $s, 1);
+        // Clean up orphaned empty parens left after token removal: "엣지( )" → "엣지"
+        $result  = preg_replace('/\(\s*\)/u', '', $result ?? $s);
         return trim((string) preg_replace('/\s{2,}/u', ' ', $result ?? $s));
     }
 

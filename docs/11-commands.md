@@ -171,32 +171,37 @@ php artisan options:import-encar
 
 ---
 
-### `options:translate-ru`
+### `options:name-by-ai`
 
-Batch AI-перевод `name_kr` → `name_ru` (и `name_en` если пусто) для записей `encar_option_catalog`.
+AI-именование и перевод опций в `encar_option_catalog`. Работает в двух режимах:
+- Если `name_kr` пустой — генерирует корейское имя из знания об Encar + RU/EN переводы
+- Если `name_kr` заполнен — переводит в `name_ru` и `name_en`
 
 ```bash
-php artisan options:translate-ru [OPTIONS]
+php artisan options:name-by-ai [OPTIONS]
 
   --batch=20   Записей на один AI-вызов (дефолт: 20)
-  --force      Перезаписать уже переведённые записи
+  --all        Перезаписать все записи (включая уже переведённые)
   --dry-run    Показать ответ AI без сохранения
 ```
 
 **Пример:**
 ```bash
-# Перевести всё что ещё без русского названия
-php artisan options:translate-ru
+# Обработать только незаполненные
+php artisan options:name-by-ai
 
-# Принудительно перевести все (при обновлении prompt)
-php artisan options:translate-ru --force --dry-run
-php artisan options:translate-ru --force
+# Проверить что получится (без записи)
+php artisan options:name-by-ai --dry-run
+
+# Перегенерировать все при обновлении prompt
+php artisan options:name-by-ai --all --dry-run
+php artisan options:name-by-ai --all
 ```
 
 **Полный цикл первоначального заполнения:**
 ```bash
-php artisan options:import-encar           # 1. Загрузить коды + name_kr
-php artisan options:translate-ru           # 2. Перевести на RU/EN через AI
+php artisan options:import-encar           # 1. Собрать коды из lots.options в БД
+php artisan options:name-by-ai             # 2. AI генерирует name_kr + name_ru + name_en
 # Вручную — проверить и поправить иконки/категории через Admin или SQL
 ```
 

@@ -87,6 +87,7 @@ class CatalogImport extends Command
             '스포트백' => 'hatchback',       // Sportback (Audi A5, VW Arteon)
             '카브리오' => 'convertible',     // Cabrio short form (MINI, Fiat)
             'suv' => 'suv',
+            '크로스오버' => 'crossover',    // Korean word for crossover (Chevrolet Trax Crossover)
             'crossover' => 'crossover',     // EV crossovers (아이오닉5, EV6, GV60) — AI may return
             'minivan'   => 'minivan',        // 미니밴 (카니발, 스타렉스) — AI may return
         ],
@@ -140,6 +141,8 @@ class CatalogImport extends Command
             // ── Audi power class standalone numbers ──────────────────────────
             // "45 TFSI 프리미엄" → TFSI stripped by engine_family, "45" stays without this
             '35' => null, '40' => null, '45' => null, '50' => null, '55' => null, '60' => null,
+            // ── Mercedes-AMG power class standalone numbers ───────────────────
+            '43' => null,   // e.g. AMG GT 43, GLE 43 (CLS53/GLE53 already seeded above)
             // ── Mercedes-Benz ────────────────────────────────────────────────
             // A-Class
             'a180' => null, 'a200' => null, 'a200d' => null,
@@ -211,7 +214,8 @@ class CatalogImport extends Command
             'cl500' => null, 'cl600' => null, 'cl63' => null, 'cl65' => null,
             // EQ electric series
             'eqa250' => null, 'eqb300' => null, 'eqc400' => null,
-            'eqe350' => null, 'eqe500' => null,
+            'eqe300' => null, 'eqe350' => null, 'eqe500' => null,  // EQE 300 / 350 / 500
+            'eqe53'  => null,  // Mercedes-AMG EQE 53
             'eqs350' => null, 'eqs450' => null, 'eqs580' => null,
             // Older codes
             '230k' => null,
@@ -303,6 +307,7 @@ class CatalogImport extends Command
             // ── Hyundai / Kia misc engine-grade codes ─────────────────────────
             'm16' => null,  // 1.6L engine badge (Avante/Sonata)
             'y20' => null,  // Grand Starex 20-seater code
+            'l3.5' => null, // Staria L3.5 long-body 3.5L variant code
             'q240' => null, 'q270' => null,  // Renault Samsung QM5/QM6 grades
             // ── Genesis power-output codes ────────────────────────────────────
             // g300/g350/g400 already in gen_exclude; repeat for grade stripping
@@ -322,13 +327,15 @@ class CatalogImport extends Command
             'p250' => null, 'p300' => null, 'p360' => null, 'p400' => null,
             'p530' => null, 'p525' => null, 'p550e' => null, 'p615' => null,
             'lwb'  => null,  // Long Wheelbase (Range Rover LWB, Genesis G90 LWB)
+            'ab'   => null,  // Range Rover Autobiography short code (D350 AB HSE etc.)
             // ── Jaguar ────────────────────────────────────────────────────────
             '20d' => null, '25t' => null, '30d' => null,  // older Ingenium codes (F-Pace, XE, XF)
             // ── Lexus ─────────────────────────────────────────────────────────
-            '300h' => null, '450h' => null, '450h+' => null, '500h' => null,
+            '250h' => null, '300h' => null, '350h' => null,  // UX250h, ES300h, NX350h etc.
+            '450h' => null, '450h+' => null, '500h' => null,
             // 700h shared with Kia above
             // ── Tesla ─────────────────────────────────────────────────────────
-            '90d' => null, '100d' => null,  // Model S/X (older Long Range designators)
+            '75d' => null, '90d' => null, '100d' => null,  // Model S/X older grade designators
             // ── Chevrolet ─────────────────────────────────────────────────────
             'cl240' => null, 'el240' => null,  // Captiva/Lacetti engine codes
             // ── Volvo powertrain badges ───────────────────────────────────────
@@ -596,6 +603,14 @@ class CatalogImport extends Command
             '기아'      => null,  // e.g. "더 뉴 기아 레이 시그니처"
             '그랜드'    => null,  // e.g. "그랜드 스타렉스" when model is stored as "스타렉스"
             '뷰티풀'    => null,  // "Beautiful Korando" (4th gen Korando marketing prefix)
+            // Single-word leftovers from multi-word marketing labels that survive "뉴" stripping
+            '어메이징'      => null,  // from "어메이징 뉴" (Amazing New) — "뉴" already stripped
+            '베리'          => null,  // from "베리 뉴" (Very New) — "뉴" already stripped
+            // Variant/sub-brand suffixes appended to model names
+            '어반'          => null,  // Kia Morning Urban suffix (stripped AFTER earlier trim match)
+            '일렉트리파이드' => null,  // Genesis Electrified G80/GV70 sub-brand prefix
+            'ix'            => null,  // Hyundai Tucson ix (2nd gen) marketing suffix
+            '올스페이스'    => null,  // VW Tiguan Allspace model suffix
         ],
         // ── Hard-exclude specific tokens from generation detection ────────
         'gen_exclude' => [
@@ -632,6 +647,7 @@ class CatalogImport extends Command
             'vvt'     => null,   // Hyundai VVT engine technology
             'dci'     => null,   // Renault dCi diesel injection
             'e-tech'  => null,   // Renault E-TECH hybrid system
+            'e-s/c'   => null,   // Genesis/Hyundai electrified super/turbo combustion notation
         ],
         // ── Tokens that match variant pattern but are NOT variants ────────
         'variant_exclude' => [
@@ -1579,6 +1595,52 @@ class CatalogImport extends Command
         ['노바',                'Nova',                 'Renault Korea', 100], // SM7 Nova facelift sub-brand
         ['플럭스',              'Flux',                 'Renault Korea', 100], // SM6 / QM6 Flux special edition
         ['플럭스',              'Flux',                 'Renault',       100], // same, alternate make_en key
+
+        // ── Renault Korea (fix make_en mismatch — DB stores 'Renault Korea', not 'Renault') ─
+        ['에스프리 알핀',       'Esprit Alpine',        'Renault Korea', 100], // SM6/Arkana Alpine trim
+
+        // ── Jeep ─────────────────────────────────────────────────────────────
+        ['루비콘',              'Rubicon',              'Jeep',          100], // Wrangler top trim
+        ['사하라',              'Sahara',               'Jeep',          100], // Wrangler mid-top trim
+        ['오버랜드',            'Overland',             'Jeep',          100], // Grand Cherokee top tier
+        ['트레일호크',          'Trailhawk',            'Jeep',          100], // Cherokee/Compass off-road trim
+
+        // ── Tesla ─────────────────────────────────────────────────────────────
+        ['롱 레인지',           'Long Range',           'Tesla',         100], // space-variant (롱레인지 already seeded)
+        ['플래드',              'Plaid',                'Tesla',         100], // Model S/X/3/Y Plaid
+
+        // ── Porsche ───────────────────────────────────────────────────────────
+        ['S',                   'S',                    'Porsche',       100], // Macan S, Cayenne S etc.
+        ['T',                   'T',                    'Porsche',       100], // Macan T entry trim
+
+        // ── Maserati ──────────────────────────────────────────────────────────
+        ['그란스포츠',          'GranSport',            'Maserati',      100], // Quattroporte/GranTurismo
+        ['그란루쏘',            'GranLusso',            'Maserati',      100], // luxury-oriented variant
+
+        // ── Volvo ─────────────────────────────────────────────────────────────
+        ['프로',                'Pro',                  'Volvo',         100], // V60/V90 Cross Country Pro
+
+        // ── Lexus ─────────────────────────────────────────────────────────────
+        ['럭셔리 플러스',       'Luxury Plus',          'Lexus',         100], // space-variant of 럭셔리플러스
+
+        // ── Mercedes-Benz ─────────────────────────────────────────────────────
+        ['마이바흐',            'Maybach',              'Mercedes-Benz', 100], // S-Class Maybach sub-brand
+
+        // ── Chevrolet ─────────────────────────────────────────────────────────
+        ['RS',                  'RS',                   'Chevrolet',     100], // Trax RS trim
+
+        // ── Rolls-Royce ───────────────────────────────────────────────────────
+        ['블랙 배지',           'Black Badge',          'Rolls-Royce',   100], // sport-spec variant
+        ['EWB',                 'EWB',                  'Rolls-Royce',   100], // Extended Wheelbase
+        ['던',                  'Dawn',                 'Rolls-Royce',   100], // Rolls-Royce Dawn
+
+        // ── Land Rover compound trims ─────────────────────────────────────────
+        ['다이나믹 SE',         'Dynamic SE',           'Land Rover',    100], // Range Rover Sport
+        ['다이나믹 HSE',        'Dynamic HSE',          'Land Rover',    100], // Range Rover Sport
+
+        // ── Kia ───────────────────────────────────────────────────────────────
+        ['MX',                  'MX',                   'Kia',           100], // K5 MX trim
+        ['SX',                  'SX',                   'Kia',           100], // K5 SX trim
     ];
 
     /**

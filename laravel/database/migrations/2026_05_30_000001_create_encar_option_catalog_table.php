@@ -10,11 +10,11 @@ return new class extends Migration
     {
         Schema::create('encar_option_catalog', function (Blueprint $table) {
             $table->string('code', 10)->primary();       // "001", "014"
-            $table->string('name_kr', 100);              // "선루프"
+            $table->string('name_kr', 100)->nullable();  // "선루프"  (nullable для upsert без имени)
             $table->string('name_en', 100)->nullable();  // "Sunroof"
             $table->string('name_ru', 100)->nullable();  // "Люк"
             $table->string('icon_url', 500)->nullable(); // CDN иконка от Encar
-            $table->string('category', 40)->nullable();  // "comfort" | "safety" | "entertainment"
+            $table->string('category', 40)->nullable();  // "exterior" | "safety" | "convenience" | "interior"
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
         });

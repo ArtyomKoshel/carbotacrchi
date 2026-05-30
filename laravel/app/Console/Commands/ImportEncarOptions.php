@@ -8,12 +8,18 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Загружает каталог опций из публичного фильтр-API Encar и делает upsert в encar_option_catalog.
+ * Загружает официальный каталог опций Encar из публичного endpoint и делает upsert.
+ *
+ * Endpoint: https://www.encar.com/dc/dc_carsearchlist.do?method=optionlist
+ *
+ * Ответ содержит:
+ *   [0].optionlist   — плоский список { abbreviation (код), name (корейское название), type (категория) }
+ *   [0].carOptions   — дерево с subOptions и imagePath для иконок
  *
  * Запуск:
  *   php artisan options:import-encar
- *   php artisan options:import-encar --dry-run       # показать что было бы импортировано
- *   php artisan options:import-encar --no-flush      # не сбрасывать Redis-кэш после импорта
+ *   php artisan options:import-encar --dry-run
+ *   php artisan options:import-encar --no-flush
  */
 class ImportEncarOptions extends Command
 {
@@ -21,21 +27,23 @@ class ImportEncarOptions extends Command
         {--dry-run   : Show parsed options without saving to DB}
         {--no-flush  : Skip flushing Redis cache after import}';
 
-    protected $description = 'Fetch options catalog from Encar filter API and upsert into encar_option_catalog';
+    protected $description = 'Fetch official options catalog from Encar and upsert into encar_option_catalog';
 
-    /**
-     * Encar mobile search endpoint — returns Filters.Option items with
-     * code, Korean name, and optional icon URL.
-     */
-    private const ENCAR_FILTER_URL = 'https://api.encar.com/search/car/list/mobile';
-    private const ENCAR_BATCH_DETAILS_URL = 'https://api.encar.com/v1/readside/vehicles';
-    private const DETAIL_INCLUDE = 'SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,CONDITION,OPTIONS,VIEW';
+    private const ENCAR_OPTION_LIST_URL = 'https://www.encar.com/dc/dc_carsearchlist.do';
+    private const IMAGE_BASE_URL        = 'https://www.encar.com';
+
+    /** optionTypeCd (type) → our category string */
+    private const CATEGORY_MAP = [
+        '01' => 'exterior',     // 외관 — внешний вид
+        '02' => 'safety',       // 안전 — безопасность
+        '03' => 'convenience',  // 편의 — удобство
+        '04' => 'interior',     // 내장 — интерьер / сиденья
+    ];
 
     private const HEADERS = [
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
         'Accept'     => 'application/json, text/javascript, */*; q=0.01',
-        'Referer'    => 'https://m.encar.com/',
-        'Origin'     => 'https://m.encar.com',
+        'Referer'    => 'https://www.encar.com/',
     ];
 
     public function handle(): int
@@ -43,50 +51,44 @@ class ImportEncarOptions extends Command
         $isDryRun = (bool) $this->option('dry-run');
         $noFlush  = (bool) $this->option('no-flush');
 
-        $this->info('Fetching options catalog from Encar API...');
+        $this->info('Fetching options catalog from Encar (dc_carsearchlist.do?method=optionlist)...');
 
         $items = $this->fetchOptionItems();
 
         if ($items === null) {
-            $this->error('Failed to fetch options from Encar API. Check logs for details.');
+            $this->error('Failed to fetch or parse options. Check logs for details.');
             return 1;
         }
 
         if (empty($items)) {
-            $this->warn('Encar API returned 0 option items. Nothing to import.');
+            $this->warn('Encar returned 0 option items. Nothing to import.');
             return 0;
         }
 
-        $this->info("Found " . count($items) . " option items.");
+        $this->info('Parsed ' . count($items) . ' option entries.');
 
         if ($isDryRun) {
             $this->table(
-                ['code', 'name_kr', 'icon_url'],
+                ['code', 'name_kr', 'category', 'icon_url'],
                 array_map(fn($i) => [
                     $i['code'],
                     $i['name_kr'],
+                    $i['category'] ?? '—',
                     $i['icon_url'] ?? '—',
                 ], $items)
             );
             return 0;
         }
 
-        $upserted = 0;
-        foreach ($items as $order => $item) {
-            EncarOptionCatalog::upsert(
-                [
-                    'code'       => $item['code'],
-                    'name_kr'    => $item['name_kr'],
-                    'icon_url'   => $item['icon_url'] ?? null,
-                    'sort_order' => $order,
-                ],
-                uniqueBy: ['code'],
-                update:   ['name_kr', 'icon_url', 'sort_order'],
-            );
-            $upserted++;
-        }
+        // Batch upsert — one query for all rows.
+        // name_ru / name_en are NOT in the update list — they are our translations.
+        EncarOptionCatalog::upsert(
+            $items,
+            uniqueBy: ['code'],
+            update:   ['name_kr', 'icon_url', 'category', 'sort_order'],
+        );
 
-        $this->info("Upserted {$upserted} option records.");
+        $this->info('Upserted ' . count($items) . ' option records.');
 
         if (!$noFlush) {
             EncarOptionCatalog::flushCache();
@@ -97,88 +99,69 @@ class ImportEncarOptions extends Command
     }
 
     /**
-     * Fetch the Option filter items from Encar's search API.
+     * Fetch and parse the option catalog.
      *
-     * The API returns a Filters array; we extract the "Option" group and map each
-     * item to ['code', 'name_kr', 'icon_url'].
+     * Strategy:
+     *  1. [0].optionlist → authoritative flat list (abbreviation=code, name=name_kr, type=category)
+     *  2. [0].carOptions → build code→iconUrl map (leaf nodes + subOptions, skip group parents)
      *
-     * Example response item:
-     *   {
-     *     "Count": 5432,
-     *     "IsSelected": false,
-     *     "Metadata": {"Code":"001","Name":"선루프","IconUrl":"https://..."},
-     *     "Value": "001"
-     *   }
-     *
-     * @return array[]|null  null on HTTP / parse error
+     * @return array[]|null  null on error
      */
     private function fetchOptionItems(): ?array
     {
         try {
-            $requestVariants = [
-                [
-                    'count'   => 'true',
-                    'q'       => '(And.Hidden.N._.CarType.A.)',
-                    'sr'      => '|ModifiedDate|0|1',
-                    'filters' => 'OPTION',
-                ],
-                [
-                    'count' => 'true',
-                    'q'     => '(And.Hidden.N._.CarType.A.)',
-                    'sr'    => '|ModifiedDate|0|1',
-                ],
-            ];
+            $response = Http::timeout(20)
+                ->withHeaders(self::HEADERS)
+                ->get(self::ENCAR_OPTION_LIST_URL, ['method' => 'optionlist']);
 
-            foreach ($requestVariants as $idx => $query) {
-                $response = Http::timeout(20)
-                    ->withHeaders(self::HEADERS)
-                    ->get(self::ENCAR_FILTER_URL, $query);
+            if (!$response->successful()) {
+                Log::warning('[ImportEncarOptions] HTTP ' . $response->status());
+                return null;
+            }
 
-                if (!$response->successful()) {
-                    Log::warning('[ImportEncarOptions] HTTP ' . $response->status(), [
-                        'variant' => $idx + 1,
-                        'query'   => $query,
-                    ]);
+            $body = $response->json();
+
+            if (!is_array($body) || empty($body[0]) || !is_array($body[0])) {
+                Log::warning('[ImportEncarOptions] Unexpected response structure', [
+                    'type'       => gettype($body),
+                    'top_keys'   => is_array($body) && isset($body[0]) ? array_keys($body[0]) : [],
+                ]);
+                return null;
+            }
+
+            $data        = $body[0];
+            $carOptions  = $data['carOptions'] ?? [];
+            $optionList  = $data['optionlist']  ?? [];
+
+            if (empty($optionList)) {
+                Log::warning('[ImportEncarOptions] optionlist is empty');
+                return null;
+            }
+
+            // ── Step 1: Build code → absolute icon URL from carOptions ──────────
+            $imageMap = $this->buildImageMap($carOptions);
+
+            // ── Step 2: Build result from optionlist (flat, authoritative) ───────
+            $result = [];
+            foreach ($optionList as $order => $item) {
+                $code = trim((string) ($item['abbreviation'] ?? ''));
+                $name = trim((string) ($item['name']         ?? ''));
+                $type = trim((string) ($item['type']         ?? ''));
+
+                if ($code === '' || $name === '') {
                     continue;
                 }
 
-                $body = $response->json();
-                if (!is_array($body)) {
-                    Log::warning('[ImportEncarOptions] Non-array JSON response', [
-                        'variant' => $idx + 1,
-                        'query'   => $query,
-                    ]);
-                    continue;
-                }
-
-                $items = $this->parseOptionItemsFromPayload($body);
-                if (!empty($items)) {
-                    return $items;
-                }
-
-                $filters = $this->extractFilters($body);
-                Log::warning('[ImportEncarOptions] "Option" filter group not found in response', [
-                    'variant'        => $idx + 1,
-                    'query'          => $query,
-                    'top_level_keys' => array_keys($body),
-                    'filter_types'   => collect($filters)->map(function ($f) {
-                        if (!is_array($f)) {
-                            return null;
-                        }
-                        return $f['FilterType'] ?? $f['Type'] ?? $f['Key'] ?? null;
-                    })->filter()->values()->all(),
-                ]);
+                $result[] = [
+                    'code'       => $code,
+                    'name_kr'    => $name,
+                    'icon_url'   => $imageMap[$code] ?? null,
+                    'category'   => self::CATEGORY_MAP[$type] ?? null,
+                    'sort_order' => $order,
+                ];
             }
 
-            $fallbackItems = $this->fetchOptionItemsFromVehicleDetails();
-            if (!empty($fallbackItems)) {
-                Log::info('[ImportEncarOptions] Loaded option catalog via vehicle details fallback', [
-                    'count' => count($fallbackItems),
-                ]);
-                return $fallbackItems;
-            }
-
-            return null;
+            return $result;
 
         } catch (\Throwable $e) {
             Log::error('[ImportEncarOptions] ' . $e->getMessage());
@@ -187,216 +170,38 @@ class ImportEncarOptions extends Command
     }
 
     /**
-     * Extract option items from known Encar payload shapes.
+     * Build a map of code → absolute icon URL from the carOptions tree.
+     * Skips group-parent entries (isGroup=true) since their optionCd is a display alias.
+     * For grouped options the subOptions carry the real codes.
      *
-     * @return array<int, array{code:string,name_kr:string,icon_url:?string}>
+     * @param  array[] $carOptions
+     * @return array<string, string>
      */
-    private function parseOptionItemsFromPayload(array $body): array
+    private function buildImageMap(array $carOptions): array
     {
-        $filters = $this->extractFilters($body);
-        if ($filters === []) {
-            return [];
-        }
+        $map = [];
 
-        $optionFilter = collect($filters)->first(function ($f) {
-            if (!is_array($f)) {
-                return false;
+        foreach ($carOptions as $opt) {
+            $code      = (string) ($opt['optionCd']  ?? '');
+            $imagePath = (string) ($opt['imagePath'] ?? '');
+            $isGroup   = (bool)   ($opt['isGroup']   ?? $opt['group'] ?? false);
+            $subOpts   = (array)  ($opt['subOptions'] ?? []);
+
+            // Non-group leaf option — map code directly
+            if ($code !== '' && $imagePath !== '' && !$isGroup) {
+                $map[$code] = self::IMAGE_BASE_URL . $imagePath;
             }
 
-            $type = mb_strtolower((string) ($f['FilterType'] ?? $f['Type'] ?? $f['Key'] ?? ''));
-            $name = mb_strtolower((string) ($f['Name'] ?? $f['DisplayName'] ?? ''));
-
-            return in_array($type, ['option', 'options'], true)
-                || in_array($name, ['option', 'options', '옵션'], true);
-        });
-
-        if (!is_array($optionFilter)) {
-            return [];
-        }
-
-        $result = [];
-        foreach (($optionFilter['Items'] ?? $optionFilter['items'] ?? []) as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-
-            $meta = $item['Metadata'] ?? $item['metadata'] ?? [];
-            if (!is_array($meta)) {
-                $meta = [];
-            }
-
-            $code = $meta['Code'] ?? $meta['code'] ?? $item['Value'] ?? $item['value'] ?? null;
-            $name = $meta['Name'] ?? $meta['name'] ?? $item['Name'] ?? $item['name'] ?? null;
-
-            if (!$code || !$name) {
-                continue;
-            }
-
-            $result[] = [
-                'code'     => (string) $code,
-                'name_kr'  => (string) $name,
-                'icon_url' => $meta['IconUrl'] ?? $meta['iconUrl'] ?? null,
-            ];
-        }
-
-        return $result;
-    }
-
-    /**
-     * @return array<int, mixed>
-     */
-    private function extractFilters(array $body): array
-    {
-        $candidates = [
-            $body['Filters'] ?? null,
-            $body['filters'] ?? null,
-            $body['Data']['Filters'] ?? null,
-            $body['Data']['filters'] ?? null,
-            $body['Result']['Filters'] ?? null,
-            $body['Result']['filters'] ?? null,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if (is_array($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return [];
-    }
-
-    /**
-     * Fallback strategy: fetch recent vehicle IDs from SearchResults,
-     * then pull OPTIONS from readside batch-details endpoint.
-     *
-     * @return array<int, array{code:string,name_kr:string,icon_url:?string}>
-     */
-    private function fetchOptionItemsFromVehicleDetails(): array
-    {
-        $searchResponse = Http::timeout(20)
-            ->withHeaders(self::HEADERS)
-            ->get(self::ENCAR_FILTER_URL, [
-                'count' => 'true',
-                'q'     => '(And.Hidden.N._.CarType.A.)',
-                'sr'    => '|ModifiedDate|0|200',
-            ]);
-
-        if (!$searchResponse->successful()) {
-            Log::warning('[ImportEncarOptions] Fallback search HTTP ' . $searchResponse->status());
-            return [];
-        }
-
-        $searchBody = $searchResponse->json();
-        if (!is_array($searchBody)) {
-            Log::warning('[ImportEncarOptions] Fallback search returned non-array JSON');
-            return [];
-        }
-
-        $ids = collect($searchBody['SearchResults'] ?? [])
-            ->map(fn($row) => $row['Id'] ?? null)
-            ->filter(fn($v) => is_scalar($v) && (string) $v !== '')
-            ->map(fn($v) => (string) $v)
-            ->unique()
-            ->values()
-            ->all();
-
-        if ($ids === []) {
-            Log::warning('[ImportEncarOptions] Fallback search returned no vehicle IDs');
-            return [];
-        }
-
-        $catalog = [];
-        $placeholderNames = 0;
-
-        foreach (array_chunk($ids, 20) as $batchIds) {
-            $resp = Http::timeout(25)
-                ->withHeaders(self::HEADERS)
-                ->get(self::ENCAR_BATCH_DETAILS_URL, [
-                    'vehicleIds' => implode(',', $batchIds),
-                    'include'    => self::DETAIL_INCLUDE,
-                ]);
-
-            if (!$resp->successful()) {
-                Log::warning('[ImportEncarOptions] Fallback batch-details HTTP ' . $resp->status(), [
-                    'batch_size' => count($batchIds),
-                ]);
-                continue;
-            }
-
-            $body = $resp->json();
-            $vehicles = [];
-            if (is_array($body)) {
-                $vehicles = isset($body['vehicles']) && is_array($body['vehicles'])
-                    ? $body['vehicles']
-                    : $body;
-            }
-
-            foreach ($vehicles as $vehicle) {
-                if (!is_array($vehicle)) {
-                    continue;
-                }
-
-                $options = $vehicle['options'] ?? [];
-                if (!is_array($options)) {
-                    continue;
-                }
-
-                foreach ($options as $group => $items) {
-                    if (!is_array($items)) {
-                        continue;
-                    }
-
-                    foreach ($items as $item) {
-                        if (!is_array($item)) {
-                            continue;
-                        }
-
-                        $opt = $item['option'] ?? [];
-                        if (!is_array($opt)) {
-                            $opt = [];
-                        }
-
-                        $code = $opt['id']
-                            ?? $opt['code']
-                            ?? $item['id']
-                            ?? $item['code']
-                            ?? null;
-
-                        $name = $opt['name']
-                            ?? $opt['krName']
-                            ?? $item['name']
-                            ?? $item['optionName']
-                            ?? null;
-
-                        if ($code === null) {
-                            continue;
-                        }
-
-                        $code = (string) $code;
-                        if ($name === null || $name === '') {
-                            $name = '옵션 ' . $code;
-                            $placeholderNames++;
-                        }
-
-                        if (!isset($catalog[$code])) {
-                            $catalog[$code] = [
-                                'code'     => $code,
-                                'name_kr'  => (string) $name,
-                                'icon_url' => $opt['iconUrl'] ?? $item['iconUrl'] ?? null,
-                            ];
-                        }
-                    }
+            // Sub-options carry their own optionCd; use their own imagePath (falls back to parent)
+            foreach ($subOpts as $sub) {
+                $subCode = (string) ($sub['optionCd']  ?? '');
+                $subPath = (string) ($sub['imagePath'] ?? $imagePath);
+                if ($subCode !== '' && $subPath !== '') {
+                    $map[$subCode] = self::IMAGE_BASE_URL . $subPath;
                 }
             }
         }
 
-        if ($placeholderNames > 0) {
-            Log::warning('[ImportEncarOptions] Fallback imported options with placeholder names (name missing in API payload)', [
-                'placeholder_count' => $placeholderNames,
-                'total_codes'       => count($catalog),
-            ]);
-        }
-
-        return array_values($catalog);
+        return $map;
     }
 }
