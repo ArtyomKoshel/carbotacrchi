@@ -35,7 +35,10 @@
       "Bash(cd /d D:\\\\work\\\\carbot\\\\laravel)",
       "Bash(php -l app/Console/Commands/CatalogImport.php)",
       "WebFetch(domain:auto.danawa.com)",
-      "Bash(cd /d/work/carbot/laravel && find . -type f -name \"*.php\" | grep -E \"\\(NormalizeEncarTaxonomy|GradeExtractor|CatalogLookup|TaxonomyRule|TaxonomySuggestion\\)\" | head -20)"
+      "Bash(cd /d/work/carbot/laravel && find . -type f -name \"*.php\" | grep -E \"\\(NormalizeEncarTaxonomy|GradeExtractor|CatalogLookup|TaxonomyRule|TaxonomySuggestion\\)\" | head -20)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\work\\\\carbot\" -Directory | Where-Object { $_.Name -notmatch '^\\(node_modules|vendor|\\\\.git\\)$' } | Select-Object -ExpandProperty Name | Sort-Object)",
+      "Bash(awk '{print $9, $5}')",
+      "Bash(xargs ls -lh)"
     ]
   }
 }

@@ -40,6 +40,7 @@ class CatalogImport extends Command
             '수소' => 'hydrogen', 'fcev' => 'hydrogen',
             'mhev' => 'mild_hybrid',
             'cng' => 'cng',
+            '일렉트릭' => 'electric',  // Korean word for "electric" (전기 already above)
         ],
         // ── Drive type detection ─────────────────────────────────────────
         'drive' => [
@@ -70,7 +71,9 @@ class CatalogImport extends Command
             'cabriolet' => 'convertible', 'convertible' => 'convertible',
             '로드스터' => 'convertible', 'roadster' => 'convertible',
             '왜건' => 'wagon', 'wagon' => 'wagon', 'estate' => 'wagon', '투어링' => 'wagon',
-            '해치백' => 'hatchback', '5도어' => 'hatchback', 'hatchback' => 'hatchback',
+            '해치백' => 'hatchback', '5도어' => 'hatchback', '3도어' => 'hatchback', 'hatchback' => 'hatchback',
+            '4도어' => 'sedan',    // 4-door annotation on sedan/SUV listings
+            '2도어' => 'coupe',    // 2-door annotation on coupe listings
             '세단' => 'sedan', 'sedan' => 'sedan', 'saloon' => 'sedan',
             '픽업' => 'pickup', 'pickup' => 'pickup',
             '밴' => 'van', 'van' => 'van',
@@ -318,6 +321,7 @@ class CatalogImport extends Command
             'd180' => null, 'd200' => null, 'd250' => null, 'd300' => null, 'd350' => null,
             'p250' => null, 'p300' => null, 'p360' => null, 'p400' => null,
             'p530' => null, 'p525' => null, 'p550e' => null, 'p615' => null,
+            'lwb'  => null,  // Long Wheelbase (Range Rover LWB, Genesis G90 LWB)
             // ── Jaguar ────────────────────────────────────────────────────────
             '20d' => null, '25t' => null, '30d' => null,  // older Ingenium codes (F-Pace, XE, XF)
             // ── Lexus ─────────────────────────────────────────────────────────
@@ -583,6 +587,15 @@ class CatalogImport extends Command
             '더'        => null,  // standalone "더" (older Hyundai/Kia)
             '뉴'        => null,  // "New" (older models)
             '신형'      => null,  // "New model" / revised
+            // Single-word leftovers from multi-word prefixes (token map is per-token, not phrase)
+            '올'        => null,  // trailing from "올 뉴" (All New) — 올뉴 catches no-space variant
+            '디'        => null,  // trailing from "디 올 뉴" (The All New)
+            '넥스트'    => null,  // trailing from "더 넥스트" (The Next, Chevrolet)
+            '라이즈'    => null,  // trailing from "뉴 라이즈" (Sonata New Rise facelift)
+            // Brand name leaking into model strings
+            '기아'      => null,  // e.g. "더 뉴 기아 레이 시그니처"
+            '그랜드'    => null,  // e.g. "그랜드 스타렉스" when model is stored as "스타렉스"
+            '뷰티풀'    => null,  // "Beautiful Korando" (4th gen Korando marketing prefix)
         ],
         // ── Hard-exclude specific tokens from generation detection ────────
         'gen_exclude' => [
@@ -1244,6 +1257,9 @@ class CatalogImport extends Command
         ['온라인 익스클루시브', 'Online Exclusive', 'BMW',           100],
         ['럭셔리 플러스',       'Luxury Plus',      'BMW',           100],
         ['Luxury Plus',         'Luxury Plus',      'BMW',           100],
+        ['조이',                'Joy',              'BMW',           100],  // F20 1-Series entry trim (Joy/Sport/Urban/Luxury)
+        ['섀도우',              'Shadow',           'BMW',           100],  // Shadow Edition (M sport visual pkg)
+        ['컴페티션',            'Competition',      'BMW',           100],  // M2/M3/M4 Competition
 
         // ── Mercedes-Benz ─────────────────────────────────────────────────
         ['아방가르드',          'Avantgarde',       'Mercedes-Benz', 100],
@@ -1260,6 +1276,7 @@ class CatalogImport extends Command
 
         // ── Audi ──────────────────────────────────────────────────────────
         ['S-Line',              'S-Line',           'Audi',          100],
+        ['S Line',              'S-Line',           'Audi',          100],  // no-hyphen variant
         ['S 라인',              'S-Line',           'Audi',          100],
         ['Dynamic',             'Dynamic',          'Audi',          100],
         ['다이나믹',            'Dynamic',          'Audi',          100],
@@ -1291,6 +1308,7 @@ class CatalogImport extends Command
         ['Ultra',               'Ultra',            'Volvo',         100],
         ['얼티밋',              'Ultimate',         'Volvo',         100],
         ['Cross Country',       'Cross Country',    'Volvo',         100],
+        ['크로스컨트리',        'Cross Country',    'Volvo',         100],  // Korean rendering
         ['Polestar',            'Polestar',         'Volvo',         100],
 
         // ── Lexus ─────────────────────────────────────────────────────────
@@ -1315,6 +1333,7 @@ class CatalogImport extends Command
         ['오토바이오그래피',    'Autobiography',    'Land Rover',    100],
         ['SVR',                 'SVR',              'Land Rover',    100],
         ['SVX',                 'SVX',              'Land Rover',    100],
+        ['다이나믹',            'Dynamic',          'Land Rover',    100],  // Range Rover Sport / Discovery Dynamic
 
         // ── Porsche ───────────────────────────────────────────────────────
         ['Carrera',             'Carrera',          'Porsche',       100],
@@ -1370,6 +1389,43 @@ class CatalogImport extends Command
         ['기어',                'Gear',             'KG Mobility',   100],  // Tivoli Armor trim
         ['기어 플러스',         'Gear Plus',        'KG Mobility',   100],  // Tivoli Armor trim
         ['기어 에디션',         'Gear Edition',     'KG Mobility',   100],  // Tivoli Armor trim
+        // Tivoli Era-1 short code (TX = base, VX/DX/LX already seeded)
+        ['TX',                  'TX',               'KG Mobility',   100],
+        ['AX',                  'AX',               'KG Mobility',   100],
+        ['RX',                  'RX',               'KG Mobility',   100],
+        ['KX',                  'KX',               'KG Mobility',   100],
+        // Tivoli Era-2 (V-series standard, A-series Air)
+        ['V1',                  'V1',               'KG Mobility',   100],
+        ['V3',                  'V3',               'KG Mobility',   100],
+        ['V5',                  'V5',               'KG Mobility',   100],
+        ['V7',                  'V7',               'KG Mobility',   100],
+        ['A1',                  'A1',               'KG Mobility',   100],
+        ['A3',                  'A3',               'KG Mobility',   100],
+        ['A5',                  'A5',               'KG Mobility',   100],
+        ['A7',                  'A7',               'KG Mobility',   100],
+        ['업비트',              'Upbeat',           'KG Mobility',   100],
+        // Rexton / Korando old grade hierarchy
+        ['CVS',                 'CVS',              'KG Mobility',   100],
+        ['CVT',                 'CVT',              'KG Mobility',   100],
+        ['CVX',                 'CVX',              'KG Mobility',   100],
+        ['C3 플러스',           'C3 Plus',          'KG Mobility',   100],
+        ['C5',                  'C5',               'KG Mobility',   100],
+        ['C7',                  'C7',               'KG Mobility',   100],
+        ['R-플러스',            'R Plus',           'KG Mobility',   100],
+        // Appearance / special editions
+        ['샤이니',              'Shiny',            'KG Mobility',   100],
+        ['딜라이트',            'Delight',          'KG Mobility',   100],
+        ['딜라이트 플러스',     'Delight Plus',     'KG Mobility',   100],
+        ['판타스틱',            'Fantastic',        'KG Mobility',   100],
+        ['블랙엣지',            'Black Edge',       'KG Mobility',   100],
+        ['샤토',                'Chateau',          'KG Mobility',   100],
+        ['CX5',                 'CX5',              'KG Mobility',   100],  // Korando Sports 2WD variant
+        // Torres EVX grade hierarchy
+        ['E5',                  'E5',               'KG Mobility',   100],
+        ['E7',                  'E7',               'KG Mobility',   100],
+        // Extreme trim (Tivoli Air / Korando)
+        ['익스트림',            'Extreme',          'KG Mobility',   100],
+        ['익스트림 스포츠',     'Extreme Sport',    'KG Mobility',   100],
 
         // ── MINI (official U25 3rd-gen Countryman trims confirmed Wikipedia) ─
         ['에센셜',              'Essential',        'MINI',          100],
@@ -1378,6 +1434,31 @@ class CatalogImport extends Command
         ['Essential',           'Essential',        'MINI',          100],
         ['Classic',             'Classic',          'MINI',          100],
         ['Favoured',            'Favoured',         'MINI',          100],
+        ['Mid',                 'Mid',              'MINI',          100],  // MINI mid-range trim label
+        ['런치팩',              'Launch Pack',      'MINI',          100],  // Launch Pack (differentiating variant — keep)
+        ['클래식 플러스',       'Classic Plus',     'MINI',          100],
+        ['클래식 런치팩',       'Classic Launch Pack', 'MINI',       100],
+        ['사이드워크',          'Sidewalk',         'MINI',          100],  // Convertible Sidewalk edition
+        // Special editions (named after London places, colours, themes)
+        ['프롤로그 에디션',     'Prologue Edition', 'MINI',          100],
+        ['파크레인 에디션',     'Park Lane Edition','MINI',          100],
+        ['레솔루트 에디션',     'Resolute Edition', 'MINI',          100],
+        ['로즈우드 에디션',     'Rosewood Edition', 'MINI',          100],
+        ['멀티톤 에디션',       'Multitone Edition','MINI',          100],
+        ['메이필드 에디션',     'Mayfield Edition', 'MINI',          100],
+        ['세븐 에디션',         'Seven Edition',    'MINI',          100],
+        ['블랙 수트 에디션',    'Black Suit Edition','MINI',         100],
+        ['브릭레인 에디션',     'Brick Lane Edition','MINI',         100],
+        ['킹스로드 에디션',     'Kings Road Edition','MINI',         100],
+        ['피카딜리 에디션',     'Piccadilly Edition','MINI',         100],
+        ['씨사이드 에디션',     'Seaside Edition',  'MINI',          100],
+        ['언차티드 에디션',     'Uncharted Edition','MINI',          100],
+        ['언테임드 에디션',     'Untamed Edition',  'MINI',          100],
+        ['하이랜드 에디션',     'Highland Edition', 'MINI',          100],
+        ['언톨드 에디션',       'Untold Edition',   'MINI',          100],
+        ['파이널 에디션',       'Final Edition',    'MINI',          100],
+        ['젠 Z 에디션',         'Gen Z Edition',    'MINI',          100],
+        ['젠 ZE 에디션',        'Gen ZE Edition',   'MINI',          100],
 
         // ── Tesla Korea ──────────────────────────────────────────────────────
         ['스탠다드 레인지',        'Standard Range',         'Tesla',  100],
@@ -1428,6 +1509,70 @@ class CatalogImport extends Command
 
         // ── Kia EV-specific (higher priority than universal '어스') ─────────
         ['어스',                'Earth',            'Kia',           100],
+
+        // ── Compound edition trims — priority 90 so they beat bare '스페셜'/'에디션' at 80 ──
+        ['스페셜 에디션',       'Special Edition',      '',           90],
+        ['퍼스트 에디션',       'First Edition',        '',           90],
+        ['블랙 에디션',         'Black Edition',        '',           90],
+        ['컴포트 에디션',       'Comfort Edition',      '',           90],
+        ['온라인 에디션',       'Online Edition',       '',           90],
+        ['카본 에디션',         'Carbon Edition',       '',           90],
+        ['런치 에디션',         'Launch Edition',       '',           90],
+        ['퍼포먼스 에디션',     'Performance Edition',  '',           90],
+        ['시티팝 에디션',       'City Pop Edition',     '',           90],
+        // Compound trims that beat shorter component trims ──────────────────
+        ['노블레스 스페셜',     'Noblesse Special',     '',           95],  // Kia Carnival 노블레스 스페셜
+        ['밸류 플러스',         'Value Plus',           '',           90],  // Avante 밸류 플러스
+        ['플래티넘 플러스',     'Platinum Plus',        '',           90],
+        ['테크노 플러스',       'Techno Plus',          '',           90],  // Renault Korea
+        ['ST-라인',             'ST-Line',              '',           90],  // Ford/Renault ST-Line
+        ['프라임',              'Prime',                '',           90],  // 싼타페 더 프라임, Toyota Prime
+        ['GT',                  'GT',                   '',           90],  // 6시리즈 GT, 머스탱 GT, K5 GT
+
+        // ── Universal standard trims (priority 80) ──────────────────────────
+        ['초이스',              'Choice',               '',           80],  // 그랜저 프리미엄 초이스
+        ['프리미에르',          'Première',             '',           80],  // Renault/Citroën Korean
+        ['미드나이트 블랙',     'Midnight Black',       '',           80],
+        ['퍼펙트 블랙',         'Perfect Black',        '',           80],
+        ['블랙라벨',            'Black Label',          '',           80],
+
+        // ── Universal mid-tier trims (priority 80) ───────────────────────────
+        ['컴페티션',            'Competition',          '',           80],  // universal; Porsche/BMW already have 100
+
+        // ── Universal basic trims (priority 70) ──────────────────────────────
+        ['에센스',              'Essence',              '',           70],
+        ['에센셜',              'Essential',            '',           70],  // universal; MINI has own at 100
+        ['아이코닉',            'Iconic',               '',           70],
+        ['볼드',                'Bold',                 '',           70],
+        ['브릴리언트',          'Brilliant',            '',           70],
+        ['엘리트',              'Elite',                '',           70],
+        ['최고급형',            'Top Grade',            '',           70],  // older Korean tier name
+        ['고급형',              'High Grade',           '',           70],
+        ['기본형',              'Base',                 '',           70],
+
+        // ── Kia additional ──────────────────────────────────────────────────
+        ['마스터',              'Master',               'Kia',        100], // 모하비 더 마스터
+        ['볼드',                'Bold',                 'Kia',        100], // 스포티지 더 볼드
+        ['RVIP',                'RVIP',                 'Kia',        100], // K9 RVIP (prevents "VIP" substring hit leaving "R")
+
+        // ── Hyundai additional ───────────────────────────────────────────────
+        ['초이스',              'Choice',               'Hyundai',    100], // 그랜저 IG 프리미엄 초이스
+        ['파이니스트 에디션',   'Finest Edition',       'Hyundai',    100], // 제네시스 DH G380
+        ['카고',                'Cargo',                'Hyundai',    100], // 스타리아 카고
+
+        // ── Volvo additional ─────────────────────────────────────────────────
+        ['얼티메이트 브라이트', 'Ultimate Bright',      'Volvo',      100], // XC60/XC90 colour edition
+        ['얼티메이트 다크',     'Ultimate Dark',        'Volvo',      100],
+        ['울트라 브라이트',     'Ultra Bright',         'Volvo',      100], // older naming variant
+        ['울트라 다크',         'Ultra Dark',           'Volvo',      100],
+        ['R-디자인',            'R-Design',             'Volvo',      100], // hyphenated variant of 'R디자인'
+
+        // ── Land Rover additional ────────────────────────────────────────────
+        ['HSE 다이나믹',        'HSE Dynamic',          'Land Rover', 100], // 레인지로버 스포츠 HSE 다이나믹
+        ['HSE Dynamic',         'HSE Dynamic',          'Land Rover', 100],
+
+        // ── Renault Korea additional ─────────────────────────────────────────
+        ['네오',                'Neo',                  'Renault Korea', 100], // SM3 네오
     ];
 
     /**
