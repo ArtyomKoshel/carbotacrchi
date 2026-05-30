@@ -53,6 +53,9 @@ class SearchQuery
     /** @var string[] */
     public array $colors = [];
 
+    /** @var string[]  Encar option codes: ["010", "022", "057"] */
+    public array $options = [];
+
     public string $trim = '';
     public string $vin = '';
 
@@ -108,7 +111,7 @@ class SearchQuery
         $q->firstRegAfter = trim((string) ($data['firstRegAfter'] ?? ''));
         $q->firstRegBefore = trim((string) ($data['firstRegBefore'] ?? ''));
 
-        foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors'] as $key) {
+        foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors', 'options'] as $key) {
             if (!empty($data[$key]) && is_array($data[$key])) {
                 $q->$key = array_map('strval', $data[$key]);
             }
@@ -323,6 +326,7 @@ class SearchQuery
         if ($this->seizureStatuses) $data['seizureStatuses'] = $this->seizureStatuses;
         if ($this->sellTypes)     $data['sellTypes']     = $this->sellTypes;
         if ($this->colors)        $data['colors']        = $this->colors;
+        if ($this->options)       $data['options']       = $this->options;
         if ($this->trim)          $data['trim']          = $this->trim;
         if ($this->vin)           $data['vin']           = $this->vin;
         if ($this->listedAfter)   $data['listedAfter']   = $this->listedAfter;

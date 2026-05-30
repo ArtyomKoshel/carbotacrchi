@@ -224,6 +224,17 @@ class ProviderAggregator
             $builder->whereIn('sell_type', $query->sellTypes);
         }
 
+        // Filter by option codes: AND-logic — lot must have ALL selected options.
+        // JSON_CONTAINS(options, '"010"') checks that code "010" is in the JSON array.
+        if ($query->options) {
+            foreach ($query->options as $code) {
+                $builder->whereRaw(
+                    'JSON_CONTAINS(COALESCE(`options`, \'[]\'), ?)',
+                    [json_encode((string) $code)]
+                );
+            }
+        }
+
         if ($query->trim) {
             $krVariants = \App\Models\Translation::resolveKorean($query->trim, 'trim');
             if (!empty($krVariants)) {

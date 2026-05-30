@@ -1,6 +1,7 @@
 const Filters = (() => {
   let filtersData = null;
   let trimRequestSeq = 0;
+  let optionsSelectInstance = null;
 
   const state = {
     sources:          ['encar', 'kbcha'],
@@ -35,6 +36,7 @@ const Filters = (() => {
     firstRegBefore:   '',
     vin:              '',
     sort:             'date',
+    options:          [],
   };
 
   function resetState() {
@@ -54,7 +56,7 @@ const Filters = (() => {
     state.insuranceCountMin = ''; state.insuranceCountMax = '';
     state.listedAfter = ''; state.listedBefore = '';
     state.firstRegAfter = ''; state.firstRegBefore = '';
-    state.vin = ''; state.sort = 'date';
+    state.vin = ''; state.sort = 'date'; state.options = [];
   }
 
   // ── Field metadata: maps field_name → UI render config ──
@@ -82,6 +84,7 @@ const Filters = (() => {
     first_reg_date: { type: 'range', idMin: 'filter-first-reg-after', idMax: 'filter-first-reg-before', inputType: 'date', step: '1' },
     lien_status:    { type: 'chips', stateKey: 'lienStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Чистый'}] },
     seizure_status: { type: 'chips', stateKey: 'seizureStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Без ареста'}] },
+    options:        { type: 'options_select', id: 'filter-options' },
   };
 
   function getEnabledFields() {
@@ -105,6 +108,13 @@ const Filters = (() => {
   function render() {
     const container = document.getElementById('filters-container');
     if (!container) return;
+
+    // Destroy Tom Select before wiping the DOM (it holds references to removed nodes)
+    if (optionsSelectInstance) {
+      try { optionsSelectInstance.destroy(); } catch (e) {}
+      optionsSelectInstance = null;
+    }
+
     container.innerHTML = '';
 
     const enabled = getEnabledFields();
@@ -127,6 +137,12 @@ const Filters = (() => {
     if (!rendered.has('source')) {
       const srcSection = buildFilterSection('source', FIELD_UI.source, 'Источники');
       if (srcSection) container.insertBefore(srcSection, container.firstChild);
+    }
+
+    // Always add options multi-select at the bottom when catalog has data
+    if ((filtersData?.options ?? []).length > 0 && !rendered.has('options')) {
+      const optSection = buildFilterSection('options', FIELD_UI.options, 'Опции / Комплектация');
+      if (optSection) container.appendChild(optSection);
     }
 
     // Populate dynamic content
@@ -213,6 +229,14 @@ const Filters = (() => {
         section.appendChild(div);
         break;
       }
+      case 'options_select': {
+        const sel = document.createElement('select');
+        sel.id = ui.id || 'filter-options';
+        sel.multiple = true;
+        sel.className = 'filter-options-ts';
+        section.appendChild(sel);
+        break;
+      }
     }
 
     wrap.appendChild(section);
@@ -226,10 +250,47 @@ const Filters = (() => {
     return frag;
   }
 
+  const OPTION_CATEGORY_LABELS = {
+    exterior:    'Экстерьер',
+    safety:      'Безопасность',
+    convenience: 'Удобство',
+    interior:    'Интерьер',
+  };
+
+  function initOptionsSelect(items) {
+    const el = document.getElementById('filter-options');
+    if (!el || !items.length || typeof TomSelect === 'undefined') return;
+
+    // Build optgroups from distinct categories present in items
+    const categoriesUsed = [...new Set(items.map(i => i.category).filter(Boolean))];
+    const optgroups = categoriesUsed.map(k => ({
+      value: k,
+      label: OPTION_CATEGORY_LABELS[k] ?? k,
+    }));
+    const hasGroups = optgroups.length > 0;
+
+    optionsSelectInstance = new TomSelect(el, {
+      maxOptions:    null,
+      maxItems:      null,
+      plugins:       ['remove_button', 'clear_button'],
+      placeholder:   'Выбрать опции…',
+      searchField:   ['text'],
+      optgroups:     hasGroups ? optgroups : [],
+      optgroupField: hasGroups ? 'optgroup' : undefined,
+      options: items.map(item => ({
+        value:    item.value,
+        text:     item.label ?? item.value,
+        ...(hasGroups && item.category ? { optgroup: item.category } : {}),
+      })),
+      items: state.options,  // pre-select restored values
+    });
+  }
+
   function populateFilters() {
     renderSourceChips();
     renderMakeSelect();
     renderModelSelect();
+    initOptionsSelect(filtersData?.options ?? []);
 
     const enabled = getEnabledFields();
     for (const field of enabled) {
@@ -406,6 +467,10 @@ const Filters = (() => {
 
   function getQuery() {
     readFormState();
+    // Sync options from Tom Select (single source of truth)
+    if (optionsSelectInstance) {
+      state.options = [...optionsSelectInstance.items];
+    }
     return {
       make:             state.make              || undefined,
       model:            state.model             || undefined,
@@ -437,6 +502,7 @@ const Filters = (() => {
       firstRegAfter:    state.firstRegAfter     || undefined,
       firstRegBefore:   state.firstRegBefore    || undefined,
       vin:              state.vin              || undefined,
+      options:          state.options.length   ? state.options  : undefined,
       sources:          state.sources,
       sort:             state.sort,
       limit:            40,
@@ -476,6 +542,7 @@ const Filters = (() => {
     if (q.firstRegBefore !== undefined)    state.firstRegBefore    = String(q.firstRegBefore ?? '');
     if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
     if (q.floodHistory !== undefined && q.floodHistory !== null) state.floodHistory = q.floodHistory;
+    if (Array.isArray(q.options) && q.options.length) state.options = q.options;
 
     render();
     renderMakeSelect();

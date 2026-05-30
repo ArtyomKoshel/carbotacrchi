@@ -149,3 +149,93 @@
   background: rgba(255,255,255,.06);
   margin: 16px 0 0;
 }
+
+/* ── Options multi-select (Tom Select dark theme) ── */
+.filter-options-ts { display: none; } /* hidden — Tom Select replaces it */
+
+.ts-wrapper { width: 100%; }
+
+.ts-wrapper .ts-control {
+  background: var(--bg2) !important;
+  border: 1.5px solid rgba(255,255,255,.08) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  min-height: 42px;
+  padding: 5px 8px;
+  cursor: text;
+}
+.ts-wrapper.focus .ts-control {
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+.ts-wrapper .ts-control input {
+  color: var(--text) !important;
+  font-size: 14px;
+}
+.ts-wrapper .ts-control input::placeholder { color: var(--hint) !important; }
+
+/* Selected items (pills) */
+.ts-wrapper .ts-control .item {
+  background: rgba(51,144,236,.18) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  color: var(--accent) !important;
+  font-size: 12px;
+  padding: 2px 6px;
+  margin: 2px 3px 2px 0;
+}
+.ts-wrapper .ts-control .item .remove {
+  color: var(--accent) !important;
+  border-left-color: rgba(51,144,236,.3) !important;
+  opacity: .8;
+}
+
+/* Dropdown */
+.ts-dropdown {
+  background: var(--bg2) !important;
+  border: 1.5px solid rgba(255,255,255,.1) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45) !important;
+  color: var(--text) !important;
+  margin-top: 2px;
+}
+.ts-dropdown .ts-dropdown-content { max-height: 220px; }
+
+.ts-dropdown .ts-option {
+  color: var(--text) !important;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.ts-dropdown .ts-option:hover,
+.ts-dropdown .ts-option.active {
+  background: rgba(51,144,236,.18) !important;
+  color: var(--accent) !important;
+}
+.ts-dropdown .ts-option.selected {
+  background: rgba(51,144,236,.08) !important;
+  color: var(--hint) !important;
+}
+.ts-dropdown .ts-option.selected.active {
+  background: rgba(51,144,236,.22) !important;
+  color: var(--accent) !important;
+}
+
+/* Category group headers */
+.ts-dropdown .ts-optgroup-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hint) !important;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 10px 12px 3px;
+  background: var(--bg2) !important;
+}
+
+/* Clear button (× all) */
+.ts-wrapper .clear-button {
+  color: var(--hint) !important;
+  font-size: 16px;
+  opacity: .7;
+}
+.ts-wrapper .clear-button:hover { opacity: 1; }

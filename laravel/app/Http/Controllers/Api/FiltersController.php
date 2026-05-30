@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\BotFilterSetting;
+use App\Models\EncarOptionCatalog;
 use App\Support\Taxonomy\TaxonomyLocalizer;
 use App\Support\Taxonomy\TaxonomyNormalizer;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,7 @@ class FiltersController extends Controller
         $colors = [];
         $generations = [];
         $filterFields = [];
+        $optionItems = [];
 
         try {
             $makes = $this->buildMakesFromLots($sources);
@@ -46,6 +48,7 @@ class FiltersController extends Controller
             $colors = $this->distinctStrings('color', $sources);
             $generations = $this->distinctStrings('generation', $sources);
             $filterFields = $this->buildFilterFieldsMeta();
+            $optionItems = $this->buildOptionItems($locale);
         } catch (\Throwable) {
         }
 
@@ -78,6 +81,7 @@ class FiltersController extends Controller
                 'colors'        => $colors,
                 'colorOptions'  => TaxonomyLocalizer::options('color', $colors, $locale),
                 'generations'   => $generations,
+                'options'       => $optionItems,
             ],
         ]);
     }
@@ -335,6 +339,40 @@ class FiltersController extends Controller
         }
 
         $query->whereIn($column, $variants);
+    }
+
+    /**
+     * Build options list for the filter dropdown from encar_option_catalog.
+     * Returns [{value, label, icon_url, category}] sorted by sort_order.
+     *
+     * @return array<int, array{value:string, label:string, icon_url:?string, category:?string}>
+     */
+    private function buildOptionItems(string $locale): array
+    {
+        $catalog = EncarOptionCatalog::getCached();
+
+        if ($catalog->isEmpty()) {
+            return [];
+        }
+
+        return $catalog
+            ->sortBy('sort_order')
+            ->map(function ($opt) use ($locale) {
+                $label = match ($locale) {
+                    'ru'    => $opt->name_ru ?? $opt->name_en ?? $opt->name_kr ?? $opt->code,
+                    'en'    => $opt->name_en ?? $opt->name_ru ?? $opt->name_kr ?? $opt->code,
+                    default => $opt->name_kr ?? $opt->name_en ?? $opt->name_ru ?? $opt->code,
+                };
+
+                return [
+                    'value'    => $opt->code,
+                    'label'    => $label,
+                    'icon_url' => $opt->icon_url,
+                    'category' => $opt->category,
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
     /** @return array<int, array<string, mixed>> */
