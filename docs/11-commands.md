@@ -147,6 +147,61 @@ php artisan taxonomy:ingest-anomalies --source=encar --status=new
 
 ---
 
+## Каталог опций
+
+### `options:import-encar`
+
+Загружает коды опций и их корейские названия из фильтр-API Encar и делает upsert в `encar_option_catalog`.
+
+```bash
+php artisan options:import-encar [OPTIONS]
+
+  --dry-run    Показать что будет импортировано без записи в БД
+  --no-flush   Не сбрасывать Redis-кэш после импорта
+```
+
+**Пример:**
+```bash
+# Посмотреть что загрузится
+php artisan options:import-encar --dry-run
+
+# Импортировать
+php artisan options:import-encar
+```
+
+---
+
+### `options:translate-ru`
+
+Batch AI-перевод `name_kr` → `name_ru` (и `name_en` если пусто) для записей `encar_option_catalog`.
+
+```bash
+php artisan options:translate-ru [OPTIONS]
+
+  --batch=20   Записей на один AI-вызов (дефолт: 20)
+  --force      Перезаписать уже переведённые записи
+  --dry-run    Показать ответ AI без сохранения
+```
+
+**Пример:**
+```bash
+# Перевести всё что ещё без русского названия
+php artisan options:translate-ru
+
+# Принудительно перевести все (при обновлении prompt)
+php artisan options:translate-ru --force --dry-run
+php artisan options:translate-ru --force
+```
+
+**Полный цикл первоначального заполнения:**
+```bash
+php artisan options:import-encar           # 1. Загрузить коды + name_kr
+php artisan options:translate-ru           # 2. Перевести на RU/EN через AI
+# Вручную — проверить и поправить иконки/категории через Admin или SQL
+```
+
+---
+
 ## Утилиты
 
 ### `lots:ai-model-en-backfill`

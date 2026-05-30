@@ -53,6 +53,9 @@ class KBChachaProvider extends AbstractDbProvider
                 seatCount:        isset($raw['seat_count'])      ? (int)  $raw['seat_count']      : null,
                 firstRegDate: $raw['first_reg_date'] ?? null,
                 listedAt:     $raw['listed_at'] ?? null,
+                options:      isset($raw['options'])
+                                  ? (is_string($raw['options']) ? json_decode($raw['options'], true) : $raw['options'])
+                                  : null,
         );
     }
 }

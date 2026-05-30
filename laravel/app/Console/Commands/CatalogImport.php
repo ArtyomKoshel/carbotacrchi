@@ -1471,6 +1471,7 @@ class CatalogImport extends Command
         ['노바 L',              'Nova L',           'Renault',       100],  // SM7 Nova series trim
 
         // ── Hyundai additional ────────────────────────────────────────────────
+        ['하이리무진',          'High Limousine',   'Hyundai',       100],  // Grand Starex 하이리무진 grade
         ['라운지',              'Lounge',           'Hyundai',       100],  // Staria 라운지 trim
         ['투어러',              'Tourer',           'Hyundai',       100],  // Staria 투어러 (avoid body=wagon)
         ['케어플러스',          'Care Plus',        'Hyundai',       100],  // Sonata 케어플러스
@@ -1538,6 +1539,8 @@ class CatalogImport extends Command
 
         // ── Universal mid-tier trims (priority 80) ───────────────────────────
         ['컴페티션',            'Competition',          '',           80],  // universal; Porsche/BMW already have 100
+        ['AMG',                 'AMG',                  'Mercedes-Benz', 100], // standalone AMG badge (G63 AMG etc.)
+        ['80주년 에디션',       '80th Anniversary',     '',           70],  // 80th anniversary special
 
         // ── Universal basic trims (priority 70) ──────────────────────────────
         ['에센스',              'Essence',              '',           70],
@@ -1573,6 +1576,9 @@ class CatalogImport extends Command
 
         // ── Renault Korea additional ─────────────────────────────────────────
         ['네오',                'Neo',                  'Renault Korea', 100], // SM3 네오
+        ['노바',                'Nova',                 'Renault Korea', 100], // SM7 Nova facelift sub-brand
+        ['플럭스',              'Flux',                 'Renault Korea', 100], // SM6 / QM6 Flux special edition
+        ['플럭스',              'Flux',                 'Renault',       100], // same, alternate make_en key
     ];
 
     /**

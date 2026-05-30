@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Search;
+use App\Services\OptionEnricher;
 use App\Services\ProviderAggregator;
 use App\Services\SearchQuery;
 use Illuminate\Http\JsonResponse;
@@ -11,7 +12,10 @@ use Illuminate\Http\Request;
 
 class SearchController extends Controller
 {
-    public function __construct(private readonly ProviderAggregator $aggregator) {}
+    public function __construct(
+        private readonly ProviderAggregator $aggregator,
+        private readonly OptionEnricher     $enricher,
+    ) {}
 
     public function search(Request $request): JsonResponse
     {
@@ -35,6 +39,9 @@ class SearchController extends Controller
         } catch (\Throwable) {
         }
 
-        return response()->json(['ok' => true, 'data' => $result->toArray()]);
+        $data         = $result->toArray();
+        $data['lots'] = $this->enricher->enrichLots($data['lots']);
+
+        return response()->json(['ok' => true, 'data' => $data]);
     }
 }
