@@ -14,7 +14,7 @@ class ValidateTelegramAuth
             return $next($request);
         }
 
-        $initData = $request->input('init_data', '');
+        $initData = (string) ($request->input('init_data') ?? '');
 
         if (!$this->validate($initData)) {
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
