@@ -113,56 +113,145 @@ class ImportEncarOptions extends Command
     private function fetchOptionItems(): ?array
     {
         try {
-            $response = Http::timeout(20)
-                ->withHeaders(self::HEADERS)
-                ->get(self::ENCAR_FILTER_URL, [
+            $requestVariants = [
+                [
                     'count'   => 'true',
                     'q'       => '(And.Hidden.N._.CarType.A.)',
-                    'sr'      => '|ModifiedDate|0|1',   // fetch only 1 result to minimize payload
+                    'sr'      => '|ModifiedDate|0|1',
                     'filters' => 'OPTION',
-                ]);
+                ],
+                [
+                    'count' => 'true',
+                    'q'     => '(And.Hidden.N._.CarType.A.)',
+                    'sr'    => '|ModifiedDate|0|1',
+                ],
+            ];
 
-            if (!$response->successful()) {
-                Log::warning('[ImportEncarOptions] HTTP ' . $response->status());
-                return null;
-            }
+            foreach ($requestVariants as $idx => $query) {
+                $response = Http::timeout(20)
+                    ->withHeaders(self::HEADERS)
+                    ->get(self::ENCAR_FILTER_URL, $query);
 
-            $body = $response->json();
-
-            // Find the "Option" filter group
-            $filters = $body['Filters'] ?? [];
-            $optionFilter = collect($filters)
-                ->first(fn($f) => strtolower($f['FilterType'] ?? '') === 'option');
-
-            if (!$optionFilter) {
-                Log::warning('[ImportEncarOptions] "Option" filter group not found in response', [
-                    'filter_types' => collect($filters)->pluck('FilterType')->all(),
-                ]);
-                return null;
-            }
-
-            $result = [];
-            foreach ($optionFilter['Items'] ?? [] as $item) {
-                $meta = $item['Metadata'] ?? [];
-                $code = $meta['Code'] ?? ($item['Value'] ?? null);
-                $name = $meta['Name'] ?? null;
-
-                if (!$code || !$name) {
+                if (!$response->successful()) {
+                    Log::warning('[ImportEncarOptions] HTTP ' . $response->status(), [
+                        'variant' => $idx + 1,
+                        'query'   => $query,
+                    ]);
                     continue;
                 }
 
-                $result[] = [
-                    'code'     => (string) $code,
-                    'name_kr'  => (string) $name,
-                    'icon_url' => $meta['IconUrl'] ?? null,
-                ];
+                $body = $response->json();
+                if (!is_array($body)) {
+                    Log::warning('[ImportEncarOptions] Non-array JSON response', [
+                        'variant' => $idx + 1,
+                        'query'   => $query,
+                    ]);
+                    continue;
+                }
+
+                $items = $this->parseOptionItemsFromPayload($body);
+                if (!empty($items)) {
+                    return $items;
+                }
+
+                $filters = $this->extractFilters($body);
+                Log::warning('[ImportEncarOptions] "Option" filter group not found in response', [
+                    'variant'        => $idx + 1,
+                    'query'          => $query,
+                    'top_level_keys' => array_keys($body),
+                    'filter_types'   => collect($filters)->map(function ($f) {
+                        if (!is_array($f)) {
+                            return null;
+                        }
+                        return $f['FilterType'] ?? $f['Type'] ?? $f['Key'] ?? null;
+                    })->filter()->values()->all(),
+                ]);
             }
 
-            return $result;
+            return null;
 
         } catch (\Throwable $e) {
             Log::error('[ImportEncarOptions] ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Extract option items from known Encar payload shapes.
+     *
+     * @return array<int, array{code:string,name_kr:string,icon_url:?string}>
+     */
+    private function parseOptionItemsFromPayload(array $body): array
+    {
+        $filters = $this->extractFilters($body);
+        if ($filters === []) {
+            return [];
+        }
+
+        $optionFilter = collect($filters)->first(function ($f) {
+            if (!is_array($f)) {
+                return false;
+            }
+
+            $type = mb_strtolower((string) ($f['FilterType'] ?? $f['Type'] ?? $f['Key'] ?? ''));
+            $name = mb_strtolower((string) ($f['Name'] ?? $f['DisplayName'] ?? ''));
+
+            return in_array($type, ['option', 'options'], true)
+                || in_array($name, ['option', 'options', '옵션'], true);
+        });
+
+        if (!is_array($optionFilter)) {
+            return [];
+        }
+
+        $result = [];
+        foreach (($optionFilter['Items'] ?? $optionFilter['items'] ?? []) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $meta = $item['Metadata'] ?? $item['metadata'] ?? [];
+            if (!is_array($meta)) {
+                $meta = [];
+            }
+
+            $code = $meta['Code'] ?? $meta['code'] ?? $item['Value'] ?? $item['value'] ?? null;
+            $name = $meta['Name'] ?? $meta['name'] ?? $item['Name'] ?? $item['name'] ?? null;
+
+            if (!$code || !$name) {
+                continue;
+            }
+
+            $result[] = [
+                'code'     => (string) $code,
+                'name_kr'  => (string) $name,
+                'icon_url' => $meta['IconUrl'] ?? $meta['iconUrl'] ?? null,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function extractFilters(array $body): array
+    {
+        $candidates = [
+            $body['Filters'] ?? null,
+            $body['filters'] ?? null,
+            $body['Data']['Filters'] ?? null,
+            $body['Data']['filters'] ?? null,
+            $body['Result']['Filters'] ?? null,
+            $body['Result']['filters'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return [];
     }
 }
