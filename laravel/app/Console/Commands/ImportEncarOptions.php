@@ -28,6 +28,8 @@ class ImportEncarOptions extends Command
      * code, Korean name, and optional icon URL.
      */
     private const ENCAR_FILTER_URL = 'https://api.encar.com/search/car/list/mobile';
+    private const ENCAR_BATCH_DETAILS_URL = 'https://api.encar.com/v1/readside/vehicles';
+    private const DETAIL_INCLUDE = 'SPEC,ADVERTISEMENT,PHOTOS,CATEGORY,MANAGE,CONTACT,CONDITION,OPTIONS,VIEW';
 
     private const HEADERS = [
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
@@ -168,6 +170,14 @@ class ImportEncarOptions extends Command
                 ]);
             }
 
+            $fallbackItems = $this->fetchOptionItemsFromVehicleDetails();
+            if (!empty($fallbackItems)) {
+                Log::info('[ImportEncarOptions] Loaded option catalog via vehicle details fallback', [
+                    'count' => count($fallbackItems),
+                ]);
+                return $fallbackItems;
+            }
+
             return null;
 
         } catch (\Throwable $e) {
@@ -253,5 +263,129 @@ class ImportEncarOptions extends Command
         }
 
         return [];
+    }
+
+    /**
+     * Fallback strategy: fetch recent vehicle IDs from SearchResults,
+     * then pull OPTIONS from readside batch-details endpoint.
+     *
+     * @return array<int, array{code:string,name_kr:string,icon_url:?string}>
+     */
+    private function fetchOptionItemsFromVehicleDetails(): array
+    {
+        $searchResponse = Http::timeout(20)
+            ->withHeaders(self::HEADERS)
+            ->get(self::ENCAR_FILTER_URL, [
+                'count' => 'true',
+                'q'     => '(And.Hidden.N._.CarType.A.)',
+                'sr'    => '|ModifiedDate|0|200',
+            ]);
+
+        if (!$searchResponse->successful()) {
+            Log::warning('[ImportEncarOptions] Fallback search HTTP ' . $searchResponse->status());
+            return [];
+        }
+
+        $searchBody = $searchResponse->json();
+        if (!is_array($searchBody)) {
+            Log::warning('[ImportEncarOptions] Fallback search returned non-array JSON');
+            return [];
+        }
+
+        $ids = collect($searchBody['SearchResults'] ?? [])
+            ->map(fn($row) => $row['Id'] ?? null)
+            ->filter(fn($v) => is_scalar($v) && (string) $v !== '')
+            ->map(fn($v) => (string) $v)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            Log::warning('[ImportEncarOptions] Fallback search returned no vehicle IDs');
+            return [];
+        }
+
+        $catalog = [];
+
+        foreach (array_chunk($ids, 20) as $batchIds) {
+            $resp = Http::timeout(25)
+                ->withHeaders(self::HEADERS)
+                ->get(self::ENCAR_BATCH_DETAILS_URL, [
+                    'vehicleIds' => implode(',', $batchIds),
+                    'include'    => self::DETAIL_INCLUDE,
+                ]);
+
+            if (!$resp->successful()) {
+                Log::warning('[ImportEncarOptions] Fallback batch-details HTTP ' . $resp->status(), [
+                    'batch_size' => count($batchIds),
+                ]);
+                continue;
+            }
+
+            $body = $resp->json();
+            $vehicles = [];
+            if (is_array($body)) {
+                $vehicles = isset($body['vehicles']) && is_array($body['vehicles'])
+                    ? $body['vehicles']
+                    : $body;
+            }
+
+            foreach ($vehicles as $vehicle) {
+                if (!is_array($vehicle)) {
+                    continue;
+                }
+
+                $options = $vehicle['options'] ?? [];
+                if (!is_array($options)) {
+                    continue;
+                }
+
+                foreach (['standard', 'choice', 'paid', 'color', 'package'] as $group) {
+                    $items = $options[$group] ?? [];
+                    if (!is_array($items)) {
+                        continue;
+                    }
+
+                    foreach ($items as $item) {
+                        if (!is_array($item)) {
+                            continue;
+                        }
+
+                        $opt = $item['option'] ?? [];
+                        if (!is_array($opt)) {
+                            $opt = [];
+                        }
+
+                        $code = $opt['id']
+                            ?? $opt['code']
+                            ?? $item['id']
+                            ?? $item['code']
+                            ?? null;
+
+                        $name = $opt['name']
+                            ?? $opt['krName']
+                            ?? $item['name']
+                            ?? $item['optionName']
+                            ?? null;
+
+                        if ($code === null || $name === null || $name === '') {
+                            continue;
+                        }
+
+                        $code = (string) $code;
+
+                        if (!isset($catalog[$code])) {
+                            $catalog[$code] = [
+                                'code'     => $code,
+                                'name_kr'  => (string) $name,
+                                'icon_url' => $opt['iconUrl'] ?? $item['iconUrl'] ?? null,
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values($catalog);
     }
 }
