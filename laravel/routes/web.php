@@ -8,7 +8,6 @@ use App\Http\Controllers\Admin\FieldsController;
 use App\Http\Controllers\Admin\LogsController;
 use App\Http\Controllers\Admin\ParseFiltersController;
 use App\Http\Controllers\Admin\ParserJobsController;
-use App\Http\Controllers\Admin\TaxonomyRulesController;
 use App\Http\Controllers\Bot\WebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -58,18 +57,6 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::get('/fields',                        [FieldsController::class, 'index'])->name('fields');
     Route::post('/fields/recompute',             [FieldsController::class, 'recompute'])->name('fields.recompute');
     Route::get('/fields-schema.json',            [FieldsController::class, 'schema'])->name('fields.schema');
-
-    // Taxonomy rules (Encar model/generation/trim curation)
-    Route::get('/taxonomy',                      [TaxonomyRulesController::class, 'index'])->name('taxonomy.index');
-    Route::post('/taxonomy/ingest',              [TaxonomyRulesController::class, 'ingest'])->name('taxonomy.ingest');
-    Route::post('/taxonomy/bootstrap',           [TaxonomyRulesController::class, 'bootstrap'])->name('taxonomy.bootstrap');
-    Route::post('/taxonomy/rules',               [TaxonomyRulesController::class, 'storeRule'])->name('taxonomy.rules.store');
-    Route::put('/taxonomy/rules/{id}',           [TaxonomyRulesController::class, 'updateRule'])->name('taxonomy.rules.update');
-    Route::delete('/taxonomy/rules/{id}',        [TaxonomyRulesController::class, 'deleteRule'])->name('taxonomy.rules.delete');
-    Route::patch('/taxonomy/queue/{id}',         [TaxonomyRulesController::class, 'updateQueue'])->name('taxonomy.queue.update');
-    Route::post('/taxonomy/queue/{id}/create-rule', [TaxonomyRulesController::class, 'createRuleFromQueue'])->name('taxonomy.queue.create-rule');
-    Route::post('/taxonomy/queue/{id}/ai-classify',   [TaxonomyRulesController::class, 'aiClassifyQueue'])->name('taxonomy.queue.ai-classify');
-    Route::post('/taxonomy/queue/approve-high-confidence', [TaxonomyRulesController::class, 'approveHighConfidence'])->name('taxonomy.queue.approve-high-confidence');
 
     // Lots browse
     Route::get('/lots-browse',                   [AdminLotsController::class, 'browse'])->name('lots-browse');

@@ -20,9 +20,10 @@ class AdminLotsController extends Controller
                     ->orWhere('plate_number', 'like', "%{$search}%")
                     ->orWhere('vin', 'like', "%{$search}%")
                     ->orWhere('make', 'like', "%{$search}%")
+                    ->orWhere('model_group', 'like', "%{$search}%")
                     ->orWhereRaw('model LIKE ?', ["%{$search}%"])
                     ->orWhereRaw('model_en LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('generation LIKE ?', ["%{$search}%"]);
+                    ->orWhereRaw('badge LIKE ?', ["%{$search}%"]);
             });
         }
 
@@ -36,32 +37,17 @@ class AdminLotsController extends Controller
             $q->where('source', $source);
         }
 
-        // Make
-        if ($make = trim((string) $request->input('make', ''))) {
-            $variants = TaxonomyNormalizer::expandToDbValues('make', $make);
-            $q->where(function ($sub) use ($variants, $make) {
-                if ($variants !== []) {
-                    $sub->whereIn('make', $variants)
-                        ->orWhereRaw('make LIKE ?', [$make . '%']);
-                    return;
-                }
-
-                $sub->whereRaw('make LIKE ?', [$make . '%']);
-            });
-        }
-
-        // Model
-        if ($model = trim((string) $request->input('model', ''))) {
-            $q->where(function ($sub) use ($model) {
-                $sub->where('model', $model)->orWhere('model_en', $model);
-            });
-        }
-        if ($generation = trim((string) $request->input('generation', ''))) {
-            $q->whereRaw('generation LIKE ?', ["%{$generation}%"]);
-        }
-        if ($trim = trim((string) $request->input('trim', ''))) {
+        // Cascading hierarchy filters
+        if ($make = trim((string) $request->input('make', '')))
+            $q->where('make', $make);
+        if ($modelGroup = trim((string) $request->input('model_group', '')))
+            $q->where('model_group', $modelGroup);
+        if ($model = trim((string) $request->input('model', '')))
+            $q->where(fn ($sub) => $sub->where('model', $model)->orWhere('model_en', $model));
+        if ($badge = trim((string) $request->input('badge', '')))
+            $q->where('badge', $badge);
+        if ($trim = trim((string) $request->input('trim', '')))
             $q->whereRaw('`trim` LIKE ?', ["%{$trim}%"]);
-        }
 
         // Year
         if ($yf = (int) $request->input('year_from')) $q->where('year', '>=', $yf);
@@ -148,37 +134,36 @@ class AdminLotsController extends Controller
         $perPage = min(200, max(20, (int) $request->input('per_page', 50)));
         $lots    = $q->paginate($perPage)->withQueryString();
 
-        // Filter options from DB
-        $rawPairs = DB::table('lots')
-            ->whereNotNull('make')->where('make', '!=', '')
-            ->whereNotNull('model')->where('model', '!=', '')
-            ->select(['make', 'model'])
-            ->distinct()->orderBy('make')->orderBy('model')
-            ->get();
+        // Filter options sidebar — build cascading hierarchy from lots
+        $distinct = static fn (string $col) => DB::table('lots')
+            ->whereNotNull($col)->where($col, '!=', '')
+            ->distinct()->orderBy($col)->pluck($col)->filter()->values();
+
         $makesModels = [];
-        foreach ($rawPairs as $row) {
-            $mk = TaxonomyNormalizer::normalize('make', (string) $row->make);
-            $md = trim((string) $row->model);
-            if ($mk === '' || $md === '') continue;
-            $makesModels[$mk][] = $md;
-        }
+        DB::table('lots')
+            ->whereNotNull('make')->where('make', '!=', '')
+            ->select(['make', 'model_group', 'model'])
+            ->distinct()->orderBy('make')->orderBy('model_group')->orderBy('model')
+            ->get()
+            ->each(function ($row) use (&$makesModels) {
+                $mk = trim((string) ($row->make ?? ''));
+                $mg = trim((string) ($row->model_group ?? '')) ?: '_';
+                $md = trim((string) ($row->model ?? ''));
+                if ($mk === '') return;
+                $makesModels[$mk][$mg][$md] = true;
+            });
         ksort($makesModels);
-        foreach ($makesModels as &$mdList) {
-            $mdList = array_values(array_unique($mdList));
-        }
-        unset($mdList);
-        $generations = DB::table('lots')->whereNotNull('generation')->where('generation', '!=', '')->distinct()->orderBy('generation')->pluck('generation')->filter()->values();
-        $bodyTypes = collect(TaxonomyNormalizer::normalizeMany('body_type', DB::table('lots')->distinct()->pluck('body_type')->filter()->values()->toArray()))->sort()->values();
-        $transList = collect(TaxonomyNormalizer::normalizeMany('transmission', DB::table('lots')->distinct()->pluck('transmission')->filter()->values()->toArray()))->sort()->values();
-        $fuelList = collect(TaxonomyNormalizer::normalizeMany('fuel', DB::table('lots')->distinct()->pluck('fuel')->filter()->values()->toArray()))->sort()->values();
-        $driveList = collect(TaxonomyNormalizer::normalizeMany('drive_type', DB::table('lots')->distinct()->pluck('drive_type')->filter()->values()->toArray()))->sort()->values();
-        $colorList  = DB::table('lots')->distinct()->orderBy('color')->pluck('color')->filter()->values();
-        $sources    = DB::table('lots')->distinct()->pluck('source')->values();
+
+        $bodyTypes = $distinct('body_type');
+        $transList = $distinct('transmission');
+        $fuelList  = $distinct('fuel');
+        $driveList = $distinct('drive_type');
+        $colorList = $distinct('color');
+        $sources   = $distinct('source');
 
         return view('admin.lots-browse', compact(
             'lots',
             'makesModels',
-            'generations',
             'bodyTypes',
             'transList',
             'fuelList',

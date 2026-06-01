@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\BotFilterSetting;
 use App\Models\EncarOptionCatalog;
 use App\Support\Taxonomy\TaxonomyLocalizer;
-use App\Support\Taxonomy\TaxonomyNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Query\Builder;
@@ -16,159 +15,134 @@ class FiltersController extends Controller
 {
     public function index(): JsonResponse
     {
-        $locale = trim((string) request()->query('locale', 'ru')) ?: 'ru';
-
-        $makes = [];
-
+        $locale     = trim((string) request()->query('locale', 'ru')) ?: 'ru';
         $currentYear = (int) date('Y');
+        $sourcesCfg  = config('auction.sources', ['encar', 'kbcha']);
+        $sources     = array_values(is_array($sourcesCfg) ? $sourcesCfg : ['encar', 'kbcha']);
 
-        $sourcesCfg = config('auction.sources', ['encar', 'kbcha']);
-        $sources = array_values(is_array($sourcesCfg) ? $sourcesCfg : ['encar', 'kbcha']);
-
-        $sourceOptions = $this->buildSourceOptions($sources);
-
-        $cardFields = BotFilterSetting::getCardFields();
-
-        $bodyTypes = [];
+        $makes         = [];
+        $bodyTypes     = [];
         $transmissions = [];
-        $fuelTypes = [];
-        $driveTypes = [];
-        $colors = [];
-        $generations = [];
-        $filterFields = [];
-        $optionItems = [];
+        $fuelTypes     = [];
+        $driveTypes    = [];
+        $colors        = [];
+        $filterFields  = [];
+        $optionItems   = [];
 
         try {
-            $makes = $this->buildMakesFromLots($sources);
-
-            $bodyTypes = $this->distinctStrings('body_type', $sources, 'body_type');
-            $transmissions = $this->distinctStrings('transmission', $sources, 'transmission');
-            $fuelTypes = $this->distinctStrings('fuel', $sources, 'fuel');
-            $driveTypes = $this->distinctStrings('drive_type', $sources, 'drive_type');
-            $colors = $this->distinctStrings('color', $sources);
-            $generations = $this->distinctStrings('generation', $sources);
-            $filterFields = $this->buildFilterFieldsMeta();
-            $optionItems = $this->buildOptionItems($locale);
+            $makes         = $this->buildMakesHierarchy($sources);
+            $bodyTypes     = $this->distinctValues('body_type', $sources);
+            $transmissions = $this->distinctValues('transmission', $sources);
+            $fuelTypes     = $this->distinctValues('fuel', $sources);
+            $driveTypes    = $this->distinctValues('drive_type', $sources);
+            $colors        = $this->distinctValues('color', $sources);
+            $filterFields  = $this->buildFilterFieldsMeta();
+            $optionItems   = $this->buildOptionItems($locale);
         } catch (\Throwable) {
         }
 
-        $makeValues = array_keys($makes);
-        $makeOptions = array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $makeValues);
-        $bodyTypeOptions = TaxonomyLocalizer::options('body_type', $bodyTypes, $locale);
-        $transmissionOptions = TaxonomyLocalizer::options('transmission', $transmissions, $locale);
-        $fuelTypeOptions = TaxonomyLocalizer::options('fuel', $fuelTypes, $locale);
-        $driveTypeOptions = TaxonomyLocalizer::options('drive_type', $driveTypes, $locale);
+        $makeOptions = array_map(static fn (string $v) => ['value' => $v, 'label' => $v], array_keys($makes));
 
         return response()->json([
             'ok'   => true,
             'data' => [
-                'makes'   => $makes,
-                'makeOptions' => $makeOptions,
-                'sources' => $sourceOptions,
-                'cardFields' => $cardFields,
-                'filterFields' => $filterFields,
-                'years'         => range($currentYear, 2000),
-                'damageTypes'   => [],
-                'titleTypes'    => [],
-                'bodyTypes'     => $bodyTypes,
-                'bodyTypeOptions' => $bodyTypeOptions,
-                'transmissions' => $transmissions,
-                'transmissionOptions' => $transmissionOptions,
-                'fuelTypes'     => $fuelTypes,
-                'fuelTypeOptions' => $fuelTypeOptions,
-                'driveTypes'    => $driveTypes,
-                'driveTypeOptions' => $driveTypeOptions,
-                'colors'        => $colors,
-                'colorOptions'  => TaxonomyLocalizer::options('color', $colors, $locale),
-                'generations'   => $generations,
-                'options'       => $optionItems,
+                'makes'               => $makes,
+                'makeOptions'         => $makeOptions,
+                'sources'             => $this->buildSourceOptions($sources),
+                'cardFields'          => BotFilterSetting::getCardFields(),
+                'filterFields'        => $filterFields,
+                'years'               => range($currentYear, 2000),
+                'bodyTypes'           => $bodyTypes,
+                'bodyTypeOptions'     => TaxonomyLocalizer::options('body_type', $bodyTypes, $locale),
+                'transmissions'       => $transmissions,
+                'transmissionOptions' => TaxonomyLocalizer::options('transmission', $transmissions, $locale),
+                'fuelTypes'           => $fuelTypes,
+                'fuelTypeOptions'     => TaxonomyLocalizer::options('fuel', $fuelTypes, $locale),
+                'driveTypes'          => $driveTypes,
+                'driveTypeOptions'    => TaxonomyLocalizer::options('drive_type', $driveTypes, $locale),
+                'colors'              => $colors,
+                'colorOptions'        => TaxonomyLocalizer::options('color', $colors, $locale),
+                'options'             => $optionItems,
+                // Deprecated, kept for backward compat
+                'damageTypes'         => [],
+                'titleTypes'          => [],
+                'generations'         => [],
             ],
         ]);
     }
 
-    /** @return array<int, array{key: string, name: string}> */
-    private function buildSourceOptions(array $sources): array
+    /**
+     * Cascading filter context: given current selections, return available next-level values.
+     *
+     * Supports full iNav hierarchy:
+     *   make → model_group → model → badge → trim
+     * Plus flat filters: body_type, fuel, drive_type, transmission, color, year, price
+     */
+    public function context(Request $request): JsonResponse
     {
-        $sourceLabels = [
-            'encar' => 'Encar',
-            'kbcha' => 'KBChacha',
-        ];
+        $locale      = trim((string) $request->query('locale', 'ru')) ?: 'ru';
+        $status      = trim((string) $request->query('status', 'all'));
+        $source      = trim((string) $request->query('source', ''));
+        $make        = trim((string) $request->query('make', ''));
+        $modelGroup  = trim((string) $request->query('model_group', ''));
+        $model       = trim((string) $request->query('model', ''));
+        $badge       = trim((string) $request->query('badge', ''));
+        $trim        = trim((string) $request->query('trim', ''));
 
-        return array_map(static fn (string $key) => [
-            'key' => $key,
-            'name' => $sourceLabels[$key] ?? strtoupper($key),
-        ], $sources);
-    }
+        $base = $this->baseQuery($status, $source);
 
-    /** @return string[] */
-    private function distinctStrings(string $column, array $sources, ?string $taxonomyField = null): array
-    {
-        $values = DB::table('lots')
-            ->where('is_active', true)
-            ->whereIn('source', $sources)
-            ->whereNotNull($column)
-            ->where($column, '!=', '')
-            ->distinct()
-            ->orderBy($column)
-            ->pluck($column)
-            ->map(static fn ($v) => trim((string) $v))
-            ->filter(static fn (string $v) => $v !== '')
-            ->values()
-            ->toArray();
+        // Apply progressive filters (cascade)
+        if ($make !== '')       $base->where('make', $make);
+        if ($modelGroup !== '') $base->where('model_group', $modelGroup);
+        if ($model !== '')      $base->where('model', $model);
+        if ($badge !== '')      $base->where('badge', $badge);
+        if ($trim !== '')       $base->where('trim', $trim);
 
-        if ($taxonomyField !== null) {
-            $values = TaxonomyNormalizer::normalizeMany($taxonomyField, $values);
-        }
+        // Each level returns what's available WITHIN current selection
+        $makes       = $this->pluck(clone $base, 'make');
+        $modelGroups = $this->pluck(clone $base->when($make !== '', fn ($q) => $q->where('make', $make)), 'model_group');
+        $models      = $this->pluck(clone $base, 'model');
+        $badges      = $this->pluck(clone $base, 'badge');
+        $trims       = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
+        $bodyTypes   = $this->pluck(clone $base, 'body_type');
+        $fuelTypes   = $this->pluck(clone $base, 'fuel');
+        $driveTypes  = $this->pluck(clone $base, 'drive_type');
+        $transmissions = $this->pluck(clone $base, 'transmission');
+        $colors      = $this->pluck(clone $base, 'color');
 
-        sort($values);
-
-        return array_values(array_unique($values));
-    }
-
-    /** @return array<string, string[]> */
-    private function buildMakesFromLots(array $sources): array
-    {
-        $rows = DB::table('lots')
-            ->where('is_active', true)
-            ->whereIn('source', $sources)
-            ->whereNotNull('make')
-            ->where('make', '!=', '')
-            ->select(['make', 'model'])
-            ->orderBy('make')
-            ->orderBy('model')
-            ->get();
-
-        $byMake = [];
-        foreach ($rows as $row) {
-            $makeRaw = trim((string) ($row->make ?? ''));
-            $make = TaxonomyNormalizer::normalize('make', $makeRaw);
-            if ($make === '') {
-                continue;
-            }
-
-            $model = trim((string) ($row->model ?? ''));
-            $byMake[$make] ??= [];
-            if ($model !== '') {
-                $byMake[$make][$model] = true;
-            }
-        }
-
-        $result = [];
-        foreach ($byMake as $make => $models) {
-            $modelNames = array_keys($models);
-            sort($modelNames);
-            $result[$make] = $modelNames;
-        }
-        ksort($result);
-
-        return $result;
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'makes'               => $makes,
+                'makeOptions'         => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $makes),
+                'modelGroups'         => $modelGroups,
+                'modelGroupOptions'   => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $modelGroups),
+                'models'              => $models,
+                'modelOptions'        => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $models),
+                'badges'              => $badges,
+                'badgeOptions'        => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $badges),
+                'trims'               => $trims,
+                'trimOptions'         => TaxonomyLocalizer::trimOptions($trims, $locale),
+                'bodyTypes'           => $bodyTypes,
+                'bodyTypeOptions'     => TaxonomyLocalizer::options('body_type', $bodyTypes, $locale),
+                'fuelTypes'           => $fuelTypes,
+                'fuelTypeOptions'     => TaxonomyLocalizer::options('fuel', $fuelTypes, $locale),
+                'driveTypes'          => $driveTypes,
+                'driveTypeOptions'    => TaxonomyLocalizer::options('drive_type', $driveTypes, $locale),
+                'transmissions'       => $transmissions,
+                'transmissionOptions' => TaxonomyLocalizer::options('transmission', $transmissions, $locale),
+                'colors'              => $colors,
+                'colorOptions'        => TaxonomyLocalizer::options('color', $colors, $locale),
+            ],
+        ]);
     }
 
     public function trims(Request $request): JsonResponse
     {
-        $make   = trim((string) $request->query('make', ''));
-        $model  = trim((string) $request->query('model', ''));
-        $locale = trim((string) $request->query('locale', 'en')) ?: 'en';
+        $make    = trim((string) $request->query('make', ''));
+        $modelGroup = trim((string) $request->query('model_group', ''));
+        $model   = trim((string) $request->query('model', ''));
+        $locale  = trim((string) $request->query('locale', 'en')) ?: 'en';
         $sources = config('auction.sources', ['encar', 'kbcha']);
         $sources = is_array($sources) ? $sources : ['encar', 'kbcha'];
 
@@ -179,217 +153,148 @@ class FiltersController extends Controller
             ->where('trim', '!=', '')
             ->where('trim', '!=', '(세부등급 없음)');
 
-        if ($make !== '') {
-            $this->applyCanonicalEqFilter($query, 'make', 'make', $make);
-        }
-        if ($model !== '') {
-            $query->where('model', $model);
-        }
+        if ($make !== '')       $query->where('make', $make);
+        if ($modelGroup !== '') $query->where('model_group', $modelGroup);
+        if ($model !== '')      $query->where('model', $model);
 
-        $trims = $query->distinct()
-            ->orderBy('trim')
-            ->pluck('trim')
+        $trims = $query->distinct()->orderBy('trim')->pluck('trim')
             ->map(static fn ($v) => trim((string) $v))
             ->filter(static fn (string $v) => $v !== '')
-            ->values()
-            ->toArray();
-
-        $trimOptions = TaxonomyLocalizer::trimOptions($trims, $locale);
+            ->values()->toArray();
 
         return response()->json(['ok' => true, 'data' => [
             'trims'       => $trims,
-            'trimOptions' => $trimOptions,
+            'trimOptions' => TaxonomyLocalizer::trimOptions($trims, $locale),
         ]]);
     }
 
-    public function context(Request $request): JsonResponse
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Build cascading make → model_group → model hierarchy from lots.
+     * Used by the top-level /filters endpoint for pre-loading all options.
+     *
+     * @return array<string, array<string, string[]>>
+     *   make → { model_group → [model, model, ...] }
+     */
+    private function buildMakesHierarchy(array $sources): array
     {
-        $locale = trim((string) $request->query('locale', 'ru')) ?: 'ru';
-        $status = trim((string) $request->query('status', 'all'));
-        $source = trim((string) $request->query('source', ''));
-        $make = trim((string) $request->query('make', ''));
-        $model = trim((string) $request->query('model', ''));
-        $trim = trim((string) $request->query('trim', ''));
-        $generation = trim((string) $request->query('generation', ''));
+        $rows = DB::table('lots')
+            ->where('is_active', true)
+            ->whereIn('source', $sources)
+            ->whereNotNull('make')->where('make', '!=', '')
+            ->select(['make', 'model_group', 'model'])
+            ->orderBy('make')->orderBy('model_group')->orderBy('model')
+            ->get();
 
-        $makesQuery = $this->adminLotsBaseQuery($status, $source);
-        $makes = $this->pluckDistinct($makesQuery, 'make', 'make');
+        $tree = [];
+        foreach ($rows as $row) {
+            $make  = trim((string) ($row->make ?? ''));
+            $mg    = trim((string) ($row->model_group ?? '')) ?: '_';
+            $model = trim((string) ($row->model ?? ''));
+            if ($make === '') continue;
 
-        $modelsQuery = $this->adminLotsBaseQuery($status, $source);
-        if ($make !== '') {
-            $this->applyCanonicalEqFilter($modelsQuery, 'make', 'make', $make);
-        }
-        $models = $this->pluckDistinct($modelsQuery, 'model');
-
-        $trimsQuery = $this->adminLotsBaseQuery($status, $source)
-            ->whereNotNull('trim')
-            ->where('trim', '!=', '')
-            ->where('trim', '!=', '(세부등급 없음)');
-        if ($make !== '') {
-            $this->applyCanonicalEqFilter($trimsQuery, 'make', 'make', $make);
-        }
-        if ($model !== '') {
-            $trimsQuery->where('model', $model);
-        }
-        $trims = $this->pluckDistinct($trimsQuery, 'trim');
-
-        $generationsQuery = $this->adminLotsBaseQuery($status, $source);
-        if ($make !== '') {
-            $this->applyCanonicalEqFilter($generationsQuery, 'make', 'make', $make);
-        }
-        if ($model !== '') {
-            $generationsQuery->where('model', $model);
-        }
-        if ($trim !== '') {
-            $generationsQuery->where('trim', $trim);
-        }
-        $generations = $this->pluckDistinct($generationsQuery, 'generation');
-
-        $detailQuery = $this->adminLotsBaseQuery($status, $source);
-        if ($make !== '') {
-            $this->applyCanonicalEqFilter($detailQuery, 'make', 'make', $make);
-        }
-        if ($model !== '') {
-            $detailQuery->where('model', $model);
-        }
-        if ($trim !== '') {
-            $detailQuery->where('trim', $trim);
-        }
-        if ($generation !== '') {
-            $detailQuery->where('generation', $generation);
+            $tree[$make][$mg][$model] = true;
         }
 
-        $bodyTypes = $this->pluckDistinct(clone $detailQuery, 'body_type', 'body_type');
-        $transmissions = $this->pluckDistinct(clone $detailQuery, 'transmission', 'transmission');
-        $fuelTypes = $this->pluckDistinct(clone $detailQuery, 'fuel', 'fuel');
-        $driveTypes = $this->pluckDistinct(clone $detailQuery, 'drive_type', 'drive_type');
-
-        $colors = $this->pluckDistinct(clone $detailQuery, 'color');
-
-        return response()->json([
-            'ok' => true,
-            'data' => [
-                'makes' => $makes,
-                'makeOptions' => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $makes),
-                'models' => $models,
-                'modelOptions' => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $models),
-                'trims' => $trims,
-                'trimOptions' => TaxonomyLocalizer::trimOptions($trims, $locale),
-                'generations' => $generations,
-                'generationOptions' => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $generations),
-                'bodyTypes' => $bodyTypes,
-                'bodyTypeOptions' => TaxonomyLocalizer::options('body_type', $bodyTypes, $locale),
-                'transmissions' => $transmissions,
-                'transmissionOptions' => TaxonomyLocalizer::options('transmission', $transmissions, $locale),
-                'fuelTypes' => $fuelTypes,
-                'fuelTypeOptions' => TaxonomyLocalizer::options('fuel', $fuelTypes, $locale),
-                'driveTypes' => $driveTypes,
-                'driveTypeOptions' => TaxonomyLocalizer::options('drive_type', $driveTypes, $locale),
-                'colors' => $colors,
-                'colorOptions' => TaxonomyLocalizer::options('color', $colors, $locale),
-            ],
-        ]);
-    }
-
-    private function adminLotsBaseQuery(string $status, string $source): Builder
-    {
-        $q = DB::table('lots');
-
-        if ($status === 'active') {
-            $q->where('is_active', true);
-        } elseif ($status === 'inactive') {
-            $q->where('is_active', false);
+        // Sort and convert to arrays
+        $result = [];
+        ksort($tree);
+        foreach ($tree as $make => $groups) {
+            ksort($groups);
+            $result[$make] = [];
+            foreach ($groups as $mg => $models) {
+                $modelList = array_keys($models);
+                sort($modelList);
+                $result[$make][$mg] = $modelList;
+            }
         }
 
-        if ($source !== '') {
-            $q->where('source', $source);
-        }
-
-        return $q;
+        return $result;
     }
 
     /** @return string[] */
-    private function pluckDistinct(Builder $query, string $column, ?string $taxonomyField = null): array
+    private function distinctValues(string $column, array $sources): array
     {
-        $values = $query
+        return DB::table('lots')
+            ->where('is_active', true)
+            ->whereIn('source', $sources)
             ->whereNotNull($column)
             ->where($column, '!=', '')
-            ->distinct()
-            ->orderBy($column)
+            ->distinct()->orderBy($column)
             ->pluck($column)
             ->map(static fn ($v) => trim((string) $v))
             ->filter(static fn (string $v) => $v !== '')
-            ->values()
-            ->toArray();
-
-        if ($taxonomyField !== null) {
-            $values = TaxonomyNormalizer::normalizeMany($taxonomyField, $values);
-        }
-
-        sort($values);
-
-        return array_values(array_unique($values));
+            ->values()->unique()->sort()->values()->toArray();
     }
 
-    private function applyCanonicalEqFilter(Builder $query, string $column, string $taxonomyField, string $selected): void
+    /** @return string[] */
+    private function pluck(Builder $query, string $column): array
     {
-        $variants = TaxonomyNormalizer::expandToDbValues($taxonomyField, $selected);
-        if ($variants === []) {
-            return;
-        }
-
-        $query->whereIn($column, $variants);
+        return $query->whereNotNull($column)->where($column, '!=', '')
+            ->distinct()->orderBy($column)->pluck($column)
+            ->map(static fn ($v) => trim((string) $v))
+            ->filter(static fn (string $v) => $v !== '')
+            ->values()->toArray();
     }
 
-    /**
-     * Build options list for the filter dropdown from encar_option_catalog.
-     * Returns [{value, label, icon_url, category}] sorted by sort_order.
-     *
-     * @return array<int, array{value:string, label:string, icon_url:?string, category:?string}>
-     */
+    /** @return string[] */
+    private function pluckFiltered(Builder $query, string $column, array $exclude): array
+    {
+        return $query->whereNotNull($column)->where($column, '!=', '')
+            ->whereNotIn($column, $exclude)
+            ->distinct()->orderBy($column)->pluck($column)
+            ->map(static fn ($v) => trim((string) $v))
+            ->filter(static fn (string $v) => $v !== '')
+            ->values()->toArray();
+    }
+
+    private function baseQuery(string $status, string $source): Builder
+    {
+        $q = DB::table('lots');
+        if ($status === 'active')   $q->where('is_active', true);
+        if ($status === 'inactive') $q->where('is_active', false);
+        if ($source !== '')         $q->where('source', $source);
+        return $q;
+    }
+
+    private function buildSourceOptions(array $sources): array
+    {
+        $labels = ['encar' => 'Encar', 'kbcha' => 'KBChacha'];
+        return array_map(static fn (string $key) => [
+            'key'  => $key,
+            'name' => $labels[$key] ?? strtoupper($key),
+        ], $sources);
+    }
+
     private function buildOptionItems(string $locale): array
     {
         $catalog = EncarOptionCatalog::getCached();
+        if ($catalog->isEmpty()) return [];
 
-        if ($catalog->isEmpty()) {
-            return [];
-        }
-
-        return $catalog
-            ->sortBy('sort_order')
+        return $catalog->sortBy('sort_order')
             ->map(function ($opt) use ($locale) {
                 $label = match ($locale) {
                     'ru'    => $opt->name_ru ?? $opt->name_en ?? $opt->name_kr ?? $opt->code,
                     'en'    => $opt->name_en ?? $opt->name_ru ?? $opt->name_kr ?? $opt->code,
                     default => $opt->name_kr ?? $opt->name_en ?? $opt->name_ru ?? $opt->code,
                 };
-
-                return [
-                    'value'    => $opt->code,
-                    'label'    => $label,
-                    'icon_url' => $opt->icon_url,
-                    'category' => $opt->category,
-                ];
-            })
-            ->values()
-            ->toArray();
+                return ['value' => $opt->code, 'label' => $label,
+                        'icon_url' => $opt->icon_url, 'category' => $opt->category];
+            })->values()->toArray();
     }
 
-    /** @return array<int, array<string, mixed>> */
     private function buildFilterFieldsMeta(): array
     {
-        return BotFilterSetting::orderBy('sort_order')
-            ->orderBy('field_name')
+        return BotFilterSetting::orderBy('sort_order')->orderBy('field_name')
             ->get(['field_name', 'field_label', 'dtype', 'category', 'enabled', 'display_in_card'])
             ->map(static fn (BotFilterSetting $s) => [
-                'name' => $s->field_name,
-                'label' => $s->field_label,
-                'dtype' => $s->dtype,
-                'category' => $s->category,
-                'enabled' => (bool) $s->enabled,
+                'name'          => $s->field_name,
+                'label'         => $s->field_label,
+                'dtype'         => $s->dtype,
+                'category'      => $s->category,
+                'enabled'       => (bool) $s->enabled,
                 'displayInCard' => (bool) $s->display_in_card,
-            ])
-            ->values()
-            ->toArray();
+            ])->values()->toArray();
     }
 }
