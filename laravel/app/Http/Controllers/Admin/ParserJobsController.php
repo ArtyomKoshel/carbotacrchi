@@ -361,9 +361,10 @@ class ParserJobsController extends Controller
         }
 
         try {
+            $baseUrl = rtrim(config('auction.floppy_base_url'), '/');
             $resp = Http::connectTimeout(3)->timeout(8)
                 ->withHeader('X-Api-Key', $key)
-                ->get('https://client-api.floppy.host/v1/rotating/balance');
+                ->get("{$baseUrl}/v1/rotating/balance");
             if ($resp->successful()) {
                 return response()->json($resp->json());
             }
