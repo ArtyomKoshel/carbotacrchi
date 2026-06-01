@@ -121,6 +121,12 @@ const Results = (() => {
             ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>`      : ''}
             ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(Taxonomy.label('trim', lot.trim))}</span>` : ''}
             ${cardFields.has('generation') && lot.generation ? `<span class="lot-card__tag">🧬 ${escHtml(lot.generation)}</span>` : ''}
+            ${cardFields.has('options') && Array.isArray(lot.options) && lot.options.length ? (() => {
+                const names = lot.options.map(o => o.name_ru || o.name_en || o.name_kr || o.code).filter(Boolean);
+                const shown = names.slice(0, 3).map(n => `<span class="lot-card__tag">⚙️ ${escHtml(n)}</span>`).join('');
+                const rest  = names.length > 3 ? `<span class="lot-card__tag">+${names.length - 3}</span>` : '';
+                return shown + rest;
+              })() : ''}
           </div>
         </div>
       </div>`;
