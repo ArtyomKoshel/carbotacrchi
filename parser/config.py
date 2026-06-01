@@ -40,7 +40,7 @@ class Config:
 
     # FloppyData proxy credentials
     FLOPPYDATA_API_KEY  = os.getenv("FLOPPYDATA_API_KEY", "")
-    FLOPPY_BASE_URL     = os.getenv("FLOPPY_BASE_URL", "https://client-api.floppy.host")
+    FLOPPY_BASE_URL     = os.getenv("FLOPPY_BASE_URL", "https://api.floppydata.net")
     FLOPPY_USERNAME     = os.getenv("FLOPPY_USERNAME", "")
     FLOPPY_PASSWORD     = os.getenv("FLOPPY_PASSWORD", "")
     FLOPPY_HOST         = os.getenv("FLOPPY_HOST", "geo.g-w.info:10080")
