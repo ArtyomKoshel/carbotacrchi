@@ -272,7 +272,14 @@ const Results = (() => {
             <span class="sheet-detail-value">${escHtml(lot.dealerPhone)}</span>
           </div>` : ''}
         </div>
-        <div id="sheet-inspection" style="margin:0 0 12px"></div>
+        ${Array.isArray(lot.options) && lot.options.length ? `
+        <div style="margin:12px 0 0">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 6px">Опции</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 4px">
+            ${lot.options.map(o => `<span style="font-size:11px;background:rgba(51,144,236,.12);color:var(--accent);border-radius:8px;padding:2px 8px">${escHtml(o.name_ru || o.name_en || o.name_kr || o.code)}</span>`).join('')}
+          </div>
+        </div>` : ''}
+        <div id="sheet-inspection" style="margin:12px 0 12px"></div>
         <div class="sheet-actions">
           <a href="${escHtml(lot.lotUrl)}" target="_blank" rel="noopener"
              class="btn btn-primary" style="text-decoration:none;flex:1">Открыть лот</a>
