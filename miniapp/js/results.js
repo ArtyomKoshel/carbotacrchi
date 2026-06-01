@@ -153,6 +153,13 @@ const Results = (() => {
     }
   }
 
+  function fmtDate(raw) {
+    if (!raw) return null;
+    // ISO timestamp → only the date part: "2022-07-19T00:00:00Z" → "2022-07-19"
+    const m = String(raw).match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : String(raw);
+  }
+
   function openSheet(lot) {
     activeLot = lot;
     const overlay = document.getElementById('sheet-overlay');
@@ -202,7 +209,7 @@ const Results = (() => {
             <span class="sheet-detail-label">Привод</span>
             <span class="sheet-detail-value">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>
           </div>` : ''}
-          ${lot.engineVolume ? `<div class="sheet-detail-item">
+          ${lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Двигатель</span>
             <span class="sheet-detail-value">${lot.engineVolume} л</span>
           </div>` : ''}
@@ -282,9 +289,9 @@ const Results = (() => {
       const el = document.getElementById('sheet-inspection');
       if (!el || !insp) return;
       const rows = [];
-      if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(insp.valid_until)}</span></div>`);
+      if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.valid_until))}</span></div>`);
       if (insp.cert_no)     rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Номер акта</span><span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(insp.cert_no)}</span></div>`);
-      if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(insp.first_registration)}</span></div>`);
+      if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.first_registration))}</span></div>`);
       if (insp.inspection_mileage)  rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Пробег (акт)</span><span class="sheet-detail-value">${Number(insp.inspection_mileage).toLocaleString()} km</span></div>`);
       if (insp.accident_detail) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Структурные повреждения</span><span class="sheet-detail-value" style="color:var(--danger)">${escHtml(insp.accident_detail)}</span></div>`);
       if (insp.outer_detail)    rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Внешние ремонты</span><span class="sheet-detail-value">${escHtml(insp.outer_detail)}</span></div>`);
