@@ -366,7 +366,9 @@ class ParserJobsController extends Controller
                 ->withHeader('X-Api-Key', $key)
                 ->get("{$baseUrl}/v1/rotating/balance");
             if ($resp->successful()) {
-                return response()->json($resp->json());
+                $body = $resp->json();
+                \Illuminate\Support\Facades\Log::debug('[FloppyData] balance response', ['body' => $body]);
+                return response()->json($body);
             }
 
             return response()->json(['error' => 'API error ' . $resp->status()], 502);
