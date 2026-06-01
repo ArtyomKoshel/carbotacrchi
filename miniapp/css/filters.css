@@ -151,7 +151,8 @@
 }
 
 /* ── Options multi-select (Tom Select dark theme) ── */
-.filter-options-ts { display: none; } /* hidden — Tom Select replaces it */
+select.filter-options-ts { display: none; } /* hide native select — Tom Select replaces it */
+div.ts-wrapper.filter-options-ts { display: block; } /* but show the TS wrapper */
 
 .ts-wrapper { width: 100%; }
 
