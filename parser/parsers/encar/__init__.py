@@ -656,131 +656,117 @@ def _normalize_model_taxonomy(
     )
 
 
+def _clean_model_str(model_raw: str, badge: str, model_group: str) -> str:
+    """
+    Return a clean model/generation string from the raw Encar Model field.
+
+    The Encar Model field is a composite string, e.g.:
+      "더 뉴 쏘렌토 4세대 가솔린 2.5T 4WD"
+
+    We strip:
+      1. Badge suffix ("가솔린 2.5T 4WD") — already available as a separate field
+      2. Known Korean model prefixes (더 뉴, 올 뉴, …) — fixed list, no regex
+
+    Result: "쏘렌토 4세대"
+    """
+    s = model_raw.strip()
+
+    # 1. Strip badge suffix from end of model string
+    if badge:
+        badge_s = badge.strip()
+        if s.endswith(badge_s):
+            s = s[: -len(badge_s)].strip()
+
+    # 2. Strip known model prefixes (fixed list, no regex)
+    _PREFIXES = [
+        "더 뉴 더 뉴 ", "더 뉴 더뉴 ", "더뉴 더뉴 ",
+        "더 뉴 ", "더뉴 ",
+        "올 뉴 ", "올뉴 ",
+        "완전변경 ", "부분변경 ", "신형 ", "뉴 ",
+    ]
+    for prefix in _PREFIXES:
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+            break
+
+    return s.strip() or model_raw.strip()
+
+
 def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
-    vid = str(item["Id"])
-    make_kr = item.get("Manufacturer", "")
-    model    = item.get("Model", "")
-    badge    = item.get("Badge", "")        # grade/fuel e.g. "디젤 2.2 4WD"
-    badge_detail = item.get("BadgeDetail", "")  # trim e.g. "노블레스"
+    """
+    Build a CarLot from a single Encar search-list item.
+
+    All fields come DIRECTLY from the API — no regex, no string parsing.
+    Tech specs (engine_volume, drive_type) come from the detail API
+    (_enrich_from_detail) or catalog_badges fallback (lots:normalize-from-catalog).
+    """
+    vid          = str(item["Id"])
+    make_kr      = (item.get("Manufacturer") or "").strip()
+    model_group  = (item.get("ModelGroup") or "").strip()
+    model_raw    = (item.get("Model") or "").strip()
+    badge        = (item.get("Badge") or "").strip()
+    badge_detail = (item.get("BadgeDetail") or "").strip()
+
+    # Clean model string (strip badge suffix + model prefixes, no regex)
+    model = _clean_model_str(model_raw, badge, model_group)
 
     year_raw = item.get("FormYear") or str(item.get("Year") or "")
     year = int(str(year_raw)[:4]) if year_raw and len(str(year_raw)) >= 4 else 0
 
     price_man = int(item.get("Price") or 0)
-    if price_man > 1_000_000_000:  # > 10 trillion KRW — clearly garbage data
+    if price_man > 1_000_000_000:
         logger.warning(f"[encar] lot {item.get('Id')}: absurd price {price_man}만원, zeroing")
         price_man = 0
     price_raw = norm.price_from_man(price_man)
     mileage   = int(item.get("Mileage") or 0)
 
-    # Drive type will be resolved by taxonomy rules (set_drive_type) from full model+badge string.
-
-    # Main photo: first Photos entry or Photo prefix
     photos = item.get("Photos") or []
     photo_path = photos[0]["location"] if photos else ""
-    image_url = EncarClient.photo_url(photo_path) if photo_path else None
+    image_url  = EncarClient.photo_url(photo_path) if photo_path else None
 
-    location = item.get("OfficeCityState") or ""
+    location = (item.get("OfficeCityState") or "").strip()
 
     conditions = item.get("Condition") or []
     sell_type, sell_type_raw = _sell.normalize_encar(
         item.get("SellType"), item.get("AdType"), conditions,
     )
 
-    # FormYear is already an INT like 202006 (YYYYMM) — store as first-class col.
     form_year = item.get("FormYear") or item.get("Year")
     reg_ym: int | None = None
     if form_year:
         try:
-            s = str(int(form_year))  # drop possible ".0"
+            s = str(int(form_year))
             if len(s) == 6 and s.isdigit():
                 reg_ym = int(s)
         except (TypeError, ValueError):
             pass
 
-    model_group = item.get("ModelGroup")
-    model_clean, generation, inferred_trim, inferred_package, unknown_tail, stripped_tokens, heuristic_variant = _normalize_model_taxonomy(model, model_group)
-    model_clean, generation, inferred_trim, unknown_tail, rule_fuel, rule_drive_type, rule_variant = _apply_taxonomy_rules(
-        source=_SOURCE,
-        make=make_kr,
-        model_raw=model,
-        model=model_clean,
-        generation=generation,
-        trim=inferred_trim,
-        unknown_tail=unknown_tail,
-        badge_raw=badge,
-    )
-    trim = (badge_detail or '').strip() or inferred_trim
-
-    if unknown_tail:
-        _append_taxonomy_anomaly({
-            'ts': _utc3_now_iso(),
-            'source': _SOURCE,
-            'lot_id': vid,
-            'make_kr': make_kr,
-            'model_raw': model,
-            'model_group_raw': model_group,
-            'badge_raw': badge,
-            'badge_detail_raw': badge_detail,
-            'model_clean': model_clean,
-            'generation_inferred': generation,
-            'trim_inferred': inferred_trim,
-            'package_inferred': inferred_package,
-            'unknown_tail': unknown_tail,
-            'reason': 'model_tail_not_matched_by_known_trim_package_patterns',
-        })
-
-    lot_fuel = norm.fuel(item.get("FuelType")) or rule_fuel
-    _drive_tokens = f"{model} {badge}".split()
-    lot_drive_type = rule_drive_type or next(
-        (norm.drive(t) for t in _drive_tokens if norm.drive(t)),
-        None,
-    )
-    lot_engine_volume = _extract_engine_volume(f"{model} {badge}")
-    lot_cylinders = _extract_cylinders(f"{model} {badge}")
-    lot_variant = rule_variant or heuristic_variant
-    # extract special tags from the raw model string (장애인용, 캠핑카 etc.)
-    _special_found = [t for t in _get_special_tags() if t in model]
+    # Raw data: only fields NOT available as first-class columns
     _raw_data: dict = {
-        "manufacturer_kr":      make_kr,
-        "model_kr_raw":         model,
-        "model_group_kr":       model_group,
-        "badge_kr":             badge,
-        "badge_detail_kr":      badge_detail,
-        "model_taxonomy_clean": model_clean,
-        "generation_inferred":  generation,
-        "trim_inferred":        inferred_trim,
-        "package_inferred":     inferred_package,
-        "unknown_tail_candidate": unknown_tail,
-        "ad_type":              item.get("AdType"),
-        "condition":            conditions,
+        "model_kr_raw": model_raw,   # original composite for reference
+        "ad_type":      item.get("AdType"),
+        "condition":    conditions,
     }
-    if stripped_tokens:
-        _raw_data["stripped_model_tokens"] = stripped_tokens
-    if _special_found:
-        _raw_data["special_tags"] = _special_found
 
     return CarLot(
         id=vid,
         source=_SOURCE,
         make=norm.make(make_kr),
-        model=model_clean,
-        model_en=resolve_model_en(model_clean),
-        generation=generation,
-        variant=lot_variant,
-        trim=trim or None,
-        package=inferred_package or None,
+        model=model,
+        model_group=model_group,           # ← direct from API
+        model_en=resolve_model_en(model),
+        badge=badge,                       # ← direct from API
+        trim=badge_detail or None,         # ← direct from API (BadgeDetail)
         year=year,
         price=price_raw,
         mileage=mileage,
         registration_year_month=reg_ym,
-        fuel=lot_fuel,
+        fuel=norm.fuel(item.get("FuelType")),  # ← direct from FuelType field
         transmission=norm.transmission(item.get("Transmission")),
         color=norm.color(item.get("Color")),
         seat_color=norm.color(item.get("SeatColor")),
-        drive_type=lot_drive_type,
-        engine_volume=lot_engine_volume,
-        cylinders=lot_cylinders,
+        # engine_volume, drive_type, body_type, seat_count → from detail API
+        # (fallback: lots:normalize-from-catalog via catalog_badges)
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",

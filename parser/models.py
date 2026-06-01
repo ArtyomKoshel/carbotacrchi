@@ -14,9 +14,10 @@ class CarLot:
     year: int
     price: int                    # Always in KRW (canonical)
     mileage: int = 0
-    model_en: str | None = None   # Canonical English model name (resolved from Korean)
-    generation: str | None = None # Generation / chassis code (e.g. G30, NX4)
-    variant: str | None = None    # Model variant / sub-designation (e.g. E300, 730Ld, Boxster S)
+    model_group: str | None = None  # Encar ModelGroup (level 2): "쏘나타", "3 Series"
+    model_en: str | None = None    # Canonical English model name (resolved from Korean)
+    generation: str | None = None  # Generation / chassis code (e.g. G30, NX4) — from detail API
+    variant: str | None = None     # Model variant / sub-designation (e.g. E300, 730Ld)
 
     # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
     registration_year_month: int | None = None
@@ -30,9 +31,10 @@ class CarLot:
     cylinders: int | None = None
     color: str | None = None
     seat_color: str | None = None
-    trim: str | None = None
+    badge: str | None = None        # Encar Badge (level 5): "가솔린 2.5T 4WD" — direct from API
+    trim: str | None = None        # Encar BadgeDetail (level 6): "프레스티지" — direct from API
     trim_en: str | None = None     # English trim name from Encar detail API (gradeDetailEnglishName)
-    package: str | None = None    # Option package (e.g. M 스포츠, AMG Line, xLine)
+    package: str | None = None     # Option package (e.g. M 스포츠, AMG Line, xLine)
 
     # Location & links
     location: str | None = None
@@ -88,7 +90,9 @@ class CarLot:
         "sell_type",          # -> lots.sell_type_raw column
         "manufacturer_kr",    # -> duplicate of make
         "model_en",           # -> first-class column
-        "model_group_kr",     # -> duplicate of model
+        "model_group_kr",     # -> lots.model_group column
+        "badge_kr",           # -> lots.badge column
+        "badge_detail_kr",    # -> lots.trim column
         "year_month",         # -> duplicate of registration_year_month
         "origin_price",       # -> duplicate of retail_value
         "seat_count",         # -> extracted to seat_count column
@@ -113,6 +117,7 @@ class CarLot:
             "source": self.source,
             "make": self.make,
             "model": self.model,
+            "model_group": self.model_group,
             "model_en": self.model_en,
             "generation": self.generation,
             "variant": self.variant,
@@ -131,6 +136,7 @@ class CarLot:
             "location": self.location,
             "color": self.color,
             "seat_color": self.seat_color,
+            "badge": self.badge,
             "trim": self.trim,
             "trim_en": self.trim_en,
             "package": self.package,
