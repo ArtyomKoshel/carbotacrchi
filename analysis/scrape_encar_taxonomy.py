@@ -50,27 +50,48 @@ def fetch_page(client: httpx.Client, offset: int, page_size: int) -> tuple[list[
     return data.get("SearchResults", []), data.get("Count", 0)
 
 
-def extract_taxonomy(car: dict) -> tuple[str, str, str | None, str | None] | None:
-    """Extract (manufacturer, model_group, badge, badge_detail) from a car dict."""
+def extract_taxonomy(car: dict) -> tuple[str, str, str | None, str | None, str | None] | None:
+    """Extract (manufacturer, model_group, model, badge, badge_detail) from a car dict.
+
+    iNav levels:
+      1. Manufacturer   → mfr        e.g. 현대
+      2. ModelGroup     → mg         e.g. 쏘나타
+      3. Model (등급)   → model      e.g. 쏘나타(DN8)19-23
+      4. Badge          → badge      e.g. 가솔린 2.5T 4WD  (BadgeGroup is not a list field)
+      5. BadgeDetail    → badge_detail e.g. 프레스티지
+    """
     mfr = car.get("Manufacturer") or ""
     mg  = car.get("ModelGroup") or ""
-    badge = car.get("Badge") or None
-    badge_detail = car.get("BadgeDetail") or None
     if not mfr or not mg:
         return None
-    return (mfr.strip(), mg.strip(), badge.strip() if badge else None, badge_detail.strip() if badge_detail else None)
+    model        = (car.get("Model") or "").strip() or None
+    badge        = (car.get("Badge") or "").strip() or None
+    badge_detail = (car.get("BadgeDetail") or "").strip() or None
+    return (mfr.strip(), mg.strip(), model, badge, badge_detail)
 
 
 def build_tree(tuples: list[tuple]) -> dict:
-    """Build nested tree: mfr → model_group → badge → [badge_details]."""
+    """Build nested tree: mfr → model_group → model → badge → [badge_details].
+
+    Structure:
+      {
+        "현대": {
+          "쏘나타": {
+            "쏘나타(DN8)19-23": {
+              "가솔린 2.5T 4WD": ["프레스티지", "인스퍼레이션"]
+            }
+          }
+        }
+      }
+    """
     tree: dict = {}
-    for mfr, mg, badge, bd in tuples:
-        mfr_node = tree.setdefault(mfr, {})
-        mg_node  = mfr_node.setdefault(mg, {})
+    for mfr, mg, model, badge, bd in tuples:
+        mg_node    = tree.setdefault(mfr, {}).setdefault(mg, {})
+        model_node = mg_node.setdefault(model or "_no_model", {})
         if badge:
-            bd_list = mg_node.setdefault(badge, set())
+            bd_set = model_node.setdefault(badge, set())
             if bd:
-                bd_list.add(bd)
+                bd_set.add(bd)
     # Convert sets to sorted lists
     def convert(node):
         if isinstance(node, set):
@@ -80,11 +101,24 @@ def build_tree(tuples: list[tuple]) -> dict:
 
 
 def stats_summary(tree: dict) -> dict:
-    n_mfr = len(tree)
-    n_mg = sum(len(v) for v in tree.values())
-    n_badge = sum(len(badge_dict) for mfr_v in tree.values() for badge_dict in mfr_v.values())
-    n_bd = sum(len(bd_list) for mfr_v in tree.values() for badge_dict in mfr_v.values() for bd_list in badge_dict.values())
-    return {"manufacturers": n_mfr, "model_groups": n_mg, "badges": n_badge, "badge_details": n_bd}
+    n_mfr    = len(tree)
+    n_mg     = sum(len(v) for v in tree.values())
+    n_model  = sum(len(model_dict) for mg_dict in tree.values() for model_dict in mg_dict.values())
+    n_badge  = sum(
+        len(badge_dict)
+        for mg_dict in tree.values()
+        for model_dict in mg_dict.values()
+        for badge_dict in model_dict.values()
+    )
+    n_bd = sum(
+        len(bd_list)
+        for mg_dict in tree.values()
+        for model_dict in mg_dict.values()
+        for badge_dict in model_dict.values()
+        for bd_list in badge_dict.values()
+    )
+    return {"manufacturers": n_mfr, "model_groups": n_mg, "models": n_model,
+            "badges": n_badge, "badge_details": n_bd}
 
 
 _STOP = False
@@ -166,6 +200,7 @@ def main():
     print(f"\n[done] Taxonomy collected:")
     print(f"  Manufacturers : {st['manufacturers']}")
     print(f"  Model groups  : {st['model_groups']}")
+    print(f"  Models (등급) : {st['models']}")
     print(f"  Badges        : {st['badges']}")
     print(f"  Badge details : {st['badge_details']}")
     print(f"\n  Saved: {out_raw}")
@@ -173,7 +208,9 @@ def main():
 
 
 def _save(out_raw: str, out_tree: str, seen: set):
-    tuples_list = [list(t) for t in sorted(seen, key=lambda x: (x[0] or "", x[1] or "", x[2] or "", x[3] or ""))]
+    tuples_list = [list(t) for t in sorted(
+        seen, key=lambda x: (x[0] or "", x[1] or "", x[2] or "", x[3] or "", x[4] or "")
+    )]
     with open(out_raw, "w", encoding="utf-8") as f:
         json.dump(tuples_list, f, ensure_ascii=False, indent=2)
     tree = build_tree(list(seen))

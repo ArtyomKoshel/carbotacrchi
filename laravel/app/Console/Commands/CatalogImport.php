@@ -2,10 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\CatalogGrade;
 use App\Models\CatalogModel;
 use App\Models\CatalogModelGeneration;
-use App\Models\CatalogSubGrade;
 use App\Models\CatalogTokenMap;
 use App\Models\CatalogTrim;
 use App\Support\Taxonomy\TaxonomyCatalog;
@@ -1824,30 +1822,20 @@ class CatalogImport extends Command
             CatalogTrim::query()->truncate();
             CatalogTokenMap::query()->truncate();
             CatalogModelGeneration::query()->truncate();
-            CatalogSubGrade::query()->truncate();
-            CatalogGrade::query()->truncate();
             CatalogModel::query()->truncate();
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
 
         $makeMap    = TaxonomyCatalog::normalizationMap('make');
         $modelCache = [];
-        $gradeCache = [];
         $newModels  = 0;
-        $newGrades  = 0;
-        $newSubGrades = 0;
         $skipped    = 0;
 
         foreach ($raw as $row) {
-            [$makeKr, $modelKr, $gradeKr, $subGrade] = $row;
+            $makeKr  = $row[0] ?? null;
+            $modelKr = $row[1] ?? null;
 
-            if (empty($makeKr) || empty($modelKr) || empty($gradeKr)) {
-                $skipped++;
-                continue;
-            }
-
-            $gradeKr = $this->stripPlaceholder($gradeKr);
-            if ($gradeKr === '') {
+            if (empty($makeKr) || empty($modelKr)) {
                 $skipped++;
                 continue;
             }
@@ -1865,40 +1853,10 @@ class CatalogImport extends Command
                     $newModels++;
                 }
             }
-            $modelId  = $modelCache[$modelKey];
-            $gradeKey = "{$modelId}|{$gradeKr}";
-
-            if (!isset($gradeCache[$gradeKey])) {
-                $attrs = $this->parseGradeAttrs($gradeKr);
-                $grade = CatalogGrade::firstOrCreate(
-                    ['model_id' => $modelId, 'grade_kr' => $gradeKr],
-                    $attrs
-                );
-                $gradeCache[$gradeKey] = $grade->id;
-                if ($grade->wasRecentlyCreated) {
-                    $newGrades++;
-                }
-            }
-            $gradeId = $gradeCache[$gradeKey];
-
-            if ($subGrade !== null) {
-                $subGrade = $this->stripPlaceholder((string) $subGrade);
-                if ($subGrade !== '') {
-                    $sub = CatalogSubGrade::firstOrCreate(
-                        ['grade_id' => $gradeId, 'sub_grade_kr' => $subGrade],
-                        ['type' => $this->classifySubGrade($subGrade)]
-                    );
-                    if ($sub->wasRecentlyCreated) {
-                        $newSubGrades++;
-                    }
-                }
-            }
         }
 
-        $this->info("New models:     {$newModels}");
-        $this->info("New grades:     {$newGrades}");
-        $this->info("New sub-grades: {$newSubGrades}");
-        $this->info("Skipped rows:   {$skipped}");
+        $this->info("New models:   {$newModels}");
+        $this->info("Skipped rows: {$skipped}");
 
         if (!$this->option('skip-generations')) {
             $newGen = $this->seedGenerationCodes($modelCache, $makeMap);
@@ -1995,76 +1953,4 @@ class CatalogImport extends Command
         return (str_starts_with($v, '(') && str_ends_with($v, ')')) ? '' : $v;
     }
 
-    private function classifySubGrade(string $value): string
-    {
-        if (preg_match('/^[A-Z]{1,4}\d{1,3}[A-Z]?$/', $value)) {
-            return 'generation';
-        }
-        if (preg_match('/^\d+세대$/u', $value)) {
-            return 'generation';
-        }
-        if (preg_match('/[가-힣]/u', $value)) {
-            return 'trim';
-        }
-        return 'unknown';
-    }
-
-    private function parseGradeAttrs(string $gradeKr): array
-    {
-        static $fuelMap  = null;
-        static $driveMap = null;
-        static $bodyMap  = null;
-
-        if ($fuelMap === null) {
-            $fuelMap  = self::TOKEN_MAP_SEED['fuel'];
-            $driveMap = self::TOKEN_MAP_SEED['drive'];
-            $bodyMap  = self::TOKEN_MAP_SEED['body'];
-        }
-
-        $fuel      = null;
-        $drive     = null;
-        $engineVol = null;
-        $seatCount = null;
-        $cylinders = null;
-        $bodyHint  = null;
-
-        $cylinderMap = ['V6' => 6, 'V8' => 8, 'V10' => 10, 'V12' => 12, 'W12' => 12, 'W16' => 16, 'I4' => 4, 'I6' => 6];
-
-        $tokens = preg_split('/\s+/u', $gradeKr) ?: [];
-        foreach ($tokens as $tok) {
-            $lower = mb_strtolower($tok);
-            $upper = strtoupper($tok);
-
-            if ($fuel === null && isset($fuelMap[$lower])) {
-                $fuel = $fuelMap[$lower];
-            }
-            if ($drive === null && isset($driveMap[$lower])) {
-                $drive = $driveMap[$lower];
-            }
-            if ($bodyHint === null && isset($bodyMap[$lower])) {
-                $bodyHint = $bodyMap[$lower];
-            }
-            if ($cylinders === null && isset($cylinderMap[$upper])) {
-                $cylinders = $cylinderMap[$upper];
-            }
-            if ($engineVol === null && preg_match('/^(\d+\.\d+)$/u', $tok, $m)) {
-                $v = (float) $m[1];
-                if ($v >= 0.5 && $v <= 10.0) {
-                    $engineVol = $v;
-                }
-            }
-            if ($seatCount === null && preg_match('/^(\d{1,2})인승$/u', $tok, $m)) {
-                $seatCount = (int) $m[1];
-            }
-        }
-
-        return [
-            'fuel_type'     => $fuel,
-            'drive_type'    => $drive,
-            'engine_volume' => $engineVol,
-            'seat_count'    => $seatCount,
-            'cylinders'     => $cylinders,
-            'body_hint'     => $bodyHint,
-        ];
-    }
 }

@@ -8,12 +8,11 @@ use Illuminate\Support\Facades\DB;
  * Extracts structured fields from a raw Encar grade string.
  *
  * Algorithm (positive matching):
- *   1. catalog_models       → model
- *   2. catalog_grades       → fuel / drive / engine_vol / seat / cylinders / body  (gold data)
- *   3. catalog_model_generations + pattern → generation
- *   4. catalog_trims        → trim (positive match, longest phrase wins)
- *   5. catalog_token_maps   → remaining spec tokens stripped  (fuel/drive fallback + strip noise)
- *   6. remainder            → TaxonomyAnomalyQueue
+ *   1. catalog_models            → model (substring match, longest wins)
+ *   2. catalog_model_generations → generation (auto-derived chassis codes, e.g. DN8, G20)
+ *   3. catalog_trims             → trim (positive phrase match, longest wins)
+ *   4. catalog_token_maps        → fuel / drive / body / strip noise tokens
+ *   5. remainder                 → TaxonomyAnomalyQueue
  *
  * The service works on the combined raw string (model + badge_kr as stored in raw_data).
  * All lookups are cached after first load — safe to reuse across lots in one artisan run.

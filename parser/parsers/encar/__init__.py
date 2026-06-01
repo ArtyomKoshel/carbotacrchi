@@ -873,10 +873,13 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
         except (TypeError, ValueError):
             pass
 
+    # Promote English trim name to first-class column (grade_detail_kr duplicates lots.trim)
+    grade_detail_en = (cat.get("gradeDetailEnglishName") or "").strip() or None
+    if grade_detail_en and not lot.trim_en:
+        lot.trim_en = grade_detail_en
+
     lot.raw_data.update({
-        "grade_detail_kr": cat.get("gradeDetailName"),
-        "grade_detail_en": cat.get("gradeDetailEnglishName"),
-        "ad_status":       adv.get("status"),
+        "ad_status": adv.get("status"),
     })
 
 

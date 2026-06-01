@@ -9,10 +9,10 @@ class CatalogModel extends Model
 {
     protected $table = 'catalog_models';
 
-    protected $fillable = ['make_kr', 'make_en', 'model_kr'];
+    protected $fillable = ['make_kr', 'make_en', 'model_group_kr', 'model_kr'];
 
-    public function grades(): HasMany
+    public function generations(): HasMany
     {
-        return $this->hasMany(CatalogGrade::class, 'model_id');
+        return $this->hasMany(CatalogModelGeneration::class, 'model_id');
     }
 }

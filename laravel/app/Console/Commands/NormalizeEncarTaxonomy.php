@@ -37,9 +37,19 @@ class NormalizeEncarTaxonomy extends Command
         $this->line('Mode: ' . ($apply ? 'APPLY' : 'DRY-RUN') . ($random ? ' [RANDOM]' : ''));
         $this->line("Source: {$source}  Chunk: {$chunk}  Limit: " . ($limit ?: 'all'));
 
+        // Pre-load trim_en lookup: trim_kr → trim_en (from catalog_trims, make-agnostic first)
+        // Used to back-fill trim_en for lots where detail API was never called.
+        $trimEnMap = DB::table('catalog_trims')
+            ->whereNotNull('trim_en')
+            ->where('trim_en', '!=', '')
+            ->orderByRaw("CASE WHEN make_en = '' THEN 1 ELSE 0 END") // make-specific first
+            ->pluck('trim_en', 'trim_kr')
+            ->toArray();
+        $this->line('catalog_trims loaded: ' . count($trimEnMap) . ' KR→EN pairs');
+
         $counts = array_fill_keys(
             ['processed', 'wouldUpdate', 'updated', 'anomalies',
-             'model', 'generation', 'trim', 'fuel', 'drive_type', 'body_type',
+             'model', 'generation', 'trim', 'trim_en', 'fuel', 'drive_type', 'body_type',
              'engine_volume', 'seat_count', 'cylinders'],
             0
         );
@@ -66,7 +76,7 @@ class NormalizeEncarTaxonomy extends Command
 
         $processRow = function ($rows) use (
             $apply, $limit, $source, $ruleEngine, $suggestions, $extractor,
-            &$counts, &$trimSamples
+            $trimEnMap, &$counts, &$trimSamples
         ) {
             foreach ($rows as $row) {
                 if ($limit > 0 && $counts['processed'] >= $limit) {
@@ -131,6 +141,12 @@ class NormalizeEncarTaxonomy extends Command
                     $patch['cylinders'] = $extracted->cylinders;
                 }
 
+                // Back-fill trim_en via catalog_trims lookup (for lots without detail API data)
+                $trimKr = trim((string) ($patch['trim'] ?? $row->trim ?? ''));
+                if (($row->trim_en ?? '') === '' && $trimKr !== '' && isset($trimEnMap[$trimKr])) {
+                    $patch['trim_en'] = $trimEnMap[$trimKr];
+                }
+
                 // Route unrecognized remainder to anomaly queue
                 if ($extracted->remainder !== '') {
                     $this->upsertAnomalyQueue($source, $makeEn, (string) $row->id, $fullStr, $extracted->remainder, $suggestions);
@@ -187,7 +203,7 @@ class NormalizeEncarTaxonomy extends Command
                 }
 
                 $counts['wouldUpdate']++;
-                foreach (['model', 'generation', 'trim', 'fuel', 'drive_type', 'body_type',
+                foreach (['model', 'generation', 'trim', 'trim_en', 'fuel', 'drive_type', 'body_type',
                           'engine_volume', 'seat_count', 'cylinders'] as $f) {
                     if (isset($patch[$f])) {
                         $counts[$f]++;
@@ -243,7 +259,7 @@ class NormalizeEncarTaxonomy extends Command
         $this->line("Processed:    {$counts['processed']}");
         $this->line("Would update: {$counts['wouldUpdate']}");
         $this->line("Anomalies:    {$counts['anomalies']}");
-        $this->line("  model={$counts['model']}  gen={$counts['generation']}  trim={$counts['trim']}");
+        $this->line("  model={$counts['model']}  gen={$counts['generation']}  trim={$counts['trim']}  trim_en={$counts['trim_en']}");
         $this->line("  fuel={$counts['fuel']}  drive={$counts['drive_type']}  body={$counts['body_type']}");
         $this->line("  engine_vol={$counts['engine_volume']}  seats={$counts['seat_count']}  cyl={$counts['cylinders']}");
         if ($apply) {

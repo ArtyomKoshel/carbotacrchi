@@ -31,6 +31,7 @@ class CarLot:
     color: str | None = None
     seat_color: str | None = None
     trim: str | None = None
+    trim_en: str | None = None     # English trim name from Encar detail API (gradeDetailEnglishName)
     package: str | None = None    # Option package (e.g. M 스포츠, AMG Line, xLine)
 
     # Location & links
@@ -91,6 +92,8 @@ class CarLot:
         "year_month",         # -> duplicate of registration_year_month
         "origin_price",       # -> duplicate of retail_value
         "seat_count",         # -> extracted to seat_count column
+        "grade_detail_en",    # -> first-class column trim_en
+        "grade_detail_kr",    # -> duplicate of trim (= badge_detail_kr)
     })
 
     def _clean_raw_data(self) -> dict:
@@ -129,6 +132,7 @@ class CarLot:
             "color": self.color,
             "seat_color": self.seat_color,
             "trim": self.trim,
+            "trim_en": self.trim_en,
             "package": self.package,
             "engine_volume": self.engine_volume,
             "cylinders": self.cylinders,
