@@ -131,6 +131,10 @@ const Results = (() => {
             ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>`  : ''}
             ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>`           : ''}
             ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>`      : ''}
+            ${cardFields.has('engine_volume') && lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `<span class="lot-card__tag">⚙️ ${lot.engineVolume}л</span>` : ''}
+            ${cardFields.has('color') && lot.color           ? `<span class="lot-card__tag">🎨 ${escHtml(lot.color)}</span>` : ''}
+            ${cardFields.has('seat_color') && lot.seatColor  ? `<span class="lot-card__tag">💺 ${escHtml(lot.seatColor)}</span>` : ''}
+            ${cardFields.has('seat_count') && lot.seatCount  ? `<span class="lot-card__tag">${lot.seatCount} мест</span>` : ''}
             ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(Taxonomy.label('trim', lot.trim))}</span>` : ''}
             ${cardFields.has('generation') && lot.generation ? `<span class="lot-card__tag">🧬 ${escHtml(lot.generation)}</span>` : ''}
             ${cardFields.has('options') && Array.isArray(lot.options) && lot.options.length ? (() => {
@@ -226,8 +230,16 @@ const Results = (() => {
             <span class="sheet-detail-value">${lot.engineVolume} л</span>
           </div>` : ''}
           ${lot.color ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Цвет</span>
+            <span class="sheet-detail-label">Цвет кузова</span>
             <span class="sheet-detail-value">${escHtml(lot.color)}</span>
+          </div>` : ''}
+          ${lot.seatColor ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Цвет салона</span>
+            <span class="sheet-detail-value">${escHtml(lot.seatColor)}</span>
+          </div>` : ''}
+          ${lot.seatCount ? `<div class="sheet-detail-item">
+            <span class="sheet-detail-label">Мест</span>
+            <span class="sheet-detail-value">${lot.seatCount}</span>
           </div>` : ''}
           ${lot.trim ? `<div class="sheet-detail-item">
             <span class="sheet-detail-label">Комплектация</span>
