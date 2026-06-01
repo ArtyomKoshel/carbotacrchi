@@ -178,11 +178,19 @@ const Results = (() => {
 
   function openSheet(lot) {
     activeLot = lot;
-    const overlay = document.getElementById('sheet-overlay');
-    const price   = '$' + Number(lot.price).toLocaleString();
-    const km      = Number(lot.mileage).toLocaleString() + ' km';
-    const imgSrc  = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const isFav   = favorites.has(lot.id);
+    const overlay  = document.getElementById('sheet-overlay');
+    const cf       = new Set(Filters.getCardFields()); // dynamic card fields from admin
+    const price    = '$' + Number(lot.price).toLocaleString();
+    const km       = Number(lot.mileage).toLocaleString() + ' km';
+    const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
+    const isFav    = favorites.has(lot.id);
+    const d = (label, value, extra = '') =>
+      value ? `<div class="sheet-detail-item"${extra}>
+        <span class="sheet-detail-label">${label}</span>
+        <span class="sheet-detail-value">${value}</span>
+      </div>` : '';
+    const dIf = (field, label, value, extra = '') =>
+      cf.has(field) ? d(label, value, extra) : '';
 
     document.getElementById('sheet-content').innerHTML = `
       <div class="sheet-handle"></div>
@@ -193,108 +201,33 @@ const Results = (() => {
         <div class="sheet-title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
         <div class="sheet-price">${price}</div>
         <div class="sheet-details">
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Пробег</span>
-            <span class="sheet-detail-value">${km}</span>
-          </div>
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Дата аукциона</span>
-            <span class="sheet-detail-value">${escHtml(lot.auctionDate ?? '—')}</span>
-          </div>
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Местоположение</span>
-            <span class="sheet-detail-value">${escHtml(lot.location ?? '—')}</span>
-          </div>
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Статус</span>
-            <span class="sheet-detail-value">${escHtml(lot.title ?? '—')}</span>
-          </div>
-          ${lot.bodyType ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Кузов</span>
-            <span class="sheet-detail-value">${escHtml(Taxonomy.label('body_type', lot.bodyType))}</span>
-          </div>` : ''}
-          ${lot.transmission ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">КПП</span>
-            <span class="sheet-detail-value">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>
-          </div>` : ''}
-          ${lot.fuel ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Топливо</span>
-            <span class="sheet-detail-value">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>
-          </div>` : ''}
-          ${lot.driveType ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Привод</span>
-            <span class="sheet-detail-value">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>
-          </div>` : ''}
-          ${lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Двигатель</span>
-            <span class="sheet-detail-value">${lot.engineVolume} л</span>
-          </div>` : ''}
-          ${lot.color ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Цвет кузова</span>
-            <span class="sheet-detail-value">${escHtml(lot.color)}</span>
-          </div>` : ''}
-          ${lot.seatColor ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Цвет салона</span>
-            <span class="sheet-detail-value">${escHtml(lot.seatColor)}</span>
-          </div>` : ''}
-          ${lot.seatCount ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Мест</span>
-            <span class="sheet-detail-value">${lot.seatCount}</span>
-          </div>` : ''}
-          ${lot.trim ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Комплектация</span>
-            <span class="sheet-detail-value">${escHtml(lot.trim)}</span>
-          </div>` : ''}
-          ${lot.generation ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Поколение</span>
-            <span class="sheet-detail-value">${escHtml(lot.generation)}</span>
-          </div>` : ''}
-          ${lot.hasKeys !== null && lot.hasKeys !== undefined ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Ключи</span>
-            <span class="sheet-detail-value">${lot.hasKeys ? 'Есть' : 'Нет'}</span>
-          </div>` : ''}
-          ${lot.vin ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">VIN</span>
-            <span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>
-          </div>` : ''}
-          ${lot.document ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">Документ</span>
-            <span class="sheet-detail-value" style="font-size:12px">${escHtml(lot.document)}</span>
-          </div>` : ''}
-          ${lot.retailValue ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Рыночная цена</span>
-            <span class="sheet-detail-value">$${Number(lot.retailValue).toLocaleString()}</span>
-          </div>` : ''}
-          ${lot.repairCost ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Стоимость ремонта</span>
-            <span class="sheet-detail-value" style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>
-          </div>` : ''}
-          ${lot.hasAccident !== null && lot.hasAccident !== undefined ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Авария (офиц.)</span>
-            <span class="sheet-detail-value" style="color:${lot.hasAccident ? 'var(--danger)' : 'var(--success)'}"
-            >${lot.hasAccident ? 'Да' : 'Нет'}</span>
-          </div>` : ''}
-          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Затопление</span>
-            <span class="sheet-detail-value" style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}"
-            >${lot.floodHistory ? 'Да' : 'Нет'}</span>
-          </div>` : ''}
-          ${lot.ownersCount ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Владельцев</span>
-            <span class="sheet-detail-value">${lot.ownersCount}</span>
-          </div>` : ''}
-          ${lot.plateNumber ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Номер</span>
-            <span class="sheet-detail-value" style="font-family:monospace">${escHtml(lot.plateNumber)}</span>
-          </div>` : ''}
-          ${lot.dealerName ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Дилер</span>
-            <span class="sheet-detail-value">${escHtml(lot.dealerName)}</span>
-          </div>` : ''}
-          ${lot.dealerPhone ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Телефон</span>
-            <span class="sheet-detail-value">${escHtml(lot.dealerPhone)}</span>
-          </div>` : ''}
+          ${d('Пробег', km)}
+          ${d('Дата аукциона', escHtml(lot.auctionDate ?? '—'))}
+          ${d('Местоположение', escHtml(lot.location ?? '—'))}
+          ${dIf('body_type',      'Кузов',         lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '')}
+          ${dIf('transmission',   'КПП',           lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '')}
+          ${dIf('fuel',           'Топливо',        lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '')}
+          ${dIf('drive_type',     'Привод',         lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '')}
+          ${dIf('engine_volume',  'Двигатель',      lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '')}
+          ${dIf('color',          'Цвет кузова',    lot.color        ? escHtml(lot.color)      : '')}
+          ${dIf('seat_color',     'Цвет салона',    lot.seatColor    ? escHtml(lot.seatColor)  : '')}
+          ${dIf('seat_count',     'Мест',           lot.seatCount    ? String(lot.seatCount)   : '')}
+          ${dIf('trim',           'Комплектация',   lot.trim         ? escHtml(lot.trim)        : '')}
+          ${dIf('generation',     'Поколение',      lot.generation   ? escHtml(lot.generation)  : '')}
+          ${dIf('has_accident',   'Авария (офиц.)', lot.hasAccident  !== null && lot.hasAccident !== undefined
+            ? `<span style="color:${lot.hasAccident ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident ? 'Да' : 'Нет'}</span>` : '')}
+          ${dIf('flood_history',  'Затопление',     lot.floodHistory !== null && lot.floodHistory !== undefined
+            ? `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>` : '')}
+          ${dIf('owners_count',   'Владельцев',     lot.ownersCount  ? String(lot.ownersCount)  : '')}
+          ${dIf('insurance_count','Страховых',      lot.insuranceCount ? String(lot.insuranceCount) : '')}
+          ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"')}
+          ${d('Документ', lot.document ? `<span style="font-size:12px">${escHtml(lot.document)}</span>` : '', ' style="grid-column:span 2"')}
+          ${d('Рыночная цена',    lot.retailValue  ? `$${Number(lot.retailValue).toLocaleString()}`  : '')}
+          ${d('Стоимость ремонта',lot.repairCost   ? `<span style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>` : '')}
+          ${d('Номер',  lot.plateNumber ? `<span style="font-family:monospace">${escHtml(lot.plateNumber)}</span>` : '')}
+          ${d('Дилер',  lot.dealerName  ? escHtml(lot.dealerName)  : '')}
+          ${d('Телефон',lot.dealerPhone ? escHtml(lot.dealerPhone) : '')}
+          ${lot.hasKeys !== null && lot.hasKeys !== undefined ? d('Ключи', lot.hasKeys ? 'Есть' : 'Нет') : ''}
         </div>
         ${Array.isArray(lot.options) && lot.options.length ? (() => {
           // Searched options first, then the rest
