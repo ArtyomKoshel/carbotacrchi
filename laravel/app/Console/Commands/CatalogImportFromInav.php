@@ -31,13 +31,16 @@ class CatalogImportFromInav extends Command
     protected $signature = 'catalog:import-from-inav
         {file : Path to encar_inav_3levels.json}
         {--apply : Persist changes (default: dry-run)}
-        {--fresh : Truncate catalog_models + catalog_model_generations before import}
-        {--skip-models : Skip catalog_models + generations}
+        {--fresh : Truncate catalog_models before import}
+        {--skip-models : Skip catalog_models}
         {--skip-translations : Skip translations table}';
 
     protected $description = 'Import Encar iNav 3-level catalog JSON into catalog_models and translations';
 
-    private const GEN_PATTERN = '/\(([A-Z][A-Z0-9]{1,5})\)/';
+    // Matches chassis codes in parens: "(NQ5)", "(GN7)", "(DN8)", "(PD)"
+    private const GEN_PAREN_PATTERN = '/^\(([A-Z][A-Z0-9]{1,5})\)$/';
+    // Matches Korean generation suffix: "4세대", "더 뉴 4세대" etc.
+    private const GEN_SEDAE_PATTERN = '/(\d+세대)/';
 
     public function handle(): int
     {
@@ -74,7 +77,6 @@ class CatalogImportFromInav extends Command
 
         $stats = array_fill_keys([
             'models_new', 'models_upd', 'models_skip',
-            'gens_new',   'gens_skip',
             'trans_new',  'trans_upd',  'trans_skip',
         ], 0);
 
@@ -83,11 +85,8 @@ class CatalogImportFromInav extends Command
             $this->line('<fg=cyan>── catalog_models ────────────────────────────────────</>');
 
             if ($this->option('fresh') && $apply) {
-                $this->line('  <fg=red>TRUNCATE</>  catalog_model_generations, catalog_models');
-                DB::statement('SET FOREIGN_KEY_CHECKS=0');
-                DB::table('catalog_model_generations')->truncate();
+                $this->line('  <fg=red>TRUNCATE</>  catalog_models');
                 DB::table('catalog_models')->truncate();
-                DB::statement('SET FOREIGN_KEY_CHECKS=1');
             }
 
             // Build make_en lookup from manufacturers list
@@ -102,17 +101,11 @@ class CatalogImportFromInav extends Command
                 $mgMap[$mg['make_kr']][$mg['kr']] = ['en' => $mg['en'] ?? '', 'count' => $mg['count']];
             }
 
-            // Pre-load existing models: "make_kr::model_kr" → id
+            // Pre-load existing models: "make_kr::model_kr" → row
             $existing = DB::table('catalog_models')
-                ->get(['id', 'make_kr', 'model_kr', 'model_group_kr', 'model_group_en'])
+                ->get(['id', 'make_kr', 'model_kr', 'model_group_kr', 'model_group_en', 'generation'])
                 ->keyBy(fn ($r) => "{$r->make_kr}::{$r->model_kr}")
                 ->toArray();
-
-            // Pre-load generation codes: model_id → [code, ...]
-            $existingGens = [];
-            DB::table('catalog_model_generations')
-                ->get(['model_id', 'code'])
-                ->each(fn ($r) => $existingGens[(int) $r->model_id][] = strtoupper($r->code));
 
             foreach ($data['models'] ?? [] as $row) {
                 $makeKr   = $row['make_kr'];
@@ -122,11 +115,16 @@ class CatalogImportFromInav extends Command
                 $mgEn     = $mgMap[$makeKr][$mgKr]['en'] ?? '';
                 $cacheKey = "{$makeKr}::{$modelKr}";
 
+                $generation = $this->deriveGeneration($modelKr, $mgKr);
+
                 if (! isset($existing[$cacheKey])) {
-                    // INSERT new model
                     $stats['models_new']++;
-                    $this->line(sprintf('  <fg=green>+MODEL</>  %s / %s [%s] / %s',
-                        $makeEn ?: $makeKr, $mgEn ?: $mgKr, $mgKr, $modelKr));
+                    $this->line(sprintf('  <fg=green>+MODEL</>  %s / %s / %s%s',
+                        $makeEn ?: $makeKr,
+                        $mgEn ?: $mgKr,
+                        $modelKr,
+                        $generation ? "  <fg=yellow>[gen={$generation}]</>" : ''
+                    ));
                     if ($apply) {
                         DB::table('catalog_models')->insertOrIgnore([
                             'make_kr'        => $makeKr,
@@ -134,6 +132,7 @@ class CatalogImportFromInav extends Command
                             'model_group_kr' => $mgKr,
                             'model_group_en' => $mgEn,
                             'model_kr'       => $modelKr,
+                            'generation'     => $generation,
                             'created_at'     => now(),
                             'updated_at'     => now(),
                         ]);
@@ -141,54 +140,37 @@ class CatalogImportFromInav extends Command
                             ->where('make_kr', $makeKr)->where('model_kr', $modelKr)
                             ->value('id');
                         $existing[$cacheKey] = (object) [
-                            'id' => $newId, 'make_kr' => $makeKr, 'model_kr' => $modelKr,
-                            'model_group_kr' => $mgKr, 'model_group_en' => $mgEn,
+                            'id'             => $newId,
+                            'make_kr'        => $makeKr,
+                            'model_kr'       => $modelKr,
+                            'model_group_kr' => $mgKr,
+                            'model_group_en' => $mgEn,
+                            'generation'     => $generation,
                         ];
                     }
                 } else {
                     $rec = $existing[$cacheKey];
-                    // Fill missing model_group_kr/en if blank
-                    $needsUpdate = ($apply && (
-                        (empty($rec->model_group_kr) && $mgKr) ||
-                        (empty($rec->model_group_en) && $mgEn)
-                    ));
-                    if ($needsUpdate) {
+                    $updates = [];
+                    if (empty($rec->model_group_kr) && $mgKr)     { $updates['model_group_kr'] = $mgKr; }
+                    if (empty($rec->model_group_en) && $mgEn)     { $updates['model_group_en'] = $mgEn; }
+                    if (empty($rec->generation)     && $generation){ $updates['generation']     = $generation; }
+
+                    if ($updates) {
                         $stats['models_upd']++;
-                        DB::table('catalog_models')->where('id', $rec->id)->update([
-                            'model_group_kr' => $mgKr ?: $rec->model_group_kr,
-                            'model_group_en' => $mgEn ?: $rec->model_group_en,
-                            'updated_at'     => now(),
-                        ]);
+                        if ($apply) {
+                            DB::table('catalog_models')
+                                ->where('id', $rec->id)
+                                ->update(array_merge($updates, ['updated_at' => now()]));
+                        }
                     } else {
                         $stats['models_skip']++;
-                    }
-                }
-
-                // Auto-derive generation codes from model string, e.g. "싼타페 (MX5)" → MX5
-                $modelId = $existing[$cacheKey]->id ?? null;
-                if ($modelId && preg_match_all(self::GEN_PATTERN, $modelKr, $m)) {
-                    $known = array_map('strtoupper', $existingGens[$modelId] ?? []);
-                    foreach ($m[1] as $code) {
-                        $code = strtoupper($code);
-                        if (in_array($code, $known, true)) { $stats['gens_skip']++; continue; }
-                        $stats['gens_new']++;
-                        $this->line("    <fg=green>+GEN</>   {$modelKr} → {$code}");
-                        if ($apply) {
-                            DB::table('catalog_model_generations')->insertOrIgnore([
-                                'model_id'   => $modelId,
-                                'code'       => $code,
-                                'created_at' => now(), 'updated_at' => now(),
-                            ]);
-                            $existingGens[$modelId][] = $code;
-                        }
                     }
                 }
             }
 
             $this->line(sprintf(
-                '  → models: +%d new  %d updated  %d exist  |  generations: +%d new  %d exist',
-                $stats['models_new'], $stats['models_upd'], $stats['models_skip'],
-                $stats['gens_new'],   $stats['gens_skip']
+                '  → models: +%d new  %d updated  %d exist',
+                $stats['models_new'], $stats['models_upd'], $stats['models_skip']
             ));
             $this->line('');
         }
@@ -261,9 +243,8 @@ class CatalogImportFromInav extends Command
         // ── Summary ────────────────────────────────────────────────────────────
         $this->info('Done.');
         $this->table(['Table / Action', 'New', 'Updated', 'Exist'], [
-            ['catalog_models',            $stats['models_new'], $stats['models_upd'], $stats['models_skip']],
-            ['catalog_model_generations', $stats['gens_new'],   0,                   $stats['gens_skip']],
-            ['translations',              $stats['trans_new'],  $stats['trans_upd'],  $stats['trans_skip']],
+            ['catalog_models', $stats['models_new'], $stats['models_upd'], $stats['models_skip']],
+            ['translations',   $stats['trans_new'],  $stats['trans_upd'],  $stats['trans_skip']],
         ]);
 
         if (! $apply) {
@@ -272,5 +253,64 @@ class CatalogImportFromInav extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Derive a generation string from model_kr + model_group_kr.
+     *
+     * Strategy (no arbitrary text parsing — uses known Encar patterns):
+     *  1. Strip known model prefixes ("더 뉴", "올 뉴", etc.) from the start.
+     *  2. Strip model_group_kr from the remaining string.
+     *  3. What is left is the generation suffix. Strip parens and trim.
+     *
+     * Examples:
+     *   ("카니발 4세대",         "카니발") → "4세대"
+     *   ("더 뉴 카니발 4세대",   "카니발") → "4세대"
+     *   ("그랜저 (GN7)",         "그랜저") → "GN7"
+     *   ("쏘나타 디 엣지(DN8)",  "쏘나타") → "DN8"   (parens-only part)
+     *   ("i30 (PD)",             "i30")    → "PD"
+     *   ("스포티지 5세대 하이브리드", "스포티지") → "5세대 하이브리드"
+     */
+    private function deriveGeneration(string $modelKr, string $mgKr): ?string
+    {
+        // Strip known Korean model prefixes (ordered by length, longest first)
+        $prefixes = [
+            '더 뉴 더 뉴 ', '더뉴 더뉴 ', '더 뉴 더뉴 ',
+            '완전변경 ', '부분변경 ',
+            '더 뉴 ', '더뉴 ',
+            '올 뉴 ', '올뉴 ',
+            '신형 ', '뉴 ',
+        ];
+        $s = $modelKr;
+        foreach ($prefixes as $p) {
+            if (str_starts_with($s, $p)) {
+                $s = substr($s, strlen($p));
+                break;
+            }
+        }
+
+        // Strip model_group_kr from the start of the remaining string
+        if (str_starts_with($s, $mgKr)) {
+            $s = substr($s, strlen($mgKr));
+        }
+        $s = trim($s);
+
+        if ($s === '') {
+            return null;
+        }
+
+        // If the entire remaining suffix is a paren code "(NQ5)", extract just the code
+        if (preg_match(self::GEN_PAREN_PATTERN, $s, $m)) {
+            return $m[1];
+        }
+
+        // Handle inline paren codes like "(DN8)" at the end: "디 엣지(DN8)" → "DN8"
+        if (preg_match('/\(([A-Z][A-Z0-9]{1,5})\)\s*$/', $s, $m)) {
+            // Return only the code, not the human-readable variant name
+            return $m[1];
+        }
+
+        // "4세대", "5세대 하이브리드", etc. — return as-is
+        return $s;
     }
 }

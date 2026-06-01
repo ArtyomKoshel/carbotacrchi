@@ -172,12 +172,29 @@ def _facet_meta(f: dict, key: str) -> str | None:
 
 # ── Main scraper ───────────────────────────────────────────────────────────────
 
-def scrape(client: httpx.Client, dry_run: bool = False) -> tuple[dict, list[dict]]:
+def scrape(
+    client: httpx.Client,
+    dry_run: bool = False,
+    existing_rows: list[dict] | None = None,
+) -> tuple[dict, list[dict]]:
     """
     Returns (flat_catalogs, taxonomy_rows).
     taxonomy_rows: list of dicts with full path + count.
+
+    existing_rows: pre-loaded rows from a previous partial run (--resume).
+    Makes that already have all their data in existing_rows are skipped.
     """
-    rows: list[dict] = []
+    rows: list[dict] = list(existing_rows or [])
+
+    # Build set of (make_kr, model_group_kr, model_kr) already scraped
+    # so we can skip them on resume.
+    scraped_models: set[tuple[str, str, str]] = {
+        (r["make_kr"], r["model_group_kr"] or "", r["model_kr"] or "")
+        for r in rows
+        if r.get("model_kr")
+    }
+    if scraped_models:
+        print(f"  [resume] {len(scraped_models):,} models already in file — will skip")
 
     # ── Step 0: top-level iNav → flat catalogs ────────────────────────────────
     print("[0] Fetching top-level iNav for flat catalogs…")
@@ -217,6 +234,7 @@ def scrape(client: httpx.Client, dry_run: bool = False) -> tuple[dict, list[dict
 
             print(f"    [{make_kr} / {make_en}]  {make_f['Count']:,}")
             time.sleep(0.3)
+            _make_rows_before = len(rows)
 
             # ── Step 3: ModelGroups ────────────────────────────────────────────
             mg_facets = _get_next_level(client, make_act, "ModelGroup")
@@ -241,6 +259,10 @@ def scrape(client: httpx.Client, dry_run: bool = False) -> tuple[dict, list[dict
                     model_kr  = model_f["Value"]
                     model_act = model_f["Action"]
                     time.sleep(0.25)
+
+                    # Skip models already scraped in a previous run
+                    if (make_kr, mg_kr, model_kr) in scraped_models:
+                        continue
 
                     # ── Step 5: BadgeGroups ────────────────────────────────────
                     bg_facets = _get_next_level(client, model_act, "BadgeGroup")
@@ -293,6 +315,11 @@ def scrape(client: httpx.Client, dry_run: bool = False) -> tuple[dict, list[dict
                     if len(rows) % 500 == 0:
                         print(f"      rows so far: {len(rows):,}  api_calls: {_api_calls:,}")
 
+            # Auto-save after each make so progress survives interruption
+            if len(rows) > _make_rows_before and not dry_run:
+                print(f"      [autosave] {len(rows):,} rows total")
+                _autosave_rows = rows  # captured in closure for _save below
+
     return flat, rows
 
 
@@ -315,15 +342,29 @@ def main():
     ap = argparse.ArgumentParser(description="Scrape Encar iNav tree to JSON")
     ap.add_argument("--out-dir", default="../analysis")
     ap.add_argument("--dry-run", action="store_true", help="Only first 2 makes per CarType")
-    ap.add_argument("--resume", action="store_true", help="Skip rows already in file")
+    ap.add_argument("--resume", action="store_true",
+                    help="Load existing encar_inav_tree.json and skip already-scraped models")
     args = ap.parse_args()
 
     out_path = os.path.join(args.out_dir, "encar_inav_tree.json")
     start    = datetime.now(timezone.utc)
 
+    existing_rows: list[dict] = []
+    existing_flat: dict = {}
+    if args.resume and os.path.exists(out_path):
+        print(f"[resume] Loading existing data from {out_path} …")
+        with open(out_path, encoding="utf-8") as f:
+            prev = json.load(f)
+        existing_rows = prev.get("taxonomy", [])
+        existing_flat = prev.get("flat", {})
+        print(f"[resume] Loaded {len(existing_rows):,} existing rows")
+
     client = httpx.Client(headers=HEADERS, follow_redirects=True, timeout=20)
     try:
-        flat, rows = scrape(client, dry_run=args.dry_run)
+        flat, rows = scrape(client, dry_run=args.dry_run, existing_rows=existing_rows)
+        # Merge flat catalogs (resume preserves old flat if new run is interrupted early)
+        if existing_flat and not flat.get("colors"):
+            flat = existing_flat
     finally:
         client.close()
         _save(out_path, flat, rows, start)
