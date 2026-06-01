@@ -2,6 +2,10 @@ const Filters = (() => {
   let filtersData = null;
   let trimRequestSeq = 0;
   let optionsSelectInstance = null;
+  let _countTimer = null;
+  let _contextTimer = null;
+  const COUNT_DEBOUNCE_MS = 700;
+  const CONTEXT_DEBOUNCE_MS = 400;
 
   const state = {
     sources:          ['encar', 'kbcha'],
@@ -191,6 +195,7 @@ const Filters = (() => {
         input.type = 'text';
         input.id = ui.id;
         input.placeholder = ui.placeholder || '';
+        input.addEventListener('input', _scheduleCountUpdate);
         section.appendChild(input);
         break;
       }
@@ -212,6 +217,7 @@ const Filters = (() => {
             <input class="filter-input" type="${ui.inputType||'number'}" id="${ui.idMin}" placeholder="От" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">
             <input class="filter-input" type="${ui.inputType||'number'}" id="${ui.idMax}" placeholder="До" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">`;
         }
+        row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', _scheduleCountUpdate));
         section.appendChild(row);
         break;
       }
@@ -330,6 +336,7 @@ const Filters = (() => {
         }
         btn.classList.toggle('selected', state[stateKey].includes(val));
         TG.haptic('selection');
+        _scheduleCountUpdate();
       });
     });
   }
@@ -348,6 +355,7 @@ const Filters = (() => {
         container.querySelectorAll('.filter-chip').forEach(b =>
           b.classList.toggle('selected', b.dataset.value === v));
         TG.haptic('selection');
+        _scheduleCountUpdate();
       });
     });
   }
@@ -372,6 +380,7 @@ const Filters = (() => {
         }
         btn.classList.toggle('selected', state.sources.includes(k));
         TG.haptic('selection');
+        _scheduleCountUpdate();
       });
     });
   }
@@ -385,14 +394,21 @@ const Filters = (() => {
     sel.onchange = () => {
       state.make  = sel.value;
       state.model = '';
+      state.trim  = '';
       renderModelSelect();
+      _scheduleContextUpdate();
+      _scheduleCountUpdate();
     };
   }
 
   function renderModelSelect() {
     const sel = document.getElementById('filter-model');
     if (!sel) return;
-    const models = (filtersData?.makes?.[state.make]) ?? [];
+
+    // filtersData.makes[make] is {model_group: [model, ...]} — flatten to sorted unique list
+    const groupsObj = filtersData?.makes?.[state.make] ?? {};
+    const models = [...new Set(Object.values(groupsObj).flat())].sort();
+
     sel.innerHTML = '<option value="">Любая модель</option>' +
       models.map(m => `<option value="${m}"${state.model===m?' selected':''}>${m}</option>`).join('');
     sel.onchange = () => {
@@ -400,6 +416,8 @@ const Filters = (() => {
       state.trim  = '';
       renderTrimSelect([]);
       if (state.make || state.model) loadTrims();
+      _scheduleContextUpdate();
+      _scheduleCountUpdate();
     };
     if (state.make || state.model) loadTrims();
   }
@@ -573,5 +591,86 @@ const Filters = (() => {
     state.sort = ['date', 'price_asc', 'price_desc'].includes(sort) ? sort : 'date';
   }
 
-  return { init, getQuery, getCardFields, setSort, applyQuery };
+  // ── Live count ─────────────────────────────────────────────────────────────
+
+  function _scheduleCountUpdate() {
+    clearTimeout(_countTimer);
+    _countTimer = setTimeout(_updateCount, COUNT_DEBOUNCE_MS);
+  }
+
+  async function _updateCount() {
+    const hint  = document.getElementById('search-count-hint');
+    const value = document.getElementById('search-count-value');
+    if (!hint || !value) return;
+
+    try {
+      readFormState();
+      const q = getQuery();
+      // Don't bother counting when no meaningful filter is set
+      const hasFilter = q.make || q.model || q.yearFrom || q.yearTo ||
+                        q.priceMin || q.priceMax || q.mileageMin || q.mileageMax ||
+                        (q.bodyTypes?.length) || (q.transmissions?.length) ||
+                        (q.fuelTypes?.length) || (q.driveTypes?.length) || q.trim;
+      if (!hasFilter) {
+        hint.style.display = 'none';
+        return;
+      }
+
+      hint.style.display = 'block';
+      value.textContent = '…';
+
+      const data = await API.getCount(q);
+      const n = data?.count ?? 0;
+      value.textContent = _ruLots(n);
+    } catch (_) {
+      // Silently ignore count errors — not critical UX
+    }
+  }
+
+  function _ruLots(n) {
+    const mod10 = n % 10, mod100 = n % 100;
+    let word;
+    if (mod10 === 1 && mod100 !== 11) word = 'машина';
+    else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) word = 'машины';
+    else word = 'машин';
+    return `${n.toLocaleString('ru')} ${word}`;
+  }
+
+  // ── Cascading context: update chips for make/model selection ──────────────
+
+  function _scheduleContextUpdate() {
+    clearTimeout(_contextTimer);
+    _contextTimer = setTimeout(_updateContext, CONTEXT_DEBOUNCE_MS);
+  }
+
+  async function _updateContext() {
+    if (!state.make && !state.model) return;
+    try {
+      const params = {};
+      if (state.make)  params.make  = state.make;
+      if (state.model) params.model = state.model;
+      const ctx = await API.getContext(params);
+      if (!ctx) return;
+
+      // Update chip groups with context-aware options
+      const updates = {
+        body_type:    { optKey: 'bodyTypeOptions',     stateKey: 'bodyTypes' },
+        transmission: { optKey: 'transmissionOptions', stateKey: 'transmissions' },
+        fuel:         { optKey: 'fuelTypeOptions',     stateKey: 'fuelTypes' },
+        drive_type:   { optKey: 'driveTypeOptions',    stateKey: 'driveTypes' },
+        color:        { optKey: 'colorOptions',        stateKey: 'colors' },
+      };
+
+      for (const [fieldName, { optKey, stateKey }] of Object.entries(updates)) {
+        const items = ctx[optKey];
+        if (Array.isArray(items) && items.length) {
+          renderChipGroup(`chips-${fieldName}`, items, stateKey);
+        }
+      }
+    } catch (_) {
+      // Context update is best-effort
+    }
+  }
+
+  return { init, getQuery, getCardFields, setSort, applyQuery, notifyChange: _scheduleCountUpdate };
 })();

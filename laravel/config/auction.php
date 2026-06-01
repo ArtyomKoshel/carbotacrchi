@@ -8,4 +8,5 @@ return [
     'sources'            => array_filter(explode(',', env('PARSER_SOURCES', 'encar'))),
     'floppydata_api_key'  => env('FLOPPYDATA_API_KEY', ''),
     'floppy_base_url'    => env('FLOPPY_BASE_URL', 'https://api.floppydata.net'),
+    'internal_token'     => env('INTERNAL_API_TOKEN', ''),
 ];

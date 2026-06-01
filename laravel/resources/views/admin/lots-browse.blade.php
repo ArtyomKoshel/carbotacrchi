@@ -489,13 +489,14 @@
       };
 
       const params = new URLSearchParams({
-        locale: 'ru',
-        status: getVal('filter-status') || 'all',
-        source: getVal('filter-source') || '',
-        make: before.make || '',
-        model: before.model || '',
-        trim: before.trim || '',
-        generation: before.generation || '',
+        locale:     'ru',
+        status:     getVal('filter-status')     || 'all',
+        source:     getVal('filter-source')     || '',
+        make:       before.make                 || '',
+        model:      before.model                || '',
+        trim:       before.trim                 || '',
+        generation: before.generation           || '',
+        badge:      getVal('filter-badge')      || '',
       });
 
       try {
@@ -559,10 +560,10 @@
 
     onTaxChange('filter-status');
     onTaxChange('filter-source');
-    onTaxChange('filter-make', ['filter-model', 'filter-trim', 'filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
-    onTaxChange('filter-model', ['filter-trim', 'filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
-    onTaxChange('filter-trim', ['filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
-    onTaxChange('filter-generation', ['filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-make',       ['filter-model', 'filter-trim', 'filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-model',      ['filter-trim', 'filter-generation', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-generation', ['filter-trim', 'filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
+    onTaxChange('filter-trim',       ['filter-body-types', 'filter-transmissions', 'filter-fuels', 'filter-drive-types', 'filter-colors']);
 
     refreshContext();
   });

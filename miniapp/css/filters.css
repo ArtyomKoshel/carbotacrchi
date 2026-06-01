@@ -119,6 +119,20 @@
   padding: 16px 16px 0;
 }
 
+.search-count-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--hint);
+  margin-bottom: 8px;
+  min-height: 18px;
+  transition: opacity 0.2s;
+}
+
+.search-count-hint b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ── Multi-select chip groups ── */
 .chip-group {
   display: flex;

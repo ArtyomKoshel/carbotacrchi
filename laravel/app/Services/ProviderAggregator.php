@@ -3,7 +3,16 @@
 namespace App\Services;
 
 use App\AuctionProviders\ProviderInterface;
-use App\Support\Taxonomy\TaxonomyNormalizer;
+use App\Search\Specifications\ConditionSpec;
+use App\Search\Specifications\DateRangeSpec;
+use App\Search\Specifications\EngineRangeSpec;
+use App\Search\Specifications\LotSpecification; // phpstan: used as return type hint in docblock
+use App\Search\Specifications\MakeModelSpec;
+use App\Search\Specifications\MileageRangeSpec;
+use App\Search\Specifications\OptionsSpec;
+use App\Search\Specifications\PriceRangeSpec;
+use App\Search\Specifications\TaxonomySpec;
+use App\Search\Specifications\YearRangeSpec;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +28,26 @@ class ProviderAggregator
         }
 
         return $this;
+    }
+
+    public function count(SearchQuery $query): int
+    {
+        $activeSources = array_values(array_filter(
+            $query->sources,
+            fn ($key) => isset($this->providers[$key]) && $this->providers[$key]->isAvailable()
+        ));
+
+        if (empty($activeSources)) {
+            return 0;
+        }
+
+        $builder = DB::table('lots')
+            ->where('is_active', true)
+            ->whereIn('source', $activeSources);
+
+        $this->applyDbFilters($builder, $query);
+
+        return (int) $builder->count();
     }
 
     public function search(SearchQuery $query): SearchResult
@@ -90,180 +119,26 @@ class ProviderAggregator
         };
     }
 
+    /** @return LotSpecification[] */
+    private function specifications(): array
+    {
+        return [
+            new MakeModelSpec(),
+            new YearRangeSpec(),
+            new PriceRangeSpec(),
+            new MileageRangeSpec(),
+            new EngineRangeSpec(),
+            new ConditionSpec(),
+            new TaxonomySpec(),
+            new OptionsSpec(),
+            new DateRangeSpec(),
+        ];
+    }
+
     private function applyDbFilters(Builder $builder, SearchQuery $query): void
     {
-        if ($query->make) {
-            $variants = TaxonomyNormalizer::expandToDbValues('make', $query->make);
-            $builder->where(function (Builder $sub) use ($variants, $query): void {
-                if ($variants !== []) {
-                    $sub->whereIn('make', $variants)
-                        ->orWhereRaw('make LIKE ?', [$query->make . '%']);
-                    return;
-                }
-
-                $sub->whereRaw('make LIKE ?', [$query->make . '%']);
-            });
-        }
-        if ($query->model) {
-            $builder->where(function (Builder $sub) use ($query): void {
-                $sub->where('model', $query->model)->orWhere('model_en', $query->model);
-            });
-        }
-        if ($query->generation) {
-            $builder->whereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
-        }
-
-        if ($query->yearFrom) {
-            $builder->where('year', '>=', $query->yearFrom);
-        }
-        if ($query->yearTo) {
-            $builder->where('year', '<=', $query->yearTo);
-        }
-        if ($query->priceMin) {
-            $builder->where('price', '>=', $query->priceMin);
-        }
-        if ($query->priceMax) {
-            $builder->where('price', '<=', $query->priceMax);
-        }
-        if ($query->mileageMin) {
-            $builder->where('mileage', '>=', $query->mileageMin);
-        }
-        if ($query->mileageMax) {
-            $builder->where('mileage', '<=', $query->mileageMax);
-        }
-        if ($query->engineMin) {
-            $builder->where('engine_volume', '>=', $query->engineMin);
-        }
-        if ($query->engineMax) {
-            $builder->where('engine_volume', '<=', $query->engineMax);
-        }
-
-        if ($query->repairCostMin) {
-            $builder->where('repair_cost', '>=', $query->repairCostMin);
-        }
-        if ($query->repairCostMax) {
-            $builder->where('repair_cost', '<=', $query->repairCostMax);
-        }
-        if ($query->retailValueMin) {
-            $builder->where('retail_value', '>=', $query->retailValueMin);
-        }
-        if ($query->retailValueMax) {
-            $builder->where('retail_value', '<=', $query->retailValueMax);
-        }
-
-        if ($query->ownersCountMin !== null) {
-            $builder->where('owners_count', '>=', $query->ownersCountMin);
-        }
-        if ($query->ownersCountMax !== null) {
-            $builder->where('owners_count', '<=', $query->ownersCountMax);
-        }
-        if ($query->insuranceCountMin !== null) {
-            $builder->where('insurance_count', '>=', $query->insuranceCountMin);
-        }
-        if ($query->insuranceCountMax !== null) {
-            $builder->where('insurance_count', '<=', $query->insuranceCountMax);
-        }
-
-        if ($query->seatCountMin) {
-            $builder->where('seat_count', '>=', $query->seatCountMin);
-        }
-        if ($query->seatCountMax) {
-            $builder->where('seat_count', '<=', $query->seatCountMax);
-        }
-        if ($query->registrationYearMonthMin) {
-            $builder->where('registration_year_month', '>=', $query->registrationYearMonthMin);
-        }
-        if ($query->registrationYearMonthMax) {
-            $builder->where('registration_year_month', '<=', $query->registrationYearMonthMax);
-        }
-
-        if ($query->hasAccident !== null) {
-            $builder->where('has_accident', $query->hasAccident);
-        }
-        if ($query->floodHistory !== null) {
-            $builder->where('flood_history', $query->floodHistory);
-        }
-        if ($query->totalLossHistory !== null) {
-            $builder->where('total_loss_history', $query->totalLossHistory);
-        }
-
-        if ($query->transmissions) {
-            $vals = TaxonomyNormalizer::expandManyToDbValues('transmission', $query->transmissions);
-            if ($vals !== []) {
-                $builder->whereIn('transmission', $vals);
-            }
-        }
-        if ($query->fuelTypes) {
-            $vals = TaxonomyNormalizer::expandManyToDbValues('fuel', $query->fuelTypes);
-            if ($vals !== []) {
-                $builder->whereIn('fuel', $vals);
-            }
-        }
-        if ($query->bodyTypes) {
-            $vals = TaxonomyNormalizer::expandManyToDbValues('body_type', $query->bodyTypes);
-            if ($vals !== []) {
-                $builder->whereIn('body_type', $vals);
-            }
-        }
-        if ($query->driveTypes) {
-            $vals = TaxonomyNormalizer::expandManyToDbValues('drive_type', $query->driveTypes);
-            if ($vals !== []) {
-                $builder->whereIn('drive_type', $vals);
-            }
-        }
-        if ($query->colors) {
-            $builder->whereIn('color', $query->colors);
-        }
-        if ($query->lienStatuses) {
-            $builder->whereIn('lien_status', $query->lienStatuses);
-        }
-        if ($query->seizureStatuses) {
-            $builder->whereIn('seizure_status', $query->seizureStatuses);
-        }
-        if ($query->sellTypes) {
-            $builder->whereIn('sell_type', $query->sellTypes);
-        }
-
-        // Filter by option codes: AND-logic — lot must have ALL selected options.
-        // JSON_CONTAINS(options, '"010"') checks that code "010" is in the JSON array.
-        if ($query->options) {
-            foreach ($query->options as $code) {
-                $builder->whereRaw(
-                    'JSON_CONTAINS(COALESCE(`options`, \'[]\'), ?)',
-                    [json_encode((string) $code)]
-                );
-            }
-        }
-
-        if ($query->trim) {
-            $krVariants = \App\Models\Translation::resolveKorean($query->trim, 'trim');
-            if (!empty($krVariants)) {
-                $builder->where(function ($q) use ($query, $krVariants) {
-                    $q->whereIn('trim', $krVariants)->orWhere('trim', $query->trim);
-                });
-            } else {
-                $builder->where(function ($q) use ($query) {
-                    $q->where('trim', $query->trim)
-                      ->orWhere('trim', 'like', '%' . $query->trim . '%');
-                });
-            }
-        }
-        if ($query->vin) {
-            $builder->where('vin', $query->vin);
-        }
-
-        // Date filters
-        if ($query->listedAfter) {
-            $builder->where('listed_at', '>=', $query->listedAfter);
-        }
-        if ($query->listedBefore) {
-            $builder->where('listed_at', '<=', $query->listedBefore);
-        }
-        if ($query->firstRegAfter) {
-            $builder->where('first_reg_date', '>=', $query->firstRegAfter);
-        }
-        if ($query->firstRegBefore) {
-            $builder->where('first_reg_date', '<=', $query->firstRegBefore);
+        foreach ($this->specifications() as $spec) {
+            $spec->apply($builder, $query);
         }
     }
 }

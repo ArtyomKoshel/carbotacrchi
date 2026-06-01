@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\FiltersController;
 use App\Http\Controllers\Api\InspectionsController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SubscriptionsController;
+use App\Http\Controllers\Internal\LotsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/lots/{lotId}/inspection', [InspectionsController::class, 'show']);
@@ -20,6 +21,13 @@ Route::middleware('telegram.auth')->group(function () {
     Route::post('/subscriptions/{id}/seen',   [SubscriptionsController::class,'markSeen']);
 });
 
+// Internal parser API (protected by X-Internal-Token header)
+Route::middleware('internal.token')->prefix('internal')->group(function () {
+    Route::post('/lots/upsert', [LotsController::class, 'upsert']);
+    Route::post('/lots/delist', [LotsController::class, 'delist']);
+});
+
+Route::post('/filters/count', [FiltersController::class, 'count']);
 Route::get('/filters/trims', [FiltersController::class, 'trims']);
 Route::get('/filters/context', [FiltersController::class, 'context']);
 Route::get('/filters', [FiltersController::class, 'index']);

@@ -67,15 +67,15 @@ class SubscriptionsController extends Controller
 
         $searchQuery = SearchQuery::fromArray($query);
         $result = $this->aggregator->search($searchQuery);
-        $knownIds = array_map(fn ($lot) => $lot->id, $result->lots);
 
         $sub = Subscription::create([
             'user_id'        => $userId,
             'query'          => $query,
-            'known_lot_ids'  => $knownIds,
             'last_checked_at'=> now(),
             'active'         => true,
         ]);
+
+        $sub->markLotsAsSeen(array_map(fn ($lot) => $lot->id, $result->lots));
 
         return response()->json(['ok' => true, 'data' => [
             'id'      => $sub->id,

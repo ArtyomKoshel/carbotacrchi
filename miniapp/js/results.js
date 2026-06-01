@@ -21,8 +21,10 @@ const Results = (() => {
 
   function render(data, mount) {
     lots = data.lots ?? [];
-    const total  = data.total  ?? 0;
-    const errors = data.errors ?? [];
+    const total   = data.total  ?? 0;
+    const errors  = data.errors ?? [];
+    const relaxed = data.relaxed ?? false;
+    const relaxedMessage = data.relaxedMessage ?? '';
     const isCustomMount = !!mount;
 
     if (!isCustomMount) {
@@ -32,8 +34,13 @@ const Results = (() => {
 
     const banner = document.getElementById('errors-banner');
     if (!isCustomMount) {
-      if (errors.length) {
-        banner.textContent = `⚠️ Ошибка источников: ${errors.join(', ')}`;
+      if (relaxed && relaxedMessage) {
+        banner.innerHTML = `ℹ️ ${relaxedMessage}`;
+        banner.className = 'errors-banner errors-banner--relaxed';
+        banner.style.display = 'block';
+      } else if (errors.length) {
+        banner.innerHTML = `⚠️ Ошибка источников: ${errors.join(', ')}`;
+        banner.className = 'errors-banner';
         banner.style.display = 'block';
       } else {
         banner.style.display = 'none';

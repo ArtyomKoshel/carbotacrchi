@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BotFilterSetting;
 use App\Models\EncarOptionCatalog;
+use App\Services\ProviderAggregator;
+use App\Services\SearchQuery;
 use App\Support\Taxonomy\TaxonomyLocalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +15,14 @@ use Illuminate\Support\Facades\DB;
 
 class FiltersController extends Controller
 {
+    public function __construct(private readonly ProviderAggregator $aggregator) {}
+
+    public function count(Request $request): JsonResponse
+    {
+        $query = SearchQuery::fromArray($request->input('query', []));
+        return response()->json(['ok' => true, 'data' => ['count' => $this->aggregator->count($query)]]);
+    }
+
     public function index(): JsonResponse
     {
         $locale     = trim((string) request()->query('locale', 'ru')) ?: 'ru';
@@ -88,6 +98,7 @@ class FiltersController extends Controller
         $model       = trim((string) $request->query('model', ''));
         $badge       = trim((string) $request->query('badge', ''));
         $trim        = trim((string) $request->query('trim', ''));
+        $generation  = trim((string) $request->query('generation', ''));
 
         $base = $this->baseQuery($status, $source);
 
@@ -97,18 +108,20 @@ class FiltersController extends Controller
         if ($model !== '')      $base->where('model', $model);
         if ($badge !== '')      $base->where('badge', $badge);
         if ($trim !== '')       $base->where('trim', $trim);
+        if ($generation !== '') $base->where('generation', $generation);
 
         // Each level returns what's available WITHIN current selection
-        $makes       = $this->pluck(clone $base, 'make');
-        $modelGroups = $this->pluck(clone $base->when($make !== '', fn ($q) => $q->where('make', $make)), 'model_group');
-        $models      = $this->pluck(clone $base, 'model');
-        $badges      = $this->pluck(clone $base, 'badge');
-        $trims       = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
-        $bodyTypes   = $this->pluck(clone $base, 'body_type');
-        $fuelTypes   = $this->pluck(clone $base, 'fuel');
-        $driveTypes  = $this->pluck(clone $base, 'drive_type');
+        $makes         = $this->pluck(clone $base, 'make');
+        $modelGroups   = $this->pluck(clone $base->when($make !== '', fn ($q) => $q->where('make', $make)), 'model_group');
+        $models        = $this->pluck(clone $base, 'model');
+        $badges        = $this->pluck(clone $base, 'badge');
+        $trims         = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
+        $generations   = $this->pluck(clone $base, 'generation');
+        $bodyTypes     = $this->pluck(clone $base, 'body_type');
+        $fuelTypes     = $this->pluck(clone $base, 'fuel');
+        $driveTypes    = $this->pluck(clone $base, 'drive_type');
         $transmissions = $this->pluck(clone $base, 'transmission');
-        $colors      = $this->pluck(clone $base, 'color');
+        $colors        = $this->pluck(clone $base, 'color');
 
         return response()->json([
             'ok' => true,
@@ -123,6 +136,8 @@ class FiltersController extends Controller
                 'badgeOptions'        => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $badges),
                 'trims'               => $trims,
                 'trimOptions'         => TaxonomyLocalizer::trimOptions($trims, $locale),
+                'generations'         => $generations,
+                'generationOptions'   => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $generations),
                 'bodyTypes'           => $bodyTypes,
                 'bodyTypeOptions'     => TaxonomyLocalizer::options('body_type', $bodyTypes, $locale),
                 'fuelTypes'           => $fuelTypes,

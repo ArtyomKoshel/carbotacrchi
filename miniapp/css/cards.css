@@ -21,6 +21,12 @@
   font-size: 12px; color: var(--danger);
 }
 
+.errors-banner--relaxed {
+  background: rgba(51,144,236,.1);
+  border-color: rgba(51,144,236,.25);
+  color: var(--link);
+}
+
 /* ── Card grid ── */
 .cards-grid {
   display: grid;

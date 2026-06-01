@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\BotFilterSetting;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -11,7 +13,8 @@ class ChatSearchService
     private string $apiKey;
     private string $apiUrl;
     private string $model;
-    private bool $lastParseWasAi = false;
+    private bool $lastParseWasAi          = false;
+    private bool $lastParseWasRefinement  = false;
     /** @var array<string, array<int, string>>|null */
     private static ?array $makesModels = null;
 
@@ -28,16 +31,17 @@ class ChatSearchService
     }
 
     /**
-     * @return array{query: SearchQuery, tolerantQuery: SearchQuery, description: string, toleranceNote: string, isAi: bool}|null
+     * @param array{query: array, total: int, description: string}|null $prevState
+     * @return array{query: SearchQuery, tolerantQuery: SearchQuery, description: string, toleranceNote: string, isAi: bool, refined: bool}|null
      */
-    public function parseAndSearch(string $text): ?array
+    public function parseAndSearch(string $text, ?array $prevState = null): ?array
     {
-        $parsed = $this->parseQuery($text);
+        $parsed = $this->parseQuery($text, $prevState);
         if ($parsed === null) {
             return null;
         }
 
-        $query = SearchQuery::fromArray($parsed);
+        $query        = SearchQuery::fromArray($parsed);
         $query->limit = 50;
 
         $tolerantQuery = $query->withBotTolerance();
@@ -50,17 +54,39 @@ class ChatSearchService
             'description'   => $description,
             'toleranceNote' => $toleranceNote,
             'isAi'          => $this->lastParseWasAi,
+            'refined'       => $this->lastParseWasRefinement,
         ];
     }
 
-    private function parseQuery(string $text): ?array
+    private function parseQuery(string $text, ?array $prevState = null): ?array
     {
         if (!$this->isAvailable()) {
-            $this->lastParseWasAi = false;
-            return $this->fallbackParse($text);
+            $this->lastParseWasAi          = false;
+            $this->lastParseWasRefinement  = false;
+            $parsed = $this->fallbackParse($text);
+            if ($parsed !== null && $prevState !== null) {
+                return $this->mergeWithPrevious($prevState['query'], $parsed);
+            }
+            return $parsed;
         }
 
         try {
+            $messages = [
+                ['role' => 'system', 'content' => $this->getSystemPrompt()],
+            ];
+
+            if ($prevState !== null) {
+                $prevDesc    = $prevState['description'] ?? '';
+                $prevTotal   = $prevState['total'] ?? 0;
+                $prevJson    = json_encode($prevState['query'] ?? [], JSON_UNESCAPED_UNICODE);
+                $messages[]  = [
+                    'role'    => 'assistant',
+                    'content' => "Предыдущий поиск: {$prevDesc} (найдено {$prevTotal}). JSON: {$prevJson}",
+                ];
+            }
+
+            $messages[] = ['role' => 'user', 'content' => $text];
+
             $response = Http::timeout(15)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
@@ -71,15 +97,13 @@ class ChatSearchService
                     'max_tokens'      => config('ai.max_tokens', 300),
                     'temperature'     => config('ai.temperature', 0),
                     'response_format' => ['type' => 'json_object'],
-                    'messages'        => [
-                        ['role' => 'system', 'content' => $this->getSystemPrompt()],
-                        ['role' => 'user',   'content' => $text],
-                    ],
+                    'messages'        => $messages,
                 ]);
 
             if (!$response->successful()) {
                 Log::warning('[ChatSearch] API error: ' . $response->status() . ' ' . $response->body());
-                $this->lastParseWasAi = false;
+                $this->lastParseWasAi         = false;
+                $this->lastParseWasRefinement = false;
                 return $this->fallbackParse($text);
             }
 
@@ -92,12 +116,36 @@ class ChatSearchService
 
             unset($json['not_a_search']);
             $this->lastParseWasAi = true;
+
+            // Detect if this is a refinement: few new fields + prev state existed
+            $meaningful = array_filter($json, fn ($v) => $v !== null && $v !== '' && $v !== []);
+            $this->lastParseWasRefinement = $prevState !== null && count($meaningful) <= 4;
+
+            if ($this->lastParseWasRefinement) {
+                return $this->mergeWithPrevious($prevState['query'], $json);
+            }
+
             return $json;
         } catch (\Throwable $e) {
             Log::error('[ChatSearch] ' . $e->getMessage());
-            $this->lastParseWasAi = false;
+            $this->lastParseWasAi         = false;
+            $this->lastParseWasRefinement = false;
             return $this->fallbackParse($text);
         }
+    }
+
+    private function mergeWithPrevious(array $base, array $delta): array
+    {
+        $merged = $base;
+        foreach ($delta as $key => $value) {
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+            $merged[$key] = $value;
+        }
+        // Always reset pagination
+        unset($merged['limit'], $merged['offset']);
+        return $merged;
     }
 
     private function extractJson(string $text): ?array
@@ -482,16 +530,19 @@ class ChatSearchService
             ];
         }
 
-        $filtersBlock   = implode("\n", $filterDescriptions);
-        $makesBlock      = $this->buildMakesContext();
-        $trimExamples    = $this->buildTrimExamplesForPrompt();
-        $today           = date('Y-m-d');
+        $filtersBlock = implode("\n", $filterDescriptions);
+        $makesBlock   = $this->buildMakesContext();
+        $statsBlock   = $this->buildDbStatsContext();
+        $trimExamples = $this->buildTrimExamplesForPrompt();
+        $today        = date('Y-m-d');
 
         return <<<PROMPT
 Ты — парсер поисковых запросов для автомобилей на корейских аукционах. Пользователь пишет свободный текст на русском/английском, ты извлекаешь параметры поиска и возвращаешь JSON.
 
 Доступные фильтры:
 {$filtersBlock}
+
+{$statsBlock}
 
 {$makesBlock}
 
@@ -525,6 +576,16 @@ class ChatSearchService
 27. "свежие"/"новые объявления"/"за последнюю неделю"/"за месяц" → listedAfter: "YYYY-MM-DD" (вычисли дату от текущей)
 28. "регистрация после 2022"/"зарегистрирована в 2023" → firstRegAfter: "YYYY-01-01" (или firstRegBefore для "до")
 29. Текущая дата: {$today}
+
+Follow-up запросы (если в контексте есть предыдущий поиск):
+- "покажи дешевле" / "подешевле" → уменьши priceMax на 20%, убери priceMin
+- "дороже" / "подороже" → увеличь priceMin или priceMax на 20%
+- "новее" / "свежее" → увеличь yearFrom на 2-3 года
+- "с меньшим пробегом" → уменьши mileageMax на 30%
+- "без ДТП" → hasAccident: false
+- "автомат" / "механика" → добавь transmissions
+- "только Encar" / "только KBChacha" → обнови sources
+- Для follow-up возвращай ТОЛЬКО изменённые поля (не весь предыдущий запрос)
 
 Примеры:
 User: "хендай соната 2020 автомат до 15000$"
@@ -577,12 +638,47 @@ PROMPT;
                 break;
             }
             $modelsList = implode(', ', array_slice($models, 0, 15));
-            $extra = count($models) > 15 ? ' ...' : '';
-            $lines[] = "- {$make}: {$modelsList}{$extra}";
+            $extra      = count($models) > 15 ? ' ...' : '';
+            $lines[]    = "- {$make}: {$modelsList}{$extra}";
             $count++;
         }
 
         return implode("\n", $lines);
+    }
+
+    private function buildDbStatsContext(): string
+    {
+        return Cache::remember('chat_search_db_stats', 600, function () {
+            try {
+                $stats = DB::table('lots')
+                    ->where('is_active', true)
+                    ->selectRaw('
+                        MIN(price) as price_min, MAX(price) as price_max,
+                        ROUND(AVG(price)) as price_avg,
+                        MIN(year) as year_min, MAX(year) as year_max,
+                        MIN(mileage) as mileage_min, MAX(mileage) as mileage_max,
+                        COUNT(*) as total
+                    ')
+                    ->first();
+
+                if (!$stats || !$stats->total) {
+                    return '';
+                }
+
+                $fmt = fn ($n) => number_format((int) $n, 0, '.', ' ');
+
+                return implode("\n", [
+                    "Реальные данные в базе ({$fmt($stats->total)} активных лотов):",
+                    "- Цена: ₩{$fmt($stats->price_min)} – ₩{$fmt($stats->price_max)} (средняя ₩{$fmt($stats->price_avg)})",
+                    "- Год: {$stats->year_min} – {$stats->year_max}",
+                    "- Пробег: {$fmt($stats->mileage_min)} – {$fmt($stats->mileage_max)} км",
+                    "- «Дешёвый» ≈ ниже средней цены; «свежий/новый» ≈ год > " . (date('Y') - 2),
+                    "- «Много пробега» ≈ > 150 000 км; «мало пробега» ≈ < 50 000 км",
+                ]);
+            } catch (\Throwable) {
+                return '';
+            }
+        });
     }
 
     private function buildFieldPromptLine(BotFilterSetting $setting): string
@@ -666,32 +762,34 @@ PROMPT;
             return self::$makesModels;
         }
 
-        try {
-            $rows = \Illuminate\Support\Facades\DB::table('lots')
-                ->where('is_active', true)
-                ->whereNotNull('make')
-                ->where('make', '!=', '')
-                ->select(['make', 'model'])
-                ->distinct()
-                ->orderBy('make')
-                ->orderBy('model')
-                ->get();
+        self::$makesModels = Cache::remember('chat_search_makes_models', 600, function () {
+            try {
+                $rows = DB::table('lots')
+                    ->where('is_active', true)
+                    ->whereNotNull('make')
+                    ->where('make', '!=', '')
+                    ->select(['make', 'model'])
+                    ->distinct()
+                    ->orderBy('make')
+                    ->orderBy('model')
+                    ->get();
 
-            $byMake = [];
-            foreach ($rows as $row) {
-                $make = trim((string) ($row->make ?? ''));
-                if ($make === '') continue;
-                $model = trim((string) ($row->model ?? ''));
-                $byMake[$make] ??= [];
-                if ($model !== '' && !in_array($model, $byMake[$make], true)) {
-                    $byMake[$make][] = $model;
+                $byMake = [];
+                foreach ($rows as $row) {
+                    $make = trim((string) ($row->make ?? ''));
+                    if ($make === '') continue;
+                    $model = trim((string) ($row->model ?? ''));
+                    $byMake[$make] ??= [];
+                    if ($model !== '' && !in_array($model, $byMake[$make], true)) {
+                        $byMake[$make][] = $model;
+                    }
                 }
+                ksort($byMake);
+                return $byMake;
+            } catch (\Throwable) {
+                return [];
             }
-            ksort($byMake);
-            self::$makesModels = $byMake;
-        } catch (\Throwable) {
-            self::$makesModels = [];
-        }
+        });
 
         return self::$makesModels;
     }

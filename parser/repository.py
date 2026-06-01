@@ -9,6 +9,7 @@ from datetime import datetime
 import pymysql
 from pymysql.cursors import DictCursor
 
+import api_client
 from config import Config
 from models import CarLot, InspectionRecord
 
@@ -332,6 +333,10 @@ class LotRepository:
         if not lots:
             return 0
 
+        # ── API boundary: delegate to Laravel if configured ──────────────────
+        if api_client.is_configured():
+            return self._upsert_via_api(lots, stats)
+
         # ── Pre-upsert filter ────────────────────────────────────────────────
         # Apply declarative rules (sell_type/mileage/year/price/...) before
         # any DB write. Lots marked "skip" are dropped here; "mark_inactive"
@@ -488,6 +493,9 @@ class LotRepository:
             # Remove skipped lots from change-detection below
             lots = [l for l in lots if not l.raw_data.get("_db_skip")]
             rows = [l.to_db_row() for l in lots]
+
+        # Sync lot_options pivot table
+        self._sync_lot_options(lots)
 
         # Detect field changes for existing lots and persist to lot_changes
         changes_to_insert = []
@@ -649,6 +657,97 @@ class LotRepository:
             conn.rollback()
             logger.warning(f"[DB] upsert_photos failed for {lot_id}: {type(e).__name__}: {e}")
             return 0
+
+    def _upsert_via_api(self, lots: list[CarLot], stats: dict | None) -> int:
+        """Send lots to Laravel API instead of direct DB write. Falls back to direct on error."""
+        source = lots[0].source if lots else "unknown"
+
+        # Apply pre-upsert filters locally before sending to API
+        lots = self._apply_filters(lots, stats)
+        if not lots:
+            return 0
+
+        payload = []
+        for lot in lots:
+            row = lot.to_db_row()
+            # Convert JSON strings back to objects for the API
+            for field in ("options", "paid_options", "raw_data"):
+                val = row.get(field)
+                if isinstance(val, str):
+                    try:
+                        row[field] = json.loads(val)
+                    except Exception:
+                        row[field] = None
+            payload.append(row)
+
+        try:
+            result = api_client.upsert_lots(source, payload)
+            data   = result.get("data", {})
+            total  = data.get("inserted", 0) + data.get("updated", 0)
+            logger.info(
+                f"[api_client] upserted {total} lots via API "
+                f"(inserted={data.get('inserted', 0)}, updated={data.get('updated', 0)}, "
+                f"errors={data.get('errors', 0)})"
+            )
+            return total
+        except Exception:
+            logger.warning("[api_client] API upsert failed, falling back to direct DB")
+            # Fall back to direct DB — call the rest of upsert_batch manually
+            return self._upsert_direct(lots, stats)
+
+    def _upsert_direct(self, lots: list[CarLot], stats: dict | None) -> int:
+        """Direct DB upsert (internal fallback, skips filter re-apply)."""
+        # Re-use main upsert logic by temporarily disabling API routing
+        original = api_client.INTERNAL_TOKEN
+        try:
+            api_client.INTERNAL_TOKEN = ""  # type: ignore[assignment]
+            return self.upsert_batch(lots, stats)
+        finally:
+            api_client.INTERNAL_TOKEN = original  # type: ignore[assignment]
+
+    def _sync_lot_options(self, lots: list) -> None:
+        """Sync lot_options pivot table after upserting lots."""
+        conn = self._get_conn()
+
+        inserts = []
+        lot_ids_with_options = []
+        for lot in lots:
+            codes = lot.options if hasattr(lot, "options") and lot.options else []
+            if isinstance(codes, str):
+                try:
+                    codes = json.loads(codes)
+                except Exception:
+                    codes = []
+            if not isinstance(codes, list):
+                codes = []
+            if codes:
+                lot_ids_with_options.append(lot.id)
+                for code in set(codes):
+                    code = str(code).strip()
+                    if code:
+                        inserts.append((lot.id, code))
+
+        if not lot_ids_with_options:
+            return
+
+        try:
+            with conn.cursor() as cursor:
+                # Remove stale option rows for lots being upserted
+                for chunk in [lot_ids_with_options[i:i+500] for i in range(0, len(lot_ids_with_options), 500)]:
+                    placeholders = ",".join(["%s"] * len(chunk))
+                    cursor.execute(f"DELETE FROM lot_options WHERE lot_id IN ({placeholders})", chunk)
+
+                # Insert fresh option rows
+                if inserts:
+                    for chunk in [inserts[i:i+1000] for i in range(0, len(inserts), 1000)]:
+                        cursor.executemany(
+                            "INSERT IGNORE INTO lot_options (lot_id, option_code) VALUES (%s, %s)",
+                            chunk,
+                        )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"[DB] lot_options sync failed: {e}")
 
     def insert_filter_skip_log(self, entries: list[dict]) -> int:
         """Bulk insert filter skip log entries."""

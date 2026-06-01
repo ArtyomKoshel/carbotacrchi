@@ -154,12 +154,13 @@ class AdminLotsController extends Controller
             });
         ksort($makesModels);
 
-        $bodyTypes = $distinct('body_type');
-        $transList = $distinct('transmission');
-        $fuelList  = $distinct('fuel');
-        $driveList = $distinct('drive_type');
-        $colorList = $distinct('color');
-        $sources   = $distinct('source');
+        $bodyTypes   = $distinct('body_type');
+        $transList   = $distinct('transmission');
+        $fuelList    = $distinct('fuel');
+        $driveList   = $distinct('drive_type');
+        $colorList   = $distinct('color');
+        $sources     = $distinct('source');
+        $generations = $distinct('generation');
 
         return view('admin.lots-browse', compact(
             'lots',
@@ -169,7 +170,8 @@ class AdminLotsController extends Controller
             'fuelList',
             'driveList',
             'colorList',
-            'sources'
+            'sources',
+            'generations'
         ));
     }
 }

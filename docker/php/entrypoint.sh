@@ -61,5 +61,8 @@ fi
 # ── 7. Clear config cache ─────────────────────────────────────────────────────
 php "$APP_DIR/artisan" config:clear 2>/dev/null || true
 
-echo "[entrypoint] Bootstrap complete. Starting PHP-FPM..."
+echo "[entrypoint] Bootstrap complete. Starting scheduler in background..."
+php "$APP_DIR/artisan" schedule:work --no-interaction >> /proc/1/fd/1 2>&1 &
+
+echo "[entrypoint] Starting PHP-FPM..."
 exec "$@"

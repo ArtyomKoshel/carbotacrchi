@@ -85,6 +85,15 @@ const API = (() => {
     });
   }
 
+  function getCount(query) {
+    return request('POST', '/filters/count', { query });
+  }
+
+  function getContext(params = {}) {
+    const p = new URLSearchParams({ status: 'active', locale: 'ru', ...params });
+    return request('GET', `/filters/context?${p}`);
+  }
+
   function getTrims(make, model, locale = 'ru') {
     const p = new URLSearchParams();
     if (make) p.set('make', make);
@@ -100,5 +109,5 @@ const API = (() => {
     return json?.data ?? null;
   }
 
-  return { getFilters, getTrims, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen, getInspection };
+  return { getFilters, getCount, getContext, getTrims, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen, getInspection };
 })();

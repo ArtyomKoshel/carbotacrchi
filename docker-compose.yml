@@ -50,10 +50,16 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       LOG_CHANNEL: stderr
+      SCOUT_DRIVER: ${SCOUT_DRIVER:-meilisearch}
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_KEY: ${MEILISEARCH_KEY:-changeme_meilisearch_key}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
     depends_on:
       mysql:
         condition: service_healthy
       redis:
+        condition: service_started
+      meilisearch:
         condition: service_started
     networks:
       - carbot
@@ -77,6 +83,18 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    networks:
+      - carbot
+    restart: unless-stopped
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.8
+    container_name: carbot_meilisearch
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_KEY:-changeme_meilisearch_key}
+      MEILI_ENV: ${APP_ENV:-development}
+    volumes:
+      - meilisearch_data:/meili_data
     networks:
       - carbot
     restart: unless-stopped
@@ -121,3 +139,4 @@ networks:
 volumes:
   mysql_data:
   parser_logs:
+  meilisearch_data:

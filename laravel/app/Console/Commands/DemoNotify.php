@@ -45,26 +45,23 @@ class DemoNotify extends Command
         $query        = SearchQuery::fromArray($sub->query ?? []);
         $query->limit = 100;
 
-        $result   = $this->aggregator->search($query);
-        $allLots  = $result->lots;
-        $knownIds = $sub->known_lot_ids ?? [];
+        $result  = $this->aggregator->search($query);
+        $allLots = $result->lots;
 
         if (empty($allLots)) {
             $this->warn("  Sub #{$sub->id} ({$sub->label()}): no lots match query, skipping.");
             return;
         }
 
-        $knownSet = array_flip($knownIds);
-        $unknown  = array_filter($allLots, fn ($lot) => !isset($knownSet[$lot->id]));
+        $seenIds = $sub->seenLots()->pluck('lot_id')->flip()->all();
+        $unknown = array_values(array_filter($allLots, fn ($lot) => !isset($seenIds[$lot->id])));
 
         if (empty($unknown)) {
-            $count    = min(3, count($allLots));
-            $fakeLots = array_slice($allLots, 0, $count);
-            $this->info("  Sub #{$sub->id} ({$sub->label()}): all lots known, re-sending {$count} as 'new'.");
+            $fakeLots = array_slice($allLots, 0, min(3, count($allLots)));
+            $this->info("  Sub #{$sub->id} ({$sub->label()}): all lots known, re-sending ".count($fakeLots)." as 'new'.");
         } else {
-            $unknown  = array_values($unknown);
             $fakeLots = array_slice($unknown, 0, min(3, count($unknown)));
-            $this->info("  Sub #{$sub->id} ({$sub->label()}): found ".count($unknown)." unknown lots, sending ".count($fakeLots).".");
+            $this->info("  Sub #{$sub->id} ({$sub->label()}): found ".count($unknown).' unknown lots, sending '.count($fakeLots).'.');
         }
 
         $this->bot->notifyNewLots($sub->user_id, $sub->label(), $fakeLots, $sub->id, $sub->query ?? []);
