@@ -108,16 +108,16 @@ def check_floppy_balance() -> dict | None:
         r = httpx.get(url, headers={"X-Api-Key": Config.FLOPPYDATA_API_KEY}, timeout=10)
         r.raise_for_status()
         data = r.json()
-        # Log readable summary
-        for proxy_type in ("residential", "mobile", "datacenter"):
-            info = data.get(proxy_type, {})
-            sub = info.get("subscription", {})
-            non_exp = info.get("nonExpiring", {})
-            sub_gb = sub.get("gb", 0)
-            non_gb = non_exp.get("gb", 0)
-            expires = sub.get("expiresOn", "n/a")
-            if sub_gb or non_gb:
-                logger.info(f"[FloppyData] {proxy_type}: subscription={sub_gb}GB (expires {expires}), non-expiring={non_gb}GB")
+        # Log readable summary — response is flat: {subscription: {gb, expiresOn}, nonExpiring: {gb}}
+        sub     = data.get("subscription", {})
+        non_exp = data.get("nonExpiring", {})
+        sub_gb  = sub.get("gb", 0)
+        non_gb  = non_exp.get("gb", 0)
+        expires = sub.get("expiresOn", "n/a")
+        total   = sub_gb + non_gb
+        logger.info(f"[FloppyData] balance: {total:.2f} GB total "
+                    f"(subscription={sub_gb:.2f} GB expires {expires}, "
+                    f"non-expiring={non_gb:.4f} GB)")
         return data
     except Exception as e:
         logger.warning(f"[FloppyData] Failed to check balance: {e}")

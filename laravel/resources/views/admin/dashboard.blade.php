@@ -93,17 +93,16 @@ function loadProxyBalance() {
     .then(r => r.json())
     .then(data => {
       if (data.error) { throw new Error(data.error); }
-      const res = data.residential ?? {};
-      const gb = ((res.nonExpiring?.gb ?? 0) + (res.subscription?.gb ?? 0));
-      const pct = Math.min(100, Math.round(gb / 9 * 100));
+      const gb = ((data.nonExpiring?.gb ?? 0) + (data.subscription?.gb ?? 0));
+      const pct = Math.min(100, Math.round(gb / 20 * 100));
       const color = pct > 50 ? 'bg-green-500' : (pct > 20 ? 'bg-yellow-500' : 'bg-red-500');
       document.getElementById('proxy-gb').textContent = gb.toFixed(2);
       const bar = document.getElementById('proxy-bar');
       bar.className = color + ' h-2 rounded-full transition-all';
       bar.style.width = pct + '%';
-      if (res.subscription?.expiresOn) {
+      if (data.subscription?.expiresOn) {
         const exp = document.getElementById('proxy-expires');
-        exp.textContent = 'Подписка истекает: ' + new Date(res.subscription.expiresOn).toLocaleDateString();
+        exp.textContent = 'Подписка истекает: ' + new Date(data.subscription.expiresOn).toLocaleDateString('ru-RU');
         exp.classList.remove('hidden');
       }
       document.getElementById('proxy-balance-result').classList.remove('hidden');
