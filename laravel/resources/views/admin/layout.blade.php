@@ -58,7 +58,6 @@
       ['route' => 'admin.bot-filters',           'icon' => '🤖', 'label' => 'Бот-фильтры',      'page' => 'bot-filters'],
       ['route' => 'admin.filter-skip-log.index', 'icon' => '✗',  'label' => 'Лог пропусков',   'page' => 'filter-skip-log'],
       ['route' => 'admin.fields',                'icon' => '◎',  'label' => 'Поля',             'page' => 'fields'],
-      ['route' => 'admin.taxonomy.index',        'icon' => '🧬', 'label' => 'Таксономия',       'page' => 'taxonomy'],
       ['route' => 'admin.lots',                  'icon' => '⟳',  'label' => 'Репарсинг',        'page' => 'lots'],
     ];
   @endphp
