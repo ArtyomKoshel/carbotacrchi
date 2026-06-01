@@ -14,6 +14,10 @@ class ValidateTelegramAuth
             return $next($request);
         }
 
+        if (config('app.miniapp_dev_bypass') && !app()->environment('production')) {
+            return $next($request);
+        }
+
         $initData = (string) ($request->input('init_data') ?? '');
 
         if (!$this->validate($initData)) {

@@ -4,6 +4,7 @@ return [
     'name'  => env('APP_NAME', 'CarBot'),
     'env'   => env('APP_ENV', 'production'),
     'debug' => (bool) env('APP_DEBUG', false),
+    'miniapp_dev_bypass' => (bool) env('MINIAPP_DEV_BYPASS', false),
     'url'   => env('APP_URL', 'http://localhost'),
 
     'timezone' => 'UTC',
