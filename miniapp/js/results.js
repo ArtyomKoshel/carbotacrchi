@@ -179,7 +179,6 @@ const Results = (() => {
   function openSheet(lot) {
     activeLot = lot;
     const overlay  = document.getElementById('sheet-overlay');
-    const cf       = new Set(Filters.getCardFields()); // dynamic card fields from admin
     const price    = '$' + Number(lot.price).toLocaleString();
     const km       = Number(lot.mileage).toLocaleString() + ' km';
     const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
@@ -189,8 +188,6 @@ const Results = (() => {
         <span class="sheet-detail-label">${label}</span>
         <span class="sheet-detail-value">${value}</span>
       </div>` : '';
-    const dIf = (field, label, value, extra = '') =>
-      cf.has(field) ? d(label, value, extra) : '';
 
     document.getElementById('sheet-content').innerHTML = `
       <div class="sheet-handle"></div>
@@ -204,22 +201,20 @@ const Results = (() => {
           ${d('Пробег', km)}
           ${d('Дата аукциона', escHtml(lot.auctionDate ?? '—'))}
           ${d('Местоположение', escHtml(lot.location ?? '—'))}
-          ${dIf('body_type',      'Кузов',         lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '')}
-          ${dIf('transmission',   'КПП',           lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '')}
-          ${dIf('fuel',           'Топливо',        lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '')}
-          ${dIf('drive_type',     'Привод',         lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '')}
-          ${dIf('engine_volume',  'Двигатель',      lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '')}
-          ${dIf('color',          'Цвет кузова',    lot.color        ? escHtml(lot.color)      : '')}
-          ${dIf('seat_color',     'Цвет салона',    lot.seatColor    ? escHtml(lot.seatColor)  : '')}
-          ${dIf('seat_count',     'Мест',           lot.seatCount    ? String(lot.seatCount)   : '')}
-          ${dIf('trim',           'Комплектация',   lot.trim         ? escHtml(lot.trim)        : '')}
-          ${dIf('generation',     'Поколение',      lot.generation   ? escHtml(lot.generation)  : '')}
-          ${dIf('has_accident',   'Авария (офиц.)', lot.hasAccident  !== null && lot.hasAccident !== undefined
-            ? `<span style="color:${lot.hasAccident ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident ? 'Да' : 'Нет'}</span>` : '')}
-          ${dIf('flood_history',  'Затопление',     lot.floodHistory !== null && lot.floodHistory !== undefined
-            ? `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>` : '')}
-          ${dIf('owners_count',   'Владельцев',     lot.ownersCount  ? String(lot.ownersCount)  : '')}
-          ${dIf('insurance_count','Страховых',      lot.insuranceCount ? String(lot.insuranceCount) : '')}
+          ${d('Кузов',        lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '')}
+          ${d('КПП',          lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '')}
+          ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '')}
+          ${d('Привод',       lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '')}
+          ${d('Двигатель',    lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '')}
+          ${d('Цвет кузова',  lot.color        ? escHtml(lot.color)      : '')}
+          ${d('Цвет салона',  lot.seatColor    ? escHtml(lot.seatColor)  : '')}
+          ${d('Мест',         lot.seatCount    ? String(lot.seatCount)   : '')}
+          ${d('Комплектация', lot.trim         ? escHtml(lot.trim)        : '')}
+          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)  : '')}
+          ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`) : ''}
+          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`) : ''}
+          ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '')}
+          ${d('Страховых',    lot.insuranceCount ? String(lot.insuranceCount) : '')}
           ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"')}
           ${d('Документ', lot.document ? `<span style="font-size:12px">${escHtml(lot.document)}</span>` : '', ' style="grid-column:span 2"')}
           ${d('Рыночная цена',    lot.retailValue  ? `$${Number(lot.retailValue).toLocaleString()}`  : '')}
