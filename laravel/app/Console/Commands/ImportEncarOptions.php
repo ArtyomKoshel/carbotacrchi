@@ -111,21 +111,29 @@ class ImportEncarOptions extends Command
     {
         try {
             $response = Http::timeout(20)
+                ->withoutVerifying()
                 ->withHeaders(self::HEADERS)
                 ->get(self::ENCAR_OPTION_LIST_URL, ['method' => 'optionlist']);
 
             if (!$response->successful()) {
                 Log::warning('[ImportEncarOptions] HTTP ' . $response->status());
+                $this->error('HTTP ' . $response->status());
+                $this->line('Body (first 500): ' . substr($response->body(), 0, 500));
                 return null;
             }
 
-            $body = $response->json();
+            // Encar returns text/xml;charset=euc-kr — convert to UTF-8 before JSON decode
+            $rawBody  = $response->body();
+            $utf8Body = mb_convert_encoding($rawBody, 'UTF-8', 'EUC-KR');
+            $body     = json_decode($utf8Body, true);
 
             if (!is_array($body) || empty($body[0]) || !is_array($body[0])) {
                 Log::warning('[ImportEncarOptions] Unexpected response structure', [
                     'type'       => gettype($body),
                     'top_keys'   => is_array($body) && isset($body[0]) ? array_keys($body[0]) : [],
+                    'body_start' => mb_substr($utf8Body, 0, 200),
                 ]);
+                $this->error('Unexpected structure, type=' . gettype($body));
                 return null;
             }
 
@@ -133,7 +141,15 @@ class ImportEncarOptions extends Command
             $carOptions  = $data['carOptions'] ?? [];
             $optionList  = $data['optionlist']  ?? [];
 
+            $this->line('Keys in body[0]: ' . implode(', ', array_keys($data)));
+            $this->line('carOptions count: ' . count($carOptions) . ', optionlist count: ' . count($optionList));
+
             if (empty($optionList)) {
+                // Fallback: build from carOptions directly if optionlist absent
+                if (!empty($carOptions)) {
+                    $this->warn('optionlist empty — falling back to carOptions');
+                    return $this->buildFromCarOptions($carOptions);
+                }
                 Log::warning('[ImportEncarOptions] optionlist is empty');
                 return null;
             }
@@ -167,6 +183,54 @@ class ImportEncarOptions extends Command
             Log::error('[ImportEncarOptions] ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Fallback: build option list directly from carOptions tree when optionlist is absent.
+     *
+     * @param  array[] $carOptions
+     * @return array[]
+     */
+    private function buildFromCarOptions(array $carOptions): array
+    {
+        $result = [];
+        $order  = 0;
+
+        foreach ($carOptions as $opt) {
+            $code      = trim((string) ($opt['optionCd']    ?? ''));
+            $name      = trim((string) ($opt['optionTitle'] ?? ''));
+            $type      = trim((string) ($opt['optionTypeCd'] ?? ''));
+            $imagePath = trim((string) ($opt['imagePath']   ?? ''));
+            $subOpts   = (array) ($opt['subOptions'] ?? []);
+            $isGroup   = (bool)  ($opt['isGroup']    ?? $opt['group'] ?? false);
+
+            if (!$isGroup && $code !== '' && $name !== '') {
+                $result[] = [
+                    'code'       => $code,
+                    'name_kr'    => $name,
+                    'icon_url'   => $imagePath !== '' ? self::IMAGE_BASE_URL . $imagePath : null,
+                    'category'   => self::CATEGORY_MAP[$type] ?? null,
+                    'sort_order' => $order++,
+                ];
+            }
+
+            foreach ($subOpts as $sub) {
+                $subCode = trim((string) ($sub['optionCd']    ?? ''));
+                $subName = trim((string) ($sub['optionTitle'] ?? $name));
+                $subPath = trim((string) ($sub['imagePath']   ?? $imagePath));
+                if ($subCode !== '' && $subName !== '') {
+                    $result[] = [
+                        'code'       => $subCode,
+                        'name_kr'    => $subName,
+                        'icon_url'   => $subPath !== '' ? self::IMAGE_BASE_URL . $subPath : null,
+                        'category'   => self::CATEGORY_MAP[$type] ?? null,
+                        'sort_order' => $order++,
+                    ];
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

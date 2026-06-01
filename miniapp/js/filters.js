@@ -23,6 +23,8 @@ const Filters = (() => {
     colors:           [],
     damageTypes:      [],
     titleTypes:       [],
+    lienStatuses:     [],
+    seizureStatuses:  [],
     trim:             '',
     hasAccident:      null,
     floodHistory:     null,
@@ -34,7 +36,6 @@ const Filters = (() => {
     listedBefore:     '',
     firstRegAfter:    '',
     firstRegBefore:   '',
-    vin:              '',
     sort:             'date',
     options:          [],
   };
@@ -52,11 +53,12 @@ const Filters = (() => {
     state.colors = []; state.damageTypes = []; state.titleTypes = [];
     state.trim = '';
     state.hasAccident = null; state.floodHistory = null;
+    state.lienStatuses = []; state.seizureStatuses = [];
     state.ownersCountMin = ''; state.ownersCountMax = '';
     state.insuranceCountMin = ''; state.insuranceCountMax = '';
     state.listedAfter = ''; state.listedBefore = '';
     state.firstRegAfter = ''; state.firstRegBefore = '';
-    state.vin = ''; state.sort = 'date'; state.options = [];
+    state.sort = 'date'; state.options = [];
   }
 
   // ── Field metadata: maps field_name → UI render config ──
@@ -67,7 +69,7 @@ const Filters = (() => {
     model:          { type: 'skip' },
     trim:           { type: 'skip' },
     generation:     { type: 'text', id: 'filter-generation', placeholder: 'G30, W213, NQ5, CN7...' },
-    year:           { type: 'range', idMin: 'filter-year-from', idMax: 'filter-year-to', inputType: 'number', min: 1990, max: 2026 },
+    year:           { type: 'range', idMin: 'filter-year-from', idMax: 'filter-year-to', inputType: 'number', min: 1990, max: new Date().getFullYear() },
     price:          { type: 'range', idMin: 'filter-price-min', idMax: 'filter-price-max', inputType: 'number', min: 0, prefix: '₩' },
     mileage:        { type: 'range', idMin: 'filter-mileage-min', idMax: 'filter-mileage-max', inputType: 'number', min: 0 },
     engine_volume:  { type: 'range', idMin: 'filter-engine-min', idMax: 'filter-engine-max', inputType: 'number', min: 0, step: '0.1' },
@@ -150,8 +152,6 @@ const Filters = (() => {
   }
 
   function buildFilterSection(name, ui, apiLabel) {
-    const wrap = document.createElement('div');
-
     const section = document.createElement('div');
     section.className = 'filter-section';
     section.dataset.filterField = name;
@@ -239,10 +239,8 @@ const Filters = (() => {
       }
     }
 
-    wrap.appendChild(section);
     const divider = document.createElement('div');
     divider.className = 'filter-divider';
-    wrap.appendChild(divider);
 
     const frag = document.createDocumentFragment();
     frag.appendChild(section);
@@ -462,7 +460,6 @@ const Filters = (() => {
     state.listedBefore     = document.getElementById('filter-listed-before')?.value ?? '';
     state.firstRegAfter    = document.getElementById('filter-first-reg-after')?.value ?? '';
     state.firstRegBefore   = document.getElementById('filter-first-reg-before')?.value ?? '';
-    state.vin              = document.getElementById('filter-vin')?.value?.trim()  ?? '';
   }
 
   function getQuery() {
@@ -488,8 +485,10 @@ const Filters = (() => {
       fuelTypes:        state.fuelTypes.length      ? state.fuelTypes      : undefined,
       driveTypes:       state.driveTypes.length     ? state.driveTypes     : undefined,
       colors:           state.colors.length         ? state.colors         : undefined,
-      damageTypes:      state.damageTypes.length    ? state.damageTypes    : undefined,
-      titleTypes:       state.titleTypes.length     ? state.titleTypes     : undefined,
+      damageTypes:      state.damageTypes.length      ? state.damageTypes      : undefined,
+      titleTypes:       state.titleTypes.length       ? state.titleTypes       : undefined,
+      lienStatuses:     state.lienStatuses.length     ? state.lienStatuses     : undefined,
+      seizureStatuses:  state.seizureStatuses.length  ? state.seizureStatuses  : undefined,
       trim:             state.trim              || undefined,
       hasAccident:      state.hasAccident !== null ? state.hasAccident     : undefined,
       floodHistory:     state.floodHistory !== null ? state.floodHistory   : undefined,
@@ -501,7 +500,6 @@ const Filters = (() => {
       listedBefore:     state.listedBefore      || undefined,
       firstRegAfter:    state.firstRegAfter     || undefined,
       firstRegBefore:   state.firstRegBefore    || undefined,
-      vin:              state.vin              || undefined,
       options:          state.options.length   ? state.options  : undefined,
       sources:          state.sources,
       sort:             state.sort,
@@ -530,6 +528,8 @@ const Filters = (() => {
     if (q.colors)           state.colors           = q.colors;
     if (q.damageTypes)      state.damageTypes      = q.damageTypes;
     if (q.titleTypes)       state.titleTypes       = q.titleTypes;
+    if (q.lienStatuses)     state.lienStatuses     = q.lienStatuses;
+    if (q.seizureStatuses)  state.seizureStatuses  = q.seizureStatuses;
     if (q.sources)          state.sources          = q.sources;
     if (q.sort)             state.sort             = ['date', 'price_asc', 'price_desc'].includes(q.sort) ? q.sort : 'date';
     if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
@@ -545,8 +545,6 @@ const Filters = (() => {
     if (Array.isArray(q.options) && q.options.length) state.options = q.options;
 
     render();
-    renderMakeSelect();
-    renderModelSelect();
     setEl('filter-year-from',     q.yearFrom);
     setEl('filter-year-to',       q.yearTo);
     setEl('filter-price-min',     q.priceMin);
@@ -562,9 +560,8 @@ const Filters = (() => {
     setEl('filter-insurance-max', q.insuranceCountMax);
     setEl('filter-listed-after',  q.listedAfter);
     setEl('filter-listed-before', q.listedBefore);
-    setEl('filter-first-reg-after', q.firstRegAfter);
+    setEl('filter-first-reg-after',  q.firstRegAfter);
     setEl('filter-first-reg-before', q.firstRegBefore);
-    setEl('filter-vin',           q.vin);
     setEl('sort-select', state.sort);
   }
 

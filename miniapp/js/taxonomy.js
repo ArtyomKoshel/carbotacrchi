@@ -49,7 +49,7 @@ const Taxonomy = (() => {
   function options(field, items) {
     const list = normalizeOptionItems(items);
     if (field && labels[field]) {
-      return list.map(o => ({ value: o.value, label: label(field, o.label || o.value) }));
+      return list.map(o => ({ value: o.value, label: label(field, o.value) }));
     }
     return list;
   }
