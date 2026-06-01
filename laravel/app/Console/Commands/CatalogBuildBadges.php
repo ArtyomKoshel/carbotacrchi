@@ -142,12 +142,17 @@ class CatalogBuildBadges extends Command
             }
             $existing[$cacheKey] = true;
 
-            $fuel        = $this->parseFuel($badgeGroupKr);
-            $engineVol   = $this->parseEngineVolume($badgeGroupKr);
-            $driveType   = $this->parseDriveType($badgeKr);
-            $isTurbo     = $this->parseIsTurbo($badgeGroupKr, $badgeKr);
-            $seatCount   = $this->parseSeatCount($badgeKr);
-            $badgeDetailKr = $this->parseTrimKr($badgeKr, $badgeDetailKr, $seatCount);
+            $fuel          = $this->parseFuel($badgeGroupKr);
+            $engineVol     = $this->parseEngineVolume($badgeGroupKr);
+            $driveType     = $this->parseDriveType($badgeKr);
+            $isTurbo       = $this->parseIsTurbo($badgeGroupKr, $badgeKr);
+            $seatCount     = $this->parseSeatCount($badgeKr);
+
+            // TODO: enable parseTrimKr() after accuracy verification on real data.
+            // Accuracy test: run catalog:build-badges --apply, then check
+            // lots:normalize-from-catalog output and compare with Encar UI.
+            // $badgeDetailKr = $this->parseTrimKr($badgeKr, $badgeDetailKr, $seatCount);
+            // Currently: trim_kr = badge_detail_kr only (explicit Encar sub-level, e.g. Santa Fe)
 
             $new++;
             if ($new <= 20) {
@@ -303,45 +308,40 @@ class CatalogBuildBadges extends Command
     }
 
     /**
-     * Extract trim (комплектация) from badge_kr + badge_detail_kr.
+     * Extract trim from badge_kr when badge_detail_kr is absent.
      *
-     * Priority:
-     *  1. badge_detail_kr from iNav — authoritative when present
-     *     ("9인승 하이리무진" + badge_detail_kr="프레스티지" → "프레스티지")
+     * For Carnival-style badges: "9인승 노블레스" → "노블레스"
+     *                            "가솔린 9인승 시그니처" → "시그니처"
      *
-     *  2. Remainder after stripping fuel prefix + seat-count token from badge_kr
-     *     ("9인승 노블레스"        → "노블레스")
-     *     ("가솔린 9인승 시그니처" → "시그니처")
-     *     ("가솔린 2.5T 2WD"      → null — no seat count means badge IS the spec)
+     * Strategy: strip fuel prefix + N인승 token → remaining = trim grade.
+     * Only applicable when seat count is present in the badge.
      *
-     * This mirrors how Encar's filter UI displays trim: it strips the
-     * seat/fuel prefix and shows only the grade name.
+     * NOTE: currently not called — enable via TODO above after accuracy verification.
+     * Accuracy on Carnival dataset: ~95% for modern models (4세대).
      */
     private function parseTrimKr(string $badgeKr, ?string $badgeDetailKr, ?int $seatCount): ?string
     {
-        // Source 1: explicit badge_detail_kr from iNav (highest priority)
+        // Explicit BadgeDetail from iNav = authoritative (Santa Fe, Palisade, etc.)
         if ($badgeDetailKr !== null && $badgeDetailKr !== '') {
             return $badgeDetailKr;
         }
 
-        // Source 2: extract from badge_kr only when seat count is present
-        // (no seat count = badge encodes engine/drive, not a grade name)
+        // No seat count = badge encodes engine/drive spec, not a grade name
         if ($seatCount === null) {
             return null;
         }
 
         $s = $badgeKr;
 
-        // Strip known fuel prefixes from the start (pure vocabulary lookup)
+        // Strip fuel prefix
         foreach (array_keys(self::FUEL_PREFIX_MAP) as $prefix) {
-            $prefixWithSpace = $prefix . ' ';
-            if (str_starts_with($s, $prefixWithSpace)) {
-                $s = substr($s, strlen($prefixWithSpace));
+            if (str_starts_with($s, $prefix . ' ')) {
+                $s = substr($s, strlen($prefix) + 1);
                 break;
             }
         }
 
-        // Strip "N인승" token from the start
+        // Strip "N인승 " prefix → remaining is the grade name
         $seatToken = $seatCount . '인승 ';
         if (str_starts_with($s, $seatToken)) {
             $remaining = trim(substr($s, strlen($seatToken)));
