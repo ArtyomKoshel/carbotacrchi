@@ -73,15 +73,17 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
         _CACHED_PROXIES = []
         return _CACHED_PROXIES
 
-    proxies = []
-    base_creds = "user-3L8YmcrVpKK3wN9W"  # Base username from provider
-    password = "1TigQ7ujPds0xcv6"  # Password from provider
+    if not Config.FLOPPY_USERNAME or not Config.FLOPPY_PASSWORD:
+        logger.warning("[FloppyData] FLOPPY_USERNAME or FLOPPY_PASSWORD not set, proxy generation disabled")
+        _CACHED_PROXIES = []
+        return _CACHED_PROXIES
 
+    proxies = []
     for _ in range(count):
         session = _generate_random_session()
         proxy_url = (
-            f"http://{base_creds}-type-residential-session-{session}"
-            f"-country-KR-rotation-15:{password}@geo.g-w.info:10080"
+            f"http://{Config.FLOPPY_USERNAME}-type-residential-session-{session}"
+            f"-country-KR-rotation-15:{Config.FLOPPY_PASSWORD}@{Config.FLOPPY_HOST}"
         )
         proxies.append(proxy_url)
 

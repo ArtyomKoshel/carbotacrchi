@@ -38,10 +38,13 @@ class Config:
     ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
     ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "5"))
 
-    # FloppyData API for dynamic proxy generation
-    FLOPPYDATA_API_KEY = os.getenv("FLOPPYDATA_API_KEY", "")
-    FLOPPY_BASE_URL = os.getenv("FLOPPY_BASE_URL", "https://client-api.floppy.host")
-    PROXY_DEBUG = os.getenv("PROXY_DEBUG", "false").lower() in ("1", "true", "yes")
+    # FloppyData proxy credentials
+    FLOPPYDATA_API_KEY  = os.getenv("FLOPPYDATA_API_KEY", "")
+    FLOPPY_BASE_URL     = os.getenv("FLOPPY_BASE_URL", "https://client-api.floppy.host")
+    FLOPPY_USERNAME     = os.getenv("FLOPPY_USERNAME", "")
+    FLOPPY_PASSWORD     = os.getenv("FLOPPY_PASSWORD", "")
+    FLOPPY_HOST         = os.getenv("FLOPPY_HOST", "geo.g-w.info:10080")
+    PROXY_DEBUG         = os.getenv("PROXY_DEBUG", "false").lower() in ("1", "true", "yes")
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 
