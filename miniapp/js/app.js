@@ -139,6 +139,7 @@ const App = (() => {
         const favData = await API.getFavorites();
         Results.setFavorites((favData ?? []).map(f => f.id));
       } catch (_) {}
+      Results.setSearchOptions(query.options ?? []);
       Results.render(data);
       paginationState.total = data.total ?? 0;
       paginationState.offset = (data.lots ?? []).length;

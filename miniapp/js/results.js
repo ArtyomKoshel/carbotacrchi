@@ -1,10 +1,22 @@
 const Results = (() => {
-  let lots       = [];
-  let favorites  = new Set();
-  let activeLot  = null;
+  let lots           = [];
+  let favorites      = new Set();
+  let activeLot      = null;
+  let searchedOptions = new Set(); // codes from current search query
+
+  const CATEGORY_EMOJI = {
+    exterior:    '🚗',
+    safety:      '🛡️',
+    convenience: '⭐',
+    interior:    '🪑',
+  };
 
   function setFavorites(ids) {
     favorites = new Set(ids);
+  }
+
+  function setSearchOptions(codes) {
+    searchedOptions = new Set(Array.isArray(codes) ? codes : []);
   }
 
   function render(data, mount) {
@@ -272,22 +284,45 @@ const Results = (() => {
             <span class="sheet-detail-value">${escHtml(lot.dealerPhone)}</span>
           </div>` : ''}
         </div>
-        ${Array.isArray(lot.options) && lot.options.length ? `
-        <div style="margin:12px 0 0">
-          <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 6px">Опции</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 4px">
-            ${lot.options.map(o => {
-              const name = escHtml(o.name_ru || o.name_en || o.name_kr || o.code);
-              const icon = o.icon_url
-                ? `<img src="${escHtml(o.icon_url)}" alt="${name}" style="width:32px;height:32px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75">`
-                : `<span style="font-size:22px;line-height:32px">⚙️</span>`;
-              return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
-                ${icon}
-                <span style="font-size:9px;color:var(--hint);line-height:1.2">${name}</span>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>` : ''}
+        ${Array.isArray(lot.options) && lot.options.length ? (() => {
+          // Searched options first, then the rest
+          const searched = lot.options.filter(o => searchedOptions.has(o.code));
+          const rest     = lot.options.filter(o => !searchedOptions.has(o.code));
+          const sorted   = [...searched, ...rest];
+          const id       = `opts-${lot.id}`;
+
+          const renderOpt = (o, highlight) => {
+            const name  = escHtml(o.name_ru || o.name_en || o.name_kr || o.code);
+            const emoji = CATEGORY_EMOJI[o.category] || '⚙️';
+            const bg    = highlight ? 'rgba(51,144,236,.22)' : 'rgba(255,255,255,.05)';
+            const ring  = highlight ? `border:1.5px solid var(--accent);` : 'border:1.5px solid transparent;';
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;background:${bg};${ring}border-radius:10px;padding:6px 4px">
+              <span style="font-size:20px;line-height:1">${emoji}</span>
+              <span style="font-size:9px;color:${highlight ? 'var(--accent)' : 'var(--hint)'};line-height:1.2;font-weight:${highlight ? 600 : 400}">${name}</span>
+            </div>`;
+          };
+
+          const first10 = sorted.slice(0, 10);
+          const more    = sorted.slice(10);
+          const moreHtml = more.length ? `
+            <div id="${id}-more" style="display:none;grid-column:1/-1;display:none">
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                ${more.map(o => renderOpt(o, searchedOptions.has(o.code))).join('')}
+              </div>
+            </div>
+            <button onclick="document.getElementById('${id}-more').style.display=document.getElementById('${id}-more').style.display==='none'?'block':'none';this.textContent=this.textContent.includes('▼')?'Скрыть ▲':'Ещё ${more.length} ▼'"
+              style="grid-column:1/-1;background:none;border:none;color:var(--hint);font-size:11px;cursor:pointer;padding:4px 0">
+              Ещё ${more.length} ▼
+            </button>` : '';
+
+          return `<div style="margin:12px 0 0">
+            <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 6px">Опции (${sorted.length})</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 4px">
+              ${first10.map(o => renderOpt(o, searchedOptions.has(o.code))).join('')}
+              ${moreHtml}
+            </div>
+          </div>`;
+        })() : ''}
         <div id="sheet-inspection" style="margin:12px 0 12px"></div>
         <div class="sheet-actions">
           <a href="${escHtml(lot.lotUrl)}" target="_blank" rel="noopener"
@@ -378,5 +413,5 @@ const Results = (() => {
     setTimeout(() => t.classList.remove('show'), 2000);
   }
 
-  return { render, appendCards, setFavorites, closeSheet, sheetToggleFav };
+  return { render, appendCards, setFavorites, setSearchOptions, closeSheet, sheetToggleFav };
 })();
