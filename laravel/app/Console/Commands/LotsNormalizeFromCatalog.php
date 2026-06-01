@@ -160,6 +160,62 @@ class LotsNormalizeFromCatalog extends Command
             ", [$source]);
         }
 
+        // Fill model_en from catalog_models.model_group_en (e.g. K5 → "K5", Carnival → "Carnival")
+        $modelEnCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN catalog_models cm
+                ON  l.model_group = cm.model_group_kr
+                AND EXISTS (
+                    SELECT 1 FROM translations t
+                    WHERE t.category = 'make'
+                      AND t.kr       = cm.make_kr
+                      AND t.en       = l.make
+                )
+            WHERE l.source         = ?
+              AND l.model_en       IS NULL
+              AND cm.model_group_en IS NOT NULL
+              AND cm.model_group_en != ''
+        ", [$source])->cnt;
+
+        $this->line("  model_en: {$modelEnCount} lots to fill from catalog_models.model_group_en");
+
+        if ($apply && $modelEnCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN catalog_models cm
+                    ON  l.model_group = cm.model_group_kr
+                    AND EXISTS (
+                        SELECT 1 FROM translations t
+                        WHERE t.category = 'make'
+                          AND t.kr       = cm.make_kr
+                          AND t.en       = l.make
+                    )
+                SET l.model_en    = cm.model_group_en,
+                    l.updated_at  = NOW()
+                WHERE l.source         = ?
+                  AND l.model_en       IS NULL
+                  AND cm.model_group_en IS NOT NULL
+                  AND cm.model_group_en != ''
+            ", [$source]);
+        }
+
+        // Clean Encar placeholder "(세부등급 없음)" → NULL
+        // This means "no detailed grade" — should be stored as NULL, not as a string
+        $placeholderCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt FROM lots
+            WHERE source = ? AND trim = '(세부등급 없음)'
+        ", [$source])->cnt;
+
+        $this->line("  trim cleanup '(세부등급 없음)': {$placeholderCount} lots → NULL");
+
+        if ($apply && $placeholderCount > 0) {
+            DB::statement("
+                UPDATE lots SET trim = NULL, updated_at = NOW()
+                WHERE source = ? AND trim = '(세부등급 없음)'
+            ", [$source]);
+        }
+
         $this->line('');
         $this->info('Done.');
 

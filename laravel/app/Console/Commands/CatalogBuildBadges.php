@@ -147,6 +147,7 @@ class CatalogBuildBadges extends Command
             $driveType   = $this->parseDriveType($badgeKr);
             $isTurbo     = $this->parseIsTurbo($badgeGroupKr, $badgeKr);
             $seatCount   = $this->parseSeatCount($badgeKr);
+            $badgeDetailKr = $this->parseTrimKr($badgeKr, $badgeDetailKr, $seatCount);
 
             $new++;
             if ($new <= 20) {
@@ -277,23 +278,76 @@ class CatalogBuildBadges extends Command
 
     /**
      * Extract seat count from badge_kr.
-     * Encar encodes seat count as "N인승" prefix: "9인승 시그니처" → 9.
+     * Encar encodes seat count as "N인승" token: "9인승 시그니처" → 9.
      *
-     * Implementation: take the first token, check if it ends with "인승",
-     * extract leading digits. No regex — pure string operations.
+     * The token can be anywhere after a fuel prefix:
+     *   "9인승 노블레스"          → 9
+     *   "가솔린 9인승 시그니처"   → 9
+     *
+     * No regex — pure string token scan.
      */
     private function parseSeatCount(string $badgeKr): ?int
     {
-        $firstToken = explode(' ', $badgeKr)[0] ?? '';
-        if (str_ends_with($firstToken, '인승')) {
-            $digits = substr($firstToken, 0, -strlen('인승'));
-            if (ctype_digit($digits) && $digits !== '') {
-                $n = (int) $digits;
-                if ($n >= 1 && $n <= 45) {
-                    return $n;
+        foreach (explode(' ', $badgeKr) as $token) {
+            if (str_ends_with($token, '인승')) {
+                $digits = substr($token, 0, -strlen('인승'));
+                if (ctype_digit($digits) && $digits !== '') {
+                    $n = (int) $digits;
+                    if ($n >= 1 && $n <= 45) {
+                        return $n;
+                    }
                 }
             }
         }
+        return null;
+    }
+
+    /**
+     * Extract trim (комплектация) from badge_kr + badge_detail_kr.
+     *
+     * Priority:
+     *  1. badge_detail_kr from iNav — authoritative when present
+     *     ("9인승 하이리무진" + badge_detail_kr="프레스티지" → "프레스티지")
+     *
+     *  2. Remainder after stripping fuel prefix + seat-count token from badge_kr
+     *     ("9인승 노블레스"        → "노블레스")
+     *     ("가솔린 9인승 시그니처" → "시그니처")
+     *     ("가솔린 2.5T 2WD"      → null — no seat count means badge IS the spec)
+     *
+     * This mirrors how Encar's filter UI displays trim: it strips the
+     * seat/fuel prefix and shows only the grade name.
+     */
+    private function parseTrimKr(string $badgeKr, ?string $badgeDetailKr, ?int $seatCount): ?string
+    {
+        // Source 1: explicit badge_detail_kr from iNav (highest priority)
+        if ($badgeDetailKr !== null && $badgeDetailKr !== '') {
+            return $badgeDetailKr;
+        }
+
+        // Source 2: extract from badge_kr only when seat count is present
+        // (no seat count = badge encodes engine/drive, not a grade name)
+        if ($seatCount === null) {
+            return null;
+        }
+
+        $s = $badgeKr;
+
+        // Strip known fuel prefixes from the start (pure vocabulary lookup)
+        foreach (array_keys(self::FUEL_PREFIX_MAP) as $prefix) {
+            $prefixWithSpace = $prefix . ' ';
+            if (str_starts_with($s, $prefixWithSpace)) {
+                $s = substr($s, strlen($prefixWithSpace));
+                break;
+            }
+        }
+
+        // Strip "N인승" token from the start
+        $seatToken = $seatCount . '인승 ';
+        if (str_starts_with($s, $seatToken)) {
+            $remaining = trim(substr($s, strlen($seatToken)));
+            return $remaining !== '' ? $remaining : null;
+        }
+
         return null;
     }
 }
