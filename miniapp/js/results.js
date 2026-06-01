@@ -275,8 +275,17 @@ const Results = (() => {
         ${Array.isArray(lot.options) && lot.options.length ? `
         <div style="margin:12px 0 0">
           <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 6px">Опции</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;padding:0 4px">
-            ${lot.options.map(o => `<span style="font-size:11px;background:rgba(51,144,236,.12);color:var(--accent);border-radius:8px;padding:2px 8px">${escHtml(o.name_ru || o.name_en || o.name_kr || o.code)}</span>`).join('')}
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 4px">
+            ${lot.options.map(o => {
+              const name = escHtml(o.name_ru || o.name_en || o.name_kr || o.code);
+              const icon = o.icon_url
+                ? `<img src="${escHtml(o.icon_url)}" alt="${name}" style="width:32px;height:32px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75">`
+                : `<span style="font-size:22px;line-height:32px">⚙️</span>`;
+              return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
+                ${icon}
+                <span style="font-size:9px;color:var(--hint);line-height:1.2">${name}</span>
+              </div>`;
+            }).join('')}
           </div>
         </div>` : ''}
         <div id="sheet-inspection" style="margin:12px 0 12px"></div>
