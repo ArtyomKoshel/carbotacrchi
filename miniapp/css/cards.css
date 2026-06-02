@@ -153,6 +153,19 @@
   border-bottom: 1px solid rgba(255,255,255,.06);
 }
 
+/* ── Card visual tweaks ── */
+.lot-card__source {
+  display: inline-block;
+  background: rgba(51,144,236,.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.lot-card__price { font-size: 17px; font-weight: 800; }
+.lot-card {
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.lot-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.45); }
+
 /* ── Detail Sheet ── */
 .sheet-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.6);
@@ -169,9 +182,44 @@
 }
 .sheet-overlay.open .sheet { transform: translateY(0); }
 
+/* ── Sheet sticky header ── */
+.sheet-header {
+  position: sticky;
+  top: 0; z-index: 1;
+  background: var(--bg2);
+  padding: 8px 14px 10px;
+  cursor: grab;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.sheet-header:active { cursor: grabbing; }
+
+.sheet-header-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.sheet-header-source {
+  font-size: 11px; font-weight: 700;
+  color: var(--accent); text-transform: uppercase; letter-spacing: .4px;
+  background: rgba(51,144,236,.12);
+  border-radius: 4px; padding: 2px 7px;
+}
+.sheet-close-btn {
+  background: rgba(255,255,255,.08);
+  border: none; border-radius: 50%;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--hint);
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.sheet-close-btn:hover  { background: rgba(255,255,255,.15); color: var(--text); }
+.sheet-close-btn:active { background: rgba(255,255,255,.22); }
+
 .sheet-handle {
   width: 36px; height: 4px; background: rgba(255,255,255,.2);
-  border-radius: 2px; margin: 10px auto 0;
+  border-radius: 2px; margin: 0 auto;
 }
 
 .sheet-img {

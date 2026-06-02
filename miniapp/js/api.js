@@ -59,15 +59,9 @@ const API = (() => {
     return data;
   }
 
-  /**
-   * Returns filters data.
-   * - If localStorage cache is fresh → returns immediately (< 1ms), refreshes in background.
-   * - Otherwise → fetches from server (first open or cache expired).
-   */
   async function getFilters(locale = 'ru') {
     const cached = _readFiltersCache();
     if (cached) {
-      // Serve stale immediately, refresh in background
       _fetchFilters(locale).catch(() => {});
       return cached;
     }
@@ -82,16 +76,54 @@ const API = (() => {
     return _readFiltersCache() !== null;
   }
 
-  // ── Other API methods ───────────────────────────────────────────────────────
+  // ── Search ─────────────────────────────────────────────────────────────────
 
   function search(query, offset = 0) {
     const q = offset > 0 ? { ...query, offset } : query;
     return request('POST', '/search', {
-      user_id: TG.getUserId(),
+      user_id:   TG.getUserId(),
       init_data: TG.getInitData(),
       query: q,
     });
   }
+
+  // ── AI Chat search ─────────────────────────────────────────────────────────
+
+  function searchChat(text) {
+    return request('POST', '/search-chat', {
+      text,
+      user_id:   TG.getUserId(),
+      init_data: TG.getInitData(),
+    });
+  }
+
+  function resetChat() {
+    return request('POST', '/search-chat/reset', {
+      user_id:   TG.getUserId(),
+      init_data: TG.getInitData(),
+    });
+  }
+
+  // ── Filters count & context ────────────────────────────────────────────────
+
+  function getCount(query) {
+    return request('POST', '/filters/count', { query });
+  }
+
+  function getContext(params = {}) {
+    const p = new URLSearchParams({ status: 'active', locale: 'ru', ...params });
+    return request('GET', `/filters/context?${p}`);
+  }
+
+  function getTrims(make, model, locale = 'ru') {
+    const p = new URLSearchParams();
+    if (make) p.set('make', make);
+    if (model) p.set('model', model);
+    if (locale) p.set('locale', locale);
+    return request('GET', `/filters/trims?${p}`);
+  }
+
+  // ── Favorites ──────────────────────────────────────────────────────────────
 
   function getFavorites() {
     return request('GET', `/favorites?user_id=${TG.getUserId()}&init_data=${encodeURIComponent(TG.getInitData())}`);
@@ -99,17 +131,19 @@ const API = (() => {
 
   function addFavorite(lotId, source, lotData) {
     return request('POST', '/favorites', {
-      user_id: TG.getUserId(),
+      user_id:   TG.getUserId(),
       init_data: TG.getInitData(),
-      lot_id: lotId,
+      lot_id:    lotId,
       source,
-      lot_data: lotData,
+      lot_data:  lotData,
     });
   }
 
   function removeFavorite(lotId) {
     return request('DELETE', `/favorites/${encodeURIComponent(lotId)}?user_id=${TG.getUserId()}&init_data=${encodeURIComponent(TG.getInitData())}`);
   }
+
+  // ── Subscriptions ──────────────────────────────────────────────────────────
 
   function getSubscriptions() {
     return request('GET', `/subscriptions?user_id=${TG.getUserId()}&init_data=${encodeURIComponent(TG.getInitData())}`);
@@ -134,45 +168,7 @@ const API = (() => {
     });
   }
 
-  function searchChat(text) {
-    return request('POST', '/search-chat', {
-      text,
-      user_id:   TG.getUserId(),
-      init_data: TG.getInitData(),
-    });
-  }
-
-  function resetChat() {
-    return request('POST', '/search-chat/reset', {
-      user_id:   TG.getUserId(),
-      init_data: TG.getInitData(),
-    });
-  }
-
-  function getCount(query) {
-    return request('POST', '/filters/count', { query });
-  }
-
-  function getContext(params = {}) {
-    const p = new URLSearchParams({ status: 'active', locale: 'ru', ...params });
-    return request('GET', `/filters/context?${p}`);
-  }
-
-  function getTrims(make, model, locale = 'ru') {
-    const p = new URLSearchParams();
-    if (make) p.set('make', make);
-    if (model) p.set('model', model);
-    if (locale) p.set('locale', locale);
-    return request('GET', `/filters/trims?${p}`);
-  }
-
-  function searchChat(text) {
-    return request('POST', '/search-chat', {
-      user_id:   TG.getUserId(),
-      init_data: TG.getInitData(),
-      text,
-    });
-  }
+  // ── Inspection ─────────────────────────────────────────────────────────────
 
   async function getInspection(lotId) {
     const res = await fetch(`${BASE}/lots/${encodeURIComponent(lotId)}/inspection`);
@@ -183,9 +179,9 @@ const API = (() => {
 
   return {
     getFilters, invalidateFiltersCache, isFiltersCached,
+    search,
     searchChat, resetChat,
     getCount, getContext, getTrims,
-    search, searchChat,
     getFavorites, addFavorite, removeFavorite,
     getSubscriptions, subscribe, unsubscribe, markSeen,
     getInspection,

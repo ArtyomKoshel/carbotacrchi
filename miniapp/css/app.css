@@ -83,13 +83,19 @@ html, body {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   padding: 12px 20px; border-radius: var(--radius);
   font-size: 15px; font-weight: 600; cursor: pointer;
-  border: none; transition: opacity .15s;
+  border: none; transition: opacity .12s, transform .1s, box-shadow .12s;
   width: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn:active { opacity: .8; }
-.btn-primary  { background: var(--btn); color: var(--btn-text); }
+.btn:active { opacity: .85; transform: scale(.97); }
+.btn-primary  {
+  background: var(--btn); color: var(--btn-text);
+  box-shadow: 0 2px 10px rgba(51,144,236,.3);
+}
+.btn-primary:active { box-shadow: none; }
 .btn-secondary{ background: var(--bg2); color: var(--text); border: 1px solid rgba(255,255,255,.1); }
-.btn-danger   { background: var(--danger); color: #fff; }
+.btn-danger   { background: var(--danger); color: #fff; box-shadow: 0 2px 8px rgba(239,68,68,.25); }
+.btn-danger:active { box-shadow: none; }
 .btn-sm { padding: 7px 14px; font-size: 13px; width: auto; }
 
 /* ── Badge ── */

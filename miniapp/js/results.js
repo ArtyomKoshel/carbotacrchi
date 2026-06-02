@@ -213,11 +213,20 @@ const Results = (() => {
       </div>` : '';
 
     document.getElementById('sheet-content').innerHTML = `
-      <div class="sheet-handle"></div>
+      <div class="sheet-header" id="sheet-drag-handle">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header-row">
+          <span class="sheet-header-source">${escHtml(lot.sourceName)}</span>
+          <button class="sheet-close-btn" onclick="Results.closeSheet()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
       <img class="sheet-img" src="${imgSrc}" alt="${escHtml(lot.make)}"
            onerror="this.src='/miniapp/img/placeholder.svg'">
       <div class="sheet-body">
-        <div class="sheet-source">${escHtml(lot.sourceName)}</div>
         <div class="sheet-title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
         <div class="sheet-price">${price}</div>
         <div class="sheet-section-title">Основное</div>
@@ -308,6 +317,32 @@ const Results = (() => {
     overlay.classList.add('open');
     TG.haptic('impact', 'medium');
 
+    // Swipe-to-dismiss on the drag handle header
+    const sheetEl  = document.getElementById('sheet-content');
+    const dragArea = document.getElementById('sheet-drag-handle');
+    if (sheetEl && dragArea) {
+      let startY = 0;
+      const onStart = e => { startY = e.touches[0].clientY; sheetEl.style.transition = 'none'; };
+      const onMove  = e => {
+        const dy = e.touches[0].clientY - startY;
+        if (dy > 0) sheetEl.style.transform = `translateY(${dy}px)`;
+      };
+      const onEnd   = e => {
+        sheetEl.style.transition = '';
+        if (e.changedTouches[0].clientY - startY > 110) {
+          closeSheet();
+        } else {
+          sheetEl.style.transform = '';
+        }
+        dragArea.removeEventListener('touchstart', onStart);
+        dragArea.removeEventListener('touchmove',  onMove);
+        dragArea.removeEventListener('touchend',   onEnd);
+      };
+      dragArea.addEventListener('touchstart', onStart, { passive: true });
+      dragArea.addEventListener('touchmove',  onMove,  { passive: true });
+      dragArea.addEventListener('touchend',   onEnd);
+    }
+
     API.getInspection(lot.id).then(insp => {
       const el = document.getElementById('sheet-inspection');
       if (!el || !insp) return;
@@ -355,6 +390,8 @@ const Results = (() => {
   }
 
   function closeSheet() {
+    const sheetEl = document.getElementById('sheet-content');
+    if (sheetEl) sheetEl.style.transform = '';
     document.getElementById('sheet-overlay').classList.remove('open');
     activeLot = null;
   }
