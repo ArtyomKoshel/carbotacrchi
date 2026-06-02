@@ -213,11 +213,11 @@ const Results = (() => {
           ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '')}
           ${d('Привод',       lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '')}
           ${d('Двигатель',    lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '')}
-          ${d('Цвет кузова',  lot.color        ? escHtml(lot.color)      : '')}
-          ${d('Цвет салона',  lot.seatColor    ? escHtml(lot.seatColor)  : '')}
-          ${d('Мест',         lot.seatCount    ? String(lot.seatCount)   : '')}
-          ${d('Комплектация', lot.trim         ? escHtml(lot.trim)        : '')}
-          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)  : '')}
+          ${d('Цвет кузова',  lot.color        ? escHtml(Taxonomy.label('color', lot.color))           : '')}
+          ${d('Цвет салона',  lot.seatColor    ? escHtml(Taxonomy.label('seat_color', lot.seatColor)) : '')}
+          ${d('Мест',         lot.seatCount    ? String(lot.seatCount)                                : '')}
+          ${d('Комплектация', lot.trim         ? escHtml(Taxonomy.label('trim', lot.trim))            : '')}
+          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)                              : '')}
           ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`) : ''}
           ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`) : ''}
           ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '')}
