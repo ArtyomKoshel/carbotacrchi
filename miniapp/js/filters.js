@@ -520,9 +520,14 @@ const Filters = (() => {
     if (state.make || state.model) loadTrims();
   }
 
-  function renderGenerationSelect() {
+  function renderGenerationSelect(extraOptions = []) {
     const el = document.getElementById('filter-generation');
     if (!el || typeof TomSelect === 'undefined') return;
+
+    const opts = [...extraOptions];
+    if (state.generation && !opts.find(o => o.value === state.generation)) {
+      opts.unshift({ value: state.generation, text: state.generation });
+    }
 
     generationSelectInstance = new TomSelect(el, {
       maxItems:    1,
@@ -531,12 +536,16 @@ const Filters = (() => {
       maxOptions:  null,
       searchField: ['text'],
       placeholder: 'G30, W213, NQ5, CN7...',
-      options:     state.generation ? [{ value: state.generation, text: state.generation }] : [],
+      options:     opts,
       items:       state.generation ? [state.generation] : [],
       onChange(val) { state.generation = val || ''; },
       onItemAdd()  { _scheduleCountUpdate(); },
       onItemRemove() { state.generation = ''; _scheduleCountUpdate(); },
+      render: {
+        no_results: () => '<div class="ts-no-results" style="display:none"></div>',
+      },
     });
+    generationSelectInstance.wrapper.classList.add('ts-single');
   }
 
   async function loadTrims() {
@@ -827,6 +836,14 @@ const Filters = (() => {
         if (Array.isArray(items) && items.length) {
           renderChipGroup(`chips-${fieldName}`, items, stateKey);
         }
+      }
+
+      // Update generation Tom Select options
+      const genOpts = (ctx.generationOptions ?? []).map(o => ({ value: o.value, text: o.label ?? o.value }));
+      if (genOpts.length && generationSelectInstance) {
+        generationSelectInstance.clearOptions();
+        generationSelectInstance.addOptions(genOpts);
+        generationSelectInstance.refreshOptions(false);
       }
     } catch (_) {
       // Context update is best-effort
