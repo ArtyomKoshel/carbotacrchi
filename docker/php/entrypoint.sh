@@ -21,10 +21,13 @@ sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD:-carbot_pass}|"  "$APP_DIR/.
 sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}|" "$APP_DIR/.env"
 sed -i "s|^MINIAPP_URL=.*|MINIAPP_URL=${MINIAPP_URL:-}|" "$APP_DIR/.env"
 
-# ── 3. Composer install ───────────────────────────────────────────────────────
+# ── 3. Composer install + dump-autoload ──────────────────────────────────────
 if [ ! -d "$APP_DIR/vendor" ]; then
     echo "[entrypoint] Installing Composer dependencies..."
     composer install --working-dir="$APP_DIR" --no-interaction --no-plugins --prefer-dist
+else
+    echo "[entrypoint] Regenerating autoload map..."
+    composer dump-autoload --working-dir="$APP_DIR" --no-interaction --optimize 2>/dev/null || true
 fi
 
 # ── 4. Generate app key if empty ─────────────────────────────────────────────
@@ -58,8 +61,8 @@ else
     echo "[entrypoint] Skipping migrations (RUN_MIGRATIONS=false)"
 fi
 
-# ── 7. Clear config cache ─────────────────────────────────────────────────────
-php "$APP_DIR/artisan" config:clear 2>/dev/null || true
+# ── 7. Clear all caches (config, routes, views, events) ──────────────────────
+php "$APP_DIR/artisan" optimize:clear 2>/dev/null || true
 
 echo "[entrypoint] Bootstrap complete. Starting scheduler in background..."
 php "$APP_DIR/artisan" schedule:work --no-interaction >> /proc/1/fd/1 2>&1 &
