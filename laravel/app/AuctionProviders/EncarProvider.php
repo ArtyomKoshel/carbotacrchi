@@ -35,6 +35,7 @@ class EncarProvider extends AbstractDbProvider
                 color:        $raw['color']         ?? null,
                 engineVolume: isset($raw['engine_volume']) ? (float) $raw['engine_volume'] : null,
                 trim:         $raw['trim']          ?? null,
+                trimEn:       $raw['trim_en']       ?? null,
                 hasAccident:      isset($raw['has_accident'])      ? (bool) $raw['has_accident']      : null,
                 floodHistory:     isset($raw['flood_history'])     ? (bool) $raw['flood_history']     : null,
                 totalLossHistory: isset($raw['total_loss_history']) ? (bool) $raw['total_loss_history'] : null,

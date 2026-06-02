@@ -3,10 +3,18 @@ const App = (() => {
   let paginationState = { query: null, offset: 0, total: 0, loading: false, limit: 40 };
   let scrollObserver = null;
 
+  function hideLoadingOverlay() {
+    const el = document.getElementById('app-loading-overlay');
+    if (!el) return;
+    el.classList.add('hidden');
+    setTimeout(() => el.remove(), 300);
+  }
+
   async function init() {
     TG.init();
 
     await Filters.init();
+    hideLoadingOverlay();
 
     document.getElementById('search-btn').addEventListener('click', runSearch);
     document.getElementById('load-more-btn')?.addEventListener('click', loadMore);

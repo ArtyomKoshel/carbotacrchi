@@ -7,7 +7,9 @@ use App\Bot\ConversationState;
 use App\Services\ChatSearchService;
 use App\Services\ProviderAggregator;
 use App\Services\TelegramBot;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class TextSearchCommand
 {
@@ -123,7 +125,10 @@ class TextSearchCommand
             $footerButtons[] = [['text' => '📱 Все результаты (' . $result->total . ')', 'web_app' => ['url' => $deepLink]]];
             $this->bot->setChatMenuButton($ctx->chatId, '🔍 Все результаты (' . $result->total . ')', $deepLink);
         }
-        $footerButtons[] = [['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . base64_encode(json_encode($queryArray))]];
+        // Store query in cache — Telegram callback_data limit is 64 bytes
+        $queryKey = 'bq_' . Str::random(8);
+        Cache::put($queryKey, $queryArray, 86400);
+        $footerButtons[] = [['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . $queryKey]];
 
         $hint = $result->total > 5
             ? "Показаны 5 из {$result->total}. Можете уточнить: «подешевле», «без ДТП», «автомат»…"

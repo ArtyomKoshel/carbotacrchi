@@ -58,6 +58,7 @@ class SearchQuery
 
     public string $trim = '';
     public string $vin = '';
+    public string $seatColor = '';
 
     public string $listedAfter = '';    // ISO date YYYY-MM-DD
     public string $listedBefore = '';   // ISO date YYYY-MM-DD
@@ -103,8 +104,9 @@ class SearchQuery
         $q->floodHistory = self::toNullableBool($data['floodHistory'] ?? null);
         $q->totalLossHistory = self::toNullableBool($data['totalLossHistory'] ?? null);
 
-        $q->trim = trim((string) ($data['trim'] ?? ''));
-        $q->vin = trim((string) ($data['vin'] ?? ''));
+        $q->trim      = trim((string) ($data['trim']      ?? ''));
+        $q->vin       = trim((string) ($data['vin']       ?? ''));
+        $q->seatColor = trim((string) ($data['seatColor'] ?? ''));
 
         $q->listedAfter = trim((string) ($data['listedAfter'] ?? ''));
         $q->listedBefore = trim((string) ($data['listedBefore'] ?? ''));

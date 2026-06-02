@@ -469,7 +469,12 @@ const Filters = (() => {
     state.engineMin        = document.getElementById('filter-engine-min')?.value   ?? '';
     state.engineMax        = document.getElementById('filter-engine-max')?.value   ?? '';
     state.generation       = document.getElementById('filter-generation')?.value?.trim() ?? '';
-    state.trim             = document.getElementById('filter-trim')?.value?.trim() ?? '';
+    // Only overwrite state.trim from DOM if the select has real options loaded (>1 means not just placeholder)
+    const trimEl = document.getElementById('filter-trim');
+    const trimDomVal = trimEl?.value?.trim() ?? '';
+    if (trimDomVal || (trimEl && trimEl.options.length > 1)) {
+      state.trim = trimDomVal;
+    }
     state.ownersCountMin   = document.getElementById('filter-owners-min')?.value   ?? '';
     state.ownersCountMax   = document.getElementById('filter-owners-max')?.value   ?? '';
     state.insuranceCountMin= document.getElementById('filter-insurance-min')?.value ?? '';

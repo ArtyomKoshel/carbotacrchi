@@ -29,6 +29,37 @@ html, body {
 
 #app { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 56px; }
 
+/* ── Global loading overlay ── */
+#app-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 9999;
+  transition: opacity 0.25s ease;
+}
+#app-loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.app-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255,255,255,.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.app-loading-text {
+  font-size: 13px;
+  color: var(--hint);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; }
 .screen.active { display: flex; }
 

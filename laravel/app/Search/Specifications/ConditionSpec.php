@@ -18,8 +18,9 @@ class ConditionSpec implements LotSpecification
         if ($search->registrationYearMonthMin) $query->where('registration_year_month', '>=', $search->registrationYearMonthMin);
         if ($search->registrationYearMonthMax) $query->where('registration_year_month', '<=', $search->registrationYearMonthMax);
 
-        if ($search->hasAccident     !== null) $query->where('has_accident',      $search->hasAccident);
-        if ($search->floodHistory    !== null) $query->where('flood_history',     $search->floodHistory);
+        if ($search->hasAccident      !== null) $query->where('has_accident',      $search->hasAccident);
+        if ($search->floodHistory     !== null) $query->where('flood_history',     $search->floodHistory);
         if ($search->totalLossHistory !== null) $query->where('total_loss_history', $search->totalLossHistory);
+        if ($search->seatColor !== '')          $query->where('seat_color', 'like', '%' . $search->seatColor . '%');
     }
 }

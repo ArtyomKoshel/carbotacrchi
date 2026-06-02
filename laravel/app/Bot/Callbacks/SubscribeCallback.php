@@ -7,6 +7,7 @@ use App\Models\Subscription;
 use App\Services\ProviderAggregator;
 use App\Services\SearchQuery;
 use App\Services\TelegramBot;
+use Illuminate\Support\Facades\Cache;
 
 class SubscribeCallback
 {
@@ -17,10 +18,15 @@ class SubscribeCallback
 
     public function handle(BotContext $ctx, string $callbackId, string $encoded): void
     {
-        $queryData = json_decode(base64_decode($encoded), true);
+        // New format: short cache key (bq_XXXXXXXX)
+        // Legacy format: base64-encoded JSON (for backward compat)
+        $queryData = Cache::get($encoded);
+        if (!$queryData) {
+            $queryData = json_decode(base64_decode($encoded), true);
+        }
 
         if (!$queryData) {
-            $this->bot->answerCallbackQuery($callbackId, 'Ошибка данных');
+            $this->bot->answerCallbackQuery($callbackId, 'Ошибка: запрос устарел, выполните поиск заново');
             return;
         }
 
