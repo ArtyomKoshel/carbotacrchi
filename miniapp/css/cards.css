@@ -119,9 +119,10 @@
   font-weight: 600;
 }
 .lot-card__tag--match {
-  background: #3390ec;
-  color: #fff;
-  font-weight: 700;
+  background: rgba(51,144,236,.12);
+  color: var(--accent);
+  border: 1.5px solid #3390ec;
+  font-weight: 600;
 }
 .sheet-detail-item--match .sheet-detail-label { color: var(--accent); font-weight: 700; }
 .sheet-detail-item--match .sheet-detail-value { color: var(--accent); font-weight: 700; }
