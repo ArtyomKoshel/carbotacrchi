@@ -119,13 +119,12 @@
   font-weight: 600;
 }
 .lot-card__tag--match {
-  background: rgba(51,144,236,.15);
-  color: var(--accent);
-  border: 1px solid rgba(51,144,236,.35);
-  font-weight: 600;
+  background: #3390ec;
+  color: #fff;
+  font-weight: 700;
 }
-.sheet-detail-item--match .sheet-detail-label { color: var(--accent); }
-.sheet-detail-item--match .sheet-detail-value { color: var(--accent); }
+.sheet-detail-item--match .sheet-detail-label { color: var(--accent); font-weight: 700; }
+.sheet-detail-item--match .sheet-detail-value { color: var(--accent); font-weight: 700; }
 
 .lot-card__damage {
   font-size: 11px; color: var(--danger);

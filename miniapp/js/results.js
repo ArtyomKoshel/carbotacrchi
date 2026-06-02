@@ -22,6 +22,7 @@ const Results = (() => {
 
   function setSearchQuery(q) {
     currentQuery = q ?? null;
+    console.log('[HIGHLIGHT]', JSON.stringify({ t: q?.transmissions, f: q?.fuelTypes, d: q?.driveTypes, bt: q?.bodyTypes, ha: q?.hasAccident }));
   }
 
   function _isQueried(field) {
