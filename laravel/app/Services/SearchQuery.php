@@ -282,7 +282,12 @@ class SearchQuery
         if ($this->driveTypes) $parts[] = implode('/', $this->driveTypes);
         if ($this->bodyTypes)  $parts[] = implode('/', $this->bodyTypes);
         if ($this->colors) $parts[] = 'цвет: ' . implode('/', $this->colors);
-        if ($this->trim)   $parts[] = 'комплектация: ' . $this->trim;
+        if ($this->trim) {
+            $trimLabel = \App\Models\Translation::where('category', 'trim')
+                ->where('kr', $this->trim)
+                ->value('en') ?? $this->trim;
+            $parts[] = 'комплектация: ' . $trimLabel;
+        }
         if ($this->listedAfter)   $parts[] = "объявления от {$this->listedAfter}";
         if ($this->listedBefore)  $parts[] = "объявления до {$this->listedBefore}";
         if ($this->firstRegAfter) $parts[] = "регистрация от {$this->firstRegAfter}";
