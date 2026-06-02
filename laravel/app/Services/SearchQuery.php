@@ -183,15 +183,15 @@ class SearchQuery
             }
 
             if ($hasMin && !$hasMax) {
-                // "пробег 100 000" → range [100 000-tol, 100 000+tol]
-                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
-                $clone->$maxProp = self::applyTolerance($origMin, $tolerance, false, $isFloat);
+                // "от X" (e.g. "год от 2020") — only expand min downward.
+                // Do NOT create a max — user explicitly has no upper bound.
+                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true, $isFloat);
             } elseif (!$hasMin && $hasMax) {
-                // "пробег до 100 000" → range [100 000-tol, 100 000+tol]
-                $clone->$minProp = self::applyTolerance($origMax, $tolerance, true,  $isFloat);
+                // "до X" (e.g. "пробег до 100 000") — only expand max upward.
+                // Do NOT create a min — user explicitly has no lower bound.
                 $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             } else {
-                // Both bounds set: widen the range outward
+                // Both bounds set (exact year, price range, etc.) — widen outward.
                 $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
                 $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             }

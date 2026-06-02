@@ -8,33 +8,41 @@ use Illuminate\Database\Seeder;
 class BotFilterSettingsSeeder extends Seeder
 {
     private const DEFAULTS = [
-        'source' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'make' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'model' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'year' => ['enabled' => true, 'tolerance_type' => 'absolute', 'tolerance_value' => 1, 'display_in_card' => true],
-        'price' => ['enabled' => true, 'tolerance_type' => 'percentage', 'tolerance_value' => 0.15, 'display_in_card' => true],
-        'mileage' => ['enabled' => true, 'tolerance_type' => 'absolute', 'tolerance_value' => 10000, 'display_in_card' => true],
-        'engine_volume' => ['enabled' => true, 'tolerance_type' => 'percentage', 'tolerance_value' => 0.10, 'display_in_card' => true],
-        'fuel' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'transmission' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'body_type' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'drive_type' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'color' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'has_accident' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'flood_history' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'total_loss_history' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'insurance_count' => ['enabled' => true, 'tolerance_type' => 'absolute', 'tolerance_value' => 1, 'display_in_card' => true],
-        'owners_count' => ['enabled' => true, 'tolerance_type' => 'absolute', 'tolerance_value' => 1, 'display_in_card' => true],
-        'repair_cost' => ['enabled' => false, 'tolerance_type' => 'percentage', 'tolerance_value' => 0.20, 'display_in_card' => false],
-        'retail_value' => ['enabled' => false, 'tolerance_type' => 'percentage', 'tolerance_value' => 0.15, 'display_in_card' => false],
-        'lien_status' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'seizure_status' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'sell_type' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'seat_count' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'trim' => ['enabled' => true, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
-        'registration_year_month' => ['enabled' => false, 'tolerance_type' => 'absolute', 'tolerance_value' => 6, 'display_in_card' => false],
-        'first_reg_date' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => true],
-        'listed_at' => ['enabled' => false, 'tolerance_type' => 'none', 'tolerance_value' => null, 'display_in_card' => false],
+        //                                               tolerance_type   value   display_in_card
+        'source'                  => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'make'                    => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'model'                   => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        // year: ±1 год только при точном совпадении (2020 → 2019–2021), при "от"/"до" только расширяем одну границу
+        'year'                    => ['enabled' => true,  'tolerance_type' => 'absolute',   'tolerance_value' => 1,    'display_in_card' => true],
+        // price: +10% при "до X" (найти чуть дороже), -10% при "от X" (найти чуть дешевле)
+        'price'                   => ['enabled' => true,  'tolerance_type' => 'percentage', 'tolerance_value' => 0.10, 'display_in_card' => true],
+        // mileage: +10% при "до X" (100 000 → до 110 000), -10% при "от X"
+        'mileage'                 => ['enabled' => true,  'tolerance_type' => 'percentage', 'tolerance_value' => 0.10, 'display_in_card' => true],
+        // engine_volume: точное совпадение — 2.0 ≠ 1.8 (разные двигатели)
+        'engine_volume'           => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'fuel'                    => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'transmission'            => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'body_type'               => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'drive_type'              => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'color'                   => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'has_accident'            => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'flood_history'           => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'total_loss_history'      => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        // insurance_count: точное требование — "не более 2" значит не более 2, без погрешности
+        'insurance_count'         => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        // owners_count: точное требование — "1 владелец" = 1, погрешность ±1 давала 0–2 что неприемлемо
+        'owners_count'            => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'repair_cost'             => ['enabled' => false, 'tolerance_type' => 'percentage', 'tolerance_value' => 0.20, 'display_in_card' => false],
+        'retail_value'            => ['enabled' => false, 'tolerance_type' => 'percentage', 'tolerance_value' => 0.15, 'display_in_card' => false],
+        'lien_status'             => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'seizure_status'          => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'sell_type'               => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'seat_count'              => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'trim'                    => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'generation'              => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'registration_year_month' => ['enabled' => false, 'tolerance_type' => 'absolute',   'tolerance_value' => 6,    'display_in_card' => false],
+        'first_reg_date'          => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'listed_at'               => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
     ];
 
     public function run(): void
