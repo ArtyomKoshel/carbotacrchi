@@ -183,12 +183,9 @@ const Results = (() => {
         ).join('')}</div>`
       : '';
 
-    // Calendar icon for date, odometer for km
-    const calIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11">
+    // Calendar SVG for date
+    const calIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
       <path d="M11 1v1H5V1H3v1H1.5A1.5 1.5 0 000 3.5v10A1.5 1.5 0 001.5 15h13A1.5 1.5 0 0016 13.5v-10A1.5 1.5 0 0014.5 2H13V1h-2zm3 5H2V4h12v2z"/>
-    </svg>`;
-    const odoIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11">
-      <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.5 11.5l-4-2.5V3h1.5v5.3l3.2 2L11.5 11.5z"/>
     </svg>`;
 
     return `
@@ -205,7 +202,7 @@ const Results = (() => {
           <div class="lot-card__price">${price}</div>
           <div class="lot-card__meta">
             <span class="lot-card__meta-item">${calIcon} ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}</span>
-            <span class="lot-card__meta-item">${odoIcon} ${km}</span>
+            <span class="lot-card__meta-item">${km}</span>
           </div>
           ${drivelineHtml}
           ${tagsHtml}
