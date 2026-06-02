@@ -613,6 +613,7 @@ const Filters = (() => {
     if (optionsSelectInstance) {
       state.options = [...optionsSelectInstance.items];
     }
+    console.log('[STATE]', JSON.stringify({ t: state.transmissions, f: state.fuelTypes, d: state.driveTypes, bt: state.bodyTypes, ha: state.hasAccident }));
     return {
       make:             state.make              || undefined,
       model:            state.model             || undefined,

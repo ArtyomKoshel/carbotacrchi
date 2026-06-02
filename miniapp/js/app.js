@@ -52,12 +52,12 @@ const App = (() => {
     const deepQuery = parseDeepLink();
     if (deepQuery) {
       Filters.applyQuery(deepQuery);
-      await searchWithQuery(Filters.getQuery());
+      await searchWithQuery(deepQuery);
     } else {
       const lastQuery = loadLastSearch();
       if (lastQuery) {
         Filters.applyQuery(lastQuery);
-        await searchWithQuery(Filters.getQuery());
+        await searchWithQuery(lastQuery);
       } else {
         switchTab('search');
       }
