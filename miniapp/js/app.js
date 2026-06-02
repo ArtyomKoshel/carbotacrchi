@@ -157,6 +157,7 @@ const App = (() => {
         Results.setFavorites((favData ?? []).map(f => f.id));
       } catch (_) {}
       Results.setSearchOptions(query.options ?? []);
+      Results.setSearchQuery(query);
       Results.render(data);
       paginationState.total = data.total ?? 0;
       paginationState.offset = (data.lots ?? []).length;

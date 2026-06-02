@@ -145,54 +145,55 @@ const Results = (() => {
   }
 
   function renderCard(lot, i) {
-    const price  = '₩' + Number(lot.price).toLocaleString();
-    const km     = Number(lot.mileage).toLocaleString() + ' km';
-    const isFav  = favorites.has(lot.id);
-    const imgSrc = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const cardFields = new Set(Filters.getCardFields());
+    const price     = '₩' + Number(lot.price).toLocaleString();
+    const km        = Number(lot.mileage).toLocaleString() + ' км';
+    const isFav     = favorites.has(lot.id);
+    const imgSrc    = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
+    const modelName = lot.modelEn || lot.model || '';
 
-    // Build smart tag list — priority order, max 3 visible + "+N"
+    // Drivetrain line: "Автомат · Бензин · AWD · 2.0л" — plain text, not tags
+    const drivelineParts = [
+      lot.transmission ? Taxonomy.label('transmission', lot.transmission) : null,
+      lot.fuel         ? Taxonomy.label('fuel',         lot.fuel)         : null,
+      lot.driveType    ? Taxonomy.label('drive_type',   lot.driveType)    : null,
+      lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume}л` : null,
+    ].filter(Boolean);
+    const drivelineHtml = drivelineParts.length
+      ? `<div class="lot-card__driveline">${drivelineParts.map(escHtml).join(' · ')}</div>`
+      : '';
+
+    // Tags: only for safety alerts and searched-field highlights
     const tags = [];
+    if (lot.hasAccident)
+      tags.push({ label: '⚠ Авария', cls: 'lot-card__tag--danger' });
+    else if (_isQueried('has_accident') && lot.hasAccident === false)
+      tags.push({ label: '✓ Без аварий', cls: 'lot-card__tag--match' });
 
-    // 1. Safety flags (always high priority)
-    if (lot.hasAccident !== null && lot.hasAccident !== undefined) {
-      if (lot.hasAccident)
-        tags.push({ label: 'Авария', cls: 'lot-card__tag--danger' });
-      else if (_isQueried('has_accident'))
-        tags.push({ label: '✓ Без аварий', cls: 'lot-card__tag--match' });
-    }
-    if (lot.floodHistory !== null && lot.floodHistory !== undefined) {
-      if (lot.floodHistory)
-        tags.push({ label: 'Затоплен', cls: 'lot-card__tag--danger' });
-      else if (_isQueried('flood_history'))
-        tags.push({ label: '✓ Не топлен', cls: 'lot-card__tag--match' });
-    }
+    if (lot.floodHistory)
+      tags.push({ label: '💧 Затоплен', cls: 'lot-card__tag--danger' });
 
-    // 2. Key drivetrain characteristics
-    if (lot.transmission)
-      tags.push({ label: Taxonomy.label('transmission', lot.transmission), cls: _isQueried('transmission') ? 'lot-card__tag--match' : '' });
-    if (lot.fuel)
-      tags.push({ label: Taxonomy.label('fuel', lot.fuel), cls: _isQueried('fuel') ? 'lot-card__tag--match' : '' });
-    if (lot.driveType && _isQueried('drive_type'))
-      tags.push({ label: Taxonomy.label('drive_type', lot.driveType), cls: 'lot-card__tag--match' });
-    if (lot.engineVolume && Number(lot.engineVolume) >= 0.5 && _isQueried('engine_volume'))
-      tags.push({ label: `${lot.engineVolume}л`, cls: 'lot-card__tag--match' });
-
-    // 3. Owner/condition info (only if searched or notable)
-    if (lot.ownersCount != null && _isQueried('owners_count'))
+    if (_isQueried('owners_count') && lot.ownersCount != null)
       tags.push({ label: `${lot.ownersCount} влад.`, cls: 'lot-card__tag--match' });
+    if (_isQueried('drive_type') && lot.driveType)
+      tags.push({ label: Taxonomy.label('drive_type', lot.driveType), cls: 'lot-card__tag--match' });
 
-    const MAX = 3;
-    const shown = tags.slice(0, MAX);
-    const extra = tags.length - MAX;
-    const tagsHtml = [
-      ...shown.map(t => `<span class="lot-card__tag${t.cls ? ' ' + t.cls : ''}">${escHtml(t.label)}</span>`),
-      ...(extra > 0 ? [`<span class="lot-card__tag">+${extra}</span>`] : []),
-    ].join('');
+    const tagsHtml = tags.length
+      ? `<div class="lot-card__tags">${tags.map(t =>
+          `<span class="lot-card__tag${t.cls ? ' ' + t.cls : ''}">${escHtml(t.label)}</span>`
+        ).join('')}</div>`
+      : '';
+
+    // Calendar icon for date, odometer for km
+    const calIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11">
+      <path d="M11 1v1H5V1H3v1H1.5A1.5 1.5 0 000 3.5v10A1.5 1.5 0 001.5 15h13A1.5 1.5 0 0016 13.5v-10A1.5 1.5 0 0014.5 2H13V1h-2zm3 5H2V4h12v2z"/>
+    </svg>`;
+    const odoIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11">
+      <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.5 11.5l-4-2.5V3h1.5v5.3l3.2 2L11.5 11.5z"/>
+    </svg>`;
 
     return `
       <div class="lot-card" data-idx="${i}">
-        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(lot.make)} ${escHtml(lot.model)}"
+        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(lot.make)} ${escHtml(modelName)}"
              onerror="this.src='/miniapp/img/placeholder.svg'">
         <button class="lot-card__fav-btn${isFav?' saved':''}" data-id="${escHtml(lot.id)}"
                 aria-label="Сохранить">
@@ -200,19 +201,14 @@ const Results = (() => {
         </button>
         <div class="lot-card__body">
           <div class="lot-card__source">${escHtml(lot.sourceName)}</div>
-          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
+          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(modelName)}</div>
           <div class="lot-card__price">${price}</div>
           <div class="lot-card__meta">
-            <span class="lot-card__meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a6 6 0 100 12A6 6 0 008 1zM0 8a8 8 0 1116 0A8 8 0 010 8z"/><path d="M8 4v4l2.5 2.5-1 1L7 8.5V4h1z"/></svg>
-              ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}
-            </span>
-            <span class="lot-card__meta-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              ${km}
-            </span>
+            <span class="lot-card__meta-item">${calIcon} ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}</span>
+            <span class="lot-card__meta-item">${odoIcon} ${km}</span>
           </div>
-          ${tagsHtml ? `<div class="lot-card__tags">${tagsHtml}</div>` : ''}
+          ${drivelineHtml}
+          ${tagsHtml}
         </div>
       </div>`;
   }
