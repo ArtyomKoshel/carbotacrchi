@@ -72,5 +72,15 @@ const TG = (() => {
     twa?.close();
   }
 
-  return { init, getUserId, getInitData, getTheme, haptic, sendToChatAndClose, setMainButton, hideMainButton, back, hideBack, close };
+  function minimize() {
+    const twa = getTwa();
+    if (typeof twa?.minimize === 'function') twa.minimize();
+  }
+
+  function canMinimize() {
+    const twa = getTwa();
+    return typeof twa?.minimize === 'function';
+  }
+
+  return { init, getUserId, getInitData, getTheme, haptic, sendToChatAndClose, setMainButton, hideMainButton, back, hideBack, close, minimize, canMinimize };
 })();

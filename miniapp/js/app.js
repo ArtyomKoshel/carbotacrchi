@@ -13,6 +13,11 @@ const App = (() => {
   async function init() {
     TG.init();
 
+    if (TG.canMinimize()) {
+      const btn = document.getElementById('minimize-btn');
+      if (btn) btn.style.display = '';
+    }
+
     // If filters are already cached → hide overlay immediately (no visible flash)
     if (API.isFiltersCached()) {
       hideLoadingOverlay();
