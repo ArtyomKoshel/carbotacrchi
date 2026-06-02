@@ -134,6 +134,21 @@ const API = (() => {
     });
   }
 
+  function searchChat(text) {
+    return request('POST', '/search-chat', {
+      text,
+      user_id:   TG.getUserId(),
+      init_data: TG.getInitData(),
+    });
+  }
+
+  function resetChat() {
+    return request('POST', '/search-chat/reset', {
+      user_id:   TG.getUserId(),
+      init_data: TG.getInitData(),
+    });
+  }
+
   function getCount(query) {
     return request('POST', '/filters/count', { query });
   }
@@ -168,6 +183,7 @@ const API = (() => {
 
   return {
     getFilters, invalidateFiltersCache, isFiltersCached,
+    searchChat, resetChat,
     getCount, getContext, getTrims,
     search, searchChat,
     getFavorites, addFavorite, removeFavorite,

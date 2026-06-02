@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\FavoritesController;
 use App\Http\Controllers\Api\FiltersController;
 use App\Http\Controllers\Api\InspectionsController;
+use App\Http\Controllers\Api\SearchChatController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SubscriptionsController;
 use App\Http\Controllers\Internal\LotsController;
@@ -12,6 +13,8 @@ Route::get('/lots/{lotId}/inspection', [InspectionsController::class, 'show']);
 
 Route::middleware('telegram.auth')->group(function () {
     Route::post('/search',                    [SearchController::class,       'search']);
+    Route::post('/search-chat',               [SearchChatController::class,   'chat']);
+    Route::post('/search-chat/reset',         [SearchChatController::class,   'reset']);
     Route::get('/favorites',                  [FavoritesController::class,    'index']);
     Route::post('/favorites',                 [FavoritesController::class,    'store']);
     Route::delete('/favorites/{id}',          [FavoritesController::class,    'destroy']);
