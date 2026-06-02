@@ -1,5 +1,7 @@
 const API = (() => {
   const BASE = '/api';
+  const FILTERS_CACHE_KEY = 'carbot_filters_v3';
+  const FILTERS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
 
   async function request(method, path, body = null) {
     const opts = {
@@ -29,11 +31,58 @@ const API = (() => {
     return json.data;
   }
 
-  function getFilters(locale = 'ru') {
+  // ── Filters with localStorage cache ────────────────────────────────────────
+
+  function _readFiltersCache() {
+    try {
+      const raw = localStorage.getItem(FILTERS_CACHE_KEY);
+      if (!raw) return null;
+      const { ts, data } = JSON.parse(raw);
+      if (Date.now() - ts > FILTERS_CACHE_TTL) return null;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function _writeFiltersCache(data) {
+    try {
+      localStorage.setItem(FILTERS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+    } catch (_) {}
+  }
+
+  async function _fetchFilters(locale) {
     const p = new URLSearchParams();
     if (locale) p.set('locale', locale);
-    return request('GET', `/filters?${p}`);
+    const data = await request('GET', `/filters?${p}`);
+    _writeFiltersCache(data);
+    return data;
   }
+
+  /**
+   * Returns filters data.
+   * - If localStorage cache is fresh → returns immediately (< 1ms), refreshes in background.
+   * - Otherwise → fetches from server (first open or cache expired).
+   */
+  async function getFilters(locale = 'ru') {
+    const cached = _readFiltersCache();
+    if (cached) {
+      // Serve stale immediately, refresh in background
+      _fetchFilters(locale).catch(() => {});
+      return cached;
+    }
+    return _fetchFilters(locale);
+  }
+
+  function invalidateFiltersCache() {
+    try { localStorage.removeItem(FILTERS_CACHE_KEY); } catch (_) {}
+  }
+
+  function isFiltersCached() {
+    return _readFiltersCache() !== null;
+  }
+
+  // ── Other API methods ───────────────────────────────────────────────────────
 
   function search(query, offset = 0) {
     const q = offset > 0 ? { ...query, offset } : query;
@@ -109,5 +158,12 @@ const API = (() => {
     return json?.data ?? null;
   }
 
-  return { getFilters, getCount, getContext, getTrims, search, getFavorites, addFavorite, removeFavorite, getSubscriptions, subscribe, unsubscribe, markSeen, getInspection };
+  return {
+    getFilters, invalidateFiltersCache, isFiltersCached,
+    getCount, getContext, getTrims,
+    search,
+    getFavorites, addFavorite, removeFavorite,
+    getSubscriptions, subscribe, unsubscribe, markSeen,
+    getInspection,
+  };
 })();

@@ -11,6 +11,7 @@ use App\Support\Taxonomy\TaxonomyLocalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class FiltersController extends Controller
@@ -25,37 +26,38 @@ class FiltersController extends Controller
 
     public function index(): JsonResponse
     {
-        $locale     = trim((string) request()->query('locale', 'ru')) ?: 'ru';
-        $currentYear = (int) date('Y');
+        $locale      = trim((string) request()->query('locale', 'ru')) ?: 'ru';
         $sourcesCfg  = config('auction.sources', ['encar', 'kbcha']);
         $sources     = array_values(is_array($sourcesCfg) ? $sourcesCfg : ['encar', 'kbcha']);
+        $currentYear = (int) date('Y');
 
-        $makes         = [];
-        $bodyTypes     = [];
-        $transmissions = [];
-        $fuelTypes     = [];
-        $driveTypes    = [];
-        $colors        = [];
-        $filterFields  = [];
-        $optionItems   = [];
+        $cacheKey = 'api_filters_' . $locale . '_' . implode('_', $sources);
 
-        try {
-            $makes         = $this->buildMakesHierarchy($sources);
-            $bodyTypes     = $this->distinctValues('body_type', $sources);
-            $transmissions = $this->distinctValues('transmission', $sources);
-            $fuelTypes     = $this->distinctValues('fuel', $sources);
-            $driveTypes    = $this->distinctValues('drive_type', $sources);
-            $colors        = $this->distinctValues('color', $sources);
-            $filterFields  = $this->buildFilterFieldsMeta();
-            $optionItems   = $this->buildOptionItems($locale);
-        } catch (\Throwable) {
-        }
+        $data = Cache::remember($cacheKey, 600, function () use ($locale, $sources, $currentYear) {
+            $makes         = [];
+            $bodyTypes     = [];
+            $transmissions = [];
+            $fuelTypes     = [];
+            $driveTypes    = [];
+            $colors        = [];
+            $filterFields  = [];
+            $optionItems   = [];
 
-        $makeOptions = array_map(static fn (string $v) => ['value' => $v, 'label' => $v], array_keys($makes));
+            try {
+                $makes         = $this->buildMakesHierarchy($sources);
+                $bodyTypes     = $this->distinctValues('body_type', $sources);
+                $transmissions = $this->distinctValues('transmission', $sources);
+                $fuelTypes     = $this->distinctValues('fuel', $sources);
+                $driveTypes    = $this->distinctValues('drive_type', $sources);
+                $colors        = $this->distinctValues('color', $sources);
+                $filterFields  = $this->buildFilterFieldsMeta();
+                $optionItems   = $this->buildOptionItems($locale);
+            } catch (\Throwable) {
+            }
 
-        return response()->json([
-            'ok'   => true,
-            'data' => [
+            $makeOptions = array_map(static fn (string $v) => ['value' => $v, 'label' => $v], array_keys($makes));
+
+            return [
                 'makes'               => $makes,
                 'makeOptions'         => $makeOptions,
                 'sources'             => $this->buildSourceOptions($sources),
@@ -73,12 +75,13 @@ class FiltersController extends Controller
                 'colors'              => $colors,
                 'colorOptions'        => TaxonomyLocalizer::options('color', $colors, $locale),
                 'options'             => $optionItems,
-                // Deprecated, kept for backward compat
                 'damageTypes'         => [],
                 'titleTypes'          => [],
                 'generations'         => [],
-            ],
-        ]);
+            ];
+        });
+
+        return response()->json(['ok' => true, 'data' => $data]);
     }
 
     /**

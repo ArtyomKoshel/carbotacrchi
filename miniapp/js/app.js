@@ -13,7 +13,14 @@ const App = (() => {
   async function init() {
     TG.init();
 
+    // If filters are already cached → hide overlay immediately (no visible flash)
+    if (API.isFiltersCached()) {
+      hideLoadingOverlay();
+    }
+
     await Filters.init();
+
+    // Hide overlay after init (covers the case when cache was empty)
     hideLoadingOverlay();
 
     document.getElementById('search-btn').addEventListener('click', runSearch);
