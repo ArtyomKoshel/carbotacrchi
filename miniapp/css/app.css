@@ -264,6 +264,14 @@ html, body {
   white-space: nowrap; flex-shrink: 0;
 }
 
+/* ── Sticky top bar for search screen (header + mode tabs together) ── */
+#search-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg2);
+}
+
 /* ── Search mode tabs (Фильтры / ИИ-поиск) ── */
 .search-mode-tabs {
   display: flex;

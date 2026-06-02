@@ -23,15 +23,17 @@
 
   <!-- ── SEARCH / FILTER SCREEN ── -->
   <div id="screen-search" class="screen active">
-    <div class="header">
-      <span class="header-title">Поиск по аукционам</span>
-      <button class="header-action" id="filters-reset-btn" style="display:none" onclick="Filters.reset()">Сбросить</button>
-    </div>
+    <div id="search-top-bar">
+      <div class="header">
+        <span class="header-title">Поиск по аукционам</span>
+        <button class="header-action" id="filters-reset-btn" style="display:none" onclick="Filters.reset()">Сбросить</button>
+      </div>
 
-    <!-- Mode toggle: Filters / AI-chat -->
-    <div class="search-mode-tabs">
-      <button class="search-mode-tab active" id="mode-tab-filters" onclick="App.setSearchMode('filters')">Фильтры</button>
-      <button class="search-mode-tab" id="mode-tab-chat" onclick="App.setSearchMode('chat')">✨ ИИ-поиск</button>
+      <!-- Mode toggle: Filters / AI-chat -->
+      <div class="search-mode-tabs">
+        <button class="search-mode-tab active" id="mode-tab-filters" onclick="App.setSearchMode('filters')">Фильтры</button>
+        <button class="search-mode-tab" id="mode-tab-chat" onclick="App.setSearchMode('chat')">✨ ИИ-поиск</button>
+      </div>
     </div>
 
     <!-- Filters panel -->
