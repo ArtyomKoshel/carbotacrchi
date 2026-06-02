@@ -271,7 +271,7 @@ const Results = (() => {
         <div class="sheet-section-title">Основное</div>
         <div class="sheet-details">
           ${d('Пробег', km, '', _isQueried('mileage'))}
-          ${d('Дата аукциона', escHtml(lot.auctionDate ?? '—'), '', _isQueried('listed_at'))}
+          ${d('Объявление', escHtml(lot.listedAt ?? lot.auctionDate ?? '—'), '', _isQueried('listed_at'))}
           ${d('Местоположение', escHtml(lot.location ?? '—'))}
         </div>
 
