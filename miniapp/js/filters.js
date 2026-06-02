@@ -49,6 +49,7 @@ const Filters = (() => {
   };
 
   function resetState() {
+    console.trace('[RESET] resetState called');
     const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
     state.sources = sourceKeys.length ? sourceKeys : ['encar', 'kbcha'];
     state.make = ''; state.model = ''; state.generation = '';
