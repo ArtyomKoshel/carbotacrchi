@@ -1,8 +1,9 @@
 const Results = (() => {
-  let lots           = [];
-  let favorites      = new Set();
-  let activeLot      = null;
-  let searchedOptions = new Set(); // codes from current search query
+  let lots            = [];
+  let favorites       = new Set();
+  let activeLot       = null;
+  let searchedOptions = new Set(); // option codes from current search query
+  let currentQuery    = null;      // full query for field-level highlighting
 
   const CATEGORY_EMOJI = {
     exterior:    '🚗',
@@ -17,6 +18,34 @@ const Results = (() => {
 
   function setSearchOptions(codes) {
     searchedOptions = new Set(Array.isArray(codes) ? codes : []);
+  }
+
+  function setSearchQuery(q) {
+    currentQuery = q ?? null;
+  }
+
+  function _isQueried(field) {
+    if (!currentQuery) return false;
+    const q = currentQuery;
+    switch (field) {
+      case 'has_accident':    return q.hasAccident !== null && q.hasAccident !== undefined;
+      case 'flood_history':   return q.floodHistory !== null && q.floodHistory !== undefined;
+      case 'owners_count':    return (q.ownersCountMax ?? 0) > 0 || (q.ownersCountMin ?? 0) > 0;
+      case 'insurance_count': return (q.insuranceCountMax ?? 0) > 0 || (q.insuranceCountMin ?? 0) > 0;
+      case 'listed_at':       return !!(q.listedAfter || q.listedBefore);
+      case 'first_reg_date':  return !!(q.firstRegAfter || q.firstRegBefore);
+      case 'body_type':       return (q.bodyTypes?.length ?? 0) > 0;
+      case 'transmission':    return (q.transmissions?.length ?? 0) > 0;
+      case 'fuel':            return (q.fuelTypes?.length ?? 0) > 0;
+      case 'drive_type':      return (q.driveTypes?.length ?? 0) > 0;
+      case 'engine_volume':   return (q.engineMin ?? 0) > 0 || (q.engineMax ?? 0) > 0;
+      case 'color':           return (q.colors?.length ?? 0) > 0;
+      case 'trim':            return !!(q.trim);
+      case 'generation':      return !!(q.generation);
+      case 'mileage':         return (q.mileageMax ?? 0) > 0 || (q.mileageMin ?? 0) > 0;
+      case 'vin':             return !!(q.vin);
+      default:                return false;
+    }
   }
 
   function render(data, mount) {
@@ -116,11 +145,50 @@ const Results = (() => {
   }
 
   function renderCard(lot, i) {
-    const price  = '$' + Number(lot.price).toLocaleString();
+    const price  = '₩' + Number(lot.price).toLocaleString();
     const km     = Number(lot.mileage).toLocaleString() + ' km';
     const isFav  = favorites.has(lot.id);
     const imgSrc = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
     const cardFields = new Set(Filters.getCardFields());
+
+    // Build smart tag list — priority order, max 3 visible + "+N"
+    const tags = [];
+
+    // 1. Safety flags (always high priority)
+    if (lot.hasAccident !== null && lot.hasAccident !== undefined) {
+      if (lot.hasAccident)
+        tags.push({ label: 'Авария', cls: 'lot-card__tag--danger' });
+      else if (_isQueried('has_accident'))
+        tags.push({ label: '✓ Без аварий', cls: 'lot-card__tag--match' });
+    }
+    if (lot.floodHistory !== null && lot.floodHistory !== undefined) {
+      if (lot.floodHistory)
+        tags.push({ label: 'Затоплен', cls: 'lot-card__tag--danger' });
+      else if (_isQueried('flood_history'))
+        tags.push({ label: '✓ Не топлен', cls: 'lot-card__tag--match' });
+    }
+
+    // 2. Key drivetrain characteristics
+    if (lot.transmission)
+      tags.push({ label: Taxonomy.label('transmission', lot.transmission), cls: _isQueried('transmission') ? 'lot-card__tag--match' : '' });
+    if (lot.fuel)
+      tags.push({ label: Taxonomy.label('fuel', lot.fuel), cls: _isQueried('fuel') ? 'lot-card__tag--match' : '' });
+    if (lot.driveType && _isQueried('drive_type'))
+      tags.push({ label: Taxonomy.label('drive_type', lot.driveType), cls: 'lot-card__tag--match' });
+    if (lot.engineVolume && Number(lot.engineVolume) >= 0.5 && _isQueried('engine_volume'))
+      tags.push({ label: `${lot.engineVolume}л`, cls: 'lot-card__tag--match' });
+
+    // 3. Owner/condition info (only if searched or notable)
+    if (lot.ownersCount != null && _isQueried('owners_count'))
+      tags.push({ label: `${lot.ownersCount} влад.`, cls: 'lot-card__tag--match' });
+
+    const MAX = 3;
+    const shown = tags.slice(0, MAX);
+    const extra = tags.length - MAX;
+    const tagsHtml = [
+      ...shown.map(t => `<span class="lot-card__tag${t.cls ? ' ' + t.cls : ''}">${escHtml(t.label)}</span>`),
+      ...(extra > 0 ? [`<span class="lot-card__tag">+${extra}</span>`] : []),
+    ].join('');
 
     return `
       <div class="lot-card" data-idx="${i}">
@@ -137,36 +205,14 @@ const Results = (() => {
           <div class="lot-card__meta">
             <span class="lot-card__meta-item">
               <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a6 6 0 100 12A6 6 0 008 1zM0 8a8 8 0 1116 0A8 8 0 010 8z"/><path d="M8 4v4l2.5 2.5-1 1L7 8.5V4h1z"/></svg>
-              ${escHtml(lot.auctionDate ?? '—')}
+              ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}
             </span>
             <span class="lot-card__meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm0 14A6 6 0 118 2a6 6 0 010 12z"/><path d="M7 4h2v5H7zM7 10h2v2H7z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
               ${km}
             </span>
           </div>
-          <div class="lot-card__tags">
-            ${cardFields.has('has_accident') && lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`   : ''}
-            ${cardFields.has('flood_history') && lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>` : ''}
-            ${cardFields.has('owners_count') && lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`       : ''}
-            ${cardFields.has('listed_at') && (lot.listedAt || lot.auctionDate) ? `<span class="lot-card__tag">📅 ${escHtml(lot.listedAt || lot.auctionDate)}</span>` : ''}
-            ${cardFields.has('first_reg_date') && lot.firstRegDate ? `<span class="lot-card__tag">🗓 ${escHtml(lot.firstRegDate)}</span>` : ''}
-            ${cardFields.has('body_type') && lot.bodyType     ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('body_type', lot.bodyType))}</span>`       : ''}
-            ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('transmission', lot.transmission))}</span>`  : ''}
-            ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('fuel', lot.fuel))}</span>`           : ''}
-            ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(Taxonomy.label('drive_type', lot.driveType))}</span>`      : ''}
-            ${cardFields.has('engine_volume') && lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `<span class="lot-card__tag">⚙️ ${lot.engineVolume}л</span>` : ''}
-            ${cardFields.has('color') && lot.color           ? `<span class="lot-card__tag">🎨 ${escHtml(lot.color)}</span>` : ''}
-            ${cardFields.has('seat_color') && lot.seatColor  ? `<span class="lot-card__tag">💺 ${escHtml(lot.seatColor)}</span>` : ''}
-            ${cardFields.has('seat_count') && lot.seatCount  ? `<span class="lot-card__tag">${lot.seatCount} мест</span>` : ''}
-            ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(Taxonomy.label('trim', lot.trim))}</span>` : ''}
-            ${cardFields.has('generation') && lot.generation ? `<span class="lot-card__tag">🧬 ${escHtml(lot.generation)}</span>` : ''}
-            ${cardFields.has('options') && Array.isArray(lot.options) && lot.options.length ? (() => {
-                const names = lot.options.map(o => o.name_ru || o.name_en || o.name_kr || o.code).filter(Boolean);
-                const shown = names.slice(0, 3).map(n => `<span class="lot-card__tag">⚙️ ${escHtml(n)}</span>`).join('');
-                const rest  = names.length > 3 ? `<span class="lot-card__tag">+${names.length - 3}</span>` : '';
-                return shown + rest;
-              })() : ''}
-          </div>
+          ${tagsHtml ? `<div class="lot-card__tags">${tagsHtml}</div>` : ''}
         </div>
       </div>`;
   }
@@ -206,8 +252,8 @@ const Results = (() => {
     const km       = Number(lot.mileage).toLocaleString() + ' km';
     const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
     const isFav    = favorites.has(lot.id);
-    const d = (label, value, extra = '') =>
-      value ? `<div class="sheet-detail-item"${extra}>
+    const d = (label, value, extra = '', hl = false) =>
+      value ? `<div class="sheet-detail-item${hl ? ' sheet-detail-item--match' : ''}"${extra}>
         <span class="sheet-detail-label">${label}</span>
         <span class="sheet-detail-value">${value}</span>
       </div>` : '';
@@ -231,32 +277,32 @@ const Results = (() => {
         <div class="sheet-price">${price}</div>
         <div class="sheet-section-title">Основное</div>
         <div class="sheet-details">
-          ${d('Пробег', km)}
-          ${d('Дата аукциона', escHtml(lot.auctionDate ?? '—'))}
+          ${d('Пробег', km, '', _isQueried('mileage'))}
+          ${d('Дата аукциона', escHtml(lot.auctionDate ?? '—'), '', _isQueried('listed_at'))}
           ${d('Местоположение', escHtml(lot.location ?? '—'))}
         </div>
 
         <div class="sheet-section-title">Характеристики</div>
         <div class="sheet-details">
-          ${d('Кузов',        lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '')}
-          ${d('КПП',          lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '')}
-          ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '')}
-          ${d('Привод',       lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '')}
-          ${d('Двигатель',    lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '')}
-          ${d('Цвет кузова',  lot.color        ? escHtml(Taxonomy.label('color', lot.color))           : '')}
+          ${d('Кузов',        lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '', '', _isQueried('body_type'))}
+          ${d('КПП',          lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '', '', _isQueried('transmission'))}
+          ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '', '', _isQueried('fuel'))}
+          ${d('Привод',       lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '', '', _isQueried('drive_type'))}
+          ${d('Двигатель',    lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '', '', _isQueried('engine_volume'))}
+          ${d('Цвет кузова',  lot.color        ? escHtml(Taxonomy.label('color', lot.color))           : '', '', _isQueried('color'))}
           ${d('Цвет салона',  lot.seatColor    ? escHtml(Taxonomy.label('seat_color', lot.seatColor)) : '')}
           ${d('Мест',         lot.seatCount    ? String(lot.seatCount)                                : '')}
-          ${d('Комплектация', lot.trim         ? escHtml(Taxonomy.label('trim', lot.trim))            : '')}
-          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)                              : '')}
+          ${d('Комплектация', lot.trim         ? escHtml(Taxonomy.label('trim', lot.trim))            : '', '', _isQueried('trim'))}
+          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)                              : '', '', _isQueried('generation'))}
         </div>
 
         <div class="sheet-section-title">История</div>
         <div class="sheet-details">
-          ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`) : ''}
-          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`) : ''}
-          ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '')}
-          ${d('Страховых',    lot.insuranceCount ? String(lot.insuranceCount) : '')}
-          ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"')}
+          ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`, '', _isQueried('has_accident')) : ''}
+          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`, '', _isQueried('flood_history')) : ''}
+          ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '', '', _isQueried('owners_count'))}
+          ${d('Страховых',    lot.insuranceCount ? String(lot.insuranceCount) : '', '', _isQueried('insurance_count'))}
+          ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"', _isQueried('vin'))}
           ${d('Документ', lot.document ? `<span style="font-size:12px">${escHtml(lot.document)}</span>` : '', ' style="grid-column:span 2"')}
           ${d('Рыночная цена',    lot.retailValue  ? `$${Number(lot.retailValue).toLocaleString()}`  : '')}
           ${d('Стоимость ремонта',lot.repairCost   ? `<span style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>` : '')}
@@ -422,5 +468,5 @@ const Results = (() => {
     setTimeout(() => t.classList.remove('show'), 2000);
   }
 
-  return { render, appendCards, showSkeletons, setFavorites, setSearchOptions, closeSheet, sheetToggleFav };
+  return { render, appendCards, showSkeletons, setFavorites, setSearchOptions, setSearchQuery, closeSheet, sheetToggleFav };
 })();

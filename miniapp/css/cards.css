@@ -31,11 +31,17 @@
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 0 12px 80px;
+  gap: 8px;
+  padding: 0 8px 80px;
 }
-@media (max-width: 360px) {
+@media (max-width: 340px) {
   .cards-grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 520px) {
+  .cards-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 800px) {
+  .cards-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* ── Lot Card ── */
@@ -52,51 +58,50 @@
 .lot-card:active { transform: scale(.97); }
 
 .lot-card__img {
-  width: 100%; aspect-ratio: 4/3;
+  width: 100%; aspect-ratio: 16/9;
   object-fit: cover;
   background: #1a2536;
   display: block;
 }
 .lot-card__img-placeholder {
-  width: 100%; aspect-ratio: 4/3;
+  width: 100%; aspect-ratio: 16/9;
   background: #1a2536;
   display: flex; align-items: center; justify-content: center;
 }
-.lot-card__img-placeholder svg { width: 40px; height: 40px; opacity: .4; }
+.lot-card__img-placeholder svg { width: 32px; height: 32px; opacity: .4; }
 
-.lot-card__body { padding: 8px 10px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.lot-card__body { padding: 6px 8px 8px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 
 .lot-card__source {
-  font-size: 11px; font-weight: 600;
-  color: var(--accent); text-transform: uppercase; letter-spacing: .4px;
+  font-size: 9px; font-weight: 700;
+  color: var(--accent); text-transform: uppercase; letter-spacing: .5px;
 }
 
-.lot-card__title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.lot-card__title { font-size: 12px; font-weight: 600; line-height: 1.25; }
 
 .lot-card__price {
-  font-size: 16px; font-weight: 700; color: var(--success);
-  margin-top: 2px;
+  font-size: 14px; font-weight: 700; color: var(--success);
 }
 
 .lot-card__meta {
-  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px;
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px;
 }
 .lot-card__meta-item {
-  display: flex; align-items: center; gap: 3px;
-  font-size: 11px; color: var(--hint);
+  display: flex; align-items: center; gap: 2px;
+  font-size: 10px; color: var(--hint);
 }
-.lot-card__meta-item svg { width: 11px; height: 11px; flex-shrink: 0; }
+.lot-card__meta-item svg { width: 10px; height: 10px; flex-shrink: 0; }
 
 .lot-card__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 .lot-card__tag {
   display: inline-block;
-  font-size: 10px;
-  padding: 2px 6px;
+  font-size: 9px;
+  padding: 1px 5px;
   border-radius: 4px;
   background: rgba(255,255,255,.08);
   color: var(--hint);
@@ -106,6 +111,14 @@
   color: var(--danger);
   font-weight: 600;
 }
+.lot-card__tag--match {
+  background: rgba(51,144,236,.15);
+  color: var(--accent);
+  border: 1px solid rgba(51,144,236,.35);
+  font-weight: 600;
+}
+.sheet-detail-item--match .sheet-detail-label { color: var(--accent); }
+.sheet-detail-item--match .sheet-detail-value { color: var(--accent); }
 
 .lot-card__damage {
   font-size: 11px; color: var(--danger);
@@ -128,6 +141,7 @@
 /* ── Skeleton cards ── */
 .lot-card--skeleton { pointer-events: none; }
 .lot-card--skeleton .lot-card__img {
+  aspect-ratio: 16/9;
   background: linear-gradient(90deg,
     rgba(255,255,255,.04) 0%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 100%);
   background-size: 200% 100%;
@@ -157,10 +171,9 @@
 .lot-card__source {
   display: inline-block;
   background: rgba(51,144,236,.12);
-  border-radius: 4px;
-  padding: 1px 5px;
+  border-radius: 3px;
+  padding: 1px 4px;
 }
-.lot-card__price { font-size: 17px; font-weight: 800; }
 .lot-card {
   transition: transform .12s ease, box-shadow .12s ease;
 }
