@@ -49,7 +49,9 @@ class SearchController extends Controller
                 'year_to'     => $query->yearTo   ?: null,
                 'price_max'   => $query->priceMax ?: null,
                 'sources'     => $query->sources,
+                'query'       => $query->toSearchArray() ?: null,
                 'results_cnt' => $result->total,
+                'relaxed'     => $relaxed,
             ]);
         } catch (\Throwable) {
         }
