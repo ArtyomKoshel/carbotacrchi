@@ -164,6 +164,32 @@
   margin: 16px 0 0;
 }
 
+/* ── Collapsible filter sections ── */
+.filter-label--toggle {
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.filter-label--toggle:active { opacity: .8; }
+
+.filter-label__text { flex: 1; }
+
+.filter-active-badge {
+  background: var(--accent); color: var(--btn-text);
+  border-radius: 10px; font-size: 10px; font-weight: 700;
+  padding: 1px 6px; min-width: 18px; text-align: center;
+}
+
+.filter-chevron {
+  color: var(--hint); display: flex; align-items: center;
+  transition: transform .2s; flex-shrink: 0;
+}
+.filter-label--collapsed .filter-chevron { transform: rotate(-90deg); }
+
+.filter-body { /* wraps filter controls */ }
+.filter-body--hidden { display: none; }
+
 /* ── Options multi-select (Tom Select dark theme) ── */
 select.filter-options-ts { display: none; } /* hide native select — Tom Select replaces it */
 div.ts-wrapper.filter-options-ts { display: block; } /* but show the TS wrapper */

@@ -72,6 +72,22 @@ const Results = (() => {
     });
   }
 
+  function showSkeletons(n = 6) {
+    const grid = document.getElementById('cards-grid');
+    const emptyState = document.getElementById('results-empty');
+    if (!grid) return;
+    if (emptyState) emptyState.style.display = 'none';
+    grid.innerHTML = Array.from({ length: n }, () => `
+      <div class="lot-card lot-card--skeleton">
+        <div class="lot-card__img"></div>
+        <div class="lot-card__body">
+          <div class="skeleton-line w80"></div>
+          <div class="skeleton-line w55"></div>
+          <div class="skeleton-line w35"></div>
+        </div>
+      </div>`).join('');
+  }
+
   function appendCards(newLots) {
     if (!newLots || !newLots.length) return;
     const startIdx = lots.length;
@@ -204,10 +220,15 @@ const Results = (() => {
         <div class="sheet-source">${escHtml(lot.sourceName)}</div>
         <div class="sheet-title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
         <div class="sheet-price">${price}</div>
+        <div class="sheet-section-title">Основное</div>
         <div class="sheet-details">
           ${d('Пробег', km)}
           ${d('Дата аукциона', escHtml(lot.auctionDate ?? '—'))}
           ${d('Местоположение', escHtml(lot.location ?? '—'))}
+        </div>
+
+        <div class="sheet-section-title">Характеристики</div>
+        <div class="sheet-details">
           ${d('Кузов',        lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '')}
           ${d('КПП',          lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '')}
           ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '')}
@@ -218,6 +239,10 @@ const Results = (() => {
           ${d('Мест',         lot.seatCount    ? String(lot.seatCount)                                : '')}
           ${d('Комплектация', lot.trim         ? escHtml(Taxonomy.label('trim', lot.trim))            : '')}
           ${d('Поколение',    lot.generation   ? escHtml(lot.generation)                              : '')}
+        </div>
+
+        <div class="sheet-section-title">История</div>
+        <div class="sheet-details">
           ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`) : ''}
           ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`) : ''}
           ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '')}
@@ -360,5 +385,5 @@ const Results = (() => {
     setTimeout(() => t.classList.remove('show'), 2000);
   }
 
-  return { render, appendCards, setFavorites, setSearchOptions, closeSheet, sheetToggleFav };
+  return { render, appendCards, showSkeletons, setFavorites, setSearchOptions, closeSheet, sheetToggleFav };
 })();

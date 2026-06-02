@@ -23,6 +23,8 @@ const App = (() => {
     // Hide overlay after init (covers the case when cache was empty)
     hideLoadingOverlay();
 
+    Chat.init();
+
     document.getElementById('search-btn').addEventListener('click', runSearch);
     document.getElementById('load-more-btn')?.addEventListener('click', loadMore);
     document.getElementById('sort-select')?.addEventListener('change', async e => {
@@ -290,8 +292,32 @@ const App = (() => {
   function showLoading(visible) {
     const el = document.getElementById('results-loading');
     const grid = document.getElementById('results-grid-wrap');
-    if (el)   el.style.display   = visible ? 'flex' : 'none';
-    if (grid) grid.style.display = visible ? 'none' : 'block';
+    if (el) el.style.display = 'none'; // spinner hidden; skeletons used instead
+    if (grid) grid.style.display = 'block';
+    if (visible) Results.showSkeletons(6);
+  }
+
+  function setSearchMode(mode) {
+    const screen      = document.getElementById('screen-search');
+    const filterPanel = document.getElementById('mode-panel-filters');
+    const chatPanel   = document.getElementById('mode-panel-chat');
+    const tabFilters  = document.getElementById('mode-tab-filters');
+    const tabChat     = document.getElementById('mode-tab-chat');
+
+    if (mode === 'chat') {
+      screen?.classList.add('mode-chat');
+      if (filterPanel) filterPanel.style.display = 'none';
+      if (chatPanel)   chatPanel.style.display   = 'flex';
+      tabFilters?.classList.remove('active');
+      tabChat?.classList.add('active');
+      setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
+    } else {
+      screen?.classList.remove('mode-chat');
+      if (filterPanel) filterPanel.style.display = '';
+      if (chatPanel)   chatPanel.style.display   = 'none';
+      tabFilters?.classList.add('active');
+      tabChat?.classList.remove('active');
+    }
   }
 
   function showError(msg) {
@@ -313,5 +339,5 @@ const App = (() => {
 
   document.addEventListener('DOMContentLoaded', init);
 
-  return { switchTab, showToast, searchWithQuery };
+  return { switchTab, showToast, searchWithQuery, setSearchMode };
 })();

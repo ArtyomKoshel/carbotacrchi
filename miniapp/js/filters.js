@@ -156,21 +156,52 @@ const Filters = (() => {
   }
 
   function buildFilterSection(name, ui, apiLabel) {
+    const ALWAYS_OPEN = ['source'];
+    const canCollapse = !ALWAYS_OPEN.includes(name);
+    const collapsed   = canCollapse && _getCollapsed(name);
+
     const section = document.createElement('div');
     section.className = 'filter-section';
     section.dataset.filterField = name;
 
-    const label = document.createElement('div');
-    label.className = 'filter-label';
-    label.textContent = apiLabel || name;
-    section.appendChild(label);
+    // ── Header ──
+    const header = document.createElement('div');
+    header.className = canCollapse
+      ? `filter-label filter-label--toggle${collapsed ? ' filter-label--collapsed' : ''}`
+      : 'filter-label';
 
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'filter-label__text';
+    labelSpan.textContent = apiLabel || name;
+    header.appendChild(labelSpan);
+
+    if (canCollapse) {
+      const badge = document.createElement('span');
+      badge.className = 'filter-active-badge';
+      badge.id = `filter-badge-${name}`;
+      badge.style.display = 'none';
+      header.appendChild(badge);
+
+      const chevron = document.createElement('span');
+      chevron.className = 'filter-chevron';
+      chevron.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>`;
+      header.appendChild(chevron);
+    }
+
+    section.appendChild(header);
+
+    // ── Body (collapsible wrapper for controls) ──
+    const body = document.createElement('div');
+    body.className = collapsed ? 'filter-body filter-body--hidden' : 'filter-body';
+    section.appendChild(body);
+
+    // ── Controls (appended to body) ──
     switch (ui.type) {
       case 'source_chips': {
         const div = document.createElement('div');
         div.className = 'source-chips';
         div.id = 'source-chips';
-        section.appendChild(div);
+        body.appendChild(div);
         break;
       }
       case 'make_model': {
@@ -186,7 +217,7 @@ const Filters = (() => {
           <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
             <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
           </div>`;
-        section.appendChild(selects);
+        body.appendChild(selects);
         break;
       }
       case 'text': {
@@ -196,7 +227,7 @@ const Filters = (() => {
         input.id = ui.id;
         input.placeholder = ui.placeholder || '';
         input.addEventListener('input', _scheduleCountUpdate);
-        section.appendChild(input);
+        body.appendChild(input);
         break;
       }
       case 'range': {
@@ -218,21 +249,21 @@ const Filters = (() => {
             <input class="filter-input" type="${ui.inputType||'number'}" id="${ui.idMax}" placeholder="До" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">`;
         }
         row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', _scheduleCountUpdate));
-        section.appendChild(row);
+        body.appendChild(row);
         break;
       }
       case 'chips': {
         const div = document.createElement('div');
         div.className = 'chip-group';
         div.id = `chips-${name}`;
-        section.appendChild(div);
+        body.appendChild(div);
         break;
       }
       case 'bool_chips': {
         const div = document.createElement('div');
         div.className = 'chip-group';
         div.id = `chips-${name}`;
-        section.appendChild(div);
+        body.appendChild(div);
         break;
       }
       case 'options_select': {
@@ -240,9 +271,18 @@ const Filters = (() => {
         sel.id = ui.id || 'filter-options';
         sel.multiple = true;
         sel.className = 'filter-options-ts';
-        section.appendChild(sel);
+        body.appendChild(sel);
         break;
       }
+    }
+
+    // ── Collapse toggle ──
+    if (canCollapse) {
+      header.addEventListener('click', () => {
+        const nowCollapsed = body.classList.toggle('filter-body--hidden');
+        header.classList.toggle('filter-label--collapsed', nowCollapsed);
+        _setCollapsed(name, nowCollapsed);
+      });
     }
 
     const divider = document.createElement('div');
@@ -252,6 +292,20 @@ const Filters = (() => {
     frag.appendChild(section);
     frag.appendChild(divider);
     return frag;
+  }
+
+  function _getCollapsed(name) {
+    try {
+      return !!(JSON.parse(localStorage.getItem('carbot_filter_collapsed') || '{}')[name]);
+    } catch { return false; }
+  }
+
+  function _setCollapsed(name, val) {
+    try {
+      const s = JSON.parse(localStorage.getItem('carbot_filter_collapsed') || '{}');
+      s[name] = val;
+      localStorage.setItem('carbot_filter_collapsed', JSON.stringify(s));
+    } catch {}
   }
 
   const OPTION_CATEGORY_LABELS = {
@@ -599,8 +653,41 @@ const Filters = (() => {
   // ── Live count ─────────────────────────────────────────────────────────────
 
   function _scheduleCountUpdate() {
+    _updateResetBtn();
     clearTimeout(_countTimer);
     _countTimer = setTimeout(_updateCount, COUNT_DEBOUNCE_MS);
+  }
+
+  function _updateResetBtn() {
+    const btn = document.getElementById('filters-reset-btn');
+    if (btn) btn.style.display = hasActive() ? '' : 'none';
+  }
+
+  function hasActive() {
+    return !!(
+      state.make || state.model || state.generation || state.trim ||
+      state.yearFrom || state.yearTo ||
+      state.priceMin || state.priceMax ||
+      state.mileageMin || state.mileageMax ||
+      state.engineMin || state.engineMax ||
+      state.bodyTypes.length || state.transmissions.length ||
+      state.fuelTypes.length || state.driveTypes.length ||
+      state.colors.length || state.damageTypes.length || state.titleTypes.length ||
+      state.lienStatuses.length || state.seizureStatuses.length ||
+      state.hasAccident !== null || state.floodHistory !== null ||
+      state.ownersCountMin || state.ownersCountMax ||
+      state.insuranceCountMin || state.insuranceCountMax ||
+      state.listedAfter || state.listedBefore ||
+      state.firstRegAfter || state.firstRegBefore ||
+      state.options.length
+    );
+  }
+
+  function reset() {
+    resetState();
+    render();
+    _updateResetBtn();
+    TG.haptic('notification', 'success');
   }
 
   async function _updateCount() {
@@ -677,5 +764,5 @@ const Filters = (() => {
     }
   }
 
-  return { init, getQuery, getCardFields, setSort, applyQuery, notifyChange: _scheduleCountUpdate };
+  return { init, getQuery, getCardFields, setSort, applyQuery, reset, hasActive, notifyChange: _scheduleCountUpdate };
 })();

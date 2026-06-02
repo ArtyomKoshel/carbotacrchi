@@ -244,6 +244,40 @@ html, body {
 }
 .toast.show { opacity: 1; }
 
+/* ── Skeleton shimmer ── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Header action button (Сбросить) ── */
+.header-action {
+  background: none; border: none;
+  color: var(--link); font-size: 14px;
+  cursor: pointer; padding: 4px 0;
+  white-space: nowrap; flex-shrink: 0;
+}
+
+/* ── Search mode tabs (Фильтры / ИИ-поиск) ── */
+.search-mode-tabs {
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
+}
+.search-mode-tab {
+  flex: 1; padding: 10px 12px;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--hint); font-size: 14px; font-weight: 500;
+  cursor: pointer; text-align: center;
+  transition: color .15s, border-color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.search-mode-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* When chat mode is active, screen must not scroll itself */
+#screen-search.mode-chat { overflow-y: hidden; }
+
 /* ── Bottom nav ── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;

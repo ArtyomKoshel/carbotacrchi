@@ -151,6 +151,14 @@ const API = (() => {
     return request('GET', `/filters/trims?${p}`);
   }
 
+  function searchChat(text) {
+    return request('POST', '/search-chat', {
+      user_id:   TG.getUserId(),
+      init_data: TG.getInitData(),
+      text,
+    });
+  }
+
   async function getInspection(lotId) {
     const res = await fetch(`${BASE}/lots/${encodeURIComponent(lotId)}/inspection`);
     if (res.status === 404) return null;
@@ -161,7 +169,7 @@ const API = (() => {
   return {
     getFilters, invalidateFiltersCache, isFiltersCached,
     getCount, getContext, getTrims,
-    search,
+    search, searchChat,
     getFavorites, addFavorite, removeFavorite,
     getSubscriptions, subscribe, unsubscribe, markSeen,
     getInspection,

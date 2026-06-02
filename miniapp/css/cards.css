@@ -125,6 +125,34 @@
 .lot-card__fav-btn.saved { color: #ef4444; }
 .lot-card__fav-btn svg { width: 14px; height: 14px; }
 
+/* ── Skeleton cards ── */
+.lot-card--skeleton { pointer-events: none; }
+.lot-card--skeleton .lot-card__img {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,.04) 0%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line {
+  height: 11px; border-radius: 4px; margin-bottom: 7px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,.04) 0%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.04) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line.w80 { width: 80%; }
+.skeleton-line.w55 { width: 55%; }
+.skeleton-line.w35 { width: 35%; }
+
+/* ── Sheet section title ── */
+.sheet-section-title {
+  font-size: 11px; font-weight: 700; color: var(--hint);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin: 16px 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
 /* ── Detail Sheet ── */
 .sheet-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.6);
