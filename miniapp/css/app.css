@@ -27,7 +27,7 @@ html, body {
   overflow-x: hidden;
 }
 
-#app { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 56px; }
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; padding-bottom: 56px; }
 
 /* ── Global loading overlay ── */
 #app-loading-overlay {
@@ -60,7 +60,7 @@ html, body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; }
+.screen { display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 .screen.active { display: flex; }
 
 /* ── Header ── */
