@@ -4,8 +4,6 @@ namespace App\Bot;
 
 use App\Bot\Callbacks\SubscribeCallback;
 use App\Bot\Callbacks\UnsubscribeCallback;
-use App\Bot\Commands\DemoCommand;
-use App\Bot\Commands\DemoSeedCommand;
 use App\Bot\Commands\HelpCommand;
 use App\Bot\Commands\MySubsCommand;
 use App\Bot\Commands\StartCommand;
@@ -52,13 +50,11 @@ class BotDispatcher
         ]);
 
         match (true) {
-            $text === '/start'                         => (new StartCommand($this->bot, $this->miniAppUrl))->handle($ctx),
-            $text === '/help'                          => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx),
-            $text === '/mysubs'                        => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx),
-            $text === '/demo'                          => (new DemoCommand($this->bot, $this->aggregator))->handle($ctx),
-            $text === '/demo2'                         => (new DemoSeedCommand($this->bot))->handle($ctx),
+            $text === '/start'                            => (new StartCommand($this->bot, $this->miniAppUrl))->handle($ctx),
+            $text === '/help'                             => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx),
+            $text === '/mysubs'                           => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx),
             $text !== '' && !str_starts_with($text, '/') => (new TextSearchCommand($this->bot, $this->aggregator, $this->chatSearch, $this->miniAppUrl))->handle($ctx, $text),
-            default                                    => null,
+            default                                       => null,
         };
 
         $webAppData = $message['web_app_data']['data'] ?? null;
@@ -84,9 +80,6 @@ class BotDispatcher
         match (true) {
             $data === 'mysubs' => $this->tap($callbackId, fn () => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
             $data === 'help'   => $this->tap($callbackId, fn () => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
-
-            $data === 'demo_notify' => $this->tap($callbackId, fn () => (new DemoCommand($this->bot, $this->aggregator))->handle($ctx), '⏳ Отправляю...'),
-            $data === 'demo_seed'   => $this->tap($callbackId, fn () => (new DemoSeedCommand($this->bot))->handle($ctx), '⏳ Создаю...'),
 
             str_starts_with($data, 'sub_chat:') => (new SubscribeCallback($this->bot, $this->aggregator))
                 ->handle($ctx, $callbackId, substr($data, 9)),

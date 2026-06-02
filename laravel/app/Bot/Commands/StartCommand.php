@@ -33,10 +33,6 @@ class StartCommand
         }
         $keyboard[] = [
             ['text' => '🔔 Мои подписки', 'callback_data' => 'mysubs'],
-            ['text' => '📨 Демо уведомления', 'callback_data' => 'demo_notify'],
-        ];
-        $keyboard[] = [
-            ['text' => '🗂 Загрузить демо-данные', 'callback_data' => 'demo_seed'],
             ['text' => 'ℹ️ Помощь', 'callback_data' => 'help'],
         ];
 
