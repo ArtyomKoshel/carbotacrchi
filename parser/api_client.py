@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Any
 
-import requests
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +22,10 @@ INTERNAL_TOKEN    = os.getenv("LARAVEL_INTERNAL_TOKEN", "")
 _SESSION          = None
 
 
-def _session() -> requests.Session:
+def _session() -> httpx.Client:
     global _SESSION
     if _SESSION is None:
-        _SESSION = requests.Session()
-        _SESSION.headers.update({
+        _SESSION = httpx.Client(headers={
             "X-Internal-Token": INTERNAL_TOKEN,
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -45,16 +44,16 @@ def upsert_lots(source: str, lots: list[dict[str, Any]]) -> dict:
     """
     url = f"{LARAVEL_API_URL}/api/internal/lots/upsert"
     try:
-        resp = _session().post(url, data=json.dumps(
+        resp = _session().post(url, content=json.dumps(
             {"source": source, "lots": lots},
             ensure_ascii=False, default=str
         ), timeout=30)
         resp.raise_for_status()
         return resp.json()
-    except requests.Timeout:
+    except httpx.TimeoutException:
         logger.error(f"[api_client] upsert_lots timeout (source={source}, lots={len(lots)})")
         raise
-    except requests.HTTPError as e:
+    except httpx.HTTPStatusError as e:
         logger.error(f"[api_client] upsert_lots HTTP {e.response.status_code}: {e.response.text[:200]}")
         raise
     except Exception as e:
@@ -69,7 +68,7 @@ def delist_lots(source: str, lot_ids: list[str], reason: str = "not_seen") -> di
     """
     url = f"{LARAVEL_API_URL}/api/internal/lots/delist"
     try:
-        resp = _session().post(url, data=json.dumps(
+        resp = _session().post(url, content=json.dumps(
             {"source": source, "lot_ids": lot_ids, "reason": reason},
             ensure_ascii=False
         ), timeout=30)
