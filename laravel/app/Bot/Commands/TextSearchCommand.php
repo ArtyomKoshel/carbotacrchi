@@ -129,10 +129,11 @@ class TextSearchCommand
         $queryKey = 'bq_' . Str::random(8);
         Cache::put($queryKey, $queryArray, 86400);
         $footerButtons[] = [['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . $queryKey]];
+        $footerButtons[] = [['text' => '🔄 Новый поиск', 'callback_data' => 'new_search']];
 
         $hint = $result->total > 5
-            ? "Показаны 5 из {$result->total}. Можете уточнить: «подешевле», «без ДТП», «автомат»…"
-            : "Уточните поиск: «подешевле», «без ДТП», «новее»…";
+            ? "Показаны 5 из <b>{$result->total}</b>. Уточните: «подешевле», «без ДТП», «с люком»… или нажмите 🔄 для нового поиска."
+            : "Уточните: «подешевле», «без ДТП», «новее»… или нажмите 🔄 для нового поиска.";
 
         $this->bot->sendMessageWithKeyboard($ctx->chatId, $hint, $footerButtons);
     }

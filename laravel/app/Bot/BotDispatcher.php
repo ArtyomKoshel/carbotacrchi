@@ -6,6 +6,7 @@ use App\Bot\Callbacks\SubscribeCallback;
 use App\Bot\Callbacks\UnsubscribeCallback;
 use App\Bot\Commands\HelpCommand;
 use App\Bot\Commands\MySubsCommand;
+use App\Bot\Commands\NewSearchCommand;
 use App\Bot\Commands\StartCommand;
 use App\Bot\Commands\TextSearchCommand;
 use App\Models\User;
@@ -53,6 +54,7 @@ class BotDispatcher
             $text === '/start'                            => (new StartCommand($this->bot, $this->miniAppUrl))->handle($ctx),
             $text === '/help'                             => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx),
             $text === '/mysubs'                           => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx),
+            in_array($text, ['/new', '/reset', '/clear']) => (new NewSearchCommand($this->bot, $this->miniAppUrl))->handle($ctx),
             $text !== '' && !str_starts_with($text, '/') => (new TextSearchCommand($this->bot, $this->aggregator, $this->chatSearch, $this->miniAppUrl))->handle($ctx, $text),
             default                                       => null,
         };
@@ -78,8 +80,9 @@ class BotDispatcher
         $data = $callback['data'] ?? '';
 
         match (true) {
-            $data === 'mysubs' => $this->tap($callbackId, fn () => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
-            $data === 'help'   => $this->tap($callbackId, fn () => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
+            $data === 'mysubs'     => $this->tap($callbackId, fn () => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
+            $data === 'help'       => $this->tap($callbackId, fn () => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
+            $data === 'new_search' => $this->tap($callbackId, fn () => (new NewSearchCommand($this->bot, $this->miniAppUrl))->handle($ctx)),
 
             str_starts_with($data, 'sub_chat:') => (new SubscribeCallback($this->bot, $this->aggregator))
                 ->handle($ctx, $callbackId, substr($data, 9)),

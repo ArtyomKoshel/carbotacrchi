@@ -118,9 +118,13 @@ class ChatSearchService
             unset($json['not_a_search']);
             $this->lastParseWasAi = true;
 
-            // Detect if this is a refinement: few new fields + prev state existed
+            // Detect if this is a refinement or a new search
             $meaningful = array_filter($json, fn ($v) => $v !== null && $v !== '' && $v !== []);
-            $this->lastParseWasRefinement = $prevState !== null && count($meaningful) <= 4;
+            $isDefinitelyNew = $this->isDefinitelyNewSearch($json, $prevState);
+
+            $this->lastParseWasRefinement = $prevState !== null
+                && !$isDefinitelyNew
+                && count($meaningful) <= 4;
 
             if ($this->lastParseWasRefinement) {
                 return $this->mergeWithPrevious($prevState['query'], $json);
@@ -133,6 +137,41 @@ class ChatSearchService
             $this->lastParseWasRefinement = false;
             return $this->fallbackParse($text);
         }
+    }
+
+    /**
+     * Returns true when the new AI response is clearly a brand-new search,
+     * not a follow-up refinement of the previous one.
+     */
+    private function isDefinitelyNewSearch(array $newJson, ?array $prevState): bool
+    {
+        if ($prevState === null) {
+            return true;
+        }
+
+        $prevQuery = $prevState['query'] ?? [];
+
+        // Different make → definitely new search
+        $newMake  = strtolower(trim((string) ($newJson['make']     ?? '')));
+        $prevMake = strtolower(trim((string) ($prevQuery['make']   ?? '')));
+        if ($newMake !== '' && $prevMake !== '' && $newMake !== $prevMake) {
+            return true;
+        }
+
+        // Different model → definitely new search
+        $newModel  = strtolower(trim((string) ($newJson['model']   ?? '')));
+        $prevModel = strtolower(trim((string) ($prevQuery['model'] ?? '')));
+        if ($newModel !== '' && $prevModel !== '' && $newModel !== $prevModel) {
+            return true;
+        }
+
+        // Many new fields (≥5) → full new query, not a refinement
+        $meaningful = array_filter($newJson, fn ($v) => $v !== null && $v !== '' && $v !== []);
+        if (count($meaningful) >= 5) {
+            return true;
+        }
+
+        return false;
     }
 
     private function mergeWithPrevious(array $base, array $delta): array
