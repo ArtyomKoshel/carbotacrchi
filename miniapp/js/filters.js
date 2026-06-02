@@ -1,7 +1,11 @@
 const Filters = (() => {
   let filtersData = null;
   let trimRequestSeq = 0;
-  let optionsSelectInstance = null;
+  let optionsSelectInstance  = null;
+  let makeSelectInstance     = null;
+  let modelSelectInstance    = null;
+  let trimSelectInstance     = null;
+  let generationSelectInstance = null;
   let _countTimer = null;
   let _contextTimer = null;
   const COUNT_DEBOUNCE_MS = 700;
@@ -115,11 +119,8 @@ const Filters = (() => {
     const container = document.getElementById('filters-container');
     if (!container) return;
 
-    // Destroy Tom Select before wiping the DOM (it holds references to removed nodes)
-    if (optionsSelectInstance) {
-      try { optionsSelectInstance.destroy(); } catch (e) {}
-      optionsSelectInstance = null;
-    }
+    // Destroy all Tom Select instances before wiping the DOM
+    _destroySelectInstances();
 
     container.innerHTML = '';
 
@@ -348,6 +349,7 @@ const Filters = (() => {
     renderSourceChips();
     renderMakeSelect();
     renderModelSelect();
+    renderGenerationSelect();
     initOptionsSelect(filtersData?.options ?? []);
 
     const enabled = getEnabledFields();
@@ -439,41 +441,102 @@ const Filters = (() => {
     });
   }
 
+  function _destroySelectInstances() {
+    for (const [key, inst] of [
+      ['optionsSelectInstance',   optionsSelectInstance],
+      ['makeSelectInstance',      makeSelectInstance],
+      ['modelSelectInstance',     modelSelectInstance],
+      ['trimSelectInstance',      trimSelectInstance],
+      ['generationSelectInstance',generationSelectInstance],
+    ]) {
+      if (inst) { try { inst.destroy(); } catch (_) {} }
+    }
+    optionsSelectInstance    = null;
+    makeSelectInstance       = null;
+    modelSelectInstance      = null;
+    trimSelectInstance       = null;
+    generationSelectInstance = null;
+  }
+
+  function _tsBase(el, opts) {
+    if (!el || typeof TomSelect === 'undefined') return null;
+    const ts = new TomSelect(el, {
+      valueField:       'value',
+      labelField:       'text',
+      searchField:      ['text'],
+      allowEmptyOption: true,
+      maxOptions:       null,
+      ...opts,
+    });
+    ts.wrapper.classList.add('ts-single');
+    return ts;
+  }
+
   function renderMakeSelect() {
-    const sel = document.getElementById('filter-make');
-    if (!sel) return;
-    const makeOptions = Taxonomy.normalizeOptionItems(filtersData?.makeOptions ?? Object.keys(filtersData?.makes ?? {}));
-    sel.innerHTML = '<option value="">Любая марка</option>' +
-      makeOptions.map(o => `<option value="${o.value}"${state.make===o.value?' selected':''}>${o.label}</option>`).join('');
-    sel.onchange = () => {
-      state.make  = sel.value;
-      state.model = '';
-      state.trim  = '';
-      renderModelSelect();
-      _scheduleContextUpdate();
-      _scheduleCountUpdate();
-    };
+    const el = document.getElementById('filter-make');
+    if (!el) return;
+    const makes = (Taxonomy.normalizeOptionItems(
+      filtersData?.makeOptions ?? Object.keys(filtersData?.makes ?? {})
+    )).map(o => ({ value: o.value, text: o.label }));
+
+    makeSelectInstance = _tsBase(el, {
+      maxItems: 1,
+      options:  [{ value: '', text: 'Любая марка' }, ...makes],
+      items:    state.make ? [state.make] : [''],
+      onChange(val) {
+        const v = val || '';
+        if (state.make === v) return;
+        state.make = v; state.model = ''; state.trim = '';
+        renderModelSelect();
+        _scheduleContextUpdate(); _scheduleCountUpdate();
+      },
+    });
   }
 
   function renderModelSelect() {
-    const sel = document.getElementById('filter-model');
-    if (!sel) return;
+    if (modelSelectInstance) { try { modelSelectInstance.destroy(); } catch(_) {} modelSelectInstance = null; }
+    if (trimSelectInstance)  { try { trimSelectInstance.destroy();  } catch(_) {} trimSelectInstance  = null; }
 
-    // filtersData.makes[make] is {model_group: [model, ...]} — flatten to sorted unique list
+    const el = document.getElementById('filter-model');
+    if (!el) return;
+
     const groupsObj = filtersData?.makes?.[state.make] ?? {};
     const models = [...new Set(Object.values(groupsObj).flat())].sort();
 
-    sel.innerHTML = '<option value="">Любая модель</option>' +
-      models.map(m => `<option value="${m}"${state.model===m?' selected':''}>${m}</option>`).join('');
-    sel.onchange = () => {
-      state.model = sel.value;
-      state.trim  = '';
-      renderTrimSelect([]);
-      if (state.make || state.model) loadTrims();
-      _scheduleContextUpdate();
-      _scheduleCountUpdate();
-    };
+    modelSelectInstance = _tsBase(el, {
+      maxItems: 1,
+      options:  [{ value: '', text: 'Любая модель' }, ...models.map(m => ({ value: m, text: m }))],
+      items:    state.model ? [state.model] : [''],
+      onChange(val) {
+        const v = val || '';
+        if (state.model === v) return;
+        state.model = v; state.trim = '';
+        renderTrimSelect([]);
+        if (state.make || state.model) loadTrims();
+        _scheduleContextUpdate(); _scheduleCountUpdate();
+      },
+    });
+
     if (state.make || state.model) loadTrims();
+  }
+
+  function renderGenerationSelect() {
+    const el = document.getElementById('filter-generation');
+    if (!el || typeof TomSelect === 'undefined') return;
+
+    generationSelectInstance = new TomSelect(el, {
+      maxItems:    1,
+      create:      true,
+      persist:     false,
+      maxOptions:  null,
+      searchField: ['text'],
+      placeholder: 'G30, W213, NQ5, CN7...',
+      options:     state.generation ? [{ value: state.generation, text: state.generation }] : [],
+      items:       state.generation ? [state.generation] : [],
+      onChange(val) { state.generation = val || ''; },
+      onItemAdd()  { _scheduleCountUpdate(); },
+      onItemRemove() { state.generation = ''; _scheduleCountUpdate(); },
+    });
   }
 
   async function loadTrims() {
@@ -494,23 +557,34 @@ const Filters = (() => {
   }
 
   function renderTrimSelect(trims) {
+    if (trimSelectInstance) { try { trimSelectInstance.destroy(); } catch(_) {} trimSelectInstance = null; }
+
     const wrap = document.getElementById('filter-trim-wrap');
     const sel  = document.getElementById('filter-trim');
     if (!wrap || !sel) return;
+
     const trimOptions = Taxonomy.normalizeOptionItems(trims);
     if (!trimOptions || trimOptions.length === 0) {
       wrap.style.display = 'none';
-      sel.innerHTML = '<option value="">Любая комплектация</option>';
       state.trim = '';
       return;
     }
+
+    // Reset native select so Tom Select starts clean
+    sel.innerHTML = '<option value=""></option>';
     wrap.style.display = '';
-    sel.innerHTML = '<option value="">Любая комплектация</option>' +
-      trimOptions.map(o => {
-        const lbl = Taxonomy.label('trim', o.value) || o.label || o.value;
-        return `<option value="${o.value}"${state.trim===o.value?' selected':''}>${lbl}</option>`;
-      }).join('');
-    sel.onchange = () => { state.trim = sel.value; };
+
+    const opts = trimOptions.map(o => ({
+      value: o.value,
+      text:  Taxonomy.label('trim', o.value) || o.label || o.value,
+    }));
+
+    trimSelectInstance = _tsBase(sel, {
+      maxItems: 1,
+      options:  [{ value: '', text: 'Любая комплектация' }, ...opts],
+      items:    state.trim ? [state.trim] : [''],
+      onChange(val) { state.trim = val || ''; },
+    });
   }
 
   function readFormState() {
@@ -522,13 +596,7 @@ const Filters = (() => {
     state.mileageMax       = document.getElementById('filter-mileage-max')?.value  ?? '';
     state.engineMin        = document.getElementById('filter-engine-min')?.value   ?? '';
     state.engineMax        = document.getElementById('filter-engine-max')?.value   ?? '';
-    state.generation       = document.getElementById('filter-generation')?.value?.trim() ?? '';
-    // Only overwrite state.trim from DOM if the select has real options loaded (>1 means not just placeholder)
-    const trimEl = document.getElementById('filter-trim');
-    const trimDomVal = trimEl?.value?.trim() ?? '';
-    if (trimDomVal || (trimEl && trimEl.options.length > 1)) {
-      state.trim = trimDomVal;
-    }
+    // generation and trim are managed by Tom Select instances — state already up-to-date
     state.ownersCountMin   = document.getElementById('filter-owners-min')?.value   ?? '';
     state.ownersCountMax   = document.getElementById('filter-owners-max')?.value   ?? '';
     state.insuranceCountMin= document.getElementById('filter-insurance-min')?.value ?? '';
@@ -630,7 +698,7 @@ const Filters = (() => {
     setEl('filter-mileage-max',   q.mileageMax);
     setEl('filter-engine-min',    q.engineMin);
     setEl('filter-engine-max',    q.engineMax);
-    setEl('filter-generation',    q.generation);
+    // filter-generation is a Tom Select — value is set via state.generation in renderGenerationSelect()
     setEl('filter-owners-min',    q.ownersCountMin);
     setEl('filter-owners-max',    q.ownersCountMax);
     setEl('filter-insurance-min', q.insuranceCountMin);

@@ -190,6 +190,41 @@
 .filter-body { /* wraps filter controls */ }
 .filter-body--hidden { display: none; }
 
+/* ── Hide native arrow when Tom Select is present ── */
+.filter-select-wrap:has(.ts-wrapper)::after { display: none; }
+
+/* ── Single-select Tom Select (make / model / trim / generation) ── */
+.ts-single .ts-control {
+  padding: 9px 32px 9px 12px !important;
+  min-height: unset !important;
+  cursor: pointer !important;
+  flex-wrap: nowrap !important;
+}
+.ts-single .ts-control input {
+  cursor: pointer !important;
+  font-size: 14px;
+}
+.ts-single .ts-control .item {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  color: var(--text) !important;
+  font-size: 14px;
+  font-weight: 400;
+}
+/* Dropdown arrow for single-select */
+.ts-single .ts-control::after {
+  content: '▾';
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--hint);
+  font-size: 12px;
+  pointer-events: none;
+}
+/* Hide the caret input when item is selected */
+.ts-single.has-items .ts-control input { width: 0 !important; opacity: 0; }
+
 /* ── Options multi-select (Tom Select dark theme) ── */
 select.filter-options-ts { display: none; } /* hide native select — Tom Select replaces it */
 div.ts-wrapper.filter-options-ts { display: block; } /* but show the TS wrapper */
