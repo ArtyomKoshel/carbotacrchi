@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BotFilterSetting;
+use App\Models\EncarOptionCatalog;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -530,11 +531,12 @@ class ChatSearchService
             ];
         }
 
-        $filtersBlock = implode("\n", $filterDescriptions);
-        $makesBlock   = $this->buildMakesContext();
-        $statsBlock   = $this->buildDbStatsContext();
-        $trimExamples = $this->buildTrimExamplesForPrompt();
-        $today        = date('Y-m-d');
+        $filtersBlock   = implode("\n", $filterDescriptions);
+        $makesBlock     = $this->buildMakesContext();
+        $statsBlock     = $this->buildDbStatsContext();
+        $optionsBlock   = $this->buildOptionsContext();
+        $trimExamples   = $this->buildTrimExamplesForPrompt();
+        $today          = date('Y-m-d');
 
         return <<<PROMPT
 Ты — парсер поисковых запросов для автомобилей на корейских аукционах. Пользователь пишет свободный текст на русском/английском, ты извлекаешь параметры поиска и возвращаешь JSON.
@@ -543,6 +545,8 @@ class ChatSearchService
 {$filtersBlock}
 
 {$statsBlock}
+
+{$optionsBlock}
 
 {$makesBlock}
 
@@ -578,8 +582,8 @@ class ChatSearchService
 29. Текущая дата: {$today}
 
 Особые случаи:
-- "кожаный салон" / "кожа" / "leather" → seatColor: "Beige" или "Brown" (НЕ опция — это цвет/материал сидений). Если пользователь явно хочет кожаные сиденья, добавь seatColor: "Beige"
 - Если запрос не поддаётся ни одному фильтру (напр. "тихий", "экономичный") — верни {"not_a_search": true} чтобы пользователь уточнил
+- Для оснащения/опций (кожаный салон, люк, подогрев сидений и т.д.) — используй поле options[] с кодами из списка ниже
 
 Follow-up запросы (если в контексте есть предыдущий поиск):
 - "покажи дешевле" / "подешевле" → уменьши priceMax на 20%, убери priceMin
@@ -625,6 +629,38 @@ PROMPT;
         } catch (\Throwable) {
             return '"Prestige"→"프레스티지", "Premium"→"프리미엄", "Noblesse"→"노블레스", "Luxury"→"럭셔리", "Signature"→"시그니처", "Modern"→"모던"';
         }
+    }
+
+    private function buildOptionsContext(): string
+    {
+        return Cache::remember('chat_search_options_context', 3600, function () {
+            try {
+                $catalog = EncarOptionCatalog::getCached();
+                if ($catalog->isEmpty()) {
+                    return '';
+                }
+
+                $lines = [
+                    'Доступные опции Encar для фильтра options[] — используй ТОЧНЫЙ code:',
+                    '(options[] поддерживает несколько кодов одновременно — AND логика)',
+                ];
+
+                foreach ($catalog->sortBy('sort_order') as $opt) {
+                    $label = $opt->name_ru ?? $opt->name_en ?? $opt->name_kr ?? $opt->code;
+                    $extra = [];
+                    if ($opt->name_en && $opt->name_en !== $label) $extra[] = $opt->name_en;
+                    if ($opt->name_kr)                              $extra[] = $opt->name_kr;
+                    $suffix = $extra ? ' (' . implode(' / ', $extra) . ')' : '';
+                    $lines[] = sprintf('  "%s" → %s%s', $opt->code, $label, $suffix);
+                }
+
+                $lines[] = 'Пример: пользователь "с кожаным салоном и люком" → options: ["CODE_LEATHER", "CODE_SUNROOF"]';
+
+                return implode("\n", $lines);
+            } catch (\Throwable) {
+                return '';
+            }
+        });
     }
 
     private function buildMakesContext(): string
