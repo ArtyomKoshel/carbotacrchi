@@ -10,7 +10,7 @@ from config import Config
 from logging_config import setup_logging
 from repository import LotRepository
 import parsers  # noqa: F401 — triggers parser registration
-from parsers.registry import get_enabled
+from parsers.registry import get_enabled, get_all
 from scheduler import start_scheduler
 
 logger = logging.getLogger("parser")
@@ -64,7 +64,9 @@ def run_once(
 ) -> None:
     repo = LotRepository()
     try:
-        for key, reg in get_enabled().items():
+        # When --source is explicit, search all registered parsers (even disabled ones)
+        registry = get_all() if source else get_enabled()
+        for key, reg in registry.items():
             # Filter by --source if specified
             if source and key != source:
                 logger.info(f"{reg.cls.__name__} ({key}): skipped (--source={source})")
