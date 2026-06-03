@@ -4,6 +4,13 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('subscriptions:check')->everyThirtyMinutes();
 
+// Backfill model_en, generation, fuel, drive_type, trim from catalog tables.
+// Runs frequently so new lots get normalized soon after the parser ingests them.
+Schedule::command('lots:normalize-from-catalog --apply')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::call(function () {
     $baseFile = config('admin.log_file');
     if (!$baseFile) {

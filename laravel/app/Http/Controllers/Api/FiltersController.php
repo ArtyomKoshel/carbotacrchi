@@ -116,7 +116,7 @@ class FiltersController extends Controller
         // Each level returns what's available WITHIN current selection
         $makes         = $this->pluck(clone $base, 'make');
         $modelGroups   = $this->pluck(clone $base->when($make !== '', fn ($q) => $q->where('make', $make)), 'model_group');
-        $models        = $this->pluck(clone $base, 'model');
+        $models        = $this->pluckCoalesced(clone $base, 'model_en', 'model');
         $badges        = $this->pluck(clone $base, 'badge');
         $trims         = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
         $generations   = $this->pluck(clone $base, 'generation');
@@ -189,11 +189,12 @@ class FiltersController extends Controller
     // ── Private helpers ────────────────────────────────────────────────────────
 
     /**
-     * Build cascading make → model_group → model hierarchy from lots.
-     * Used by the top-level /filters endpoint for pre-loading all options.
+     * Build make → [model_en] hierarchy from lots.
      *
-     * @return array<string, array<string, string[]>>
-     *   make → { model_group → [model, model, ...] }
+     * Uses lots.model_en (English model name filled by lots:normalize-from-catalog)
+     * as the primary key. Falls back to lots.model (Korean) when model_en is NULL.
+     *
+     * @return array<string, string[]>   make → [model_en, ...]
      */
     private function buildMakesHierarchy(array $sources): array
     {
@@ -201,31 +202,29 @@ class FiltersController extends Controller
             ->where('is_active', true)
             ->whereIn('source', $sources)
             ->whereNotNull('make')->where('make', '!=', '')
-            ->select(['make', 'model_group', 'model'])
-            ->orderBy('make')->orderBy('model_group')->orderBy('model')
+            ->select(['make', 'model_en', 'model'])
+            ->distinct()
+            ->orderBy('make')
             ->get();
 
         $tree = [];
         foreach ($rows as $row) {
-            $make  = trim((string) ($row->make ?? ''));
-            $mg    = trim((string) ($row->model_group ?? '')) ?: '_';
-            $model = trim((string) ($row->model ?? ''));
-            if ($make === '') continue;
+            $make     = trim((string) ($row->make     ?? ''));
+            $modelKey = trim((string) ($row->model_en ?? ''));
+            if ($modelKey === '') {
+                $modelKey = trim((string) ($row->model ?? ''));
+            }
+            if ($make === '' || $modelKey === '') continue;
 
-            $tree[$make][$mg][$model] = true;
+            $tree[$make][$modelKey] = true;
         }
 
         // Sort and convert to arrays
         $result = [];
         ksort($tree);
-        foreach ($tree as $make => $groups) {
-            ksort($groups);
-            $result[$make] = [];
-            foreach ($groups as $mg => $models) {
-                $modelList = array_keys($models);
-                sort($modelList);
-                $result[$make][$mg] = $modelList;
-            }
+        foreach ($tree as $make => $models) {
+            ksort($models);
+            $result[$make] = array_keys($models);
         }
 
         return $result;
@@ -251,6 +250,25 @@ class FiltersController extends Controller
     {
         return $query->whereNotNull($column)->where($column, '!=', '')
             ->distinct()->orderBy($column)->pluck($column)
+            ->map(static fn ($v) => trim((string) $v))
+            ->filter(static fn (string $v) => $v !== '')
+            ->values()->toArray();
+    }
+
+    /**
+     * Pluck COALESCE(primary, fallback) — returns primary when set, fallback otherwise.
+     * Used for model_en (primary) falling back to model (Korean) when EN is missing.
+     *
+     * @return string[]
+     */
+    private function pluckCoalesced(Builder $query, string $primary, string $fallback): array
+    {
+        return $query
+            ->selectRaw("COALESCE(NULLIF(TRIM({$primary}), ''), NULLIF(TRIM({$fallback}), '')) AS _val")
+            ->whereRaw("COALESCE(NULLIF(TRIM({$primary}), ''), NULLIF(TRIM({$fallback}), '')) IS NOT NULL")
+            ->distinct()
+            ->orderByRaw("COALESCE(NULLIF(TRIM({$primary}), ''), NULLIF(TRIM({$fallback}), ''))")
+            ->pluck('_val')
             ->map(static fn ($v) => trim((string) $v))
             ->filter(static fn (string $v) => $v !== '')
             ->values()->toArray();

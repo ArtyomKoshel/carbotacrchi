@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -221,6 +222,22 @@ class LotsNormalizeFromCatalog extends Command
 
         if (! $apply) {
             $this->comment('Dry-run — pass --apply to persist.');
+        } else {
+            // Invalidate filter cache so frontend gets fresh model_en/generation data
+            $keys = Cache::get('api_filters_cache_keys', []);
+            if (empty($keys)) {
+                // Fallback: clear known patterns
+                foreach (['ru', 'en'] as $locale) {
+                    foreach (['encar', 'kbcha', 'encar_kbcha'] as $src) {
+                        Cache::forget("api_filters_{$locale}_{$src}");
+                    }
+                }
+            } else {
+                foreach ($keys as $key) {
+                    Cache::forget($key);
+                }
+            }
+            $this->line('  ✓ Filter cache invalidated');
         }
 
         return self::SUCCESS;

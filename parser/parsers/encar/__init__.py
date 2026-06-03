@@ -982,13 +982,155 @@ class EncarParser(AbstractParser):
             "reparse": True,
         }
 
+    def run_sample(self, lots_per_model: int = 7) -> dict:
+        """
+        Sample mode: fetch N lots per (Manufacturer, ModelGroup) pair.
+
+        Phase 1 — single API call to discover all (maker_kr, model_group_kr) pairs.
+        Phase 2 — for each pair fetch `lots_per_model` lots using a targeted query,
+                   enrich them, and save to DB.
+
+        Designed for integration testing: gives a small, representative dataset
+        covering every model group so that lots:normalize-from-catalog can be
+        validated before running a full parse.
+        """
+        source = _SOURCE
+        run_start = _time.monotonic()
+        stats = self.init_stats()
+
+        logger.info(f"[{source}] ===== SAMPLE MODE: {lots_per_model} lots/model =====")
+        check_floppy_balance()
+
+        existing_ids = self.repo.get_existing_ids(source)
+        seen_ids: set[str] = set()
+
+        # ── Phase 1: discover all (maker_kr, model_group_kr) pairs ────────────
+        logger.info(f"[{source}] Phase 1: discovering makers and model groups…")
+        pairs: dict[str, set[str]] = {}  # maker_kr → {model_group_kr}
+
+        try:
+            page1 = self._client.search(
+                query="(And.Hidden.N._.CarType.A.)",
+                offset=0,
+                count=_PAGE_SIZE,
+            )
+            for item in page1.get("SearchResults", []):
+                mk = (item.get("Manufacturer") or "").strip()
+                mg = (item.get("ModelGroup") or "").strip()
+                if mk:
+                    pairs.setdefault(mk, set())
+                    if mg:
+                        pairs[mk].add(mg)
+        except Exception as e:
+            logger.error(f"[{source}] Phase 1 failed: {e}")
+            return {"total": 0, "errors": 1, "error_log": [str(e)]}
+
+        total_pairs = sum(len(mgs) for mgs in pairs.values())
+        logger.info(
+            f"[{source}] Phase 1 done: {len(pairs)} makers, {total_pairs} model groups"
+        )
+
+        # ── Phase 2: N lots per (maker, model_group) pair ─────────────────────
+        total_saved = 0
+        total_pairs_done = 0
+
+        for maker_kr in sorted(pairs.keys()):
+            model_groups = sorted(pairs[maker_kr])
+            if not model_groups:
+                # maker without model group — fetch with maker filter only
+                model_groups = [""]
+
+            for mg_kr in model_groups:
+                if mg_kr:
+                    query = (
+                        f"(And.Hidden.N._.CarType.A."
+                        f"_.Manufacturer.{maker_kr}."
+                        f"_.ModelGroup.{mg_kr}.)"
+                    )
+                    label = f"{maker_kr}/{mg_kr}"
+                else:
+                    query = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker_kr}.)"
+                    label = maker_kr
+
+                try:
+                    data = self._client.search(
+                        query=query, offset=0, count=lots_per_model
+                    )
+                except ProxyBudgetExhausted as e:
+                    logger.error(f"[{source}] [{label}] proxy budget exhausted: {e}")
+                    break
+                except Exception as e:
+                    logger.warning(f"[{source}] [{label}] fetch error: {e}, skipping")
+                    stats["errors"] += 1
+                    continue
+
+                items = (data.get("SearchResults") or [])[:lots_per_model]
+                if not items:
+                    logger.debug(f"[{source}] [{label}] no results, skipping")
+                    continue
+
+                page_lots: list[CarLot] = []
+                for item in items:
+                    vid = str(item.get("Id", ""))
+                    if not vid or vid in seen_ids:
+                        continue
+                    seen_ids.add(vid)
+                    page_lots.append(_lot_from_search(item, self._norm))
+
+                if not page_lots:
+                    continue
+
+                # Enrich with detail API (engine_volume, body_type, drive_type…)
+                self._enrich_batch(page_lots, stats)
+                # Enrich with accident/record data
+                self._enrich_accident_data(page_lots, stats)
+
+                self.repo.upsert_batch(page_lots, stats)
+
+                n_new = sum(1 for l in page_lots if l.id not in existing_ids)
+                n_upd = len(page_lots) - n_new
+                stats["new"]     += n_new
+                stats["updated"] += n_upd
+                stats["total"]   += len(page_lots)
+                total_saved      += len(page_lots)
+                total_pairs_done += 1
+
+                logger.info(
+                    f"[{source}] [{label}] "
+                    f"{len(page_lots)} lots saved (new={n_new}, upd={n_upd})"
+                )
+
+                # Small pause to be polite to the API
+                _time.sleep(0.3)
+
+        elapsed = _time.monotonic() - run_start
+        logger.info(
+            f"[{source}] ===== SAMPLE DONE: {total_saved} lots "
+            f"from {total_pairs_done}/{total_pairs} pairs "
+            f"in {self.format_elapsed(elapsed)} ====="
+        )
+        return {
+            "total":      stats["total"],
+            "new":        stats["new"],
+            "updated":    stats["updated"],
+            "errors":     stats["errors"],
+            "elapsed_s":  round(elapsed, 1),
+            "time":       self.format_elapsed(elapsed),
+            "mode":       f"sample/{lots_per_model}",
+        }
+
     def run(
         self,
         max_pages: int | None = None,
         maker_filter: str | None = None,
         on_page_callback: Callable | None = None,
         checkpoint: dict | None = None,
+        sample: int | None = None,
     ) -> dict:
+        # Sample mode: delegate entirely to run_sample()
+        if sample:
+            return self.run_sample(lots_per_model=sample)
+
         source = _SOURCE
         run_start = _time.monotonic()
         stats = self.init_stats()

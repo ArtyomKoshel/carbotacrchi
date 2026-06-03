@@ -24,7 +24,10 @@ class MakeModelSpec implements LotSpecification
 
         if ($search->model) {
             $query->where(function (Builder $sub) use ($search): void {
-                $sub->where('model', $search->model)->orWhere('model_en', $search->model);
+                // Prefer model_en (English, filled by normalize command) — covers AI search.
+                // Fall back to model (Korean raw) for legacy/direct Korean queries.
+                $sub->where('model_en', $search->model)
+                    ->orWhere('model', $search->model);
             });
         }
 

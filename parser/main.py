@@ -30,6 +30,9 @@ def _parse_args() -> argparse.Namespace:
                         help="Re-fetch detail pages for lots already in DB (no list page fetching)")
     parser.add_argument("--limit", type=int, default=None,
                         help="Max lots to re-enrich (used with --reenrich)")
+    parser.add_argument("--sample", type=int, default=None,
+                        help="Sample mode: fetch N lots per model group (e.g. --sample 7). "
+                             "Covers all model groups with a small representative dataset.")
     return parser.parse_args()
 
 
@@ -51,12 +54,12 @@ def wait_for_db(max_retries: int = 30, delay: float = 2.0) -> None:
     logger.error("MySQL not available, starting anyway")
 
 
-def run_once(pages: int | None = None, maker: str | None = None) -> None:
+def run_once(pages: int | None = None, maker: str | None = None, sample: int | None = None) -> None:
     repo = LotRepository()
     try:
         for key, reg in get_enabled().items():
             parser = reg.cls(repo)
-            result = parser.run(max_pages=pages, maker_filter=maker)
+            result = parser.run(max_pages=pages, maker_filter=maker, sample=sample)
             if isinstance(result, dict):
                 logger.info(
                     f"{parser.get_source_name()}: {result.get('total', 0)} lots imported "
@@ -105,9 +108,10 @@ def main() -> None:
         run_reenrich(limit=args.limit)
         return
 
-    if args.once:
-        logger.info("Running in one-shot mode")
-        run_once(pages=args.pages, maker=args.maker)
+    if args.once or args.sample:
+        mode = f"sample/{args.sample}" if args.sample else "one-shot"
+        logger.info(f"Running in {mode} mode")
+        run_once(pages=args.pages, maker=args.maker, sample=args.sample)
         return
 
     logger.info("Starting scheduler (first run in ~60s via job queue)...")

@@ -501,8 +501,12 @@ const Filters = (() => {
     const el = document.getElementById('filter-model');
     if (!el) return;
 
-    const groupsObj = filtersData?.makes?.[state.make] ?? {};
-    const models = [...new Set(Object.values(groupsObj).flat())].sort();
+    // filtersData.makes[make] is now a flat array of English model names: ["Sonata", "Tucson", ...]
+    // (was: {model_group_kr: [model_kr, ...]} — changed by FiltersController refactor)
+    const raw = filtersData?.makes?.[state.make] ?? [];
+    const models = Array.isArray(raw)
+      ? [...new Set(raw)].sort()                                        // new flat format
+      : [...new Set(Object.values(raw).flat())].sort();                 // legacy nested fallback
 
     modelSelectInstance = _tsBase(el, {
       maxItems: 1,
