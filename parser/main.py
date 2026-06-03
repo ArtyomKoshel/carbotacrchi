@@ -33,6 +33,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--sample", type=int, default=None,
                         help="Sample mode: fetch N lots per model group (e.g. --sample 7). "
                              "Covers all model groups with a small representative dataset.")
+    parser.add_argument("--source", type=str, default=None,
+                        help="Run only this source parser (e.g. --source=encar or --source=kbcha)")
     return parser.parse_args()
 
 
@@ -54,10 +56,19 @@ def wait_for_db(max_retries: int = 30, delay: float = 2.0) -> None:
     logger.error("MySQL not available, starting anyway")
 
 
-def run_once(pages: int | None = None, maker: str | None = None, sample: int | None = None) -> None:
+def run_once(
+    pages: int | None = None,
+    maker: str | None = None,
+    sample: int | None = None,
+    source: str | None = None,
+) -> None:
     repo = LotRepository()
     try:
         for key, reg in get_enabled().items():
+            # Filter by --source if specified
+            if source and key != source:
+                logger.info(f"{reg.cls.__name__} ({key}): skipped (--source={source})")
+                continue
             parser = reg.cls(repo)
             # sample mode is Encar-only — skip parsers that don't support it
             if sample and not hasattr(parser, 'run_sample'):
@@ -118,7 +129,7 @@ def main() -> None:
     if args.once or args.sample:
         mode = f"sample/{args.sample}" if args.sample else "one-shot"
         logger.info(f"Running in {mode} mode")
-        run_once(pages=args.pages, maker=args.maker, sample=args.sample)
+        run_once(pages=args.pages, maker=args.maker, sample=args.sample, source=args.source)
         return
 
     logger.info("Starting scheduler (first run in ~60s via job queue)...")
