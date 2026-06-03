@@ -40,6 +40,9 @@ Full docs are in `docs/` — read them before touching unfamiliar areas:
 The `mysql-carbot` MCP server connects directly to the production Railway MySQL.  
 Use it for inspection and debugging — never for destructive operations without confirmation.
 
+**🔒 Правило:** Claude может делать SELECT-запросы для анализа и диагностики.
+UPDATE / DELETE / INSERT / DDL (ALTER, DROP, TRUNCATE) — **только по явному запросу пользователя.**
+
 ```sql
 -- Example: check a lot
 SELECT id, source, make, model_en, year, price, trim, generation, fuel FROM lots WHERE id = '?';

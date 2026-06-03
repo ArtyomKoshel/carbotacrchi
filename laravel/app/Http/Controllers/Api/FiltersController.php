@@ -108,6 +108,7 @@ class FiltersController extends Controller
 
         // Apply progressive filters using English (make_en) for make.
         // Supports both: new lots (make_en set) and legacy lots (make_en NULL, make = English).
+        // make → make_en
         if ($make !== '') {
             $base->where(function ($q) use ($make) {
                 $q->where('make_en', $make)
@@ -117,20 +118,33 @@ class FiltersController extends Controller
             });
         }
         if ($modelGroup !== '') $base->where('model_group', $modelGroup);
-        if ($model !== '')      $base->where('model_en', $model);
+        // model = model_group_en (Encar Level 3)
+        if ($model !== '') {
+            $base->where(function ($q) use ($model) {
+                $q->where('model_group_en', $model)
+                  ->orWhere(function ($q2) use ($model) {
+                      $q2->whereNull('model_group_en')->whereRaw('model_group LIKE ?', ["%{$model}%"]);
+                  });
+            });
+        }
         if ($badge !== '')      $base->where('badge', $badge);
         if ($trim !== '')       $base->where('trim', $trim);
-        if ($generation !== '') $base->where('generation', $generation);
+        // generation = model_en (Encar Level 4 — full model variant)
+        if ($generation !== '') {
+            $base->where(function ($q) use ($generation) {
+                $q->whereRaw('model_en LIKE ?', ["%{$generation}%"])
+                  ->orWhereRaw('generation LIKE ?', ["%{$generation}%"]);
+            });
+        }
 
-        // Each level returns what's available WITHIN current selection.
-        // Make dropdown: show make_en (English), fall back to make for unresolved lots.
         $makes       = $this->pluckEnMake(clone $base);
         $modelGroups = $this->pluck(clone $base, 'model_group');
-        // Models: only show model_en (English) — skip Korean fallback in UI
-        $models      = $this->pluckNonEmpty(clone $base, 'model_en');
+        // Level 3: model_group_en (English ModelGroup)
+        $models      = $this->pluckNonEmpty(clone $base, 'model_group_en');
         $badges      = $this->pluck(clone $base, 'badge');
         $trims       = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
-        $generations = $this->pluck(clone $base, 'generation');
+        // Level 4: model_en (English full Model/variant — from translate:run)
+        $generations = $this->pluckNonEmpty(clone $base, 'model_en');
         $bodyTypes     = $this->pluck(clone $base, 'body_type');
         $fuelTypes     = $this->pluck(clone $base, 'fuel');
         $driveTypes    = $this->pluck(clone $base, 'drive_type');
@@ -183,9 +197,26 @@ class FiltersController extends Controller
             ->where('trim', '!=', '')
             ->where('trim', '!=', '(세부등급 없음)');
 
-        if ($make !== '')       $query->where('make', $make);
+        // make_en
+        if ($make !== '') {
+            $query->where(function ($q) use ($make) {
+                $q->where('make_en', $make)
+                  ->orWhere(function ($q2) use ($make) {
+                      $q2->whereNull('make_en')->where('make', $make);
+                  });
+            });
+        }
         if ($modelGroup !== '') $query->where('model_group', $modelGroup);
-        if ($model !== '')      $query->where('model', $model);
+        // model = model_group_en (Level 3 English)
+        if ($model !== '') {
+            $query->where(function ($q) use ($model) {
+                $q->where('model_group_en', $model)
+                  ->orWhere(function ($q2) use ($model) {
+                      $q2->whereNull('model_group_en')
+                         ->whereRaw('model_group LIKE ?', ["%{$model}%"]);
+                  });
+            });
+        }
 
         $trims = $query->distinct()->orderBy('trim')->pluck('trim')
             ->map(static fn ($v) => trim((string) $v))
@@ -215,20 +246,15 @@ class FiltersController extends Controller
             ->where('is_active', true)
             ->whereIn('source', $sources)
             ->whereNotNull('make')->where('make', '!=', '')
-            ->select(['make', 'make_en', 'model_en', 'model'])
+            ->select(['make', 'make_en', 'model_group_en', 'model'])
             ->distinct()
             ->orderByRaw("COALESCE(NULLIF(TRIM(make_en),''), make)")
             ->get();
 
         $tree = [];
         foreach ($rows as $row) {
-            // Use English make when available, fall back to raw make
-            $make = trim((string) ($row->make_en ?? ''));
-            if ($make === '') {
-                $make = trim((string) ($row->make ?? ''));
-            }
-            // Only use English model_en — skip Korean fallback in UI
-            $modelKey = trim((string) ($row->model_en ?? ''));
+            $make     = trim((string) ($row->make_en ?? '')) ?: trim((string) ($row->make ?? ''));
+            $modelKey = trim((string) ($row->model_group_en ?? ''));
 
             if ($make === '' || $modelKey === '') {
                 continue;

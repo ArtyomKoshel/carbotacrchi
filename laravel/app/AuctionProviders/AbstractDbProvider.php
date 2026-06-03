@@ -59,8 +59,7 @@ abstract class AbstractDbProvider extends AbstractProvider
 
     private function applyDbFilters(Builder $builder, SearchQuery $query): void
     {
-        // make: match against make_en (English, from normalization).
-        // Fallback to raw make for legacy lots where make_en is not yet filled.
+        // make → make_en (English brand name)
         if ($query->make) {
             $builder->where(function ($q) use ($query) {
                 $q->where('make_en', $query->make)
@@ -70,9 +69,26 @@ abstract class AbstractDbProvider extends AbstractProvider
                   });
             });
         }
-        // model: match against model_en (English, from catalog_models.model_group_en)
-        if ($query->model) $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
-        if ($query->generation) $builder->whereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
+
+        // model → model_group_en (Encar Level 3: ModelGroup English name)
+        if ($query->model) {
+            $builder->where(function ($q) use ($query) {
+                $q->whereRaw('model_group_en LIKE ?', ['%' . $query->model . '%'])
+                  ->orWhere(function ($q2) use ($query) {
+                      $q2->whereNull('model_group_en')
+                         ->whereRaw('model_group LIKE ?', ['%' . $query->model . '%']);
+                  });
+            });
+        }
+
+        // generation → model_en (Encar Level 4: full Model variant, e.g. "The New Tucson NX4")
+        // Also searches lots.generation as fallback (chassis codes: G30, NX4, etc.)
+        if ($query->generation) {
+            $builder->where(function ($q) use ($query) {
+                $q->whereRaw('model_en LIKE ?', ['%' . $query->generation . '%'])
+                  ->orWhereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
+            });
+        }
 
         if ($query->yearFrom)   $builder->where('year', '>=', $query->yearFrom);
         if ($query->yearTo)     $builder->where('year', '<=', $query->yearTo);

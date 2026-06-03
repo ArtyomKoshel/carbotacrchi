@@ -150,8 +150,8 @@ const Results = (() => {
     const km        = Number(lot.mileage).toLocaleString() + ' км';
     const isFav     = favorites.has(lot.id);
     const imgSrc    = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const makeName  = lot.makeEn  || lot.make  || '';
-    const modelName = lot.modelEn || lot.model || '';
+    const makeName  = lot.makeEn       || lot.make  || '';
+    const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
 
     // Drivetrain line: "Автомат · Бензин · AWD · 2.0л" — plain text, not tags
     const drivelineParts = [
@@ -243,8 +243,8 @@ const Results = (() => {
   function openSheet(lot) {
     activeLot = lot;
     const overlay   = document.getElementById('sheet-overlay');
-    const makeName  = lot.makeEn  || lot.make  || '';
-    const modelName = lot.modelEn || lot.model || '';
+    const makeName  = lot.makeEn       || lot.make  || '';
+    const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
     const price    = '$' + Number(lot.price).toLocaleString();
     const km       = Number(lot.mileage).toLocaleString() + ' km';
     const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -12,29 +13,30 @@ use Illuminate\Support\Facades\DB;
  * Pure SQL JOINs — no regex, no string parsing, no static dictionaries.
  * All mappings live in catalog_models, catalog_badges, and translations.
  *
- * Hierarchy:
- *   lots.make (Korean raw) → translations.make          → lots.make_en
- *   lots.make + model_group → catalog_models            → lots.model_en, lots.generation
- *   lots.make + model_group + badge → catalog_badges    → lots.fuel, drive_type, engine_volume, seat_count, trim
- *   lots.trim  (Korean)    → translations.trim          → lots.trim_en
- *   lots.seat_color (Korean) → translations.seat_color  → lots.seat_color (overwrite with EN)
- *   lots.color  (Korean)   → translations.color         → lots.color (overwrite with EN)
- *
- * make matching works for BOTH:
- *   - New lots: lots.make = "기아" (Korean raw from parser)
- *   - Old lots: lots.make = "Kia" (English from old parser vocab)
+ * Step 0  (auto): translate:run — AI fills missing translations (model, trim, generation)
+ * Step 1: make_en         ← translations.make
+ * Step 2: model_group_en  ← catalog_models.model_group_en
+ * Step 2b: model_en       ← translations.model  (Level 4 full model variant)
+ * Step 3: generation      ← catalog_models.generation
+ * Step 4: tech specs      ← catalog_badges (fuel, drive_type, engine_volume, seat_count)
+ * Step 5: trim            ← catalog_badges.trim_kr
+ * Step 6: trim_en         ← translations.trim
+ * Step 7: seat_color      ← translations.seat_color
+ * Step 8: color           ← translations.color
+ * Step 9: drive_type      ← badge-token fallback (2WD/4WD/AWD scan)
  *
  * Usage:
- *   php artisan lots:normalize-from-catalog            # dry-run
- *   php artisan lots:normalize-from-catalog --apply    # run updates
- *   php artisan lots:normalize-from-catalog --apply --force  # overwrite model_en/make_en
+ *   php artisan lots:normalize-from-catalog --apply
+ *   php artisan lots:normalize-from-catalog --apply --force
+ *   php artisan lots:normalize-from-catalog --apply --skip-translate
  */
 class LotsNormalizeFromCatalog extends Command
 {
     protected $signature = 'lots:normalize-from-catalog
-        {--apply  : Persist updates (default: dry-run)}
-        {--force  : Overwrite make_en / model_en even when already set}
-        {--source=encar : Source to process}';
+        {--apply            : Persist updates (default: dry-run)}
+        {--force            : Overwrite make_en / model_group_en / model_en even when already set}
+        {--skip-translate   : Skip the AI translate:run step (use when AI API unavailable)}
+        {--source=encar     : Source to process}';
 
     protected $description = 'Fill English lot fields from catalog tables (no regex, catalog-only)';
 
@@ -56,7 +58,7 @@ class LotsNormalizeFromCatalog extends Command
                         SELECT 1 FROM translations tmk
                         WHERE tmk.category = 'make'
                           AND tmk.kr       = cb.make_kr
-                          AND tmk.en       = l.make
+                          AND tmk.en       = l.make_en
                     )
                 )
         ";
@@ -73,12 +75,12 @@ class LotsNormalizeFromCatalog extends Command
                 ON  cm.model_group_kr = l.model_group
                 AND (
                     cm.make_kr = l.make
-                    OR cm.make_en = l.make
+                    OR cm.make_en = l.make_en
                     OR EXISTS (
                         SELECT 1 FROM translations tmk
                         WHERE tmk.category = 'make'
                           AND tmk.kr       = cm.make_kr
-                          AND tmk.en       = l.make
+                          AND tmk.en       = l.make_en
                     )
                 )
         ";
@@ -95,12 +97,12 @@ class LotsNormalizeFromCatalog extends Command
                 AND cm.model_kr       = l.model
                 AND (
                     cm.make_kr = l.make
-                    OR cm.make_en = l.make
+                    OR cm.make_en = l.make_en
                     OR EXISTS (
                         SELECT 1 FROM translations tmk
                         WHERE tmk.category = 'make'
                           AND tmk.kr       = cm.make_kr
-                          AND tmk.en       = l.make
+                          AND tmk.en       = l.make_en
                     )
                 )
         ";
@@ -108,13 +110,54 @@ class LotsNormalizeFromCatalog extends Command
 
     public function handle(): int
     {
-        $apply  = (bool) $this->option('apply');
-        $force  = (bool) $this->option('force');
-        $source = (string) $this->option('source');
+        $apply         = (bool) $this->option('apply');
+        $force         = (bool) $this->option('force');
+        $source        = (string) $this->option('source');
+        $skipTranslate = (bool) $this->option('skip-translate');
 
         $mode = $apply ? ($force ? 'APPLY + FORCE' : 'APPLY') : 'DRY-RUN';
         $this->info("lots:normalize-from-catalog  source={$source}  mode={$mode}");
         $this->line('');
+
+        // ── 0. AI translations (translate:run) ────────────────────────────────
+        // Fills translations table (KR→EN cache) before SQL normalization steps.
+        // Skipped in dry-run mode or when --skip-translate is passed.
+        if ($apply && ! $skipTranslate && config('ai.api_key')) {
+            $this->line('<fg=cyan>0. AI translations</> (translate:run — fills translations cache)');
+
+            $translateCategories = 'model,trim,generation';
+
+            $this->line("   running: translate:run --category={$translateCategories} --source={$source} --apply");
+
+            Artisan::call('translate:run', [
+                '--category' => $translateCategories,
+                '--source'   => $source,
+                '--apply'    => true,
+                '--limit'    => 300,
+                '--batch'    => 20,
+            ]);
+
+            // Show output from the sub-command
+            $output = Artisan::output();
+            if ($output) {
+                foreach (explode("\n", trim($output)) as $line) {
+                    if ($line !== '') {
+                        $this->line("   " . $line);
+                    }
+                }
+            }
+
+            $this->line('');
+        } elseif (! $apply) {
+            $this->line('<fg=gray>0. AI translations</> (skipped in dry-run)');
+            $this->line('');
+        } elseif ($skipTranslate) {
+            $this->line('<fg=gray>0. AI translations</> (skipped via --skip-translate)');
+            $this->line('');
+        } elseif (! config('ai.api_key')) {
+            $this->warn('0. AI translations: skipped (AI_API_KEY not set)');
+            $this->line('');
+        }
 
         // ── 1. make_en — translate Korean make via translations.make ──────────
         $this->line('<fg=cyan>1. make_en</> (translations.make)');
@@ -168,23 +211,56 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 2. model_en — from catalog_models.model_group_en ─────────────────
-        $this->line('<fg=cyan>2. model_en</> (catalog_models.model_group_en)');
+        // ── 2. model_group_en — from catalog_models.model_group_en ──────────────
+        $this->line('<fg=cyan>2. model_group_en</> (catalog_models.model_group_en)');
+
+        $mgEnNull = "(l.model_group_en IS NULL OR l.model_group_en = '')";
+        if ($force) {
+            $mgEnNull = '1=1';
+        }
+
+        $modelGroupJoin = $this->modelGroupJoin();
+        $mgEnCount      = (int) DB::selectOne("
+            SELECT COUNT(DISTINCT l.id) AS cnt
+            FROM lots l
+            {$modelGroupJoin}
+            WHERE l.source          = ?
+              AND {$mgEnNull}
+              AND cm.model_group_en IS NOT NULL
+              AND cm.model_group_en != ''
+        ", [$source])->cnt;
+
+        $this->line("   lots to fill: {$mgEnCount}");
+
+        if ($apply && $mgEnCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                {$modelGroupJoin}
+                SET l.model_group_en = cm.model_group_en,
+                    l.updated_at     = NOW()
+                WHERE l.source          = ?
+                  AND {$mgEnNull}
+                  AND cm.model_group_en IS NOT NULL
+                  AND cm.model_group_en != ''
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 2b. model_en (Level 3) — from translations.model ─────────────────
+        // Populated by: php artisan translate:run --category=model --apply
+        $this->line('<fg=cyan>2b. model_en</> (translations.model — run translate:run first)');
 
         $modelEnNull = "(l.model_en IS NULL OR l.model_en = '')";
         if ($force) {
             $modelEnNull = '1=1';
         }
 
-        $modelGroupJoin = $this->modelGroupJoin();
-        $modelEnCount   = (int) DB::selectOne("
-            SELECT COUNT(DISTINCT l.id) AS cnt
+        $modelEnCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
             FROM lots l
-            {$modelGroupJoin}
-            WHERE l.source          = ?
-              AND {$modelEnNull}
-              AND cm.model_group_en IS NOT NULL
-              AND cm.model_group_en != ''
+            JOIN translations tm ON tm.category = 'model' AND tm.kr = l.model
+            WHERE l.source = ? AND {$modelEnNull} AND tm.en IS NOT NULL
         ", [$source])->cnt;
 
         $this->line("   lots to fill: {$modelEnCount}");
@@ -192,13 +268,10 @@ class LotsNormalizeFromCatalog extends Command
         if ($apply && $modelEnCount > 0) {
             DB::statement("
                 UPDATE lots l
-                {$modelGroupJoin}
-                SET l.model_en   = cm.model_group_en,
+                JOIN translations tm ON tm.category = 'model' AND tm.kr = l.model
+                SET l.model_en   = tm.en,
                     l.updated_at = NOW()
-                WHERE l.source          = ?
-                  AND {$modelEnNull}
-                  AND cm.model_group_en IS NOT NULL
-                  AND cm.model_group_en != ''
+                WHERE l.source = ? AND {$modelEnNull} AND tm.en IS NOT NULL
             ", [$source]);
         }
 
@@ -389,6 +462,69 @@ class LotsNormalizeFromCatalog extends Command
                 WHERE l.source = ?
                   AND l.color IS NOT NULL
                   AND tc.en IS NOT NULL
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 9. drive_type badge-token fallback ───────────────────────────────
+        // For lots with no catalog_badges match: scan badge string for known
+        // drive tokens (same vocabulary as CatalogBuildBadges::DRIVE_TOKEN_MAP).
+        // Pure token lookup — split badge by space, check each token.
+        $this->line('<fg=cyan>9. drive_type badge fallback</> (token scan for lots without catalog_badges match)');
+
+        // Build CASE expression from token vocabulary — no regex, exact token match.
+        // Tokens are space-delimited in badge strings, so we check with word-boundary spaces.
+        // Tokens are the same vocabulary as CatalogBuildBadges::DRIVE_TOKEN_MAP.
+        // REGEXP checks for whole-token match (space/boundary delimited).
+        $awdTokens = ['AWD', '4WD', '4wd', '4Matic', '4MATIC', 'xDrive', 'quattro', '콰트로', '사륜구동', '상시사륜', '4륜구동', 'ALL4', '4xe', 'e-4WD', 'HTRAC'];
+        $fwdTokens = ['2WD', '2wd', 'FWD', '전륜구동'];
+        $rwdTokens = ['RWD', 'sDrive', '후륜구동'];
+
+        $awdRegexp = implode('|', $awdTokens);
+        $fwdRegexp = implode('|', $fwdTokens);
+        $rwdRegexp = implode('|', $rwdTokens);
+
+        $badgeTokenCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            WHERE l.source = ?
+              AND l.drive_type IS NULL
+              AND l.badge IS NOT NULL
+              AND l.badge != ''
+              AND (
+                l.badge REGEXP '(^|[[:space:]])({$awdRegexp}|{$fwdRegexp}|{$rwdRegexp})([[:space:]]|\$)'
+              )
+        ", [$source])->cnt;
+
+        $this->line("   badge-token drive_type: {$badgeTokenCount} lots");
+
+        if ($apply && $badgeTokenCount > 0) {
+            // Apply AWD tokens
+            DB::statement("
+                UPDATE lots SET drive_type = 'awd', updated_at = NOW()
+                WHERE source = ?
+                  AND drive_type IS NULL
+                  AND badge IS NOT NULL
+                  AND badge REGEXP '(^|[[:space:]])({$awdRegexp})([[:space:]]|\$)'
+            ", [$source]);
+
+            // Apply FWD tokens (only if still NULL — AWD takes precedence)
+            DB::statement("
+                UPDATE lots SET drive_type = 'fwd', updated_at = NOW()
+                WHERE source = ?
+                  AND drive_type IS NULL
+                  AND badge IS NOT NULL
+                  AND badge REGEXP '(^|[[:space:]])({$fwdRegexp})([[:space:]]|\$)'
+            ", [$source]);
+
+            // Apply RWD tokens
+            DB::statement("
+                UPDATE lots SET drive_type = 'rwd', updated_at = NOW()
+                WHERE source = ?
+                  AND drive_type IS NULL
+                  AND badge IS NOT NULL
+                  AND badge REGEXP '(^|[[:space:]])({$rwdRegexp})([[:space:]]|\$)'
             ", [$source]);
         }
 

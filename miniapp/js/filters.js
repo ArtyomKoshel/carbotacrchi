@@ -77,7 +77,7 @@ const Filters = (() => {
     make:           { type: 'make_model' },
     model:          { type: 'skip' },
     trim:           { type: 'skip' },
-    generation:     { type: 'text', id: 'filter-generation', placeholder: 'G30, W213, NQ5, CN7...' },
+    generation:     { type: 'text', id: 'filter-generation', placeholder: 'The New K8, Tucson NX4, G30...' },
     year:           { type: 'range', idMin: 'filter-year-from', idMax: 'filter-year-to', inputType: 'number', min: 1990, max: new Date().getFullYear() },
     price:          { type: 'range', idMin: 'filter-price-min', idMax: 'filter-price-max', inputType: 'number', min: 0, prefix: '₩' },
     mileage:        { type: 'range', idMin: 'filter-mileage-min', idMax: 'filter-mileage-max', inputType: 'number', min: 0 },
