@@ -1,6 +1,6 @@
 const API = (() => {
   const BASE = '/api';
-  const FILTERS_CACHE_KEY = 'carbot_filters_v3';
+  const FILTERS_CACHE_KEY = 'carbot_filters_v4'; // v4: make_en + locale=en
   const FILTERS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
 
   async function request(method, path, body = null) {
@@ -111,11 +111,11 @@ const API = (() => {
   }
 
   function getContext(params = {}) {
-    const p = new URLSearchParams({ status: 'active', locale: 'ru', ...params });
+    const p = new URLSearchParams({ status: 'active', locale: 'en', ...params });
     return request('GET', `/filters/context?${p}`);
   }
 
-  function getTrims(make, model, locale = 'ru') {
+  function getTrims(make, model, locale = 'en') {
     const p = new URLSearchParams();
     if (make) p.set('make', make);
     if (model) p.set('model', model);

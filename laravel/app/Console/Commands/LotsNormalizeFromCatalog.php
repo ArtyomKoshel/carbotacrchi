@@ -7,112 +7,282 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Fill missing tech spec fields in lots using catalog_badges lookup.
+ * Fill / update English fields in lots from catalog tables.
  *
- * No regex. No string parsing. Pure SQL JOIN on (make, model_group, badge).
+ * Pure SQL JOINs — no regex, no string parsing, no static dictionaries.
+ * All mappings live in catalog_models, catalog_badges, and translations.
  *
- * The composite key (make_kr, model_group_kr, badge_kr) is required because
- * the same badge string (e.g. "9인승 시그니처") can appear for multiple models
- * with different specs. A global badge_kr lookup would return wrong data.
+ * Hierarchy:
+ *   lots.make (Korean raw) → translations.make          → lots.make_en
+ *   lots.make + model_group → catalog_models            → lots.model_en, lots.generation
+ *   lots.make + model_group + badge → catalog_badges    → lots.fuel, drive_type, engine_volume, seat_count, trim
+ *   lots.trim  (Korean)    → translations.trim          → lots.trim_en
+ *   lots.seat_color (Korean) → translations.seat_color  → lots.seat_color (overwrite with EN)
+ *   lots.color  (Korean)   → translations.color         → lots.color (overwrite with EN)
  *
- * Fills (only if NULL):
- *   lots.fuel           ← catalog_badges.fuel
- *   lots.engine_volume  ← catalog_badges.engine_volume
- *   lots.drive_type     ← catalog_badges.drive_type
- *   lots.seat_count     ← catalog_badges.seat_count
- *   lots.trim           ← catalog_badges.trim_kr  (only if lots.trim IS NULL)
- *
- * make matching: lots.make (English) is matched to catalog_badges.make_kr (Korean)
- * via the translations table.
+ * make matching works for BOTH:
+ *   - New lots: lots.make = "기아" (Korean raw from parser)
+ *   - Old lots: lots.make = "Kia" (English from old parser vocab)
  *
  * Usage:
- *   php artisan lots:normalize-from-catalog            # show counts
+ *   php artisan lots:normalize-from-catalog            # dry-run
  *   php artisan lots:normalize-from-catalog --apply    # run updates
+ *   php artisan lots:normalize-from-catalog --apply --force  # overwrite model_en/make_en
  */
 class LotsNormalizeFromCatalog extends Command
 {
     protected $signature = 'lots:normalize-from-catalog
-        {--apply : Persist updates (default: dry-run)}
+        {--apply  : Persist updates (default: dry-run)}
+        {--force  : Overwrite make_en / model_en even when already set}
         {--source=encar : Source to process}';
 
-    protected $description = 'Fill missing lots fields from catalog_badges using composite key (make, model_group, badge)';
+    protected $description = 'Fill English lot fields from catalog tables (no regex, catalog-only)';
+
+    /**
+     * JOIN catalog_badges matching both Korean makes (new lots) and English makes (legacy).
+     *
+     * New parser stores lots.make = "기아" (Korean) → cb.make_kr = "기아" matches directly.
+     * Old lots store lots.make = "Kia" (English)   → translations.en = l.make fallback.
+     */
+    private function badgeJoin(): string
+    {
+        return "
+            JOIN catalog_badges cb
+                ON  cb.model_group_kr = l.model_group
+                AND cb.badge_kr       = l.badge
+                AND (
+                    cb.make_kr = l.make
+                    OR EXISTS (
+                        SELECT 1 FROM translations tmk
+                        WHERE tmk.category = 'make'
+                          AND tmk.kr       = cb.make_kr
+                          AND tmk.en       = l.make
+                    )
+                )
+        ";
+    }
+
+    /**
+     * JOIN catalog_models matching both Korean and English make.
+     * model_group match only (used for model_en — one per model group).
+     */
+    private function modelGroupJoin(): string
+    {
+        return "
+            JOIN catalog_models cm
+                ON  cm.model_group_kr = l.model_group
+                AND (
+                    cm.make_kr = l.make
+                    OR cm.make_en = l.make
+                    OR EXISTS (
+                        SELECT 1 FROM translations tmk
+                        WHERE tmk.category = 'make'
+                          AND tmk.kr       = cm.make_kr
+                          AND tmk.en       = l.make
+                    )
+                )
+        ";
+    }
+
+    /**
+     * JOIN catalog_models with exact model_kr match (used for generation).
+     */
+    private function modelExactJoin(): string
+    {
+        return "
+            JOIN catalog_models cm
+                ON  cm.model_group_kr = l.model_group
+                AND cm.model_kr       = l.model
+                AND (
+                    cm.make_kr = l.make
+                    OR cm.make_en = l.make
+                    OR EXISTS (
+                        SELECT 1 FROM translations tmk
+                        WHERE tmk.category = 'make'
+                          AND tmk.kr       = cm.make_kr
+                          AND tmk.en       = l.make
+                    )
+                )
+        ";
+    }
 
     public function handle(): int
     {
         $apply  = (bool) $this->option('apply');
+        $force  = (bool) $this->option('force');
         $source = (string) $this->option('source');
 
-        $this->info('lots:normalize-from-catalog  mode=' . ($apply ? 'APPLY' : 'DRY-RUN'));
+        $mode = $apply ? ($force ? 'APPLY + FORCE' : 'APPLY') : 'DRY-RUN';
+        $this->info("lots:normalize-from-catalog  source={$source}  mode={$mode}");
         $this->line('');
 
-        // Fields filled from catalog_badges columns
-        // lots column → catalog_badges column
-        $specFields = [
-            'fuel'          => 'cb.fuel',
-            'engine_volume' => 'cb.engine_volume',
-            'drive_type'    => 'cb.drive_type',
-            'seat_count'    => 'cb.seat_count',
-        ];
+        // ── 1. make_en — translate Korean make via translations.make ──────────
+        $this->line('<fg=cyan>1. make_en</> (translations.make)');
 
-        // JOIN condition:
-        //   lots.model_group = catalog_badges.model_group_kr  (Korean, direct)
-        //   lots.badge       = catalog_badges.badge_kr        (Korean, direct)
-        //   lots.make        = translations.en (where translations.kr = cb.make_kr AND category='make')
-        //
-        // This avoids storing a Korean make column in lots while still matching correctly.
-        $joinSql = "
-            JOIN catalog_badges cb
-                ON  l.model_group = cb.model_group_kr
-                AND l.badge       = cb.badge_kr
-                AND EXISTS (
-                    SELECT 1 FROM translations t
-                    WHERE t.category = 'make'
-                      AND t.kr       = cb.make_kr
-                      AND t.en       = l.make
-                )
-        ";
+        $makeEnNull = "(l.make_en IS NULL OR l.make_en = '')";
+        if ($force) {
+            $makeEnNull = '1=1';
+        }
 
-        foreach ($specFields as $field => $src) {
+        $makeEnCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN translations tmk ON tmk.category = 'make' AND tmk.kr = l.make
+            WHERE l.source = ? AND {$makeEnNull}
+              AND tmk.en IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   Korean make → translate: {$makeEnCount} lots");
+
+        if ($apply && $makeEnCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN translations tmk ON tmk.category = 'make' AND tmk.kr = l.make
+                SET l.make_en = tmk.en, l.updated_at = NOW()
+                WHERE l.source = ? AND {$makeEnNull} AND tmk.en IS NOT NULL
+            ", [$source]);
+        }
+
+        // Fallback: if make is already English (old lots), copy directly
+        $makeEnCopyCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots
+            WHERE source = ?
+              AND (make_en IS NULL OR make_en = '')
+              AND make NOT REGEXP '[가-힣]'
+              AND make != ''
+        ", [$source])->cnt;
+
+        $this->line("   English make → copy: {$makeEnCopyCount} lots");
+
+        if ($apply && $makeEnCopyCount > 0) {
+            DB::statement("
+                UPDATE lots
+                SET make_en = make, updated_at = NOW()
+                WHERE source = ?
+                  AND (make_en IS NULL OR make_en = '')
+                  AND make NOT REGEXP '[가-힣]'
+                  AND make != ''
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 2. model_en — from catalog_models.model_group_en ─────────────────
+        $this->line('<fg=cyan>2. model_en</> (catalog_models.model_group_en)');
+
+        $modelEnNull = "(l.model_en IS NULL OR l.model_en = '')";
+        if ($force) {
+            $modelEnNull = '1=1';
+        }
+
+        $modelGroupJoin = $this->modelGroupJoin();
+        $modelEnCount   = (int) DB::selectOne("
+            SELECT COUNT(DISTINCT l.id) AS cnt
+            FROM lots l
+            {$modelGroupJoin}
+            WHERE l.source          = ?
+              AND {$modelEnNull}
+              AND cm.model_group_en IS NOT NULL
+              AND cm.model_group_en != ''
+        ", [$source])->cnt;
+
+        $this->line("   lots to fill: {$modelEnCount}");
+
+        if ($apply && $modelEnCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                {$modelGroupJoin}
+                SET l.model_en   = cm.model_group_en,
+                    l.updated_at = NOW()
+                WHERE l.source          = ?
+                  AND {$modelEnNull}
+                  AND cm.model_group_en IS NOT NULL
+                  AND cm.model_group_en != ''
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 3. generation — from catalog_models.generation ───────────────────
+        $this->line('<fg=cyan>3. generation</> (catalog_models.generation)');
+
+        $modelExactJoin = $this->modelExactJoin();
+        $genCount       = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            {$modelExactJoin}
+            WHERE l.source     = ?
+              AND l.generation IS NULL
+              AND cm.generation IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   lots to fill: {$genCount}");
+
+        if ($apply && $genCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                {$modelExactJoin}
+                SET l.generation = cm.generation,
+                    l.updated_at = NOW()
+                WHERE l.source     = ?
+                  AND l.generation IS NULL
+                  AND cm.generation IS NOT NULL
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 4. Tech specs from catalog_badges ────────────────────────────────
+        $this->line('<fg=cyan>4. tech specs</> (catalog_badges: fuel, drive_type, engine_volume, seat_count)');
+
+        $badgeJoin = $this->badgeJoin();
+
+        foreach (['fuel' => 'cb.fuel', 'engine_volume' => 'cb.engine_volume', 'drive_type' => 'cb.drive_type', 'seat_count' => 'cb.seat_count'] as $field => $src) {
             $count = (int) DB::selectOne("
                 SELECT COUNT(*) AS cnt
                 FROM lots l
-                {$joinSql}
-                WHERE l.source     = ?
-                  AND l.{$field}  IS NULL
-                  AND {$src}      IS NOT NULL
+                {$badgeJoin}
+                WHERE l.source   = ?
+                  AND l.{$field} IS NULL
+                  AND {$src}     IS NOT NULL
             ", [$source])->cnt;
 
-            $this->line("  {$field}: {$count} lots to fill");
+            $this->line("   {$field}: {$count} lots");
 
             if ($apply && $count > 0) {
                 DB::statement("
                     UPDATE lots l
-                    {$joinSql}
-                    SET l.{$field}    = {$src},
-                        l.updated_at  = NOW()
-                    WHERE l.source    = ?
+                    {$badgeJoin}
+                    SET l.{$field}   = {$src},
+                        l.updated_at = NOW()
+                    WHERE l.source   = ?
                       AND l.{$field} IS NULL
                       AND {$src}     IS NOT NULL
                 ", [$source]);
             }
         }
 
-        // trim filled separately — only when lots.trim IS NULL AND catalog has trim_kr
+        $this->line('');
+
+        // ── 5. trim (Korean) from catalog_badges.trim_kr ─────────────────────
+        $this->line('<fg=cyan>5. trim</> (catalog_badges.trim_kr)');
+
         $trimCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
             FROM lots l
-            {$joinSql}
+            {$badgeJoin}
             WHERE l.source    = ?
               AND l.trim      IS NULL
               AND cb.trim_kr  IS NOT NULL
         ", [$source])->cnt;
 
-        $this->line("  trim: {$trimCount} lots to fill from catalog_badges.trim_kr");
+        $this->line("   trim NULL → fill from badge: {$trimCount} lots");
 
         if ($apply && $trimCount > 0) {
             DB::statement("
                 UPDATE lots l
-                {$joinSql}
+                {$badgeJoin}
                 SET l.trim       = cb.trim_kr,
                     l.updated_at = NOW()
                 WHERE l.source   = ?
@@ -121,94 +291,13 @@ class LotsNormalizeFromCatalog extends Command
             ", [$source]);
         }
 
-        // Fill lots.generation from catalog_models lookup
-        $genCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt
-            FROM lots l
-            JOIN catalog_models cm
-                ON  l.model_group = cm.model_group_kr
-                AND l.model       = cm.model_kr
-                AND EXISTS (
-                    SELECT 1 FROM translations t
-                    WHERE t.category = 'make'
-                      AND t.kr       = cm.make_kr
-                      AND t.en       = l.make
-                )
-            WHERE l.source      = ?
-              AND l.generation  IS NULL
-              AND cm.generation IS NOT NULL
-        ", [$source])->cnt;
-
-        $this->line("  generation: {$genCount} lots to fill from catalog_models.generation");
-
-        if ($apply && $genCount > 0) {
-            DB::statement("
-                UPDATE lots l
-                JOIN catalog_models cm
-                    ON  l.model_group = cm.model_group_kr
-                    AND l.model       = cm.model_kr
-                    AND EXISTS (
-                        SELECT 1 FROM translations t
-                        WHERE t.category = 'make'
-                          AND t.kr       = cm.make_kr
-                          AND t.en       = l.make
-                    )
-                SET l.generation  = cm.generation,
-                    l.updated_at  = NOW()
-                WHERE l.source      = ?
-                  AND l.generation  IS NULL
-                  AND cm.generation IS NOT NULL
-            ", [$source]);
-        }
-
-        // Fill model_en from catalog_models.model_group_en (e.g. K5 → "K5", Carnival → "Carnival")
-        $modelEnCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt
-            FROM lots l
-            JOIN catalog_models cm
-                ON  l.model_group = cm.model_group_kr
-                AND EXISTS (
-                    SELECT 1 FROM translations t
-                    WHERE t.category = 'make'
-                      AND t.kr       = cm.make_kr
-                      AND t.en       = l.make
-                )
-            WHERE l.source         = ?
-              AND l.model_en       IS NULL
-              AND cm.model_group_en IS NOT NULL
-              AND cm.model_group_en != ''
-        ", [$source])->cnt;
-
-        $this->line("  model_en: {$modelEnCount} lots to fill from catalog_models.model_group_en");
-
-        if ($apply && $modelEnCount > 0) {
-            DB::statement("
-                UPDATE lots l
-                JOIN catalog_models cm
-                    ON  l.model_group = cm.model_group_kr
-                    AND EXISTS (
-                        SELECT 1 FROM translations t
-                        WHERE t.category = 'make'
-                          AND t.kr       = cm.make_kr
-                          AND t.en       = l.make
-                    )
-                SET l.model_en    = cm.model_group_en,
-                    l.updated_at  = NOW()
-                WHERE l.source         = ?
-                  AND l.model_en       IS NULL
-                  AND cm.model_group_en IS NOT NULL
-                  AND cm.model_group_en != ''
-            ", [$source]);
-        }
-
-        // Clean Encar placeholder "(세부등급 없음)" → NULL
-        // This means "no detailed grade" — should be stored as NULL, not as a string
+        // Clean Encar placeholder
         $placeholderCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt FROM lots
             WHERE source = ? AND trim = '(세부등급 없음)'
         ", [$source])->cnt;
 
-        $this->line("  trim cleanup '(세부등급 없음)': {$placeholderCount} lots → NULL");
+        $this->line("   trim placeholder → NULL: {$placeholderCount} lots");
 
         if ($apply && $placeholderCount > 0) {
             DB::statement("
@@ -218,28 +307,117 @@ class LotsNormalizeFromCatalog extends Command
         }
 
         $this->line('');
+
+        // ── 6. trim_en — translate Korean trim via translations.trim ─────────
+        $this->line('<fg=cyan>6. trim_en</> (translations.trim)');
+
+        $trimEnCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN translations tt ON tt.category = 'trim' AND tt.kr = l.trim
+            WHERE l.source = ?
+              AND l.trim     IS NOT NULL
+              AND (l.trim_en IS NULL OR l.trim_en = '')
+              AND tt.en IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   lots to fill: {$trimEnCount}");
+
+        if ($apply && $trimEnCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN translations tt ON tt.category = 'trim' AND tt.kr = l.trim
+                SET l.trim_en    = tt.en,
+                    l.updated_at = NOW()
+                WHERE l.source = ?
+                  AND l.trim     IS NOT NULL
+                  AND (l.trim_en IS NULL OR l.trim_en = '')
+                  AND tt.en IS NOT NULL
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 7. seat_color — translate Korean → English via translations ───────
+        $this->line('<fg=cyan>7. seat_color</> (translations.seat_color)');
+
+        $seatColorCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN translations ts ON ts.category = 'seat_color' AND ts.kr = l.seat_color
+            WHERE l.source = ?
+              AND l.seat_color IS NOT NULL
+              AND ts.en IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   Korean seat_color → EN: {$seatColorCount} lots");
+
+        if ($apply && $seatColorCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN translations ts ON ts.category = 'seat_color' AND ts.kr = l.seat_color
+                SET l.seat_color  = ts.en,
+                    l.updated_at  = NOW()
+                WHERE l.source = ?
+                  AND l.seat_color IS NOT NULL
+                  AND ts.en IS NOT NULL
+            ", [$source]);
+        }
+
+        $this->line('');
+
+        // ── 8. color — fix remaining Korean color values ──────────────────────
+        $this->line('<fg=cyan>8. color</> (translations.color — fix Korean remnants)');
+
+        $colorCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN translations tc ON tc.category = 'color' AND tc.kr = l.color
+            WHERE l.source = ?
+              AND l.color IS NOT NULL
+              AND tc.en IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   Korean color → EN: {$colorCount} lots");
+
+        if ($apply && $colorCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN translations tc ON tc.category = 'color' AND tc.kr = l.color
+                SET l.color      = tc.en,
+                    l.updated_at = NOW()
+                WHERE l.source = ?
+                  AND l.color IS NOT NULL
+                  AND tc.en IS NOT NULL
+            ", [$source]);
+        }
+
+        $this->line('');
         $this->info('Done.');
 
         if (! $apply) {
             $this->comment('Dry-run — pass --apply to persist.');
         } else {
-            // Invalidate filter cache so frontend gets fresh model_en/generation data
-            $keys = Cache::get('api_filters_cache_keys', []);
-            if (empty($keys)) {
-                // Fallback: clear known patterns
-                foreach (['ru', 'en'] as $locale) {
-                    foreach (['encar', 'kbcha', 'encar_kbcha'] as $src) {
-                        Cache::forget("api_filters_{$locale}_{$src}");
-                    }
-                }
-            } else {
-                foreach ($keys as $key) {
-                    Cache::forget($key);
-                }
-            }
+            $this->invalidateFilterCache();
             $this->line('  ✓ Filter cache invalidated');
         }
 
         return self::SUCCESS;
+    }
+
+    private function invalidateFilterCache(): void
+    {
+        $keys = Cache::get('api_filters_cache_keys', []);
+        if (! empty($keys)) {
+            foreach ($keys as $key) {
+                Cache::forget($key);
+            }
+            return;
+        }
+        foreach (['ru', 'en'] as $locale) {
+            foreach (['encar', 'kbcha', 'encar_kbcha'] as $src) {
+                Cache::forget("api_filters_{$locale}_{$src}");
+            }
+        }
     }
 }

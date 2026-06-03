@@ -55,6 +55,7 @@ class FiltersController extends Controller
             } catch (\Throwable) {
             }
 
+            // makeOptions: keys are make_en (English) values — dropdown shows/searches English
             $makeOptions = array_map(static fn (string $v) => ['value' => $v, 'label' => $v], array_keys($makes));
 
             return [
@@ -105,21 +106,31 @@ class FiltersController extends Controller
 
         $base = $this->baseQuery($status, $source);
 
-        // Apply progressive filters (cascade)
-        if ($make !== '')       $base->where('make', $make);
+        // Apply progressive filters using English (make_en) for make.
+        // Supports both: new lots (make_en set) and legacy lots (make_en NULL, make = English).
+        if ($make !== '') {
+            $base->where(function ($q) use ($make) {
+                $q->where('make_en', $make)
+                  ->orWhere(function ($q2) use ($make) {
+                      $q2->whereNull('make_en')->where('make', $make);
+                  });
+            });
+        }
         if ($modelGroup !== '') $base->where('model_group', $modelGroup);
-        if ($model !== '')      $base->where('model', $model);
+        if ($model !== '')      $base->where('model_en', $model);
         if ($badge !== '')      $base->where('badge', $badge);
         if ($trim !== '')       $base->where('trim', $trim);
         if ($generation !== '') $base->where('generation', $generation);
 
-        // Each level returns what's available WITHIN current selection
-        $makes         = $this->pluck(clone $base, 'make');
-        $modelGroups   = $this->pluck(clone $base->when($make !== '', fn ($q) => $q->where('make', $make)), 'model_group');
-        $models        = $this->pluckCoalesced(clone $base, 'model_en', 'model');
-        $badges        = $this->pluck(clone $base, 'badge');
-        $trims         = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
-        $generations   = $this->pluck(clone $base, 'generation');
+        // Each level returns what's available WITHIN current selection.
+        // Make dropdown: show make_en (English), fall back to make for unresolved lots.
+        $makes       = $this->pluckEnMake(clone $base);
+        $modelGroups = $this->pluck(clone $base, 'model_group');
+        // Models: only show model_en (English) — skip Korean fallback in UI
+        $models      = $this->pluckNonEmpty(clone $base, 'model_en');
+        $badges      = $this->pluck(clone $base, 'badge');
+        $trims       = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
+        $generations = $this->pluck(clone $base, 'generation');
         $bodyTypes     = $this->pluck(clone $base, 'body_type');
         $fuelTypes     = $this->pluck(clone $base, 'fuel');
         $driveTypes    = $this->pluck(clone $base, 'drive_type');
@@ -135,6 +146,7 @@ class FiltersController extends Controller
                 'modelGroupOptions'   => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $modelGroups),
                 'models'              => $models,
                 'modelOptions'        => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $models),
+
                 'badges'              => $badges,
                 'badgeOptions'        => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $badges),
                 'trims'               => $trims,
@@ -189,12 +201,13 @@ class FiltersController extends Controller
     // ── Private helpers ────────────────────────────────────────────────────────
 
     /**
-     * Build make → [model_en] hierarchy from lots.
+     * Build make_en → [model_en] hierarchy from lots.
      *
-     * Uses lots.model_en (English model name filled by lots:normalize-from-catalog)
-     * as the primary key. Falls back to lots.model (Korean) when model_en is NULL.
+     * Uses lots.make_en (canonical English brand name filled by normalization)
+     * and lots.model_en (canonical English model name from catalog_models).
+     * Falls back to make / model (Korean) only when EN values are absent.
      *
-     * @return array<string, string[]>   make → [model_en, ...]
+     * @return array<string, string[]>   make_en → [model_en, ...]
      */
     private function buildMakesHierarchy(array $sources): array
     {
@@ -202,24 +215,28 @@ class FiltersController extends Controller
             ->where('is_active', true)
             ->whereIn('source', $sources)
             ->whereNotNull('make')->where('make', '!=', '')
-            ->select(['make', 'model_en', 'model'])
+            ->select(['make', 'make_en', 'model_en', 'model'])
             ->distinct()
-            ->orderBy('make')
+            ->orderByRaw("COALESCE(NULLIF(TRIM(make_en),''), make)")
             ->get();
 
         $tree = [];
         foreach ($rows as $row) {
-            $make     = trim((string) ($row->make     ?? ''));
-            $modelKey = trim((string) ($row->model_en ?? ''));
-            if ($modelKey === '') {
-                $modelKey = trim((string) ($row->model ?? ''));
+            // Use English make when available, fall back to raw make
+            $make = trim((string) ($row->make_en ?? ''));
+            if ($make === '') {
+                $make = trim((string) ($row->make ?? ''));
             }
-            if ($make === '' || $modelKey === '') continue;
+            // Only use English model_en — skip Korean fallback in UI
+            $modelKey = trim((string) ($row->model_en ?? ''));
+
+            if ($make === '' || $modelKey === '') {
+                continue;
+            }
 
             $tree[$make][$modelKey] = true;
         }
 
-        // Sort and convert to arrays
         $result = [];
         ksort($tree);
         foreach ($tree as $make => $models) {
@@ -243,6 +260,39 @@ class FiltersController extends Controller
             ->map(static fn ($v) => trim((string) $v))
             ->filter(static fn (string $v) => $v !== '')
             ->values()->unique()->sort()->values()->toArray();
+    }
+
+    /**
+     * Pluck English make values: prefer make_en, fall back to make for legacy lots.
+     *
+     * @return string[]
+     */
+    private function pluckEnMake(Builder $query): array
+    {
+        return $query
+            ->selectRaw("COALESCE(NULLIF(TRIM(make_en),''), NULLIF(TRIM(make),'')) AS _val")
+            ->whereRaw("COALESCE(NULLIF(TRIM(make_en),''), NULLIF(TRIM(make),'')) IS NOT NULL")
+            ->distinct()
+            ->orderByRaw("COALESCE(NULLIF(TRIM(make_en),''), NULLIF(TRIM(make),''))")
+            ->pluck('_val')
+            ->map(static fn ($v) => trim((string) $v))
+            ->filter(static fn (string $v) => $v !== '')
+            ->values()->toArray();
+    }
+
+    /**
+     * Pluck non-empty, non-null values from a column (no Korean fallback).
+     *
+     * @return string[]
+     */
+    private function pluckNonEmpty(Builder $query, string $column): array
+    {
+        return $query
+            ->whereNotNull($column)->where($column, '!=', '')
+            ->distinct()->orderBy($column)->pluck($column)
+            ->map(static fn ($v) => trim((string) $v))
+            ->filter(static fn (string $v) => $v !== '')
+            ->values()->toArray();
     }
 
     /** @return string[] */

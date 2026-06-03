@@ -150,6 +150,7 @@ const Results = (() => {
     const km        = Number(lot.mileage).toLocaleString() + ' км';
     const isFav     = favorites.has(lot.id);
     const imgSrc    = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
+    const makeName  = lot.makeEn  || lot.make  || '';
     const modelName = lot.modelEn || lot.model || '';
 
     // Drivetrain line: "Автомат · Бензин · AWD · 2.0л" — plain text, not tags
@@ -191,7 +192,7 @@ const Results = (() => {
 
     return `
       <div class="lot-card" data-idx="${i}">
-        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(lot.make)} ${escHtml(modelName)}"
+        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(makeName)} ${escHtml(modelName)}"
              onerror="this.src='/miniapp/img/placeholder.svg'">
         <button class="lot-card__fav-btn${isFav?' saved':''}" data-id="${escHtml(lot.id)}"
                 aria-label="Сохранить">
@@ -199,7 +200,7 @@ const Results = (() => {
         </button>
         <div class="lot-card__body">
           <div class="lot-card__source">${escHtml(lot.sourceName)}</div>
-          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(modelName)}</div>
+          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}</div>
           <div class="lot-card__price">${price}</div>
           <div class="lot-card__meta">
             <span class="lot-card__meta-item">${calIcon} ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}</span>
@@ -241,7 +242,9 @@ const Results = (() => {
 
   function openSheet(lot) {
     activeLot = lot;
-    const overlay  = document.getElementById('sheet-overlay');
+    const overlay   = document.getElementById('sheet-overlay');
+    const makeName  = lot.makeEn  || lot.make  || '';
+    const modelName = lot.modelEn || lot.model || '';
     const price    = '$' + Number(lot.price).toLocaleString();
     const km       = Number(lot.mileage).toLocaleString() + ' km';
     const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
@@ -264,10 +267,10 @@ const Results = (() => {
           </button>
         </div>
       </div>
-      <img class="sheet-img" src="${imgSrc}" alt="${escHtml(lot.make)}"
+      <img class="sheet-img" src="${imgSrc}" alt="${escHtml(makeName)}"
            onerror="this.src='/miniapp/img/placeholder.svg'">
       <div class="sheet-body">
-        <div class="sheet-title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
+        <div class="sheet-title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}</div>
         <div class="sheet-price">${price}</div>
         <div class="sheet-section-title">Основное</div>
         <div class="sheet-details">

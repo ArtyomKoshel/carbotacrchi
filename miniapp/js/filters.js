@@ -105,7 +105,7 @@ const Filters = (() => {
 
   async function init() {
     try {
-      filtersData = await API.getFilters('ru');
+      filtersData = await API.getFilters('en');
       Taxonomy.ingestFilters(filtersData ?? {});
       const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
       if (sourceKeys.length) state.sources = sourceKeys;
@@ -211,13 +211,13 @@ const Filters = (() => {
         selects.className = 'filter-selects';
         selects.innerHTML = `
           <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
+            <select class="filter-select" id="filter-make"><option value="">Any make</option></select>
           </div>
           <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
+            <select class="filter-select" id="filter-model"><option value="">Any model</option></select>
           </div>
           <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
-            <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
+            <select class="filter-select" id="filter-trim"><option value="">Any trim</option></select>
           </div>`;
         body.appendChild(selects);
         break;
@@ -482,7 +482,7 @@ const Filters = (() => {
 
     makeSelectInstance = _tsBase(el, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Любая марка' }, ...makes],
+      options:  [{ value: '', text: 'Any make' }, ...makes],
       items:    state.make ? [state.make] : [''],
       onChange(val) {
         const v = val || '';
@@ -510,7 +510,7 @@ const Filters = (() => {
 
     modelSelectInstance = _tsBase(el, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Любая модель' }, ...models.map(m => ({ value: m, text: m }))],
+      options:  [{ value: '', text: 'Any model' }, ...models.map(m => ({ value: m, text: m }))],
       items:    state.model ? [state.model] : [''],
       onChange(val) {
         const v = val || '';
@@ -595,7 +595,7 @@ const Filters = (() => {
 
     trimSelectInstance = _tsBase(sel, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Любая комплектация' }, ...opts],
+      options:  [{ value: '', text: 'Any trim' }, ...opts],
       items:    state.trim ? [state.trim] : [''],
       onChange(val) { state.trim = val || ''; },
     });

@@ -24,7 +24,6 @@ from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser, ProgressUpdate
 from .._shared import sell_type as _sell
-from .._shared.korean_model_names import resolve_model_en
 from .client import EncarClient, ProxyBudgetExhausted, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
@@ -133,23 +132,26 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         "condition":    conditions,
     }
 
+    # Seat color: store raw Korean — lots:normalize-from-catalog translates via translations.seat_color
+    seat_color_raw = (item.get("SeatColor") or "").strip() or None
+
     return CarLot(
         id=vid,
         source=_SOURCE,
-        make=norm.make(make_kr),
+        make=make_kr,                      # ← raw Korean: "기아", "현대", "KG모빌리티(쌍용)"
         model=model,
-        model_group=model_group,           # ← direct from API
-        model_en=resolve_model_en(model),
-        badge=badge,                       # ← direct from API
-        trim=badge_detail or None,         # ← direct from API (BadgeDetail)
+        model_group=model_group,           # ← raw Korean from API
+        model_en=None,                     # ← catalog fills via catalog_models.model_group_en
+        badge=badge,                       # ← raw Korean from API
+        trim=badge_detail or None,         # ← raw Korean from API (BadgeDetail)
         year=year,
         price=price_raw,
         mileage=mileage,
         registration_year_month=reg_ym,
-        fuel=norm.fuel(item.get("FuelType")),  # ← direct from FuelType field
+        fuel=norm.fuel(item.get("FuelType")),  # ← structured enum from API, safe to map
         transmission=norm.transmission(item.get("Transmission")),
-        color=norm.color(item.get("Color")),
-        seat_color=norm.color(item.get("SeatColor")),
+        color=norm.color(item.get("Color")),   # ← structured enum, mostly English already
+        seat_color=seat_color_raw,             # ← raw Korean, normalization translates
         # engine_volume, drive_type, body_type, seat_count → from detail API
         # (fallback: lots:normalize-from-catalog via catalog_badges)
         location=location or None,

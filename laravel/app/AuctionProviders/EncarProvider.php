@@ -16,6 +16,7 @@ class EncarProvider extends AbstractDbProvider
                 source:       $this->getKey(),
                 sourceName:   $this->getName(),
                 make:         $raw['make']    ?? '',
+                makeEn:       $raw['make_en'] ?? null,
                 model:        $raw['model']   ?? '',
                 year:         (int) ($raw['year']    ?? 0),
                 price:        (int) ($raw['price']   ?? 0),

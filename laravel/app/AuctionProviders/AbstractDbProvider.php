@@ -59,7 +59,18 @@ abstract class AbstractDbProvider extends AbstractProvider
 
     private function applyDbFilters(Builder $builder, SearchQuery $query): void
     {
-        if ($query->make)  $builder->whereRaw('make LIKE ?', [$query->make . '%']);
+        // make: match against make_en (English, from normalization).
+        // Fallback to raw make for legacy lots where make_en is not yet filled.
+        if ($query->make) {
+            $builder->where(function ($q) use ($query) {
+                $q->where('make_en', $query->make)
+                  ->orWhere(function ($q2) use ($query) {
+                      $q2->whereNull('make_en')
+                         ->whereRaw('make LIKE ?', [$query->make . '%']);
+                  });
+            });
+        }
+        // model: match against model_en (English, from catalog_models.model_group_en)
         if ($query->model) $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
         if ($query->generation) $builder->whereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
 

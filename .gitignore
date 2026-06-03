@@ -14,3 +14,4 @@ agent-transcripts/
 terminals/
 *.har
 logs.*.json
+.mcp.json
