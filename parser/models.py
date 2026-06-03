@@ -120,7 +120,7 @@ class CarLot:
             "model_group": self.model_group,
             "model_en": self.model_en,
             "generation": self.generation,
-            "variant": self.variant,
+            # variant, package, cylinders removed — columns dropped from DB schema
             "year": self.year,
             "price": self.price,
             "mileage": self.mileage,
@@ -139,9 +139,7 @@ class CarLot:
             "badge": self.badge,
             "trim": self.trim,
             "trim_en": self.trim_en,
-            "package": self.package,
             "engine_volume": self.engine_volume,
-            "cylinders": self.cylinders,
             "lien_status": self.lien_status,
             "seizure_status": self.seizure_status,
             "total_loss_history": self.total_loss_history,
