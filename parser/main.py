@@ -59,7 +59,11 @@ def run_once(pages: int | None = None, maker: str | None = None, sample: int | N
     try:
         for key, reg in get_enabled().items():
             parser = reg.cls(repo)
-            result = parser.run(max_pages=pages, maker_filter=maker, sample=sample)
+            kwargs = dict(max_pages=pages, maker_filter=maker)
+            # sample mode is only supported by Encar parser
+            if sample and hasattr(parser, 'run_sample'):
+                kwargs['sample'] = sample
+            result = parser.run(**kwargs)
             if isinstance(result, dict):
                 logger.info(
                     f"{parser.get_source_name()}: {result.get('total', 0)} lots imported "
