@@ -123,19 +123,9 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "Model (normalized, without badge tail tokens)", "kbcha": "classCode + title parsing"},
     ),
     FieldSpec(
-        name="generation", dtype=FieldType.STRING, filterable=True,
-        category="identity", description="Generation / chassis code",
-        sources={"encar": "Model / ModelGroup token extraction", "kbcha": "title parsing (e.g. G80, NX4)"},
-    ),
-    FieldSpec(
-        name="variant", dtype=FieldType.STRING, filterable=True,
-        category="identity", description="Model variant / sub-designation (e.g. E300, 730Ld, Boxster S)",
-        sources={"encar": "_extract_variant heuristic + set_variant rules"},
-    ),
-    FieldSpec(
-        name="package", dtype=FieldType.STRING, filterable=True,
-        category="identity", description="Option package (e.g. M 스포츠, AMG Line, xLine)",
-        sources={"encar": "_split_model_trim_package package hint extraction"},
+        name="badge_group", dtype=FieldType.STRING, filterable=False,
+        category="identity", description="Encar BadgeGroup — engine/fuel variant group (e.g. 가솔린 3500cc)",
+        sources={"encar": "BadgeGroup"},
     ),
     FieldSpec(
         name="trim", dtype=FieldType.STRING, filterable=True, tracked=True,
@@ -182,13 +172,6 @@ FIELDS: list[FieldSpec] = [
         category="identity", description="Date the ad was published on the source site",
         sources={"encar": "manage.registDateTime[:10]",
                  "kbcha": ""},
-    ),
-    FieldSpec(
-        name="registration_year_month", dtype=FieldType.INT, filterable=True, tracked=True,
-        category="identity",
-        description="First registration year+month as int YYYYMM (e.g. 202006)",
-        sources={"encar": "FormYear (already YYYYMM)",
-                 "kbcha": "parse_year_month(연식 cell)"},
     ),
 
     # ── Technical specs ──────────────────────────────────────────────────────
