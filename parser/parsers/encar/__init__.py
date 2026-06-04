@@ -116,16 +116,6 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         item.get("SellType"), item.get("AdType"), conditions,
     )
 
-    form_year = item.get("FormYear") or item.get("Year")
-    reg_ym: int | None = None
-    if form_year:
-        try:
-            s = str(int(form_year))
-            if len(s) == 6 and s.isdigit():
-                reg_ym = int(s)
-        except (TypeError, ValueError):
-            pass
-
     # Raw data: only fields NOT available as first-class columns
     _raw_data: dict = {
         "model_kr_raw": model_raw,   # original composite for reference
@@ -149,7 +139,6 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         year=year,
         price=price_raw,
         mileage=mileage,
-        registration_year_month=reg_ym,
         fuel=norm.fuel(item.get("FuelType")),  # ← structured enum from API, safe to map
         transmission=norm.transmission(item.get("Transmission")),
         color=norm.color(item.get("Color")),   # ← structured enum, mostly English already
