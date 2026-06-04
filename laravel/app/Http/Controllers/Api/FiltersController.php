@@ -129,12 +129,9 @@ class FiltersController extends Controller
         }
         if ($badge !== '')      $base->where('badge', $badge);
         if ($trim !== '')       $base->where('trim', $trim);
-        // generation = model_en (Encar Level 4 — full model variant)
+        // generation → model_en (Encar Level 3 — full Model variant, e.g. "A5 (F5)")
         if ($generation !== '') {
-            $base->where(function ($q) use ($generation) {
-                $q->whereRaw('model_en LIKE ?', ["%{$generation}%"])
-                  ->orWhereRaw('generation LIKE ?', ["%{$generation}%"]);
-            });
+            $base->whereRaw('model_en LIKE ?', ["%{$generation}%"]);
         }
 
         $makes       = $this->pluckEnMake(clone $base);

@@ -81,13 +81,9 @@ abstract class AbstractDbProvider extends AbstractProvider
             });
         }
 
-        // generation → model_en (Encar Level 4: full Model variant, e.g. "The New Tucson NX4")
-        // Also searches lots.generation as fallback (chassis codes: G30, NX4, etc.)
+        // generation UI input → model_en (Encar Level 3: full Model variant, e.g. "A5 (F5)")
         if ($query->generation) {
-            $builder->where(function ($q) use ($query) {
-                $q->whereRaw('model_en LIKE ?', ['%' . $query->generation . '%'])
-                  ->orWhereRaw('generation LIKE ?', ['%' . $query->generation . '%']);
-            });
+            $builder->whereRaw('model_en LIKE ?', ['%' . $query->generation . '%']);
         }
 
         if ($query->yearFrom)   $builder->where('year', '>=', $query->yearFrom);
@@ -111,9 +107,6 @@ abstract class AbstractDbProvider extends AbstractProvider
 
         if ($query->seatCountMin) $builder->where('seat_count', '>=', $query->seatCountMin);
         if ($query->seatCountMax) $builder->where('seat_count', '<=', $query->seatCountMax);
-
-        if ($query->registrationYearMonthMin) $builder->where('registration_year_month', '>=', $query->registrationYearMonthMin);
-        if ($query->registrationYearMonthMax) $builder->where('registration_year_month', '<=', $query->registrationYearMonthMax);
 
         if ($query->hasAccident !== null)      $builder->where('has_accident', $query->hasAccident);
         if ($query->floodHistory !== null)     $builder->where('flood_history', $query->floodHistory);

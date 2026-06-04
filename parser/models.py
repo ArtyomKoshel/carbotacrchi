@@ -14,13 +14,9 @@ class CarLot:
     year: int
     price: int                    # Always in KRW (canonical)
     mileage: int = 0
-    model_group: str | None = None  # Encar ModelGroup (level 2): "쏘나타", "3 Series"
-    model_en: str | None = None    # Canonical English model name (resolved from Korean)
-    generation: str | None = None  # Generation / chassis code (e.g. G30, NX4) — from detail API
-    variant: str | None = None     # Model variant / sub-designation (e.g. E300, 730Ld)
-
-    # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
-    registration_year_month: int | None = None
+    model_group: str | None = None     # Encar ModelGroup (level 2): "카니발", "3 Series"
+    model_en: str | None = None        # Encar Model English name (level 3): "Carnival 4th Gen"
+    badge_group: str | None = None     # Encar BadgeGroup (level 4): "가솔린 3500cc"
 
     # Technical specs
     fuel: str | None = None
@@ -28,13 +24,11 @@ class CarLot:
     body_type: str | None = None
     drive_type: str | None = None
     engine_volume: float | None = None
-    cylinders: int | None = None
     color: str | None = None
     seat_color: str | None = None
     badge: str | None = None        # Encar Badge (level 5): "가솔린 2.5T 4WD" — direct from API
     trim: str | None = None        # Encar BadgeDetail (level 6): "프레스티지" — direct from API
     trim_en: str | None = None     # English trim name from Encar detail API (gradeDetailEnglishName)
-    package: str | None = None     # Option package (e.g. M 스포츠, AMG Line, xLine)
 
     # Location & links
     location: str | None = None
@@ -91,9 +85,9 @@ class CarLot:
         "manufacturer_kr",    # -> duplicate of make
         "model_en",           # -> first-class column
         "model_group_kr",     # -> lots.model_group column
+        "badge_group_kr",     # -> lots.badge_group column
         "badge_kr",           # -> lots.badge column
         "badge_detail_kr",    # -> lots.trim column
-        "year_month",         # -> duplicate of registration_year_month
         "origin_price",       # -> duplicate of retail_value
         "seat_count",         # -> extracted to seat_count column
         "grade_detail_en",    # -> first-class column trim_en
@@ -119,8 +113,6 @@ class CarLot:
             "model": self.model,
             "model_group": self.model_group,
             "model_en": self.model_en,
-            "generation": self.generation,
-            # variant, package, cylinders removed — columns dropped from DB schema
             "year": self.year,
             "price": self.price,
             "mileage": self.mileage,
@@ -136,6 +128,7 @@ class CarLot:
             "location": self.location,
             "color": self.color,
             "seat_color": self.seat_color,
+            "badge_group": self.badge_group,
             "badge": self.badge,
             "trim": self.trim,
             "trim_en": self.trim_en,
@@ -145,7 +138,6 @@ class CarLot:
             "total_loss_history": self.total_loss_history,
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
-            "registration_year_month": self.registration_year_month,
             "image_url": self.image_url,
             "lot_url": self.lot_url,
             "raw_data": raw_json,

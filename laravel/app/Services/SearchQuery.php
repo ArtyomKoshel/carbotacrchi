@@ -33,8 +33,6 @@ class SearchQuery
 
     public int $seatCountMin = 0;
     public int $seatCountMax = 0;
-    public int $registrationYearMonthMin = 0;
-    public int $registrationYearMonthMax = 0;
 
     /** @var string[] */
     public array $bodyTypes = [];
@@ -97,8 +95,6 @@ class SearchQuery
         $q->retailValueMax = (int) ($data['retailValueMax'] ?? 0);
         $q->seatCountMin = (int) ($data['seatCountMin'] ?? 0);
         $q->seatCountMax = (int) ($data['seatCountMax'] ?? 0);
-        $q->registrationYearMonthMin = (int) ($data['registrationYearMonthMin'] ?? 0);
-        $q->registrationYearMonthMax = (int) ($data['registrationYearMonthMax'] ?? 0);
 
         $q->hasAccident = self::toNullableBool($data['hasAccident'] ?? null);
         $q->floodHistory = self::toNullableBool($data['floodHistory'] ?? null);
@@ -320,8 +316,6 @@ class SearchQuery
         if ($this->retailValueMax) $data['retailValueMax'] = $this->retailValueMax;
         if ($this->seatCountMin) $data['seatCountMin'] = $this->seatCountMin;
         if ($this->seatCountMax) $data['seatCountMax'] = $this->seatCountMax;
-        if ($this->registrationYearMonthMin) $data['registrationYearMonthMin'] = $this->registrationYearMonthMin;
-        if ($this->registrationYearMonthMax) $data['registrationYearMonthMax'] = $this->registrationYearMonthMax;
         if ($this->hasAccident !== null) $data['hasAccident'] = $this->hasAccident;
         if ($this->floodHistory !== null) $data['floodHistory'] = $this->floodHistory;
         if ($this->totalLossHistory !== null) $data['totalLossHistory'] = $this->totalLossHistory;

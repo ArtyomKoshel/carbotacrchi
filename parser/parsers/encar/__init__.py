@@ -88,6 +88,7 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
     make_kr      = (item.get("Manufacturer") or "").strip()
     model_group  = (item.get("ModelGroup") or "").strip()
     model_raw    = (item.get("Model") or "").strip()
+    badge_group  = (item.get("BadgeGroup") or "").strip()
     badge        = (item.get("Badge") or "").strip()
     badge_detail = (item.get("BadgeDetail") or "").strip()
 
@@ -140,10 +141,11 @@ def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
         source=_SOURCE,
         make=make_kr,                      # ← raw Korean: "기아", "현대", "KG모빌리티(쌍용)"
         model=model,
-        model_group=model_group,           # ← raw Korean from API
-        model_en=None,                     # ← catalog fills via catalog_models.model_group_en
-        badge=badge,                       # ← raw Korean from API
-        trim=badge_detail or None,         # ← raw Korean from API (BadgeDetail)
+        model_group=model_group,           # ← raw Korean from API (Encar ModelGroup)
+        model_en=None,                     # ← filled by lots:normalize-from-catalog
+        badge_group=badge_group or None,   # ← raw Korean from API (Encar BadgeGroup)
+        badge=badge,                       # ← raw Korean from API (Encar Badge)
+        trim=badge_detail or None,         # ← raw Korean from API (Encar BadgeDetail)
         year=year,
         price=price_raw,
         mileage=mileage,

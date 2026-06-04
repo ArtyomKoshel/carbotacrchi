@@ -23,7 +23,7 @@ class EncarProvider extends AbstractDbProvider
                 year:         (int) ($raw['year']    ?? 0),
                 price:        (int) ($raw['price']   ?? 0),
                 mileage:      (int) ($raw['mileage'] ?? 0),
-                generation:   $raw['generation'] ?? null,
+                badgeGroup:   $raw['badge_group'] ?? null,
                 location:     $raw['location'] ?? 'Korea',
                 lotUrl:       $raw['lot_url']   ?? '',
                 imageUrl:     $raw['image_url'] ?? null,
@@ -47,7 +47,6 @@ class EncarProvider extends AbstractDbProvider
                 insuranceCount:   isset($raw['insurance_count']) ? (int) $raw['insurance_count'] : null,
                 sellType:         $raw['sell_type']     ?? null,
                 sellTypeRaw:      $raw['sell_type_raw'] ?? null,
-                registrationYearMonth: isset($raw['registration_year_month']) ? (int) $raw['registration_year_month'] : null,
                 firstRegDate: $raw['first_reg_date'] ?? null,
                 listedAt:     $raw['listed_at'] ?? null,
                 options:      isset($raw['options'])

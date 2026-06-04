@@ -16,24 +16,28 @@ use Illuminate\Support\Facades\Log;
  *
  * Supported categories and their data sources:
  *
- *   model         catalog_models.model_kr       → translations.model + catalog_models.model_en
- *   model_group   catalog_models.model_group_kr → translations.model_group
- *   trim          lots.trim / catalog_badges     → translations.trim
- *   generation    lots.generation               → translations.generation
+ * Translates distinct Korean values from lots columns → lots.*_en columns.
+ * Caches results in `translations` table (category + kr/en pair).
  *
- * Variant B context for 'model': provides make_en + model_group_en to AI
- * so it can produce accurate English names.
+ * Supported categories:
+ *   make          lots.make        → lots.make_en
+ *   model         lots.model       → lots.model_en        (with make+model_group context)
+ *   model_group   lots.model_group → lots.model_group_en
+ *   badge_group   lots.badge_group → lots.badge_group_en
+ *   trim          lots.trim        → lots.trim_en
+ *   color         lots.color       → lots.color (overwrites Korean)
+ *   seat_color    lots.seat_color  → lots.seat_color (overwrites Korean)
  *
  * Usage:
  *   php artisan translate:run --category=model --apply
- *   php artisan translate:run --category=trim,generation --apply
+ *   php artisan translate:run --category=model,model_group,badge_group,trim --apply
  *   php artisan translate:run --category=model --apply --limit=200 --batch=20
  *   php artisan translate:run --category=model              # dry-run
  */
 class TranslateRun extends Command
 {
     protected $signature = 'translate:run
-        {--category=model : Comma-separated categories: model,model_group,trim,generation}
+        {--category=model : Comma-separated categories: make,model,model_group,badge_group,trim,color,seat_color}
         {--source=encar   : Lot source filter}
         {--batch=20       : Items per AI API call}
         {--limit=500      : Max new items to translate per category}
@@ -94,9 +98,9 @@ class TranslateRun extends Command
     ): void {
         $items = match ($category) {
             'model'        => $this->collectModelItems($source, $limit),
-            'model_group'  => $this->collectModelGroupItems($limit),
+            'model_group'  => $this->collectLotsDistinct('model_group', $source, $limit, fn ($r) => ['kr' => $r->kr, 'make_en' => $r->make_en ?? '']),
+            'badge_group'  => $this->collectLotsDistinct('badge_group', $source, $limit),
             'trim'         => $this->collectTrimItems($source, $limit),
-            'generation'   => $this->collectGenerationItems($source, $limit),
             default        => $this->collectGenericItems($category, $source, $limit),
         };
 
@@ -132,14 +136,6 @@ class TranslateRun extends Command
 
                 if ($apply) {
                     $this->saveTranslation($category, $kr, $en);
-
-                    // For 'model': also update catalog_models.model_en
-                    if ($category === 'model' && ! empty($item['catalog_model_id'])) {
-                        DB::table('catalog_models')
-                            ->where('id', $item['catalog_model_id'])
-                            ->update(['model_en' => $en, 'updated_at' => now()]);
-                    }
-
                     $saved++;
                 }
             }
@@ -150,68 +146,119 @@ class TranslateRun extends Command
         }
 
         $this->line("   translated: {$total}  saved: {$saved}");
+
+        // Apply translations back to lots.*_en columns in bulk
+        if ($apply && $saved > 0) {
+            $affected = $this->applyToLots($category, $source);
+            if ($affected > 0) {
+                $this->line("   → applied to lots: {$affected} rows");
+            }
+        }
+    }
+
+    /**
+     * Bulk UPDATE lots.{en_col} from translations table after AI run.
+     */
+    private function applyToLots(string $category, string $source): int
+    {
+        $map = [
+            'make'        => ['kr_col' => 'make',        'en_col' => 'make_en'],
+            'model'       => ['kr_col' => 'model',       'en_col' => 'model_en'],
+            'model_group' => ['kr_col' => 'model_group', 'en_col' => 'model_group_en'],
+            'badge_group' => ['kr_col' => 'badge_group', 'en_col' => 'badge_group_en'],
+            'trim'        => ['kr_col' => 'trim',        'en_col' => 'trim_en'],
+        ];
+
+        if (! isset($map[$category])) {
+            return 0;
+        }
+
+        $krCol = $map[$category]['kr_col'];
+        $enCol = $map[$category]['en_col'];
+
+        DB::statement("
+            UPDATE lots l
+            JOIN translations t ON t.category = ? AND t.kr = l.{$krCol}
+            SET l.{$enCol}  = t.en,
+                l.updated_at = NOW()
+            WHERE l.source = ?
+              AND l.{$krCol}  IS NOT NULL
+              AND l.{$krCol}  != ''
+              AND (l.{$enCol} IS NULL OR l.{$enCol} = '')
+              AND t.en IS NOT NULL
+        ", [$category, $source]);
+
+        return DB::affectedRows();
     }
 
     // ── Data collectors ────────────────────────────────────────────────────────
 
     /**
-     * Collect catalog_models rows where model_kr has no translations.model entry.
-     * Returns rich context: make_en + model_group_en for Variant B prompts.
+     * Collect distinct lots.model values where model_en is missing.
+     * Returns make_en + model_group_en context for accurate AI translation.
      */
     private function collectModelItems(string $source, int $limit): array
     {
-        // Get distinct model_kr values already in translations
         $cached = DB::table('translations')
             ->where('category', 'model')
             ->whereNotNull('en')
-            ->pluck('kr')
-            ->flip()
-            ->toArray();
+            ->pluck('kr')->flip()->toArray();
 
-        $rows = DB::table('catalog_models')
-            ->whereNotNull('model_kr')
-            ->where('model_kr', '!=', '')
-            ->whereNull('model_en')           // not yet filled in catalog
-            ->select(['id', 'model_kr', 'make_en', 'model_group_en'])
-            ->orderBy('make_en')
+        $rows = DB::table('lots')
+            ->where('source', $source)
+            ->whereNotNull('model')->where('model', '!=', '')
+            ->whereNull('model_en')
+            ->selectRaw('model AS kr, MAX(make_en) AS make_en, MAX(model_group_en) AS model_group_en')
+            ->groupBy('model')
+            ->orderBy('model')
             ->get();
 
         $items = [];
         foreach ($rows as $row) {
-            if (isset($cached[$row->model_kr])) {
-                continue; // already translated
+            if (isset($cached[$row->kr])) {
+                continue;
             }
             if (count($items) >= $limit) {
                 break;
             }
             $items[] = [
-                'kr'               => $row->model_kr,
-                'make_en'          => $row->make_en ?? '',
-                'model_group_en'   => $row->model_group_en ?? '',
-                'catalog_model_id' => $row->id,
+                'kr'             => $row->kr,
+                'make_en'        => $row->make_en        ?? '',
+                'model_group_en' => $row->model_group_en ?? '',
             ];
         }
 
         return $items;
     }
 
-    /** Collect model_group_kr values not yet in translations. */
-    private function collectModelGroupItems(int $limit): array
-    {
+    /**
+     * Collect distinct values from lots.{column} not yet in translations.
+     * Optional $itemMapper transforms each DB row into the item array.
+     *
+     * @param callable|null $itemMapper  fn(object $row): array
+     */
+    private function collectLotsDistinct(
+        string   $column,
+        string   $source,
+        int      $limit,
+        ?callable $itemMapper = null,
+    ): array {
         $cached = DB::table('translations')
-            ->where('category', 'model_group')
+            ->where('category', $column)
             ->whereNotNull('en')
             ->pluck('kr')->flip()->toArray();
 
-        return DB::table('catalog_models')
-            ->selectRaw('DISTINCT model_group_kr AS kr, make_en')
-            ->whereNotNull('model_group_kr')
-            ->where('model_group_kr', '!=', '')
-            ->whereNull('model_group_en')
-            ->get()
+        $query = DB::table('lots')
+            ->where('source', $source)
+            ->whereNotNull($column)->where($column, '!=', '')
+            ->selectRaw("{$column} AS kr, MAX(make_en) AS make_en")
+            ->groupBy($column)
+            ->orderBy($column);
+
+        return $query->get()
             ->filter(fn ($r) => ! isset($cached[$r->kr]))
             ->take($limit)
-            ->map(fn ($r) => ['kr' => $r->kr, 'make_en' => $r->make_en ?? ''])
+            ->map($itemMapper ?? fn ($r) => ['kr' => $r->kr])
             ->values()->toArray();
     }
 
@@ -237,27 +284,7 @@ class TranslateRun extends Command
             ->values()->toArray();
     }
 
-    /** Collect Korean generation values (ordinals, marketing names) not in translations. */
-    private function collectGenerationItems(string $source, int $limit): array
-    {
-        $cached = DB::table('translations')
-            ->where('category', 'generation')
-            ->whereNotNull('en')
-            ->pluck('kr')->flip()->toArray();
-
-        return DB::table('lots')
-            ->where('source', $source)
-            ->whereNotNull('generation')
-            ->whereRaw("generation REGEXP '[가-힣]'") // only Korean values
-            ->selectRaw('DISTINCT generation AS kr')
-            ->get()
-            ->filter(fn ($r) => ! isset($cached[$r->kr]))
-            ->take($limit)
-            ->map(fn ($r) => ['kr' => $r->kr])
-            ->values()->toArray();
-    }
-
-    /** Generic: collect distinct values from lots.{column} not in translations. */
+    /** Fallback: collect distinct Korean values from lots.{column}. */
     private function collectGenericItems(string $category, string $source, int $limit): array
     {
         $validColumns = ['color', 'seat_color', 'make'];
@@ -348,8 +375,9 @@ class TranslateRun extends Command
         return match ($category) {
             'model'       => $this->promptModel($items),
             'model_group' => $this->promptModelGroup($items),
+            'badge_group' => $this->promptBadgeGroup($items),
             'trim'        => $this->promptTrim($items),
-            'generation'  => $this->promptGeneration($items),
+            'make'        => $this->promptMake($items),
             'color'       => $this->promptColor($items),
             'seat_color'  => $this->promptSeatColor($items),
             default       => null,
@@ -395,6 +423,34 @@ SYS,
         ];
     }
 
+    private function promptBadgeGroup(array $items): array
+    {
+        $lines = implode("\n", array_map(fn ($i) => "- {$i['kr']}", $items));
+
+        return [
+            'system' => <<<'SYS'
+Translate Korean car BadgeGroup names to English. BadgeGroup describes the engine/fuel variant group.
+
+Examples: 가솔린 3500cc → Gasoline 3500cc, 디젤 2000cc → Diesel 2000cc,
+전기 → Electric, 가솔린 2.5T → Gasoline 2.5T, 하이브리드 → Hybrid,
+LPG → LPG, 가솔린 터보 → Gasoline Turbo.
+
+Return ONLY valid JSON: {"results": {"Korean": "English", ...}}
+SYS,
+            'user' => "Translate:\n{$lines}",
+        ];
+    }
+
+    private function promptMake(array $items): array
+    {
+        $lines = implode("\n", array_map(fn ($i) => "- {$i['kr']}", $items));
+
+        return [
+            'system' => 'Translate Korean car manufacturer names to English. Return ONLY valid JSON: {"results": {"Korean": "English", ...}}',
+            'user'   => "Translate:\n{$lines}",
+        ];
+    }
+
     private function promptTrim(array $items): array
     {
         $lines = implode("\n", array_map(fn ($i) => "- {$i['kr']}", $items));
@@ -411,16 +467,6 @@ Common trims: 프레스티지 → Prestige, 노블레스 → Noblesse, 익스클
 Return ONLY valid JSON: {"results": {"Korean": "English", ...}}
 SYS,
             'user' => "Translate these trim names:\n{$lines}",
-        ];
-    }
-
-    private function promptGeneration(array $items): array
-    {
-        $lines = implode("\n", array_map(fn ($i) => "- {$i['kr']}", $items));
-
-        return [
-            'system' => 'Translate Korean car generation names. "N세대" → "Gen N". Keep model names that are already descriptive. Return ONLY valid JSON: {"results": {"Korean": "English", ...}}',
-            'user'   => "Translate:\n{$lines}",
         ];
     }
 

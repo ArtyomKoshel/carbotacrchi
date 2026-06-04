@@ -13,13 +13,13 @@ use Illuminate\Support\Facades\DB;
  * Pure SQL JOINs — no regex, no string parsing, no static dictionaries.
  * All mappings live in catalog_models, catalog_badges, and translations.
  *
- * Step 0  (auto): translate:run — AI fills missing translations (model, trim, generation)
+ * Step 0  (auto): translate:run — AI fills missing translations
  * Step 1: make_en         ← translations.make
- * Step 2: model_group_en  ← catalog_models.model_group_en
- * Step 2b: model_en       ← translations.model  (Level 4 full model variant)
- * Step 3: generation      ← catalog_models.generation
- * Step 4: tech specs      ← catalog_badges (fuel, drive_type, engine_volume, seat_count)
- * Step 5: trim            ← catalog_badges.trim_kr
+ * Step 2: model_group_en  ← catalog_models.model_group_en + translations.model_group
+ * Step 2b: model_en       ← translations.model
+ * Step 3: badge_group_en  ← translations.badge_group
+ * Step 4: fuel + engine_volume ← badge_group (direct parse, then catalog_badges fallback)
+ * Step 5: drive_type + seat_count ← catalog_badges fallback
  * Step 6: trim_en         ← translations.trim
  * Step 7: seat_color      ← translations.seat_color
  * Step 8: color           ← translations.color
@@ -86,28 +86,6 @@ class LotsNormalizeFromCatalog extends Command
         ";
     }
 
-    /**
-     * JOIN catalog_models with exact model_kr match (used for generation).
-     */
-    private function modelExactJoin(): string
-    {
-        return "
-            JOIN catalog_models cm
-                ON  cm.model_group_kr = l.model_group
-                AND cm.model_kr       = l.model
-                AND (
-                    cm.make_kr = l.make
-                    OR cm.make_en = l.make_en
-                    OR EXISTS (
-                        SELECT 1 FROM translations tmk
-                        WHERE tmk.category = 'make'
-                          AND tmk.kr       = cm.make_kr
-                          AND tmk.en       = l.make_en
-                    )
-                )
-        ";
-    }
-
     public function handle(): int
     {
         $apply         = (bool) $this->option('apply');
@@ -125,7 +103,7 @@ class LotsNormalizeFromCatalog extends Command
         if ($apply && ! $skipTranslate && config('ai.api_key')) {
             $this->line('<fg=cyan>0. AI translations</> (translate:run — fills translations cache)');
 
-            $translateCategories = 'model,trim,generation';
+            $translateCategories = 'make,model,model_group,badge_group,trim';
 
             $this->line("   running: translate:run --category={$translateCategories} --source={$source} --apply");
 
@@ -247,9 +225,8 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 2b. model_en (Level 3) — from translations.model ─────────────────
-        // Populated by: php artisan translate:run --category=model --apply
-        $this->line('<fg=cyan>2b. model_en</> (translations.model — run translate:run first)');
+        // ── 2b. model_en — from translations.model ───────────────────────────
+        $this->line('<fg=cyan>2b. model_en</> (translations.model)');
 
         $modelEnNull = "(l.model_en IS NULL OR l.model_en = '')";
         if ($force) {
@@ -277,41 +254,111 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 3. generation — from catalog_models.generation ───────────────────
-        $this->line('<fg=cyan>3. generation</> (catalog_models.generation)');
+        // ── 3. badge_group_en — from translations.badge_group ─────────────────
+        $this->line('<fg=cyan>3. badge_group_en</> (translations.badge_group)');
 
-        $modelExactJoin = $this->modelExactJoin();
-        $genCount       = (int) DB::selectOne("
+        $bgEnNull = "(l.badge_group_en IS NULL OR l.badge_group_en = '')";
+        if ($force) {
+            $bgEnNull = '1=1';
+        }
+
+        $bgEnCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
             FROM lots l
-            {$modelExactJoin}
-            WHERE l.source     = ?
-              AND l.generation IS NULL
-              AND cm.generation IS NOT NULL
+            JOIN translations tb ON tb.category = 'badge_group' AND tb.kr = l.badge_group
+            WHERE l.source = ? AND {$bgEnNull} AND tb.en IS NOT NULL
         ", [$source])->cnt;
 
-        $this->line("   lots to fill: {$genCount}");
+        $this->line("   lots to fill: {$bgEnCount}");
 
-        if ($apply && $genCount > 0) {
+        if ($apply && $bgEnCount > 0) {
             DB::statement("
                 UPDATE lots l
-                {$modelExactJoin}
-                SET l.generation = cm.generation,
-                    l.updated_at = NOW()
-                WHERE l.source     = ?
-                  AND l.generation IS NULL
-                  AND cm.generation IS NOT NULL
+                JOIN translations tb ON tb.category = 'badge_group' AND tb.kr = l.badge_group
+                SET l.badge_group_en = tb.en,
+                    l.updated_at     = NOW()
+                WHERE l.source = ? AND {$bgEnNull} AND tb.en IS NOT NULL
             ", [$source]);
         }
 
         $this->line('');
 
-        // ── 4. Tech specs from catalog_badges ────────────────────────────────
-        $this->line('<fg=cyan>4. tech specs</> (catalog_badges: fuel, drive_type, engine_volume, seat_count)');
+        // ── 4. fuel + engine_volume from badge_group (authoritative Encar source) ──
+        // badge_group e.g. "가솔린 3500cc", "디젤 2000cc", "전기", "1.6T 가솔린 터보"
+        $this->line('<fg=cyan>4. fuel + engine_volume</> (badge_group parse, then catalog_badges fallback)');
+
+        // 4a. fuel from badge_group
+        $fuelFromBgCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt FROM lots
+            WHERE source = ?
+              AND fuel IS NULL
+              AND badge_group IS NOT NULL AND badge_group != ''
+              AND badge_group REGEXP '가솔린|디젤|전기|하이브리드|LPG|lpg'
+        ", [$source])->cnt;
+
+        $this->line("   fuel from badge_group: {$fuelFromBgCount} lots");
+
+        if ($apply && $fuelFromBgCount > 0) {
+            DB::statement("
+                UPDATE lots SET fuel = CASE
+                    WHEN badge_group REGEXP '전기'       THEN 'electric'
+                    WHEN badge_group REGEXP '하이브리드'  THEN 'hybrid'
+                    WHEN badge_group REGEXP '가솔린'      THEN 'gasoline'
+                    WHEN badge_group REGEXP '디젤'        THEN 'diesel'
+                    WHEN badge_group REGEXP '[Ll][Pp][Gg]' THEN 'lpg'
+                END,
+                updated_at = NOW()
+                WHERE source = ?
+                  AND fuel IS NULL
+                  AND badge_group IS NOT NULL AND badge_group != ''
+                  AND badge_group REGEXP '가솔린|디젤|전기|하이브리드|LPG|lpg'
+            ", [$source]);
+        }
+
+        // 4b. engine_volume from badge_group — cc format (e.g. "3500cc" → 3.5)
+        $volCcCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt FROM lots
+            WHERE source = ? AND engine_volume IS NULL
+              AND badge_group REGEXP '[0-9]+cc'
+        ", [$source])->cnt;
+
+        $this->line("   engine_volume (cc): {$volCcCount} lots");
+
+        if ($apply && $volCcCount > 0) {
+            DB::statement("
+                UPDATE lots SET
+                    engine_volume = ROUND(CAST(REGEXP_SUBSTR(badge_group, '[0-9]+cc') AS UNSIGNED) / 1000.0, 1),
+                    updated_at    = NOW()
+                WHERE source = ? AND engine_volume IS NULL
+                  AND badge_group REGEXP '[0-9]+cc'
+            ", [$source]);
+        }
+
+        // 4c. engine_volume from badge_group — T format (e.g. "2.5T" → 2.5, "1.6T" → 1.6)
+        $volTCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt FROM lots
+            WHERE source = ? AND engine_volume IS NULL
+              AND badge_group REGEXP '[0-9]+\\.?[0-9]*[Tt]'
+        ", [$source])->cnt;
+
+        $this->line("   engine_volume (T): {$volTCount} lots");
+
+        if ($apply && $volTCount > 0) {
+            DB::statement("
+                UPDATE lots SET
+                    engine_volume = CAST(REGEXP_SUBSTR(badge_group, '[0-9]+\\.?[0-9]*[Tt]') AS DECIMAL(4,1)),
+                    updated_at    = NOW()
+                WHERE source = ? AND engine_volume IS NULL
+                  AND badge_group REGEXP '[0-9]+\\.?[0-9]*[Tt]'
+            ", [$source]);
+        }
+
+        // 4d. catalog_badges fallback for drive_type + seat_count (and any remaining fuel/engine_volume)
+        $this->line('<fg=cyan>4d. drive_type + seat_count</> (catalog_badges fallback)');
 
         $badgeJoin = $this->badgeJoin();
 
-        foreach (['fuel' => 'cb.fuel', 'engine_volume' => 'cb.engine_volume', 'drive_type' => 'cb.drive_type', 'seat_count' => 'cb.seat_count'] as $field => $src) {
+        foreach (['drive_type' => 'cb.drive_type', 'seat_count' => 'cb.seat_count'] as $field => $src) {
             $count = (int) DB::selectOne("
                 SELECT COUNT(*) AS cnt
                 FROM lots l
@@ -338,33 +385,7 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 5. trim (Korean) from catalog_badges.trim_kr ─────────────────────
-        $this->line('<fg=cyan>5. trim</> (catalog_badges.trim_kr)');
-
-        $trimCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt
-            FROM lots l
-            {$badgeJoin}
-            WHERE l.source    = ?
-              AND l.trim      IS NULL
-              AND cb.trim_kr  IS NOT NULL
-        ", [$source])->cnt;
-
-        $this->line("   trim NULL → fill from badge: {$trimCount} lots");
-
-        if ($apply && $trimCount > 0) {
-            DB::statement("
-                UPDATE lots l
-                {$badgeJoin}
-                SET l.trim       = cb.trim_kr,
-                    l.updated_at = NOW()
-                WHERE l.source   = ?
-                  AND l.trim     IS NULL
-                  AND cb.trim_kr IS NOT NULL
-            ", [$source]);
-        }
-
-        // Clean Encar placeholder
+        // ── 5. trim — clean Encar placeholder only (raw BadgeDetail from parser, no catalog fill)
         $placeholderCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt FROM lots
             WHERE source = ? AND trim = '(세부등급 없음)'
@@ -382,7 +403,7 @@ class LotsNormalizeFromCatalog extends Command
         $this->line('');
 
         // ── 6. trim_en — translate Korean trim via translations.trim ─────────
-        $this->line('<fg=cyan>6. trim_en</> (translations.trim)');
+        $this->line('<fg=cyan>5. trim_en</> (translations.trim)');
 
         $trimEnCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
@@ -411,8 +432,8 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 7. seat_color — translate Korean → English via translations ───────
-        $this->line('<fg=cyan>7. seat_color</> (translations.seat_color)');
+        // ── 6. seat_color — translate Korean → English via translations ───────
+        $this->line('<fg=cyan>6. seat_color</> (translations.seat_color)');
 
         $seatColorCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
@@ -439,8 +460,8 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 8. color — fix remaining Korean color values ──────────────────────
-        $this->line('<fg=cyan>8. color</> (translations.color — fix Korean remnants)');
+        // ── 7. color — fix remaining Korean color values ──────────────────────
+        $this->line('<fg=cyan>7. color</> (translations.color — fix Korean remnants)');
 
         $colorCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
@@ -467,11 +488,8 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 9. drive_type badge-token fallback ───────────────────────────────
-        // For lots with no catalog_badges match: scan badge string for known
-        // drive tokens (same vocabulary as CatalogBuildBadges::DRIVE_TOKEN_MAP).
-        // Pure token lookup — split badge by space, check each token.
-        $this->line('<fg=cyan>9. drive_type badge fallback</> (token scan for lots without catalog_badges match)');
+        // ── 8. drive_type badge-token fallback ───────────────────────────────
+        $this->line('<fg=cyan>8. drive_type badge fallback</> (token scan for lots without catalog_badges match)');
 
         // Build CASE expression from token vocabulary — no regex, exact token match.
         // Tokens are space-delimited in badge strings, so we check with word-boundary spaces.

@@ -811,7 +811,6 @@ PROMPT;
             'repair_cost' => ['repairCostMin', 'repairCostMax'],
             'retail_value' => ['retailValueMin', 'retailValueMax'],
             'seat_count' => ['seatCountMin', 'seatCountMax'],
-            'registration_year_month' => ['registrationYearMonthMin', 'registrationYearMonthMax'],
             'listed_at' => ['listedAfter', 'listedBefore'],
             'first_reg_date' => ['firstRegAfter', 'firstRegBefore'],
             default => [$this->snakeToCamel($name) . 'Min', $this->snakeToCamel($name) . 'Max'],

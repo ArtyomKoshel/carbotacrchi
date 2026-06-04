@@ -15,8 +15,6 @@ class ConditionSpec implements LotSpecification
         if ($search->ownersCountMax    !== null) $query->where('owners_count',    '<=', $search->ownersCountMax);
         if ($search->seatCountMin) $query->where('seat_count', '>=', $search->seatCountMin);
         if ($search->seatCountMax) $query->where('seat_count', '<=', $search->seatCountMax);
-        if ($search->registrationYearMonthMin) $query->where('registration_year_month', '>=', $search->registrationYearMonthMin);
-        if ($search->registrationYearMonthMax) $query->where('registration_year_month', '<=', $search->registrationYearMonthMax);
 
         if ($search->hasAccident      !== null) $query->where('has_accident',      $search->hasAccident);
         if ($search->floodHistory     !== null) $query->where('flood_history',     $search->floodHistory);

@@ -20,9 +20,9 @@ readonly class LotDTO
         public ?string $auctionDate,
         public string  $createdAt,
         public ?string $makeEn          = null,
-        public ?string $modelGroupEn    = null,   // Encar Level 3: ModelGroup English name
-        public ?string $modelEn         = null,   // Encar Level 4: Model English name (full variant)
-        public ?string $generation      = null,
+        public ?string $modelGroupEn    = null,   // Encar ModelGroup English name
+        public ?string $modelEn         = null,   // Encar Model English name (e.g. "A5 (F5)")
+        public ?string $badgeGroup      = null,
         public ?string $transmission    = null,
         public ?string $fuel            = null,
         public ?string $bodyType        = null,
@@ -44,7 +44,6 @@ readonly class LotDTO
         public ?string $seizureStatus       = null,
         public ?string $sellType            = null,
         public ?string $sellTypeRaw         = null,
-        public ?int    $registrationYearMonth = null,
         public ?int    $insuranceCount      = null,
         public ?string $seatColor           = null,
         public ?int    $seatCount           = null,
@@ -63,7 +62,7 @@ readonly class LotDTO
             'model'        => $this->model,
             'modelGroupEn' => $this->modelGroupEn,
             'modelEn'      => $this->modelEn,
-            'generation'  => $this->generation,
+            'badgeGroup'  => $this->badgeGroup,
             'year'        => $this->year,
             'price'       => $this->price,
             'mileage'     => $this->mileage,
@@ -94,7 +93,6 @@ readonly class LotDTO
             'seizureStatus'    => $this->seizureStatus,
             'sellType'         => $this->sellType,
             'sellTypeRaw'      => $this->sellTypeRaw,
-            'registrationYearMonth' => $this->registrationYearMonth,
             'insuranceCount'   => $this->insuranceCount,
             'seatColor'        => $this->seatColor,
             'seatCount'        => $this->seatCount,
