@@ -23,6 +23,7 @@ readonly class LotDTO
         public ?string $modelGroupEn    = null,   // Encar ModelGroup English name
         public ?string $modelEn         = null,   // Encar Model English name (e.g. "A5 (F5)")
         public ?string $badgeGroup      = null,
+        public ?string $badgeEn        = null,
         public ?string $transmission    = null,
         public ?string $fuel            = null,
         public ?string $bodyType        = null,
@@ -63,6 +64,7 @@ readonly class LotDTO
             'modelGroupEn' => $this->modelGroupEn,
             'modelEn'      => $this->modelEn,
             'badgeGroup'  => $this->badgeGroup,
+            'badgeEn'     => $this->badgeEn,
             'year'        => $this->year,
             'price'       => $this->price,
             'mileage'     => $this->mileage,

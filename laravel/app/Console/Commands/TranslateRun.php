@@ -100,6 +100,7 @@ class TranslateRun extends Command
             'model'        => $this->collectModelItems($source, $limit),
             'model_group'  => $this->collectLotsDistinct('model_group', $source, $limit, fn ($r) => ['kr' => $r->kr, 'make_en' => $r->make_en ?? '']),
             'badge_group'  => $this->collectLotsDistinct('badge_group', $source, $limit),
+            'badge'        => $this->collectLotsDistinct('badge', $source, $limit),
             'trim'         => $this->collectTrimItems($source, $limit),
             default        => $this->collectGenericItems($category, $source, $limit),
         };
@@ -166,6 +167,7 @@ class TranslateRun extends Command
             'model'       => ['kr_col' => 'model',       'en_col' => 'model_en'],
             'model_group' => ['kr_col' => 'model_group', 'en_col' => 'model_group_en'],
             'badge_group' => ['kr_col' => 'badge_group', 'en_col' => 'badge_group_en'],
+            'badge'       => ['kr_col' => 'badge',       'en_col' => 'badge_en'],
             'trim'        => ['kr_col' => 'trim',        'en_col' => 'trim_en'],
         ];
 
@@ -376,6 +378,7 @@ class TranslateRun extends Command
             'model'       => $this->promptModel($items),
             'model_group' => $this->promptModelGroup($items),
             'badge_group' => $this->promptBadgeGroup($items),
+            'badge'       => $this->promptBadge($items),
             'trim'        => $this->promptTrim($items),
             'make'        => $this->promptMake($items),
             'color'       => $this->promptColor($items),
@@ -434,6 +437,24 @@ Translate Korean car BadgeGroup names to English. BadgeGroup describes the engin
 Examples: 가솔린 3500cc → Gasoline 3500cc, 디젤 2000cc → Diesel 2000cc,
 전기 → Electric, 가솔린 2.5T → Gasoline 2.5T, 하이브리드 → Hybrid,
 LPG → LPG, 가솔린 터보 → Gasoline Turbo.
+
+Return ONLY valid JSON: {"results": {"Korean": "English", ...}}
+SYS,
+            'user' => "Translate:\n{$lines}",
+        ];
+    }
+
+    private function promptBadge(array $items): array
+    {
+        $lines = implode("\n", array_map(fn ($i) => "- {$i['kr']}", $items));
+
+        return [
+            'system' => <<<'SYS'
+Translate Korean car Badge strings to English. A Badge is the full variant label combining engine, drivetrain, seats, and trim (e.g. "가솔린 7인승 아웃도어" → "Gasoline 7-seater Outdoor").
+
+Common patterns: 가솔린 → Gasoline, 디젤 → Diesel, 전기 → Electric, 하이브리드 → Hybrid,
+인승 → seater (7인승 → 7-seater), 콰트로 → Quattro, 아웃도어 → Outdoor,
+스포트백 → Sportback, 터보 → Turbo, AWD/4WD → keep as-is.
 
 Return ONLY valid JSON: {"results": {"Korean": "English", ...}}
 SYS,

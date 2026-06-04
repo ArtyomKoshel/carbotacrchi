@@ -103,7 +103,7 @@ class LotsNormalizeFromCatalog extends Command
         if ($apply && ! $skipTranslate && config('ai.api_key')) {
             $this->line('<fg=cyan>0. AI translations</> (translate:run — fills translations cache)');
 
-            $translateCategories = 'make,model,model_group,badge_group,trim';
+            $translateCategories = 'make,model,model_group,badge_group,badge,trim';
 
             $this->line("   running: translate:run --category={$translateCategories} --source={$source} --apply");
 
@@ -254,7 +254,7 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 3. badge_group_en — from translations.badge_group ─────────────────
+        // ── 3. badge_group_en + badge_en — from translations ─────────────────
         $this->line('<fg=cyan>3. badge_group_en</> (translations.badge_group)');
 
         $bgEnNull = "(l.badge_group_en IS NULL OR l.badge_group_en = '')";
@@ -278,6 +278,33 @@ class LotsNormalizeFromCatalog extends Command
                 SET l.badge_group_en = tb.en,
                     l.updated_at     = NOW()
                 WHERE l.source = ? AND {$bgEnNull} AND tb.en IS NOT NULL
+            ", [$source]);
+        }
+
+        // badge_en
+        $this->line('<fg=cyan>3b. badge_en</> (translations.badge)');
+
+        $badgeEnNull = "(l.badge_en IS NULL OR l.badge_en = '')";
+        if ($force) {
+            $badgeEnNull = '1=1';
+        }
+
+        $badgeEnCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN translations tb ON tb.category = 'badge' AND tb.kr = l.badge
+            WHERE l.source = ? AND {$badgeEnNull} AND tb.en IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   lots to fill: {$badgeEnCount}");
+
+        if ($apply && $badgeEnCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN translations tb ON tb.category = 'badge' AND tb.kr = l.badge
+                SET l.badge_en   = tb.en,
+                    l.updated_at = NOW()
+                WHERE l.source = ? AND {$badgeEnNull} AND tb.en IS NOT NULL
             ", [$source]);
         }
 
