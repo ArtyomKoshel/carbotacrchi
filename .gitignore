@@ -15,3 +15,5 @@ terminals/
 *.har
 logs.*.json
 .mcp.json
+analysis/encar_inav_tree.json
+analysis/trims_by_model.json
