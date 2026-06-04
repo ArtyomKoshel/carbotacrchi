@@ -614,7 +614,7 @@ class ChatSearchService
 22. "не затоплена"/"без утоплений" → floodHistory: false
 23. Если указано точное число для range-поля (пробег, цена, год, объем) БЕЗ слов "от/до", ставь Min и Max равными
 24. Комплектация/trim: всегда возвращай корейское значение из DB. Маппинг EN→KR: {$trimExamples}
-25. Поколение/generation: "G30", "W213", "CN7", "NQ5" и т.д. → generation: "G30"
+25. Поколение/generation: полное англ. название варианта модели (поиск по LIKE). Примеры: "G30", "W213", "The New K8", "A5 (F5)", "DN8" — пиши то, что указал пользователь → generation: "G30"
 26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi и т.д.
 27. "свежие"/"новые объявления"/"за последнюю неделю"/"за месяц" → listedAfter: "YYYY-MM-DD" (вычисли дату от текущей)
 28. Дата первой регистрации: "дата регистрации 2025"/"зарегистрирована в 2023"/"1 регистрация 2025"/"регистрация 2022"/"рег. 2024" → если конкретный год без "после/до" → firstRegAfter: "YYYY-01-01" И firstRegBefore: "YYYY-12-31"; "регистрация после 2022"→ firstRegAfter: "2022-01-01"; "регистрация до 2023"→ firstRegBefore: "2023-12-31"; "регистрация 2022-2024" → firstRegAfter: "2022-01-01" + firstRegBefore: "2024-12-31"
@@ -855,17 +855,17 @@ PROMPT;
                     ->where('is_active', true)
                     ->whereNotNull('make')
                     ->where('make', '!=', '')
-                    ->select(['make', 'model'])
+                    ->select(['make', 'make_en', 'model_group_en', 'model'])
                     ->distinct()
-                    ->orderBy('make')
-                    ->orderBy('model')
+                    ->orderByRaw("COALESCE(NULLIF(TRIM(make_en),''), make)")
+                    ->orderBy('model_group_en')
                     ->get();
 
                 $byMake = [];
                 foreach ($rows as $row) {
-                    $make = trim((string) ($row->make ?? ''));
+                    $make = trim((string) ($row->make_en ?? '')) ?: trim((string) ($row->make ?? ''));
                     if ($make === '') continue;
-                    $model = trim((string) ($row->model ?? ''));
+                    $model = trim((string) ($row->model_group_en ?? ''));
                     $byMake[$make] ??= [];
                     if ($model !== '' && !in_array($model, $byMake[$make], true)) {
                         $byMake[$make][] = $model;

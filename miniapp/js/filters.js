@@ -80,7 +80,7 @@ const Filters = (() => {
     make:               { type: 'make_model' },
     model:              { type: 'skip' },
     trim:               { type: 'skip' },
-    generation:         { type: 'text', id: 'filter-generation', placeholder: 'The New K8, Tucson NX4, G30...' },
+    generation:         { type: 'text', id: 'filter-generation', placeholder: 'G30, W213, The New K8, A5 (F5)...' },
     year:               { type: 'range',      idMin: 'filter-year-from',       idMax: 'filter-year-to',       inputType: 'number', min: 1990, max: new Date().getFullYear() },
     first_reg_date:     { type: 'range',      idMin: 'filter-first-reg-after', idMax: 'filter-first-reg-before', inputType: 'date', step: '1' },
     listed_at:          { type: 'range',      idMin: 'filter-listed-after',    idMax: 'filter-listed-before',    inputType: 'date', step: '1' },

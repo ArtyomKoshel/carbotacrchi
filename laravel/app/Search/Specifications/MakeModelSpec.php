@@ -32,13 +32,9 @@ class MakeModelSpec implements LotSpecification
             });
         }
 
-        // generation → model_en (Encar Level 4: full variant, e.g. "A5 (F5)")
-        // Also searches lots.generation as fallback (chassis codes: F5, C8, etc.)
+        // generation → model_en (Encar Level 3: full variant, e.g. "A5 (F5)", "The New K8")
         if ($search->generation) {
-            $query->where(function (Builder $sub) use ($search): void {
-                $sub->whereRaw('model_en LIKE ?', ['%' . $search->generation . '%'])
-                    ->orWhereRaw('generation LIKE ?', ['%' . $search->generation . '%']);
-            });
+            $query->whereRaw('model_en LIKE ?', ['%' . $search->generation . '%']);
         }
 
         if ($search->trim) {

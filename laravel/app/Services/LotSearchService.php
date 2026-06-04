@@ -72,11 +72,11 @@ class LotSearchService
         foreach ($terms as $term) {
             $like = '%' . $term . '%';
             $builder->where(function ($q) use ($like): void {
-                $q->where('make',       'like', $like)
-                  ->orWhere('model',    'like', $like)
-                  ->orWhere('model_en', 'like', $like)
-                  ->orWhere('generation','like', $like)
-                  ->orWhere('trim',     'like', $like);
+                $q->where('make',             'like', $like)
+                  ->orWhere('model',          'like', $like)
+                  ->orWhere('model_en',       'like', $like)
+                  ->orWhere('model_group_en', 'like', $like)
+                  ->orWhere('trim',           'like', $like);
             });
         }
 

@@ -110,7 +110,7 @@
         </select>
       </div>
       <div>
-        <label class="text-xs text-gray-500 block mb-1">Поколение</label>
+        <label class="text-xs text-gray-500 block mb-1">Вариант модели</label>
         <select id="filter-generation" name="generation" class="js-select2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
           <option value="">Любое</option>
           @foreach($generations as $g)
@@ -331,7 +331,7 @@
             </td>
             <td class="px-4 py-2.5">
               <div class="text-white font-semibold">{{ $lot->make }} {{ $lot->model }}</div>
-              @if($lot->generation)<div class="text-gray-400 mt-0.5">{{ $lot->generation }}</div>@endif
+              @if($lot->model_en)<div class="text-gray-400 mt-0.5">{{ $lot->model_en }}</div>@endif
               @if($lot->trim)<div class="text-gray-500 mt-0.5">{{ $lot->trim }}</div>@endif
             </td>
             <td class="px-4 py-2.5 text-gray-300">{{ $lot->year }}</td>

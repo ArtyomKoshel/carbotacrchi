@@ -160,7 +160,7 @@ class AdminLotsController extends Controller
         $driveList   = $distinct('drive_type');
         $colorList   = $distinct('color');
         $sources     = $distinct('source');
-        $generations = $distinct('generation');
+        $generations = $distinct('model_en');
 
         return view('admin.lots-browse', compact(
             'lots',
