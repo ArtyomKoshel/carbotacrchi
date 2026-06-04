@@ -18,12 +18,13 @@ use Illuminate\Support\Facades\DB;
  * Step 2: model_group_en  ← catalog_models.model_group_en + translations.model_group
  * Step 2b: model_en       ← translations.model
  * Step 3: badge_group_en  ← translations.badge_group
- * Step 4: fuel + engine_volume ← badge_group (direct parse, then catalog_badges fallback)
- * Step 5: drive_type + seat_count ← catalog_badges fallback
- * Step 6: trim_en         ← translations.trim
- * Step 7: seat_color      ← translations.seat_color
- * Step 8: color           ← translations.color
- * Step 9: drive_type      ← badge-token fallback (2WD/4WD/AWD scan)
+ * Step 4: drive_type + seat_count ← catalog_badges (fallback for detail-API misses)
+ * Step 5: trim_en         ← translations.trim
+ * Step 6: seat_color      ← translations.seat_color
+ * Step 7: color           ← translations.color
+ *
+ * fuel/engine_volume come from the Encar detail API (spec.fuelName, spec.displacement).
+ * badge_group/badge are display fields — fuel/engine_volume not extracted from them.
  *
  * Usage:
  *   php artisan lots:normalize-from-catalog --apply
@@ -310,78 +311,10 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 4. fuel + engine_volume from badge_group (authoritative Encar source) ──
-        // badge_group e.g. "가솔린 3500cc", "디젤 2000cc", "전기", "1.6T 가솔린 터보"
-        $this->line('<fg=cyan>4. fuel + engine_volume</> (badge_group parse, then catalog_badges fallback)');
-
-        // 4a. fuel from badge_group
-        $fuelFromBgCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt FROM lots
-            WHERE source = ?
-              AND fuel IS NULL
-              AND badge_group IS NOT NULL AND badge_group != ''
-              AND badge_group REGEXP '가솔린|디젤|전기|하이브리드|LPG|lpg'
-        ", [$source])->cnt;
-
-        $this->line("   fuel from badge_group: {$fuelFromBgCount} lots");
-
-        if ($apply && $fuelFromBgCount > 0) {
-            DB::statement("
-                UPDATE lots SET fuel = CASE
-                    WHEN badge_group REGEXP '전기'       THEN 'electric'
-                    WHEN badge_group REGEXP '하이브리드'  THEN 'hybrid'
-                    WHEN badge_group REGEXP '가솔린'      THEN 'gasoline'
-                    WHEN badge_group REGEXP '디젤'        THEN 'diesel'
-                    WHEN badge_group REGEXP '[Ll][Pp][Gg]' THEN 'lpg'
-                END,
-                updated_at = NOW()
-                WHERE source = ?
-                  AND fuel IS NULL
-                  AND badge_group IS NOT NULL AND badge_group != ''
-                  AND badge_group REGEXP '가솔린|디젤|전기|하이브리드|LPG|lpg'
-            ", [$source]);
-        }
-
-        // 4b. engine_volume from badge_group — cc format (e.g. "3500cc" → 3.5)
-        $volCcCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt FROM lots
-            WHERE source = ? AND engine_volume IS NULL
-              AND badge_group REGEXP '[0-9]+cc'
-        ", [$source])->cnt;
-
-        $this->line("   engine_volume (cc): {$volCcCount} lots");
-
-        if ($apply && $volCcCount > 0) {
-            DB::statement("
-                UPDATE lots SET
-                    engine_volume = ROUND(CAST(REGEXP_SUBSTR(badge_group, '[0-9]+cc') AS UNSIGNED) / 1000.0, 1),
-                    updated_at    = NOW()
-                WHERE source = ? AND engine_volume IS NULL
-                  AND badge_group REGEXP '[0-9]+cc'
-            ", [$source]);
-        }
-
-        // 4c. engine_volume from badge_group — T format (e.g. "2.5T" → 2.5, "1.6T" → 1.6)
-        $volTCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt FROM lots
-            WHERE source = ? AND engine_volume IS NULL
-              AND badge_group REGEXP '[0-9]+\\.?[0-9]*[Tt]'
-        ", [$source])->cnt;
-
-        $this->line("   engine_volume (T): {$volTCount} lots");
-
-        if ($apply && $volTCount > 0) {
-            DB::statement("
-                UPDATE lots SET
-                    engine_volume = CAST(REGEXP_SUBSTR(badge_group, '[0-9]+\\.?[0-9]*[Tt]') AS DECIMAL(4,1)),
-                    updated_at    = NOW()
-                WHERE source = ? AND engine_volume IS NULL
-                  AND badge_group REGEXP '[0-9]+\\.?[0-9]*[Tt]'
-            ", [$source]);
-        }
-
-        // 4d. catalog_badges fallback for drive_type + seat_count (and any remaining fuel/engine_volume)
-        $this->line('<fg=cyan>4d. drive_type + seat_count</> (catalog_badges fallback)');
+        // ── 4. drive_type + seat_count from catalog_badges ───────────────────
+        // fuel/engine_volume come from the Encar detail API (spec.fuelName, spec.displacement)
+        // badge_group is a display/translation field only — no regex extraction needed
+        $this->line('<fg=cyan>4. drive_type + seat_count</> (catalog_badges fallback for detail-API misses)');
 
         $badgeJoin = $this->badgeJoin();
 
@@ -515,63 +448,7 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 8. drive_type badge-token fallback ───────────────────────────────
-        $this->line('<fg=cyan>8. drive_type badge fallback</> (token scan for lots without catalog_badges match)');
 
-        // Build CASE expression from token vocabulary — no regex, exact token match.
-        // Tokens are space-delimited in badge strings, so we check with word-boundary spaces.
-        // Tokens are the same vocabulary as CatalogBuildBadges::DRIVE_TOKEN_MAP.
-        // REGEXP checks for whole-token match (space/boundary delimited).
-        $awdTokens = ['AWD', '4WD', '4wd', '4Matic', '4MATIC', 'xDrive', 'quattro', '콰트로', '사륜구동', '상시사륜', '4륜구동', 'ALL4', '4xe', 'e-4WD', 'HTRAC'];
-        $fwdTokens = ['2WD', '2wd', 'FWD', '전륜구동'];
-        $rwdTokens = ['RWD', 'sDrive', '후륜구동'];
-
-        $awdRegexp = implode('|', $awdTokens);
-        $fwdRegexp = implode('|', $fwdTokens);
-        $rwdRegexp = implode('|', $rwdTokens);
-
-        $badgeTokenCount = (int) DB::selectOne("
-            SELECT COUNT(*) AS cnt
-            FROM lots l
-            WHERE l.source = ?
-              AND l.drive_type IS NULL
-              AND l.badge IS NOT NULL
-              AND l.badge != ''
-              AND (
-                l.badge REGEXP '(^|[[:space:]])({$awdRegexp}|{$fwdRegexp}|{$rwdRegexp})([[:space:]]|\$)'
-              )
-        ", [$source])->cnt;
-
-        $this->line("   badge-token drive_type: {$badgeTokenCount} lots");
-
-        if ($apply && $badgeTokenCount > 0) {
-            // Apply AWD tokens
-            DB::statement("
-                UPDATE lots SET drive_type = 'awd', updated_at = NOW()
-                WHERE source = ?
-                  AND drive_type IS NULL
-                  AND badge IS NOT NULL
-                  AND badge REGEXP '(^|[[:space:]])({$awdRegexp})([[:space:]]|\$)'
-            ", [$source]);
-
-            // Apply FWD tokens (only if still NULL — AWD takes precedence)
-            DB::statement("
-                UPDATE lots SET drive_type = 'fwd', updated_at = NOW()
-                WHERE source = ?
-                  AND drive_type IS NULL
-                  AND badge IS NOT NULL
-                  AND badge REGEXP '(^|[[:space:]])({$fwdRegexp})([[:space:]]|\$)'
-            ", [$source]);
-
-            // Apply RWD tokens
-            DB::statement("
-                UPDATE lots SET drive_type = 'rwd', updated_at = NOW()
-                WHERE source = ?
-                  AND drive_type IS NULL
-                  AND badge IS NOT NULL
-                  AND badge REGEXP '(^|[[:space:]])({$rwdRegexp})([[:space:]]|\$)'
-            ", [$source]);
-        }
 
         $this->line('');
         $this->info('Done.');
