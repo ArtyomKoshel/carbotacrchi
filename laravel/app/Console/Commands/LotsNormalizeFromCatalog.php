@@ -18,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  * Step 2: model_group_en  ← catalog_models.model_group_en + translations.model_group
  * Step 2b: model_en       ← translations.model
  * Step 3: badge_group_en  ← translations.badge_group
- * Step 4: drive_type + seat_count ← catalog_badges (fallback for detail-API misses)
+ * Step 4:  drive_type + seat_count ← catalog_badges (exact badge match)
+ * Step 4b: drive_type             ← catalog_drive_tokens (badge_en token scan)
  * Step 5: trim_en         ← translations.trim
  * Step 6: seat_color      ← translations.seat_color
  * Step 7: color           ← translations.color
@@ -340,6 +341,39 @@ class LotsNormalizeFromCatalog extends Command
                       AND l.{$field} IS NULL
                       AND {$src}     IS NOT NULL
                 ", [$source]);
+            }
+        }
+
+        // ── 4b. drive_type from catalog_drive_tokens (badge_en token scan) ──────
+        // Tokens: xDrive, 4MATIC, quattro, sDrive, 2WD, FWD, etc.
+        // Runs AFTER catalog_badges so exact match wins over token match.
+        $this->line('<fg=cyan>4b. drive_type</> (catalog_drive_tokens badge_en token scan)');
+
+        $tokenCount = (int) DB::selectOne("
+            SELECT COUNT(DISTINCT l.id) AS cnt
+            FROM lots l
+            JOIN catalog_drive_tokens cdt
+                ON l.badge_en LIKE CONCAT('%', cdt.token, '%')
+            WHERE l.source     = ?
+              AND l.drive_type IS NULL
+              AND l.badge_en   IS NOT NULL
+        ", [$source])->cnt;
+
+        $this->line("   drive_type from tokens: {$tokenCount} lots");
+
+        if ($apply && $tokenCount > 0) {
+            // Apply one token at a time in drive_type priority order: awd > rwd > fwd
+            foreach (['awd', 'rwd', 'fwd'] as $dt) {
+                DB::statement("
+                    UPDATE lots l
+                    JOIN catalog_drive_tokens cdt ON cdt.drive_type = ?
+                    SET l.drive_type = ?,
+                        l.updated_at = NOW()
+                    WHERE l.source     = ?
+                      AND l.drive_type IS NULL
+                      AND l.badge_en   IS NOT NULL
+                      AND l.badge_en LIKE CONCAT('%', cdt.token, '%')
+                ", [$dt, $dt, $source]);
             }
         }
 
