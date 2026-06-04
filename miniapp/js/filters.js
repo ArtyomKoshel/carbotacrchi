@@ -4,8 +4,8 @@ const Filters = (() => {
   let optionsSelectInstance  = null;
   let makeSelectInstance     = null;
   let modelSelectInstance    = null;
+  let badgeSelectInstance    = null;
   let trimSelectInstance     = null;
-  let generationSelectInstance = null;
   let _countTimer = null;
   let _contextTimer = null;
   const COUNT_DEBOUNCE_MS = 700;
@@ -15,7 +15,7 @@ const Filters = (() => {
     sources:          ['encar', 'kbcha'],
     make:             '',
     model:            '',
-    generation:       '',
+    badge:            '',
     yearFrom:         '',
     yearTo:           '',
     priceMin:         '',
@@ -54,7 +54,7 @@ const Filters = (() => {
   function resetState() {
     const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
     state.sources = sourceKeys.length ? sourceKeys : ['encar', 'kbcha'];
-    state.make = ''; state.model = ''; state.generation = '';
+    state.make = ''; state.model = ''; state.badge = '';
     state.yearFrom = ''; state.yearTo = '';
     state.priceMin = ''; state.priceMax = '';
     state.mileageMin = ''; state.mileageMax = '';
@@ -79,8 +79,8 @@ const Filters = (() => {
     source:             { type: 'source_chips' },
     make:               { type: 'make_model' },
     model:              { type: 'skip' },
+    badge:              { type: 'skip' },
     trim:               { type: 'skip' },
-    generation:         { type: 'text', id: 'filter-generation', placeholder: 'G30, W213, The New K8, A5 (F5)...' },
     year:               { type: 'range',      idMin: 'filter-year-from',       idMax: 'filter-year-to',       inputType: 'number', min: 1990, max: new Date().getFullYear() },
     first_reg_date:     { type: 'range',      idMin: 'filter-first-reg-after', idMax: 'filter-first-reg-before', inputType: 'date', step: '1' },
     listed_at:          { type: 'range',      idMin: 'filter-listed-after',    idMax: 'filter-listed-before',    inputType: 'date', step: '1' },
@@ -160,6 +160,9 @@ const Filters = (() => {
 
     // Populate dynamic content
     populateFilters();
+
+    // Keep reset button state synced after full rerender.
+    _updateResetBtn();
   }
 
   function buildFilterSection(name, ui, apiLabel) {
@@ -220,6 +223,9 @@ const Filters = (() => {
           </div>
           <div class="filter-select-wrap">
             <select class="filter-select" id="filter-model"><option value="">Any model</option></select>
+          </div>
+          <div class="filter-select-wrap" id="filter-badge-wrap" style="display:none">
+            <select class="filter-select" id="filter-badge"><option value="">Any badge</option></select>
           </div>
           <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
             <select class="filter-select" id="filter-trim"><option value="">Any trim</option></select>
@@ -355,7 +361,7 @@ const Filters = (() => {
     renderSourceChips();
     renderMakeSelect();
     renderModelSelect();
-    renderGenerationSelect();
+    renderBadgeSelect([]);
     initOptionsSelect(filtersData?.options ?? []);
 
     const enabled = getEnabledFields();
@@ -370,6 +376,10 @@ const Filters = (() => {
       } else if (ui.type === 'bool_chips') {
         renderBoolChips(`chips-${name}`, ui.options, ui.stateKey);
       }
+    }
+
+    if (state.make || state.model) {
+      _scheduleContextUpdate();
     }
   }
 
@@ -452,16 +462,16 @@ const Filters = (() => {
       ['optionsSelectInstance',   optionsSelectInstance],
       ['makeSelectInstance',      makeSelectInstance],
       ['modelSelectInstance',     modelSelectInstance],
+      ['badgeSelectInstance',     badgeSelectInstance],
       ['trimSelectInstance',      trimSelectInstance],
-      ['generationSelectInstance',generationSelectInstance],
     ]) {
       if (inst) { try { inst.destroy(); } catch (_) {} }
     }
     optionsSelectInstance    = null;
     makeSelectInstance       = null;
     modelSelectInstance      = null;
+    badgeSelectInstance      = null;
     trimSelectInstance       = null;
-    generationSelectInstance = null;
   }
 
   function _tsBase(el, opts) {
@@ -492,8 +502,10 @@ const Filters = (() => {
       onChange(val) {
         const v = val || '';
         if (state.make === v) return;
-        state.make = v; state.model = ''; state.trim = '';
+        state.make = v; state.model = ''; state.badge = ''; state.trim = '';
         renderModelSelect();
+        renderBadgeSelect([]);
+        renderTrimSelect([]);
         _scheduleContextUpdate(); _scheduleCountUpdate();
       },
     });
@@ -501,6 +513,7 @@ const Filters = (() => {
 
   function renderModelSelect() {
     if (modelSelectInstance) { try { modelSelectInstance.destroy(); } catch(_) {} modelSelectInstance = null; }
+    if (badgeSelectInstance) { try { badgeSelectInstance.destroy(); } catch(_) {} badgeSelectInstance = null; }
     if (trimSelectInstance)  { try { trimSelectInstance.destroy();  } catch(_) {} trimSelectInstance  = null; }
 
     const el = document.getElementById('filter-model');
@@ -520,7 +533,8 @@ const Filters = (() => {
       onChange(val) {
         const v = val || '';
         if (state.model === v) return;
-        state.model = v; state.trim = '';
+        state.model = v; state.badge = ''; state.trim = '';
+        renderBadgeSelect([]);
         renderTrimSelect([]);
         if (state.make || state.model) loadTrims();
         _scheduleContextUpdate(); _scheduleCountUpdate();
@@ -530,32 +544,40 @@ const Filters = (() => {
     if (state.make || state.model) loadTrims();
   }
 
-  function renderGenerationSelect(extraOptions = []) {
-    const el = document.getElementById('filter-generation');
-    if (!el || typeof TomSelect === 'undefined') return;
+  function renderBadgeSelect(badges) {
+    if (badgeSelectInstance) { try { badgeSelectInstance.destroy(); } catch(_) {} badgeSelectInstance = null; }
 
-    const opts = [...extraOptions];
-    if (state.generation && !opts.find(o => o.value === state.generation)) {
-      opts.unshift({ value: state.generation, text: state.generation });
+    const wrap = document.getElementById('filter-badge-wrap');
+    const sel  = document.getElementById('filter-badge');
+    if (!wrap || !sel) return;
+
+    const badgeOptions = Taxonomy.normalizeOptionItems(badges);
+    if (!badgeOptions || badgeOptions.length === 0) {
+      wrap.style.display = 'none';
+      return;
     }
 
-    generationSelectInstance = new TomSelect(el, {
-      maxItems:    1,
-      create:      true,
-      persist:     false,
-      maxOptions:  null,
-      searchField: ['text'],
-      placeholder: 'G30, W213, NQ5, CN7...',
-      options:     opts,
-      items:       state.generation ? [state.generation] : [],
-      onChange(val) { state.generation = val || ''; },
-      onItemAdd()  { _scheduleCountUpdate(); },
-      onItemRemove() { state.generation = ''; _scheduleCountUpdate(); },
-      render: {
-        no_results: () => '<div class="ts-no-results" style="display:none"></div>',
+    sel.innerHTML = '<option value=""></option>';
+    wrap.style.display = '';
+
+    const opts = badgeOptions.map(o => ({
+      value: o.value,
+      text:  o.label || o.value,
+    }));
+
+    badgeSelectInstance = _tsBase(sel, {
+      maxItems: 1,
+      options:  [{ value: '', text: 'Any badge' }, ...opts],
+      items:    state.badge ? [state.badge] : [''],
+      onChange(val) {
+        const v = val || '';
+        if (state.badge === v) return;
+        state.badge = v;
+        state.trim = '';
+        _scheduleContextUpdate();
+        _scheduleCountUpdate();
       },
     });
-    generationSelectInstance.wrapper.classList.add('ts-single');
   }
 
   async function loadTrims() {
@@ -617,7 +639,7 @@ const Filters = (() => {
     state.engineMax        = document.getElementById('filter-engine-max')?.value   ?? '';
     state.seatsMin         = document.getElementById('filter-seats-min')?.value    ?? '';
     state.seatsMax         = document.getElementById('filter-seats-max')?.value    ?? '';
-    // generation and trim are managed by Tom Select instances — state already up-to-date
+    // badge and trim are managed by Tom Select instances — state already up-to-date
     state.ownersCountMin   = document.getElementById('filter-owners-min')?.value   ?? '';
     state.ownersCountMax   = document.getElementById('filter-owners-max')?.value   ?? '';
     state.insuranceCountMin= document.getElementById('filter-insurance-min')?.value ?? '';
@@ -638,7 +660,7 @@ const Filters = (() => {
     return {
       make:             state.make              || undefined,
       model:            state.model             || undefined,
-      generation:       state.generation        || undefined,
+      badge:            state.badge             || undefined,
       yearFrom:         state.yearFrom          ? parseInt(state.yearFrom)          : undefined,
       yearTo:           state.yearTo            ? parseInt(state.yearTo)            : undefined,
       priceMin:         state.priceMin          ? parseInt(state.priceMin)          : undefined,
@@ -689,8 +711,8 @@ const Filters = (() => {
 
     if (q.make)  { state.make  = q.make;  }
     if (q.model) { state.model = q.model; }
+    if (q.badge) { state.badge = q.badge; }
     if (q.trim)  { state.trim  = q.trim;  }
-    if (q.generation)       state.generation       = q.generation;
     if (q.bodyTypes)        state.bodyTypes        = q.bodyTypes;
     if (q.transmissions)    state.transmissions    = q.transmissions;
     if (q.fuelTypes)        state.fuelTypes        = q.fuelTypes;
@@ -728,7 +750,6 @@ const Filters = (() => {
     setEl('filter-engine-max',    q.engineMax);
     setEl('filter-seats-min',     q.seatCountMin);
     setEl('filter-seats-max',     q.seatCountMax);
-    // filter-generation is a Tom Select — value is set via state.generation in renderGenerationSelect()
     setEl('filter-owners-min',    q.ownersCountMin);
     setEl('filter-owners-max',    q.ownersCountMax);
     setEl('filter-insurance-min', q.insuranceCountMin);
@@ -738,6 +759,10 @@ const Filters = (() => {
     setEl('filter-first-reg-after',  q.firstRegAfter);
     setEl('filter-first-reg-before', q.firstRegBefore);
     setEl('sort-select', state.sort);
+
+    // Keep reset button state in sync when query is applied from cache/deeplink
+    // (without user interaction events).
+    _updateResetBtn();
   }
 
   function getCardFields() {
@@ -758,12 +783,14 @@ const Filters = (() => {
 
   function _updateResetBtn() {
     const btn = document.getElementById('filters-reset-btn');
-    if (btn) btn.style.display = hasActive() ? '' : 'none';
+    if (!btn) return;
+    const active = hasActive();
+    btn.disabled = !active;
   }
 
   function hasActive() {
     return !!(
-      state.make || state.model || state.generation || state.trim ||
+      state.make || state.model || state.badge || state.trim ||
       state.yearFrom || state.yearTo ||
       state.priceMin || state.priceMax ||
       state.mileageMin || state.mileageMax ||
@@ -798,7 +825,7 @@ const Filters = (() => {
       readFormState();
       const q = getQuery();
       // Don't bother counting when no meaningful filter is set
-      const hasFilter = q.make || q.model || q.yearFrom || q.yearTo ||
+      const hasFilter = q.make || q.model || q.badge || q.yearFrom || q.yearTo ||
                         q.priceMin || q.priceMax || q.mileageMin || q.mileageMax ||
                         (q.bodyTypes?.length) || (q.transmissions?.length) ||
                         (q.fuelTypes?.length) || (q.driveTypes?.length) || q.trim;
@@ -840,6 +867,7 @@ const Filters = (() => {
       const params = {};
       if (state.make)  params.make  = state.make;
       if (state.model) params.model = state.model;
+      if (state.badge) params.badge = state.badge;
       const ctx = await API.getContext(params);
       if (!ctx) return;
 
@@ -859,12 +887,12 @@ const Filters = (() => {
         }
       }
 
-      // Update generation Tom Select options
-      const genOpts = (ctx.generationOptions ?? []).map(o => ({ value: o.value, text: o.label ?? o.value }));
-      if (genOpts.length && generationSelectInstance) {
-        generationSelectInstance.clearOptions();
-        generationSelectInstance.addOptions(genOpts);
-        generationSelectInstance.refreshOptions(false);
+      // Update badge and trim options by context
+      if (Array.isArray(ctx.badgeOptions)) {
+        renderBadgeSelect(ctx.badgeOptions);
+      }
+      if (Array.isArray(ctx.trimOptions)) {
+        renderTrimSelect(ctx.trimOptions);
       }
     } catch (_) {
       // Context update is best-effort

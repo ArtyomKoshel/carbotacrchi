@@ -264,6 +264,26 @@ html, body {
   white-space: nowrap; flex-shrink: 0;
 }
 
+.filters-reset-btn {
+  background: rgba(51,144,236,.18);
+  border: 1px solid rgba(51,144,236,.45);
+  color: #d9ecff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+.filters-reset-btn:active {
+  transform: scale(.98);
+}
+
+.filters-reset-btn:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
 /* ── Sticky top bar for search screen (header + mode tabs together) ── */
 #search-top-bar {
   position: sticky;

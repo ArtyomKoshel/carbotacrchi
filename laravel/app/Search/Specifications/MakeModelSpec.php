@@ -37,6 +37,17 @@ class MakeModelSpec implements LotSpecification
             $query->whereRaw('model_en LIKE ?', ['%' . $search->generation . '%']);
         }
 
+        // badge → badge_en (with fallback to badge)
+        if ($search->badge) {
+            $query->where(function (Builder $sub) use ($search): void {
+                $sub->whereRaw('badge_en LIKE ?', ['%' . $search->badge . '%'])
+                    ->orWhere(function (Builder $sub2) use ($search): void {
+                        $sub2->whereNull('badge_en')
+                             ->whereRaw('badge LIKE ?', ['%' . $search->badge . '%']);
+                    });
+            });
+        }
+
         if ($search->trim) {
             $query->where('trim', $search->trim);
         }

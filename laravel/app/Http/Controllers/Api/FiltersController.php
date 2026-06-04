@@ -78,7 +78,6 @@ class FiltersController extends Controller
                 'options'             => $optionItems,
                 'damageTypes'         => [],
                 'titleTypes'          => [],
-                'generations'         => [],
             ];
         });
 
@@ -140,8 +139,6 @@ class FiltersController extends Controller
         $models      = $this->pluckNonEmpty(clone $base, 'model_group_en');
         $badges      = $this->pluck(clone $base, 'badge');
         $trims       = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
-        // Level 4: model_en (English full Model/variant — from translate:run)
-        $generations = $this->pluckNonEmpty(clone $base, 'model_en');
         $bodyTypes     = $this->pluck(clone $base, 'body_type');
         $fuelTypes     = $this->pluck(clone $base, 'fuel');
         $driveTypes    = $this->pluck(clone $base, 'drive_type');
@@ -162,8 +159,6 @@ class FiltersController extends Controller
                 'badgeOptions'        => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $badges),
                 'trims'               => $trims,
                 'trimOptions'         => TaxonomyLocalizer::trimOptions($trims, $locale),
-                'generations'         => $generations,
-                'generationOptions'   => array_map(static fn ($v) => ['value' => $v, 'label' => $v], $generations),
                 'bodyTypes'           => $bodyTypes,
                 'bodyTypeOptions'     => TaxonomyLocalizer::options('body_type', $bodyTypes, $locale),
                 'fuelTypes'           => $fuelTypes,

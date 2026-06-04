@@ -2,12 +2,26 @@ const App = (() => {
   let currentTab = 'search';
   let paginationState = { query: null, offset: 0, total: 0, loading: false, limit: 40 };
   let scrollObserver = null;
+  const SEARCH_MODE_KEY = 'miniappSearchMode';
 
   function hideLoadingOverlay() {
     const el = document.getElementById('app-loading-overlay');
     if (!el) return;
     el.classList.add('hidden');
     setTimeout(() => el.remove(), 300);
+  }
+
+  function saveSearchMode(mode) {
+    try { localStorage.setItem(SEARCH_MODE_KEY, mode); } catch (_) {}
+  }
+
+  function loadSearchMode() {
+    try {
+      const mode = localStorage.getItem(SEARCH_MODE_KEY);
+      return mode === 'chat' ? 'chat' : 'filters';
+    } catch (_) {
+      return 'filters';
+    }
   }
 
   async function init() {
@@ -29,6 +43,7 @@ const App = (() => {
     hideLoadingOverlay();
 
     Chat.init();
+    setSearchMode(loadSearchMode());
 
     document.getElementById('search-btn').addEventListener('click', runSearch);
     document.getElementById('load-more-btn')?.addEventListener('click', loadMore);
@@ -304,13 +319,14 @@ const App = (() => {
   }
 
   function setSearchMode(mode) {
+    const nextMode = mode === 'chat' ? 'chat' : 'filters';
     const screen      = document.getElementById('screen-search');
     const filterPanel = document.getElementById('mode-panel-filters');
     const chatPanel   = document.getElementById('mode-panel-chat');
     const tabFilters  = document.getElementById('mode-tab-filters');
     const tabChat     = document.getElementById('mode-tab-chat');
 
-    if (mode === 'chat') {
+    if (nextMode === 'chat') {
       screen?.classList.add('mode-chat');
       if (filterPanel) filterPanel.style.display = 'none';
       if (chatPanel)   chatPanel.style.display   = 'flex';
@@ -324,6 +340,8 @@ const App = (() => {
       tabFilters?.classList.add('active');
       tabChat?.classList.remove('active');
     }
+
+    saveSearchMode(nextMode);
   }
 
   function showError(msg) {
