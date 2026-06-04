@@ -178,7 +178,7 @@ class TranslateRun extends Command
         $krCol = $map[$category]['kr_col'];
         $enCol = $map[$category]['en_col'];
 
-        DB::statement("
+        return DB::update("
             UPDATE lots l
             JOIN translations t ON t.category = ? AND t.kr = l.{$krCol}
             SET l.{$enCol}  = t.en,
@@ -189,8 +189,6 @@ class TranslateRun extends Command
               AND (l.{$enCol} IS NULL OR l.{$enCol} = '')
               AND t.en IS NOT NULL
         ", [$category, $source]);
-
-        return DB::affectedRows();
     }
 
     // ── Data collectors ────────────────────────────────────────────────────────
