@@ -24,6 +24,8 @@ const Filters = (() => {
     mileageMax:       '',
     engineMin:        '',
     engineMax:        '',
+    seatsMin:         '',
+    seatsMax:         '',
     bodyTypes:        [],
     transmissions:    [],
     fuelTypes:        [],
@@ -36,6 +38,7 @@ const Filters = (() => {
     trim:             '',
     hasAccident:      null,
     floodHistory:     null,
+    totalLossHistory: null,
     ownersCountMin:   '',
     ownersCountMax:   '',
     insuranceCountMin:'',
@@ -49,7 +52,6 @@ const Filters = (() => {
   };
 
   function resetState() {
-    console.trace('[RESET] resetState called');
     const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
     state.sources = sourceKeys.length ? sourceKeys : ['encar', 'kbcha'];
     state.make = ''; state.model = ''; state.generation = '';
@@ -57,11 +59,12 @@ const Filters = (() => {
     state.priceMin = ''; state.priceMax = '';
     state.mileageMin = ''; state.mileageMax = '';
     state.engineMin = ''; state.engineMax = '';
+    state.seatsMin = ''; state.seatsMax = '';
     state.bodyTypes = []; state.transmissions = [];
     state.fuelTypes = []; state.driveTypes = [];
     state.colors = []; state.damageTypes = []; state.titleTypes = [];
     state.trim = '';
-    state.hasAccident = null; state.floodHistory = null;
+    state.hasAccident = null; state.floodHistory = null; state.totalLossHistory = null;
     state.lienStatuses = []; state.seizureStatuses = [];
     state.ownersCountMin = ''; state.ownersCountMax = '';
     state.insuranceCountMin = ''; state.insuranceCountMax = '';
@@ -73,29 +76,31 @@ const Filters = (() => {
   // ── Field metadata: maps field_name → UI render config ──
   // Labels come from API (field.label from bot_filter_settings.field_label)
   const FIELD_UI = {
-    source:         { type: 'source_chips' },
-    make:           { type: 'make_model' },
-    model:          { type: 'skip' },
-    trim:           { type: 'skip' },
-    generation:     { type: 'text', id: 'filter-generation', placeholder: 'The New K8, Tucson NX4, G30...' },
-    year:           { type: 'range', idMin: 'filter-year-from', idMax: 'filter-year-to', inputType: 'number', min: 1990, max: new Date().getFullYear() },
-    price:          { type: 'range', idMin: 'filter-price-min', idMax: 'filter-price-max', inputType: 'number', min: 0, prefix: '₩' },
-    mileage:        { type: 'range', idMin: 'filter-mileage-min', idMax: 'filter-mileage-max', inputType: 'number', min: 0 },
-    engine_volume:  { type: 'range', idMin: 'filter-engine-min', idMax: 'filter-engine-max', inputType: 'number', min: 0, step: '0.1' },
-    body_type:      { type: 'chips', stateKey: 'bodyTypes', optionsKey: 'bodyTypeOptions', fallbackKey: 'bodyTypes' },
-    transmission:   { type: 'chips', stateKey: 'transmissions', optionsKey: 'transmissionOptions', fallbackKey: 'transmissions' },
-    fuel:           { type: 'chips', stateKey: 'fuelTypes', optionsKey: 'fuelTypeOptions', fallbackKey: 'fuelTypes' },
-    drive_type:     { type: 'chips', stateKey: 'driveTypes', optionsKey: 'driveTypeOptions', fallbackKey: 'driveTypes' },
-    color:          { type: 'chips', stateKey: 'colors', optionsKey: 'colorOptions', fallbackKey: 'colors' },
-    has_accident:   { type: 'bool_chips', stateKey: 'hasAccident', options: [{value:'',label:'Любое'},{value:'false',label:'✅ Без ДТП'},{value:'true',label:'⚠️ С ДТП'}] },
-    flood_history:  { type: 'bool_chips', stateKey: 'floodHistory', options: [{value:'',label:'Любое'},{value:'false',label:'✅ Без затоплений'},{value:'true',label:'🌊 С затоплением'}] },
-    insurance_count:{ type: 'range', idMin: 'filter-insurance-min', idMax: 'filter-insurance-max', inputType: 'number', min: 0 },
-    owners_count:   { type: 'range', idMin: 'filter-owners-min', idMax: 'filter-owners-max', inputType: 'number', min: 0, max: 20 },
-    listed_at:      { type: 'range', idMin: 'filter-listed-after', idMax: 'filter-listed-before', inputType: 'date', step: '1' },
-    first_reg_date: { type: 'range', idMin: 'filter-first-reg-after', idMax: 'filter-first-reg-before', inputType: 'date', step: '1' },
-    lien_status:    { type: 'chips', stateKey: 'lienStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Чистый'}] },
-    seizure_status: { type: 'chips', stateKey: 'seizureStatuses', optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Без ареста'}] },
-    options:        { type: 'options_select', id: 'filter-options' },
+    source:             { type: 'source_chips' },
+    make:               { type: 'make_model' },
+    model:              { type: 'skip' },
+    trim:               { type: 'skip' },
+    generation:         { type: 'text', id: 'filter-generation', placeholder: 'The New K8, Tucson NX4, G30...' },
+    year:               { type: 'range',      idMin: 'filter-year-from',       idMax: 'filter-year-to',       inputType: 'number', min: 1990, max: new Date().getFullYear() },
+    first_reg_date:     { type: 'range',      idMin: 'filter-first-reg-after', idMax: 'filter-first-reg-before', inputType: 'date', step: '1' },
+    listed_at:          { type: 'range',      idMin: 'filter-listed-after',    idMax: 'filter-listed-before',    inputType: 'date', step: '1' },
+    price:              { type: 'range',      idMin: 'filter-price-min',       idMax: 'filter-price-max',        inputType: 'number', min: 0, prefix: '₩' },
+    mileage:            { type: 'range',      idMin: 'filter-mileage-min',     idMax: 'filter-mileage-max',      inputType: 'number', min: 0 },
+    engine_volume:      { type: 'range',      idMin: 'filter-engine-min',      idMax: 'filter-engine-max',       inputType: 'number', min: 0, step: '0.1' },
+    seat_count:         { type: 'range',      idMin: 'filter-seats-min',       idMax: 'filter-seats-max',        inputType: 'number', min: 1, max: 12 },
+    fuel:               { type: 'chips',      stateKey: 'fuelTypes',     optionsKey: 'fuelTypeOptions',     fallbackKey: 'fuelTypes' },
+    transmission:       { type: 'chips',      stateKey: 'transmissions', optionsKey: 'transmissionOptions', fallbackKey: 'transmissions' },
+    body_type:          { type: 'chips',      stateKey: 'bodyTypes',     optionsKey: 'bodyTypeOptions',     fallbackKey: 'bodyTypes' },
+    drive_type:         { type: 'chips',      stateKey: 'driveTypes',    optionsKey: 'driveTypeOptions',    fallbackKey: 'driveTypes' },
+    color:              { type: 'chips',      stateKey: 'colors',        optionsKey: 'colorOptions',        fallbackKey: 'colors' },
+    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Any'},{value:'false',label:'✅ No accidents'},{value:'true',label:'⚠️ Has accidents'}] },
+    flood_history:      { type: 'bool_chips', stateKey: 'floodHistory',       options: [{value:'',label:'Any'},{value:'false',label:'✅ No flooding'},{value:'true',label:'🌊 Flood history'}] },
+    total_loss_history: { type: 'bool_chips', stateKey: 'totalLossHistory',   options: [{value:'',label:'Any'},{value:'false',label:'✅ Not written off'},{value:'true',label:'❌ Total loss'}] },
+    insurance_count:    { type: 'range',      idMin: 'filter-insurance-min',   idMax: 'filter-insurance-max',  inputType: 'number', min: 0 },
+    owners_count:       { type: 'range',      idMin: 'filter-owners-min',      idMax: 'filter-owners-max',     inputType: 'number', min: 0, max: 20 },
+    lien_status:        { type: 'chips',      stateKey: 'lienStatuses',   optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ Clean title'}] },
+    seizure_status:     { type: 'chips',      stateKey: 'seizureStatuses',optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ No seizure'}] },
+    options:            { type: 'options_select', id: 'filter-options' },
   };
 
   function getEnabledFields() {
@@ -610,6 +615,8 @@ const Filters = (() => {
     state.mileageMax       = document.getElementById('filter-mileage-max')?.value  ?? '';
     state.engineMin        = document.getElementById('filter-engine-min')?.value   ?? '';
     state.engineMax        = document.getElementById('filter-engine-max')?.value   ?? '';
+    state.seatsMin         = document.getElementById('filter-seats-min')?.value    ?? '';
+    state.seatsMax         = document.getElementById('filter-seats-max')?.value    ?? '';
     // generation and trim are managed by Tom Select instances — state already up-to-date
     state.ownersCountMin   = document.getElementById('filter-owners-min')?.value   ?? '';
     state.ownersCountMax   = document.getElementById('filter-owners-max')?.value   ?? '';
@@ -640,6 +647,8 @@ const Filters = (() => {
       mileageMax:       state.mileageMax        ? parseInt(state.mileageMax)        : undefined,
       engineMin:        state.engineMin         ? parseFloat(state.engineMin)       : undefined,
       engineMax:        state.engineMax         ? parseFloat(state.engineMax)       : undefined,
+      seatCountMin:     state.seatsMin          ? parseInt(state.seatsMin)          : undefined,
+      seatCountMax:     state.seatsMax          ? parseInt(state.seatsMax)          : undefined,
       bodyTypes:        state.bodyTypes.length      ? state.bodyTypes      : undefined,
       transmissions:    state.transmissions.length  ? state.transmissions  : undefined,
       fuelTypes:        state.fuelTypes.length      ? state.fuelTypes      : undefined,
@@ -652,6 +661,7 @@ const Filters = (() => {
       trim:             state.trim              || undefined,
       hasAccident:      state.hasAccident !== null ? state.hasAccident     : undefined,
       floodHistory:     state.floodHistory !== null ? state.floodHistory   : undefined,
+      totalLossHistory: state.totalLossHistory !== null ? state.totalLossHistory : undefined,
       ownersCountMin:   state.ownersCountMin    ? parseInt(state.ownersCountMin)    : undefined,
       ownersCountMax:   state.ownersCountMax    ? parseInt(state.ownersCountMax)    : undefined,
       insuranceCountMin:state.insuranceCountMin ? parseInt(state.insuranceCountMin) : undefined,
@@ -702,6 +712,9 @@ const Filters = (() => {
     if (q.firstRegBefore !== undefined)    state.firstRegBefore    = String(q.firstRegBefore ?? '');
     if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
     if (q.floodHistory !== undefined && q.floodHistory !== null) state.floodHistory = q.floodHistory;
+    if (q.totalLossHistory !== undefined && q.totalLossHistory !== null) state.totalLossHistory = q.totalLossHistory;
+    if (q.seatCountMin !== undefined) state.seatsMin = String(q.seatCountMin ?? '');
+    if (q.seatCountMax !== undefined) state.seatsMax = String(q.seatCountMax ?? '');
     if (Array.isArray(q.options) && q.options.length) state.options = q.options;
 
     render();
@@ -713,6 +726,8 @@ const Filters = (() => {
     setEl('filter-mileage-max',   q.mileageMax);
     setEl('filter-engine-min',    q.engineMin);
     setEl('filter-engine-max',    q.engineMax);
+    setEl('filter-seats-min',     q.seatCountMin);
+    setEl('filter-seats-max',     q.seatCountMax);
     // filter-generation is a Tom Select — value is set via state.generation in renderGenerationSelect()
     setEl('filter-owners-min',    q.ownersCountMin);
     setEl('filter-owners-max',    q.ownersCountMax);
@@ -753,11 +768,12 @@ const Filters = (() => {
       state.priceMin || state.priceMax ||
       state.mileageMin || state.mileageMax ||
       state.engineMin || state.engineMax ||
+      state.seatsMin || state.seatsMax ||
       state.bodyTypes.length || state.transmissions.length ||
       state.fuelTypes.length || state.driveTypes.length ||
       state.colors.length || state.damageTypes.length || state.titleTypes.length ||
       state.lienStatuses.length || state.seizureStatuses.length ||
-      state.hasAccident !== null || state.floodHistory !== null ||
+      state.hasAccident !== null || state.floodHistory !== null || state.totalLossHistory !== null ||
       state.ownersCountMin || state.ownersCountMax ||
       state.insuranceCountMin || state.insuranceCountMax ||
       state.listedAfter || state.listedBefore ||

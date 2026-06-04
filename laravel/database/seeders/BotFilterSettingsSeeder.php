@@ -24,7 +24,7 @@ class BotFilterSettingsSeeder extends Seeder
         'transmission'            => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
         'body_type'               => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
         'drive_type'              => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
-        'color'                   => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'color'                   => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
         'has_accident'            => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
         'flood_history'           => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
         'total_loss_history'      => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
@@ -37,12 +37,12 @@ class BotFilterSettingsSeeder extends Seeder
         'lien_status'             => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
         'seizure_status'          => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
         'sell_type'               => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
-        'seat_count'              => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'seat_count'              => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
         'trim'                    => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
         'generation'              => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
         'registration_year_month' => ['enabled' => false, 'tolerance_type' => 'absolute',   'tolerance_value' => 6,    'display_in_card' => false],
-        'first_reg_date'          => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
-        'listed_at'               => ['enabled' => false, 'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
+        'first_reg_date'          => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => true],
+        'listed_at'               => ['enabled' => true,  'tolerance_type' => 'none',       'tolerance_value' => null, 'display_in_card' => false],
     ];
 
     public function run(): void
