@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  * Fill / update English fields in lots from catalog tables.
  *
  * Pure SQL JOINs — no regex, no string parsing, no static dictionaries.
- * All mappings live in catalog_models, catalog_badges, and translations.
+ * All mappings live in catalog_models, catalog_badges, catalog_model_trims, and translations.
  *
  * Step 0  (auto): translate:run — AI fills missing translations
  * Step 1: make_en         ← translations.make
@@ -20,9 +20,10 @@ use Illuminate\Support\Facades\DB;
  * Step 3: badge_group_en  ← translations.badge_group
  * Step 4:  drive_type + seat_count ← catalog_badges (exact badge match)
  * Step 4b: drive_type             ← catalog_drive_tokens (badge_en token scan)
- * Step 5: trim_en         ← translations.trim
- * Step 6: seat_color      ← translations.seat_color
- * Step 7: color           ← translations.color
+ * Step 5: trim            ← catalog_model_trims (exact badge / badge_group match)
+ * Step 6: trim_en         ← translations.trim
+ * Step 7: seat_color      ← translations.seat_color
+ * Step 8: color           ← translations.color
  *
  * fuel/engine_volume come from the Encar detail API (spec.fuelName, spec.displacement).
  * badge_group/badge are display fields — fuel/engine_volume not extracted from them.
@@ -61,6 +62,35 @@ class LotsNormalizeFromCatalog extends Command
                         WHERE tmk.category = 'make'
                           AND tmk.kr       = cb.make_kr
                           AND tmk.en       = l.make_en
+                    )
+                )
+        ";
+    }
+
+    /**
+     * JOIN catalog_model_trims matching both Korean and English make variants.
+     *
+     * Matching fields are applied outside of this JOIN:
+     *   - exact badge match        (cmt.badge_exact = l.badge)
+     *   - exact badge_group match  (cmt.badge_group_exact = l.badge_group)
+     */
+    private function trimCatalogJoin(string $lotAlias = 'l', string $trimAlias = 'cmt'): string
+    {
+        return "
+            JOIN catalog_model_trims {$trimAlias}
+                ON  {$trimAlias}.source         = {$lotAlias}.source
+                AND {$trimAlias}.model_group_kr = {$lotAlias}.model_group
+                AND {$trimAlias}.is_active      = 1
+                AND {$trimAlias}.trim_kr        IS NOT NULL
+                AND {$trimAlias}.trim_kr        != ''
+                AND {$trimAlias}.trim_kr        != '(세부등급 없음)'
+                AND (
+                    {$trimAlias}.make_kr = {$lotAlias}.make
+                    OR EXISTS (
+                        SELECT 1 FROM translations tmk
+                        WHERE tmk.category = 'make'
+                          AND tmk.kr       = {$trimAlias}.make_kr
+                          AND tmk.en       = {$lotAlias}.make_en
                     )
                 )
         ";
@@ -379,7 +409,7 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 5. trim — clean Encar placeholder only (raw BadgeDetail from parser, no catalog fill)
+        // ── 5. trim — clean placeholder + strict catalog_model_trims fill ─────
         $placeholderCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt FROM lots
             WHERE source = ? AND trim = '(세부등급 없음)'
@@ -394,10 +424,90 @@ class LotsNormalizeFromCatalog extends Command
             ", [$source]);
         }
 
+        $trimJoinL1 = $this->trimCatalogJoin('l1', 'cmt');
+
+        $trimFromBadgeCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN (
+                SELECT l1.id AS lot_id, MIN(cmt.trim_kr) AS trim_kr
+                FROM lots l1
+                {$trimJoinL1}
+                WHERE l1.source = ?
+                  AND (l1.trim IS NULL OR l1.trim = '')
+                  AND cmt.badge_exact IS NOT NULL
+                  AND cmt.badge_exact = l1.badge
+                GROUP BY l1.id
+                HAVING COUNT(DISTINCT cmt.trim_kr) = 1
+            ) m ON m.lot_id = l.id
+        ", [$source])->cnt;
+
+        $this->line("   trim from catalog_model_trims.badge_exact: {$trimFromBadgeCount} lots");
+
+        if ($apply && $trimFromBadgeCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN (
+                    SELECT l1.id AS lot_id, MIN(cmt.trim_kr) AS trim_kr
+                    FROM lots l1
+                    {$trimJoinL1}
+                    WHERE l1.source = ?
+                      AND (l1.trim IS NULL OR l1.trim = '')
+                      AND cmt.badge_exact IS NOT NULL
+                      AND cmt.badge_exact = l1.badge
+                    GROUP BY l1.id
+                    HAVING COUNT(DISTINCT cmt.trim_kr) = 1
+                ) m ON m.lot_id = l.id
+                SET l.trim       = m.trim_kr,
+                    l.updated_at = NOW()
+            ", [$source]);
+        }
+
+        $trimFromBadgeGroupCount = (int) DB::selectOne("
+            SELECT COUNT(*) AS cnt
+            FROM lots l
+            JOIN (
+                SELECT l1.id AS lot_id, MIN(cmt.trim_kr) AS trim_kr
+                FROM lots l1
+                {$trimJoinL1}
+                WHERE l1.source = ?
+                  AND (l1.trim IS NULL OR l1.trim = '')
+                  AND l1.badge_group IS NOT NULL
+                  AND l1.badge_group != ''
+                  AND cmt.badge_group_exact IS NOT NULL
+                  AND cmt.badge_group_exact = l1.badge_group
+                GROUP BY l1.id
+                HAVING COUNT(DISTINCT cmt.trim_kr) = 1
+            ) m ON m.lot_id = l.id
+        ", [$source])->cnt;
+
+        $this->line("   trim from catalog_model_trims.badge_group_exact: {$trimFromBadgeGroupCount} lots");
+
+        if ($apply && $trimFromBadgeGroupCount > 0) {
+            DB::statement("
+                UPDATE lots l
+                JOIN (
+                    SELECT l1.id AS lot_id, MIN(cmt.trim_kr) AS trim_kr
+                    FROM lots l1
+                    {$trimJoinL1}
+                    WHERE l1.source = ?
+                      AND (l1.trim IS NULL OR l1.trim = '')
+                      AND l1.badge_group IS NOT NULL
+                      AND l1.badge_group != ''
+                      AND cmt.badge_group_exact IS NOT NULL
+                      AND cmt.badge_group_exact = l1.badge_group
+                    GROUP BY l1.id
+                    HAVING COUNT(DISTINCT cmt.trim_kr) = 1
+                ) m ON m.lot_id = l.id
+                SET l.trim       = m.trim_kr,
+                    l.updated_at = NOW()
+            ", [$source]);
+        }
+
         $this->line('');
 
         // ── 6. trim_en — translate Korean trim via translations.trim ─────────
-        $this->line('<fg=cyan>5. trim_en</> (translations.trim)');
+        $this->line('<fg=cyan>6. trim_en</> (translations.trim)');
 
         $trimEnCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
@@ -426,8 +536,8 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 6. seat_color — translate Korean → English via translations ───────
-        $this->line('<fg=cyan>6. seat_color</> (translations.seat_color)');
+        // ── 7. seat_color — translate Korean → English via translations ───────
+        $this->line('<fg=cyan>7. seat_color</> (translations.seat_color)');
 
         $seatColorCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
@@ -454,8 +564,8 @@ class LotsNormalizeFromCatalog extends Command
 
         $this->line('');
 
-        // ── 7. color — fix remaining Korean color values ──────────────────────
-        $this->line('<fg=cyan>7. color</> (translations.color — fix Korean remnants)');
+        // ── 8. color — fix remaining Korean color values ──────────────────────
+        $this->line('<fg=cyan>8. color</> (translations.color — fix Korean remnants)');
 
         $colorCount = (int) DB::selectOne("
             SELECT COUNT(*) AS cnt
