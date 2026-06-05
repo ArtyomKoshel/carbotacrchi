@@ -34,16 +34,24 @@ class CatalogSeeder extends Seeder
             $before = DB::table($table)->count();
             $sql    = file_get_contents($path);
 
-            // Split on statement boundaries and execute each batch
+            // Split into individual statements and execute one by one
             $statements = array_filter(
                 array_map('trim', explode(";\n", $sql)),
                 fn($s) => ! empty($s) && ! str_starts_with($s, '--')
             );
 
-            DB::unprepared(implode(";\n", $statements) . ';');
+            $count = 0;
+            foreach ($statements as $statement) {
+                $statement = rtrim($statement, ';');
+                if (empty($statement)) {
+                    continue;
+                }
+                DB::unprepared($statement);
+                $count++;
+            }
 
             $after = DB::table($table)->count();
-            $this->command->info("  {$table}: {$before} → {$after} rows");
+            $this->command->info("  {$table}: {$before} → {$after} rows ({$count} batches)");
         }
     }
 }
