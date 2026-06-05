@@ -1,4 +1,3 @@
-cat > /var/www/analysis/classify_trims.py << 'PYEOF'
 """
 Classify all trims from encar_inav_tree.json and generate catalog_model_trims seed data.
 
@@ -269,4 +268,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-PYEOF
