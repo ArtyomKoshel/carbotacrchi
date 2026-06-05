@@ -1,0 +1,50 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * catalog_model_trims — curated trim mapping scoped by make + model_group.
+ *
+ * Matching strategy is strict (100% exact):
+ *   - by badge_exact OR
+ *   - by badge_group_exact
+ *
+ * Intended usage:
+ *   - populate lots.trim when parser BadgeDetail is missing
+ *   - keep catalog_badges as raw iNav-derived source
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('catalog_model_trims', function (Blueprint $table) {
+            $table->id();
+            $table->string('source', 32)->default('encar')->index();
+            $table->string('make_kr', 100)->index();
+            $table->string('model_group_kr', 200)->index();
+            $table->string('badge_exact', 191)->nullable();
+            $table->string('badge_group_exact', 191)->nullable();
+            $table->string('trim_kr', 191);
+            $table->string('trim_en', 191)->nullable();
+            $table->string('origin', 32)->default('manual')->index();
+            $table->decimal('confidence', 5, 2)->default(1.00);
+            $table->boolean('is_active')->default(true)->index();
+            $table->text('notes')->nullable();
+            $table->timestamps();
+
+            $table->unique(
+                ['source', 'make_kr', 'model_group_kr', 'badge_exact', 'badge_group_exact', 'trim_kr'],
+                'catalog_model_trims_unique'
+            );
+
+            $table->index(['source', 'make_kr', 'model_group_kr'], 'catalog_model_trims_scope_idx');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('catalog_model_trims');
+    }
+};

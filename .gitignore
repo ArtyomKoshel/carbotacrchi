@@ -17,3 +17,6 @@ logs.*.json
 .mcp.json
 analysis/encar_inav_tree.json
 analysis/trims_by_model.json
+analysis/catalog_model_trims_seed.json
+analysis/trim_review.json
+analysis/classify_stats.json
