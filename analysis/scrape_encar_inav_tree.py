@@ -6,23 +6,31 @@ Traverses the 6-level iNav navigation tree using the Encar search API:
 
 Optimisations vs v1:
   - Concurrent model processing via ThreadPoolExecutor (--workers, default 8)
-  - Per-thread httpx.Client (connection reuse, no lock contention)
+  - Per-thread httpx.Client with dedicated FloppyData residential proxy
+    (each worker = own Korean IP → no shared rate limit)
   - Reduced base sleep (--sleep, default 0.05 s)
   - Thread-safe row collection with threading.Lock
-  - Autosave after every make (same as before)
+  - Autosave after every make
+
+Proxy env vars (same as parser):
+  FLOPPY_USERNAME   e.g. "myuser"
+  FLOPPY_PASSWORD   e.g. "secret"
+  FLOPPY_HOST       default: geo.g-w.info:10080
 
 Usage:
   python scrape_encar_inav_tree.py --out-dir /app/logs/analysis
-  python scrape_encar_inav_tree.py --out-dir /app/logs/analysis --workers 12 --sleep 0.03
+  python scrape_encar_inav_tree.py --out-dir /app/logs/analysis --workers 8 --sleep 0.1
   python scrape_encar_inav_tree.py --out-dir /app/logs/analysis --resume
-  python scrape_encar_inav_tree.py --dry-run
+  python scrape_encar_inav_tree.py --dry-run   # no proxy needed
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import random
 import signal
+import string
 import sys
 import threading
 import time
@@ -46,12 +54,36 @@ HEADERS = {
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
 }
 
-_STOP      = False
-_api_calls = 0
-_api_lock  = threading.Lock()
+_STOP       = False
+_api_calls  = 0
+_api_lock   = threading.Lock()
 _print_lock = threading.Lock()
 
-SLEEP      = 0.05   # overridden by --sleep
+SLEEP = 0.1   # overridden by --sleep
+
+
+# ── FloppyData proxy helpers ───────────────────────────────────────────────────
+
+def _random_session() -> str:
+    return "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+
+
+def _make_proxy_url(idx: int) -> str | None:
+    """Build a unique residential proxy URL for worker idx. Returns None if not configured."""
+    username = os.getenv("FLOPPY_USERNAME", "")
+    password = os.getenv("FLOPPY_PASSWORD", "")
+    host     = os.getenv("FLOPPY_HOST", "geo.g-w.info:10080")
+    if not username or not password:
+        return None
+    session = _random_session()
+    return (
+        f"http://{username}-type-residential-session-{session}"
+        f"-country-KR-rotation-15:{password}@{host}"
+    )
+
+
+# Assign one proxy URL per worker index (generated once at startup)
+_WORKER_PROXIES: list[str | None] = []
 
 
 def _sigint(sig, frame):
@@ -63,13 +95,28 @@ def _sigint(sig, frame):
 signal.signal(signal.SIGINT, _sigint)
 
 
-# ── thread-local httpx clients ─────────────────────────────────────────────────
+# ── thread-local httpx clients (one per worker, each with own proxy) ──────────
 
 _local = threading.local()
+_worker_counter = 0
+_worker_counter_lock = threading.Lock()
+
 
 def _client() -> httpx.Client:
     if not hasattr(_local, "client"):
-        _local.client = httpx.Client(headers=HEADERS, follow_redirects=True, timeout=20)
+        # Assign a worker index to this thread
+        global _worker_counter
+        with _worker_counter_lock:
+            idx = _worker_counter
+            _worker_counter += 1
+
+        proxy = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else None
+        kwargs: dict = {"headers": HEADERS, "follow_redirects": True, "timeout": 20}
+        if proxy:
+            kwargs["transport"] = httpx.HTTPTransport(proxy=proxy)
+            with _print_lock:
+                print(f"    [worker-{idx}] using proxy session ...{proxy[-20:]}")
+        _local.client = httpx.Client(**kwargs)
     return _local.client
 
 
@@ -339,7 +386,13 @@ def main():
         existing_flat = prev.get("flat", {})
         print(f"[resume] Loaded {len(existing_rows):,} existing rows")
 
-    print(f"Workers: {args.workers}  Sleep: {args.sleep}s  Output: {out_path}")
+    # Build proxy pool — one unique session per worker
+    global _WORKER_PROXIES
+    _WORKER_PROXIES = [_make_proxy_url(i) for i in range(args.workers)]
+    proxy_count = sum(1 for p in _WORKER_PROXIES if p)
+    print(f"Workers: {args.workers}  Sleep: {args.sleep}s  Proxies: {proxy_count}/{args.workers}  Output: {out_path}")
+    if proxy_count == 0:
+        print("  [!] No proxy configured (FLOPPY_USERNAME/FLOPPY_PASSWORD not set) — running direct")
 
     flat, rows = scrape(
         workers=args.workers,
