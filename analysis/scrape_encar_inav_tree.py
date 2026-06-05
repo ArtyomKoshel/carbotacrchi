@@ -156,9 +156,11 @@ def _get_inav(q: str, retries: int = 5) -> dict:
             return r.json().get("iNav", {})
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
+            wait = min(2 ** attempt, 16)
             with _print_lock:
-                print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy")
-            _rotate_proxy()   # fresh IP → retry immediately
+                print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s")
+            _rotate_proxy()
+            time.sleep(wait)
         except Exception as e:
             wait = 2 ** attempt
             with _print_lock:

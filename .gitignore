@@ -22,6 +22,7 @@ analysis/encar_taxonomy_raw.json
 analysis/encar_taxonomy_tree.json
 analysis/trims_by_model.json
 analysis/catalog_model_trims_seed.json
+analysis/catalog_model_trims_seed.sql
 analysis/trim_review.json
 analysis/classify_stats.json
 analysis/before_normalize.json
