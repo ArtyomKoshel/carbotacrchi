@@ -38,11 +38,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->unique(
-                ['source', 'make_kr', 'model_group_kr', 'badge_exact', 'badge_group_exact', 'trim_kr'],
-                'catalog_model_trims_unique'
-            );
-
+            // unique key added in 2026_06_05_000002_fix_catalog_model_trims_unique_key.php
+            // using prefix lengths to stay under MySQL 3072-byte limit
             $table->index(['source', 'make_kr', 'model_group_kr'], 'catalog_model_trims_scope_idx');
         });
     }
