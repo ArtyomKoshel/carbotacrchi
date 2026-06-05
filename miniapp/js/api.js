@@ -1,6 +1,6 @@
 const API = (() => {
   const BASE = '/api';
-  const FILTERS_CACHE_KEY = 'carbot_filters_v4'; // v4: make_en + locale=en
+  const FILTERS_CACHE_KEY = 'carbot_filters_v5'; // v5: Russian labels
   const FILTERS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
 
   async function request(method, path, body = null) {
