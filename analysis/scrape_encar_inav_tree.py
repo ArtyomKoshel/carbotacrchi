@@ -102,37 +102,65 @@ _worker_counter = 0
 _worker_counter_lock = threading.Lock()
 
 
+def _build_client(proxy: str | None) -> httpx.Client:
+    kwargs: dict = {"headers": HEADERS, "follow_redirects": True, "timeout": 40}
+    if proxy:
+        kwargs["transport"] = httpx.HTTPTransport(proxy=proxy)
+    return httpx.Client(**kwargs)
+
+
 def _client() -> httpx.Client:
     if not hasattr(_local, "client"):
-        # Assign a worker index to this thread
         global _worker_counter
         with _worker_counter_lock:
             idx = _worker_counter
             _worker_counter += 1
-
-        proxy = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else None
-        kwargs: dict = {"headers": HEADERS, "follow_redirects": True, "timeout": 20}
-        if proxy:
-            kwargs["transport"] = httpx.HTTPTransport(proxy=proxy)
+        _local.worker_idx = idx
+        _local.proxy_base = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else None
+        _local.client = _build_client(_local.proxy_base)
+        if _local.proxy_base:
             with _print_lock:
-                print(f"    [worker-{idx}] using proxy session ...{proxy[-20:]}")
-        _local.client = httpx.Client(**kwargs)
+                print(f"    [worker-{idx}] using proxy session ...{_local.proxy_base[-20:]}")
     return _local.client
+
+
+def _rotate_proxy() -> None:
+    """Close current client and rebuild with a fresh proxy session (new IP)."""
+    if not hasattr(_local, "proxy_base") or not _local.proxy_base:
+        return
+    username = os.getenv("FLOPPY_USERNAME", "")
+    password = os.getenv("FLOPPY_PASSWORD", "")
+    host     = os.getenv("FLOPPY_HOST", "geo.g-w.info:10080")
+    session  = _random_session()
+    new_proxy = (
+        f"http://{username}-type-residential-session-{session}"
+        f"-country-KR-rotation-15:{password}@{host}"
+    )
+    _local.client.close()
+    _local.client = _build_client(new_proxy)
+    _local.proxy_base = new_proxy
 
 
 # ── API helpers ────────────────────────────────────────────────────────────────
 
-def _get_inav(q: str, retries: int = 4) -> dict:
+def _get_inav(q: str, retries: int = 5) -> dict:
     global _api_calls
-    client = _client()
     for attempt in range(retries):
+        client = _client()
         try:
-            r = client.get(BASE_URL, params={"count": "true", "q": q, "inav": INAV_PARAM}, timeout=20)
+            r = client.get(BASE_URL, params={"count": "true", "q": q, "inav": INAV_PARAM})
             r.raise_for_status()
             with _api_lock:
                 _api_calls += 1
             time.sleep(SLEEP)
             return r.json().get("iNav", {})
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            wait = 2 ** attempt
+            with _print_lock:
+                print(f"    [retry {attempt+1}] HTTP {status} — rotate proxy, wait {wait}s")
+            _rotate_proxy()   # fresh IP on next attempt
+            time.sleep(wait)
         except Exception as e:
             wait = 2 ** attempt
             with _print_lock:
