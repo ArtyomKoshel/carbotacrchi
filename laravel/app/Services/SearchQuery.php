@@ -8,6 +8,8 @@ class SearchQuery
 {
     public string $make = '';
     public string $model = '';
+    public string $badge = '';
+    public string $generation = '';
     public int $yearFrom = 0;
     public int $yearTo = 0;
     public int $priceMax = 0;
@@ -32,8 +34,6 @@ class SearchQuery
 
     public int $seatCountMin = 0;
     public int $seatCountMax = 0;
-    public int $registrationYearMonthMin = 0;
-    public int $registrationYearMonthMax = 0;
 
     /** @var string[] */
     public array $bodyTypes = [];
@@ -52,10 +52,20 @@ class SearchQuery
     /** @var string[] */
     public array $colors = [];
 
+    /** @var string[]  Encar option codes: ["010", "022", "057"] */
+    public array $options = [];
+
     public string $trim = '';
     public string $vin = '';
+    public string $seatColor = '';
+
+    public string $listedAfter = '';    // ISO date YYYY-MM-DD
+    public string $listedBefore = '';   // ISO date YYYY-MM-DD
+    public string $firstRegAfter = '';  // ISO date YYYY-MM-DD
+    public string $firstRegBefore = ''; // ISO date YYYY-MM-DD
+
     /** @var string[] */
-    public array $sources = ['encar', 'kbcha'];
+    public array $sources = ['encar'];
     public string $sort = 'date';
     public int $limit = 20;
     public int $offset = 0;
@@ -66,6 +76,8 @@ class SearchQuery
 
         $q->make = trim((string) ($data['make'] ?? ''));
         $q->model = trim((string) ($data['model'] ?? ''));
+        $q->badge = trim((string) ($data['badge'] ?? ''));
+        $q->generation = trim((string) ($data['generation'] ?? ''));
         $q->yearFrom = (int) ($data['yearFrom'] ?? 0);
         $q->yearTo = (int) ($data['yearTo'] ?? 0);
         $q->priceMax = (int) ($data['priceMax'] ?? 0);
@@ -85,17 +97,21 @@ class SearchQuery
         $q->retailValueMax = (int) ($data['retailValueMax'] ?? 0);
         $q->seatCountMin = (int) ($data['seatCountMin'] ?? 0);
         $q->seatCountMax = (int) ($data['seatCountMax'] ?? 0);
-        $q->registrationYearMonthMin = (int) ($data['registrationYearMonthMin'] ?? 0);
-        $q->registrationYearMonthMax = (int) ($data['registrationYearMonthMax'] ?? 0);
 
         $q->hasAccident = self::toNullableBool($data['hasAccident'] ?? null);
         $q->floodHistory = self::toNullableBool($data['floodHistory'] ?? null);
         $q->totalLossHistory = self::toNullableBool($data['totalLossHistory'] ?? null);
 
-        $q->trim = trim((string) ($data['trim'] ?? ''));
-        $q->vin = trim((string) ($data['vin'] ?? ''));
+        $q->trim      = trim((string) ($data['trim']      ?? ''));
+        $q->vin       = trim((string) ($data['vin']       ?? ''));
+        $q->seatColor = trim((string) ($data['seatColor'] ?? ''));
 
-        foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors'] as $key) {
+        $q->listedAfter = trim((string) ($data['listedAfter'] ?? ''));
+        $q->listedBefore = trim((string) ($data['listedBefore'] ?? ''));
+        $q->firstRegAfter = trim((string) ($data['firstRegAfter'] ?? ''));
+        $q->firstRegBefore = trim((string) ($data['firstRegBefore'] ?? ''));
+
+        foreach (['bodyTypes', 'transmissions', 'fuelTypes', 'driveTypes', 'lienStatuses', 'seizureStatuses', 'sellTypes', 'colors', 'options'] as $key) {
             if (!empty($data[$key]) && is_array($data[$key])) {
                 $q->$key = array_map('strval', $data[$key]);
             }
@@ -152,25 +168,28 @@ class SearchQuery
 
             // When only one bound is set, tolerance creates a range around that value.
             // Save originals first to avoid double-applying tolerance.
-            $hasMin  = $clone->$minProp !== null && $clone->$minProp > 0;
-            $hasMax  = $clone->$maxProp !== null && $clone->$maxProp > 0;
-            $origMin = $clone->$minProp;
-            $origMax = $clone->$maxProp;
+            $minValue = $clone->$minProp;
+            $maxValue = $clone->$maxProp;
+
+            $hasMin  = is_numeric($minValue) && (float) $minValue > 0;
+            $hasMax  = is_numeric($maxValue) && (float) $maxValue > 0;
+            $origMin = $hasMin ? ($isFloat ? (float) $minValue : (int) $minValue) : 0;
+            $origMax = $hasMax ? ($isFloat ? (float) $maxValue : (int) $maxValue) : 0;
 
             if (!$hasMin && !$hasMax) {
                 continue;
             }
 
             if ($hasMin && !$hasMax) {
-                // "пробег 100 000" → range [100 000-tol, 100 000+tol]
-                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
-                $clone->$maxProp = self::applyTolerance($origMin, $tolerance, false, $isFloat);
+                // "от X" (e.g. "год от 2020") — only expand min downward.
+                // Do NOT create a max — user explicitly has no upper bound.
+                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true, $isFloat);
             } elseif (!$hasMin && $hasMax) {
-                // "пробег до 100 000" → range [100 000-tol, 100 000+tol]
-                $clone->$minProp = self::applyTolerance($origMax, $tolerance, true,  $isFloat);
+                // "до X" (e.g. "пробег до 100 000") — only expand max upward.
+                // Do NOT create a min — user explicitly has no lower bound.
                 $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             } else {
-                // Both bounds set: widen the range outward
+                // Both bounds set (exact year, price range, etc.) — widen outward.
                 $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
                 $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             }
@@ -234,6 +253,8 @@ class SearchQuery
         $parts = [];
         if ($this->make)       $parts[] = $this->make;
         if ($this->model)      $parts[] = $this->model;
+        if ($this->badge)      $parts[] = 'badge: ' . $this->badge;
+        if ($this->generation) $parts[] = 'поколение: ' . $this->generation;
         if ($this->yearFrom && $this->yearTo) {
             $parts[] = "{$this->yearFrom}–{$this->yearTo}";
         } elseif ($this->yearFrom) {
@@ -260,7 +281,16 @@ class SearchQuery
         if ($this->driveTypes) $parts[] = implode('/', $this->driveTypes);
         if ($this->bodyTypes)  $parts[] = implode('/', $this->bodyTypes);
         if ($this->colors) $parts[] = 'цвет: ' . implode('/', $this->colors);
-        if ($this->trim)   $parts[] = 'комплектация: ' . $this->trim;
+        if ($this->trim) {
+            $trimLabel = \App\Models\Translation::where('category', 'trim')
+                ->where('kr', $this->trim)
+                ->value('en') ?? $this->trim;
+            $parts[] = 'комплектация: ' . $trimLabel;
+        }
+        if ($this->listedAfter)   $parts[] = "объявления от {$this->listedAfter}";
+        if ($this->listedBefore)  $parts[] = "объявления до {$this->listedBefore}";
+        if ($this->firstRegAfter) $parts[] = "регистрация от {$this->firstRegAfter}";
+        if ($this->firstRegBefore) $parts[] = "регистрация до {$this->firstRegBefore}";
 
         return implode(', ', $parts) ?: 'Все лоты';
     }
@@ -270,6 +300,8 @@ class SearchQuery
         $data = [];
         if ($this->make)          $data['make']          = $this->make;
         if ($this->model)         $data['model']         = $this->model;
+        if ($this->badge)         $data['badge']         = $this->badge;
+        if ($this->generation)    $data['generation']    = $this->generation;
         if ($this->yearFrom)      $data['yearFrom']      = $this->yearFrom;
         if ($this->yearTo)        $data['yearTo']        = $this->yearTo;
         if ($this->priceMin)      $data['priceMin']      = $this->priceMin;
@@ -288,8 +320,6 @@ class SearchQuery
         if ($this->retailValueMax) $data['retailValueMax'] = $this->retailValueMax;
         if ($this->seatCountMin) $data['seatCountMin'] = $this->seatCountMin;
         if ($this->seatCountMax) $data['seatCountMax'] = $this->seatCountMax;
-        if ($this->registrationYearMonthMin) $data['registrationYearMonthMin'] = $this->registrationYearMonthMin;
-        if ($this->registrationYearMonthMax) $data['registrationYearMonthMax'] = $this->registrationYearMonthMax;
         if ($this->hasAccident !== null) $data['hasAccident'] = $this->hasAccident;
         if ($this->floodHistory !== null) $data['floodHistory'] = $this->floodHistory;
         if ($this->totalLossHistory !== null) $data['totalLossHistory'] = $this->totalLossHistory;
@@ -301,8 +331,13 @@ class SearchQuery
         if ($this->seizureStatuses) $data['seizureStatuses'] = $this->seizureStatuses;
         if ($this->sellTypes)     $data['sellTypes']     = $this->sellTypes;
         if ($this->colors)        $data['colors']        = $this->colors;
+        if ($this->options)       $data['options']       = $this->options;
         if ($this->trim)          $data['trim']          = $this->trim;
         if ($this->vin)           $data['vin']           = $this->vin;
+        if ($this->listedAfter)   $data['listedAfter']   = $this->listedAfter;
+        if ($this->listedBefore)  $data['listedBefore']  = $this->listedBefore;
+        if ($this->firstRegAfter) $data['firstRegAfter'] = $this->firstRegAfter;
+        if ($this->firstRegBefore) $data['firstRegBefore'] = $this->firstRegBefore;
         if ($this->sources !== ['encar', 'kbcha']) {
             $data['sources'] = $this->sources;
         }

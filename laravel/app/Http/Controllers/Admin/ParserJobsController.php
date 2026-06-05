@@ -47,7 +47,7 @@ class ParserJobsController extends Controller
         if (!$source && str_contains($lotId, '_')) {
             $source = explode('_', $lotId, 2)[0];
         }
-        $source = $source ?: 'kbcha';
+        $source = $source ?: 'encar';
 
         $pending = ParseJob::where('type', 'reparse')
             ->whereIn('status', ['pending', 'running', 'interrupted'])
@@ -85,7 +85,7 @@ class ParserJobsController extends Controller
     public function jobs(Request $request)
     {
         $jobs = ParseJob::orderByDesc('created_at')->paginate(30);
-        $sources = array_values(config('auction.sources', ['kbcha']));
+        $sources = array_values(config('auction.sources', ['encar']));
 
         return view('admin.jobs', compact('jobs', 'sources'));
     }
@@ -329,7 +329,7 @@ class ParserJobsController extends Controller
     public function schedules()
     {
         $schedules = ParserSchedule::orderBy('source')->get()->keyBy('source');
-        $sources = array_values(config('auction.sources', ['kbcha']));
+        $sources = array_values(config('auction.sources', ['encar']));
 
         return view('admin.schedules', compact('schedules', 'sources'));
     }
@@ -361,9 +361,10 @@ class ParserJobsController extends Controller
         }
 
         try {
+            $baseUrl = rtrim(config('auction.floppy_base_url'), '/');
             $resp = Http::connectTimeout(3)->timeout(8)
                 ->withHeader('X-Api-Key', $key)
-                ->get('https://client-api.floppy.host/v1/rotating/balance');
+                ->get("{$baseUrl}/v1/rotating/balance");
             if ($resp->successful()) {
                 return response()->json($resp->json());
             }

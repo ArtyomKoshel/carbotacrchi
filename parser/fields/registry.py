@@ -120,7 +120,12 @@ FIELDS: list[FieldSpec] = [
     FieldSpec(
         name="model", dtype=FieldType.STRING, required=True, filterable=True,
         category="identity", description="Model name (parser-normalized)",
-        sources={"encar": "Model + Badge", "kbcha": "classCode + title parsing"},
+        sources={"encar": "Model (normalized, without badge tail tokens)", "kbcha": "classCode + title parsing"},
+    ),
+    FieldSpec(
+        name="badge_group", dtype=FieldType.STRING, filterable=False,
+        category="identity", description="Encar BadgeGroup — engine/fuel variant group (e.g. 가솔린 3500cc)",
+        sources={"encar": "BadgeGroup"},
     ),
     FieldSpec(
         name="trim", dtype=FieldType.STRING, filterable=True, tracked=True,
@@ -157,17 +162,16 @@ FIELDS: list[FieldSpec] = [
         sources={"encar": "Mileage", "kbcha": "주행거리 parse_mileage"},
     ),
     FieldSpec(
-        name="registration_date", dtype=FieldType.DATE, filterable=True,
-        category="identity", description="First registration date",
-        sources={"encar": "manage.registDateTime[:10] or record.firstDate",
-                 "kbcha": "연식 reg portion"},
+        name="first_reg_date", dtype=FieldType.DATE, filterable=True,
+        category="identity", description="First vehicle registration date (최초등록일)",
+        sources={"encar": "record.firstDate / inspection.firstRegistrationDate / HTML 최초등록일",
+                 "kbcha": "연식 → YYYY-MM-01"},
     ),
     FieldSpec(
-        name="registration_year_month", dtype=FieldType.INT, filterable=True, tracked=True,
-        category="identity",
-        description="First registration year+month as int YYYYMM (e.g. 202006)",
-        sources={"encar": "FormYear (already YYYYMM)",
-                 "kbcha": "parse_year_month(연식 cell)"},
+        name="listed_at", dtype=FieldType.DATE, filterable=True,
+        category="identity", description="Date the ad was published on the source site",
+        sources={"encar": "manage.registDateTime[:10]",
+                 "kbcha": ""},
     ),
 
     # ── Technical specs ──────────────────────────────────────────────────────

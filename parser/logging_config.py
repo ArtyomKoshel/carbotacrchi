@@ -100,3 +100,11 @@ def setup_logging(debug: bool = False) -> None:
             os.chmod(Config.LOG_FILE, 0o666)
         except OSError:
             pass
+
+    # Ensure taxonomy anomaly JSONL exists at startup (Railway volume/container safety).
+    try:
+        from parsers.encar import ensure_anomaly_file_exists  # local import to avoid hard dependency at module load
+        ensure_anomaly_file_exists()
+    except Exception:
+        # Non-fatal: parser should continue even if anomaly file init fails.
+        pass

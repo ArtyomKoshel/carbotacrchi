@@ -119,6 +119,20 @@
   padding: 16px 16px 0;
 }
 
+.search-count-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--hint);
+  margin-bottom: 8px;
+  min-height: 18px;
+  transition: opacity 0.2s;
+}
+
+.search-count-hint b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ── Multi-select chip groups ── */
 .chip-group {
   display: flex;
@@ -149,3 +163,155 @@
   background: rgba(255,255,255,.06);
   margin: 16px 0 0;
 }
+
+/* ── Collapsible filter sections ── */
+.filter-label--toggle {
+  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.filter-label--toggle:active { opacity: .8; }
+
+.filter-label__text { flex: 1; }
+
+.filter-active-badge {
+  background: var(--accent); color: var(--btn-text);
+  border-radius: 10px; font-size: 10px; font-weight: 700;
+  padding: 1px 6px; min-width: 18px; text-align: center;
+}
+
+.filter-chevron {
+  color: var(--hint); display: flex; align-items: center;
+  transition: transform .2s; flex-shrink: 0;
+}
+.filter-label--collapsed .filter-chevron { transform: rotate(-90deg); }
+
+.filter-body { /* wraps filter controls */ }
+.filter-body--hidden { display: none; }
+
+/* ── Hide native arrow when Tom Select is present ── */
+.filter-select-wrap:has(.ts-wrapper)::after { display: none; }
+
+/* ── Single-select Tom Select (make / model / trim / generation) ── */
+.ts-single .ts-control {
+  padding: 9px 32px 9px 12px !important;
+  min-height: unset !important;
+  cursor: pointer !important;
+  flex-wrap: nowrap !important;
+}
+.ts-single .ts-control input {
+  cursor: pointer !important;
+  font-size: 14px;
+}
+.ts-single .ts-control .item {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  color: var(--text) !important;
+  font-size: 14px;
+  font-weight: 400;
+}
+/* Dropdown arrow for single-select */
+.ts-single .ts-control::after {
+  content: '▾';
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--hint);
+  font-size: 12px;
+  pointer-events: none;
+}
+/* Hide the caret input when item is selected */
+.ts-single.has-items .ts-control input { width: 0 !important; opacity: 0; }
+
+/* ── Options multi-select (Tom Select dark theme) ── */
+select.filter-options-ts { display: none; } /* hide native select — Tom Select replaces it */
+div.ts-wrapper.filter-options-ts { display: block; } /* but show the TS wrapper */
+
+.ts-wrapper { width: 100%; }
+
+.ts-wrapper .ts-control {
+  background: var(--bg2) !important;
+  border: 1.5px solid rgba(255,255,255,.08) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  min-height: 42px;
+  padding: 5px 8px;
+  cursor: text;
+}
+.ts-wrapper.focus .ts-control {
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+.ts-wrapper .ts-control input {
+  color: var(--text) !important;
+  font-size: 14px;
+}
+.ts-wrapper .ts-control input::placeholder { color: var(--hint) !important; }
+
+/* Selected items (pills) */
+.ts-wrapper .ts-control .item {
+  background: rgba(51,144,236,.18) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  color: var(--accent) !important;
+  font-size: 12px;
+  padding: 2px 6px;
+  margin: 2px 3px 2px 0;
+}
+.ts-wrapper .ts-control .item .remove {
+  color: var(--accent) !important;
+  border-left-color: rgba(51,144,236,.3) !important;
+  opacity: .8;
+}
+
+/* Dropdown */
+.ts-dropdown {
+  background: var(--bg2) !important;
+  border: 1.5px solid rgba(255,255,255,.1) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45) !important;
+  color: var(--text) !important;
+  margin-top: 2px;
+}
+.ts-dropdown .ts-dropdown-content { max-height: 220px; }
+
+.ts-dropdown .ts-option {
+  color: var(--text) !important;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.ts-dropdown .ts-option:hover,
+.ts-dropdown .ts-option.active {
+  background: rgba(51,144,236,.18) !important;
+  color: var(--accent) !important;
+}
+.ts-dropdown .ts-option.selected {
+  background: rgba(51,144,236,.08) !important;
+  color: var(--hint) !important;
+}
+.ts-dropdown .ts-option.selected.active {
+  background: rgba(51,144,236,.22) !important;
+  color: var(--accent) !important;
+}
+
+/* Category group headers */
+.ts-dropdown .ts-optgroup-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--hint) !important;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 10px 12px 3px;
+  background: var(--bg2) !important;
+}
+
+/* Clear button (× all) */
+.ts-wrapper .clear-button {
+  color: var(--hint) !important;
+  font-size: 16px;
+  opacity: .7;
+}
+.ts-wrapper .clear-button:hover { opacity: 1; }

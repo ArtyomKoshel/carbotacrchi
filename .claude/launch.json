@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "miniapp",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "miniapp"],
+      "port": 5173,
+      "autoPort": true
+    }
+  ]
+}

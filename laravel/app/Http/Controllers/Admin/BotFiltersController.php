@@ -16,7 +16,7 @@ class BotFiltersController extends Controller
     {
         if (!Schema::hasTable('bot_filter_settings')) {
             return redirect()->route('admin.dashboard')
-                ->with('error', 'Table bot_filter_settings is missing. Run migrations first.');
+                ->with('error', 'Таблица bot_filter_settings не найдена. Сначала выполните миграции.');
         }
 
         if (BotFilterSetting::count() === 0) {
@@ -36,7 +36,7 @@ class BotFiltersController extends Controller
     {
         if (!Schema::hasTable('bot_filter_settings')) {
             return redirect()->route('admin.dashboard')
-                ->with('error', 'Table bot_filter_settings is missing. Run migrations first.');
+                ->with('error', 'Таблица bot_filter_settings не найдена. Сначала выполните миграции.');
         }
 
         $fields = $request->input('fields', []);
@@ -89,7 +89,7 @@ class BotFiltersController extends Controller
     {
         if (!Schema::hasTable('bot_filter_settings')) {
             return redirect()->route('admin.dashboard')
-                ->with('error', 'Table bot_filter_settings is missing. Run migrations first.');
+                ->with('error', 'Таблица bot_filter_settings не найдена. Сначала выполните миграции.');
         }
 
         BotFilterSetting::truncate();

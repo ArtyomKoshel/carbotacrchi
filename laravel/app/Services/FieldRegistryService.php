@@ -110,6 +110,7 @@ class FieldRegistryService
                 ['name' => 'has_accident',    'dtype' => 'bool', 'category' => 'condition',  'filterable' => true, 'operators' => ['eq','ne']],
                 ['name' => 'flood_history',   'dtype' => 'bool', 'category' => 'condition',  'filterable' => true, 'operators' => ['eq','ne']],
                 ['name' => 'make',            'dtype' => 'string','category' => 'identity',  'filterable' => true, 'operators' => ['eq','ne','in','not_in','contains']],
+                ['name' => 'generation',      'dtype' => 'string','category' => 'identity',  'filterable' => true, 'operators' => ['eq','ne','contains']],
             ],
         ];
     }

@@ -173,7 +173,11 @@ class TelegramBot
             $specs[] = htmlspecialchars((string) $lot['bodyType']);
         }
         if (in_array('trim', $cardFields, true) && !empty($lot['trim'])) {
-            $specs[] = '🏷 ' . htmlspecialchars((string) $lot['trim']);
+            $trimLabel = !empty($lot['trimEn']) ? $lot['trimEn'] : $lot['trim'];
+            $specs[] = '🏷 ' . htmlspecialchars((string) $trimLabel);
+        }
+        if (in_array('generation', $cardFields, true) && !empty($lot['generation'])) {
+            $specs[] = '🧬 ' . htmlspecialchars((string) $lot['generation']);
         }
         if ($specs) {
             $lines[] = implode(' · ', $specs);
@@ -287,7 +291,9 @@ class TelegramBot
         if ($miniAppUrl) {
             $deepLink = $miniAppUrl;
             if (!empty($subscriptionQuery)) {
-                $deepLink .= '?search=' . urlencode(json_encode($subscriptionQuery));
+                $separator = str_contains($miniAppUrl, '?') ? '&' : '?';
+                $payload = json_encode($subscriptionQuery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $deepLink .= $separator . 'search=' . rawurlencode($payload ?: '{}');
             }
             $footerButtons[] = [['text' => '📱 Все результаты', 'web_app' => ['url' => $deepLink]]];
         }

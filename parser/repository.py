@@ -9,6 +9,7 @@ from datetime import datetime
 import pymysql
 from pymysql.cursors import DictCursor
 
+import api_client
 from config import Config
 from models import CarLot, InspectionRecord
 
@@ -332,6 +333,10 @@ class LotRepository:
         if not lots:
             return 0
 
+        # ── API boundary: delegate to Laravel if configured ──────────────────
+        if api_client.is_configured():
+            return self._upsert_via_api(lots, stats)
+
         # ── Pre-upsert filter ────────────────────────────────────────────────
         # Apply declarative rules (sell_type/mileage/year/price/...) before
         # any DB write. Lots marked "skip" are dropped here; "mark_inactive"
@@ -348,40 +353,47 @@ class LotRepository:
 
         sql = """
             INSERT INTO lots (
-                id, source, make, model, model_en, year, price, mileage, vin,
+                id, source, make, model, model_en, model_group,
+                year, price, mileage, vin,
                 body_type, transmission, fuel, drive_type,
                 engine_volume,
                 lien_status, seizure_status,
                 has_accident, flood_history, total_loss_history,
                 owners_count, insurance_count,
-                location, color, seat_color, `trim`, `options`, paid_options,
+                location, color, seat_color,
+                badge_group, `trim`, trim_en, badge,
+                `options`, paid_options,
                 retail_value, repair_cost,
-                registration_year_month,
                 image_url, lot_url, raw_data,
                 fetched_at, is_active, parsed_at,
-                plate_number, registration_date,
+                plate_number, first_reg_date, listed_at,
                 sell_type, sell_type_raw,
                 seat_count,
                 created_at, updated_at
             ) VALUES (
-                %(id)s, %(source)s, %(make)s, %(model)s, %(model_en)s, %(year)s, %(price)s, %(mileage)s, %(vin)s,
+                %(id)s, %(source)s, %(make)s, %(model)s, %(model_en)s, %(model_group)s,
+                %(year)s, %(price)s, %(mileage)s, %(vin)s,
                 %(body_type)s, %(transmission)s, %(fuel)s, %(drive_type)s,
                 %(engine_volume)s,
                 %(lien_status)s, %(seizure_status)s,
                 %(has_accident)s, %(flood_history)s, %(total_loss_history)s,
                 %(owners_count)s, %(insurance_count)s,
-                %(location)s, %(color)s, %(seat_color)s, %(trim)s, %(options)s, %(paid_options)s,
+                %(location)s, %(color)s, %(seat_color)s,
+                %(badge_group)s, %(trim)s, %(trim_en)s, %(badge)s,
+                %(options)s, %(paid_options)s,
                 %(retail_value)s, %(repair_cost)s,
-                %(registration_year_month)s,
                 %(image_url)s, %(lot_url)s, %(raw_data)s,
                 %(now)s, %(is_active)s, %(now)s,
-                %(plate_number)s, %(registration_date)s,
+                %(plate_number)s, %(first_reg_date)s, %(listed_at)s,
                 %(sell_type)s, %(sell_type_raw)s,
                 %(seat_count)s,
                 %(now)s, %(now)s
             ) ON DUPLICATE KEY UPDATE
                 price=VALUES(price), mileage=VALUES(mileage),
-                make=VALUES(make), model=VALUES(model), model_en=COALESCE(VALUES(model_en), model_en), year=VALUES(year),
+                make=VALUES(make), model=VALUES(model),
+                model_en=COALESCE(VALUES(model_en), model_en),
+                model_group=COALESCE(VALUES(model_group), model_group),
+                year=VALUES(year),
                 vin=COALESCE(VALUES(vin), vin),
                 body_type=COALESCE(VALUES(body_type), body_type),
                 transmission=COALESCE(VALUES(transmission), transmission),
@@ -390,7 +402,11 @@ class LotRepository:
                 engine_volume=COALESCE(VALUES(engine_volume), engine_volume),
                 color=COALESCE(VALUES(color), color),
                 seat_color=COALESCE(VALUES(seat_color), seat_color),
-                location=VALUES(location), `trim`=COALESCE(VALUES(`trim`), `trim`),
+                location=VALUES(location),
+                badge_group=COALESCE(VALUES(badge_group), badge_group),
+                `trim`=COALESCE(VALUES(`trim`), `trim`),
+                trim_en=COALESCE(VALUES(trim_en), trim_en),
+                badge=COALESCE(VALUES(badge), badge),
                 `options`=COALESCE(VALUES(`options`), `options`),
                 paid_options=COALESCE(VALUES(paid_options), paid_options),
                 image_url=COALESCE(VALUES(image_url), image_url),
@@ -406,9 +422,9 @@ class LotRepository:
                 insurance_count=COALESCE(VALUES(insurance_count), insurance_count),
                 retail_value=COALESCE(VALUES(retail_value), retail_value),
                 repair_cost=COALESCE(VALUES(repair_cost), repair_cost),
-                registration_year_month=COALESCE(VALUES(registration_year_month), registration_year_month),
                 plate_number=COALESCE(VALUES(plate_number), plate_number),
-                registration_date=COALESCE(VALUES(registration_date), registration_date),
+                first_reg_date=COALESCE(VALUES(first_reg_date), first_reg_date),
+                listed_at=COALESCE(VALUES(listed_at), listed_at),
                 sell_type=COALESCE(VALUES(sell_type), sell_type),
                 sell_type_raw=COALESCE(VALUES(sell_type_raw), sell_type_raw),
                 seat_count=COALESCE(VALUES(seat_count), seat_count),
@@ -470,6 +486,9 @@ class LotRepository:
             # Remove skipped lots from change-detection below
             lots = [l for l in lots if not l.raw_data.get("_db_skip")]
             rows = [l.to_db_row() for l in lots]
+
+        # Sync lot_options pivot table
+        self._sync_lot_options(lots)
 
         # Detect field changes for existing lots and persist to lot_changes
         changes_to_insert = []
@@ -632,6 +651,97 @@ class LotRepository:
             logger.warning(f"[DB] upsert_photos failed for {lot_id}: {type(e).__name__}: {e}")
             return 0
 
+    def _upsert_via_api(self, lots: list[CarLot], stats: dict | None) -> int:
+        """Send lots to Laravel API instead of direct DB write. Falls back to direct on error."""
+        source = lots[0].source if lots else "unknown"
+
+        # Apply pre-upsert filters locally before sending to API
+        lots = self._apply_filters(lots, stats)
+        if not lots:
+            return 0
+
+        payload = []
+        for lot in lots:
+            row = lot.to_db_row()
+            # Convert JSON strings back to objects for the API
+            for field in ("options", "paid_options", "raw_data"):
+                val = row.get(field)
+                if isinstance(val, str):
+                    try:
+                        row[field] = json.loads(val)
+                    except Exception:
+                        row[field] = None
+            payload.append(row)
+
+        try:
+            result = api_client.upsert_lots(source, payload)
+            data   = result.get("data", {})
+            total  = data.get("inserted", 0) + data.get("updated", 0)
+            logger.info(
+                f"[api_client] upserted {total} lots via API "
+                f"(inserted={data.get('inserted', 0)}, updated={data.get('updated', 0)}, "
+                f"errors={data.get('errors', 0)})"
+            )
+            return total
+        except Exception:
+            logger.warning("[api_client] API upsert failed, falling back to direct DB")
+            # Fall back to direct DB — call the rest of upsert_batch manually
+            return self._upsert_direct(lots, stats)
+
+    def _upsert_direct(self, lots: list[CarLot], stats: dict | None) -> int:
+        """Direct DB upsert (internal fallback, skips filter re-apply)."""
+        # Re-use main upsert logic by temporarily disabling API routing
+        original = api_client.INTERNAL_TOKEN
+        try:
+            api_client.INTERNAL_TOKEN = ""  # type: ignore[assignment]
+            return self.upsert_batch(lots, stats)
+        finally:
+            api_client.INTERNAL_TOKEN = original  # type: ignore[assignment]
+
+    def _sync_lot_options(self, lots: list) -> None:
+        """Sync lot_options pivot table after upserting lots."""
+        conn = self._get_conn()
+
+        inserts = []
+        lot_ids_with_options = []
+        for lot in lots:
+            codes = lot.options if hasattr(lot, "options") and lot.options else []
+            if isinstance(codes, str):
+                try:
+                    codes = json.loads(codes)
+                except Exception:
+                    codes = []
+            if not isinstance(codes, list):
+                codes = []
+            if codes:
+                lot_ids_with_options.append(lot.id)
+                for code in set(codes):
+                    code = str(code).strip()
+                    if code:
+                        inserts.append((lot.id, code))
+
+        if not lot_ids_with_options:
+            return
+
+        try:
+            with conn.cursor() as cursor:
+                # Remove stale option rows for lots being upserted
+                for chunk in [lot_ids_with_options[i:i+500] for i in range(0, len(lot_ids_with_options), 500)]:
+                    placeholders = ",".join(["%s"] * len(chunk))
+                    cursor.execute(f"DELETE FROM lot_options WHERE lot_id IN ({placeholders})", chunk)
+
+                # Insert fresh option rows
+                if inserts:
+                    for chunk in [inserts[i:i+1000] for i in range(0, len(inserts), 1000)]:
+                        cursor.executemany(
+                            "INSERT IGNORE INTO lot_options (lot_id, option_code) VALUES (%s, %s)",
+                            chunk,
+                        )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"[DB] lot_options sync failed: {e}")
+
     def insert_filter_skip_log(self, entries: list[dict]) -> int:
         """Bulk insert filter skip log entries."""
         if not entries:
@@ -744,7 +854,7 @@ class LotRepository:
                         make=row["make"] or "", model=row["model"] or "",
                         year=row["year"] or 0, price=row["price"] or 0,
                         mileage=row["mileage"] or 0,
-                        registration_year_month=row.get("registration_year_month"),
+                        badge_group=row.get("badge_group"),
                         location=row.get("location"),
                         lot_url=row.get("lot_url") or "",
                         image_url=row.get("image_url"),
@@ -760,7 +870,8 @@ class LotRepository:
                         engine_volume=row.get("engine_volume"),
                         drive_type=row.get("drive_type"),
                         plate_number=row.get("plate_number"),
-                        registration_date=row.get("registration_date"),
+                        first_reg_date=row.get("first_reg_date"),
+                        listed_at=row.get("listed_at"),
                         lien_status=row.get("lien_status"),
                         seizure_status=row.get("seizure_status"),
                         has_accident=row.get("has_accident"),

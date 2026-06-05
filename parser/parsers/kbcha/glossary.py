@@ -121,7 +121,7 @@ INFO_FIELDS: dict[str, tuple[str, str | None]] = {
     "차량색상": ("color",        "normalize_color"),
     "구동":   ("drive_type",    "normalize_drive_type"),
     # Parsed with custom logic (handled separately in _parse_info_table_fields)
-    "연식":   ("year",          "_parse_year"),          # also sets registration_date
+    "연식":   ("year",          "_parse_year"),          # also sets first_reg_date
     "주행거리": ("mileage",       "_parse_mileage"),
     "소유자변경": ("owners_count", "_parse_owners"),       # e.g. '2회' → 2
     # Raw string fields

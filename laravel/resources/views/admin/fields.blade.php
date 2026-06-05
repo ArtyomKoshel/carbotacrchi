@@ -1,7 +1,13 @@
 @extends('admin.layout')
-@section('title', 'Fields')
+@section('title', 'Поля')
 
 @section('content')
+
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+  $singleSource = count($sources) === 1;
+  $activeSource = $singleSource ? ($sources[0] ?? null) : null;
+@endphp
 
 @if(session('success'))
 <div class="mb-4 px-4 py-3 rounded-lg bg-green-900/40 border border-green-700 text-green-300 text-sm">
@@ -18,21 +24,21 @@
 {{-- Header --}}
 <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
   <p class="text-sm text-gray-500">
-    Unified catalogue: every lot attribute, its source mapping, and fill-coverage per parser.
-    Pre-computed — reads the <code class="text-gray-400">field_coverage_stats</code> table.
+    Единый каталог: все атрибуты лота, маппинг источников и покрытие полей.
+    Предвычислено — читает таблицу <code class="text-gray-400">field_coverage_stats</code>.
   </p>
   <form method="POST" action="{{ route('admin.fields.recompute') }}" class="flex items-center gap-3">
     @csrf
     @if($computedAt)
       <span class="text-xs text-gray-500">
-        computed {{ $computedAt->diffForHumans() }}
+        вычислено {{ $computedAt->diffForHumans() }}
       </span>
     @else
-      <span class="text-xs text-amber-400">never computed — click Refresh</span>
+      <span class="text-xs text-amber-400">не вычислялось — нажмите Обновить</span>
     @endif
     <button type="submit"
             class="px-3 py-1.5 rounded-lg text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition">
-      ↻ Recompute
+      ↻ Обновить
     </button>
   </form>
 </div>
@@ -40,22 +46,22 @@
 {{-- Summary strip --}}
 <div class="flex flex-wrap gap-3 mb-6">
   <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300">
-    <span class="text-gray-500">Total fields:</span>
+    <span class="text-gray-500">Всего полей:</span>
     <span class="text-white font-semibold ml-1">{{ $totalFields }}</span>
   </span>
   @foreach($sources as $src)
     @php
       $n = $totals[$src] ?? 0;
-      $color = $src === 'encar' ? 'indigo' : ($src === 'kbcha' ? 'pink' : 'gray');
+      $color = $src === 'encar' ? 'indigo' : 'gray';
     @endphp
     <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300">
-      <span class="text-{{ $color }}-400 font-semibold">{{ $src }}</span>:
+      <span class="text-{{ $color }}-400 font-semibold">{{ $ui::source($src) }}</span>:
       <span class="text-white font-semibold ml-1">{{ number_format($n) }}</span>
-      <span class="text-gray-500">lots</span>
+      <span class="text-gray-500">лотов</span>
     </span>
   @endforeach
   <span class="px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-500">
-    schema v{{ $version }}
+    схема v{{ $version }}
   </span>
 </div>
 
@@ -64,23 +70,23 @@
 
   <div class="mb-6 flex flex-wrap items-center gap-3">
     <input type="text" x-model="q"
-           placeholder="Filter by field name / column / raw location..."
+           placeholder="Фильтр по названию поля / колонке / raw пути..."
            class="flex-1 min-w-[260px] bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600">
 
     <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400">
-      <span>min %</span>
+      <span>Мин. %</span>
       <input type="number" min="0" max="100" step="10" x-model.number="minPct"
              class="w-14 bg-gray-800 border-none rounded text-sm text-white">
     </label>
 
     <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400 cursor-pointer">
       <input type="checkbox" x-model="showEmpty" class="w-3.5 h-3.5">
-      show fields not populated
+      показывать пустые поля
     </label>
 
     <button type="button" @click="q=''; minPct=0; showEmpty=true"
             class="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs text-gray-300">
-      Clear
+      Сбросить
     </button>
   </div>
 
@@ -103,12 +109,17 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-900/60 text-gray-500 text-xs uppercase">
             <tr>
-              <th class="px-4 py-2 text-left font-medium w-[180px]">Field</th>
-              <th class="px-4 py-2 text-left font-medium w-[90px]">Type</th>
-              @foreach($sources as $src)
-                <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $src }} coverage</th>
-              @endforeach
-              <th class="px-4 py-2 text-left font-medium">Sources & transform</th>
+              <th class="px-4 py-2 text-left font-medium w-[180px]">Поле</th>
+              <th class="px-4 py-2 text-left font-medium w-[90px]">Тип</th>
+              @if($singleSource)
+                <th class="px-4 py-2 text-center font-medium w-[150px]">Покрытие</th>
+                <th class="px-4 py-2 text-left font-medium">Преобразование</th>
+              @else
+                @foreach($sources as $src)
+                  <th class="px-4 py-2 text-center font-medium w-[150px]">{{ $ui::source($src) }} покрытие</th>
+                @endforeach
+                <th class="px-4 py-2 text-left font-medium">Источники & преобразование</th>
+              @endif
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-800/60">
@@ -116,19 +127,23 @@
               @php
                 $isEmpty = empty($f['extractions']) && empty($f['coverage']);
                 $maxPct = $maxCov($f['coverage']);
+                $displayExtractions = $singleSource
+                    ? array_values(array_filter($f['extractions'], fn($e) => ($e['source'] ?? null) === $activeSource))
+                    : $f['extractions'];
                 $searchBase = strtolower($f['name'] . ' ' . $f['db_column'] . ' '
-                    . implode(' ', array_map(fn($e) => $e['raw_location'].' '.$e['transform'], $f['extractions'])));
+                    . implode(' ', array_map(fn($e) => $e['raw_location'].' '.$e['transform'], $displayExtractions)));
               @endphp
               <tr x-show="(!q || '{{ $searchBase }}'.includes(q.toLowerCase())) && {{ $maxPct }} >= minPct && (showEmpty || {{ $isEmpty ? 'false' : 'true' }})"
                   class="hover:bg-gray-800/30">
                 <td class="px-4 py-3 align-top">
                   <div class="font-mono text-xs text-blue-300">
-                    {{ $f['name'] }}
+                    {{ $ui::field($f['name']) }}
+                    <span class="text-gray-500">({{ $f['name'] }})</span>
                     @if($f['filterable'])
-                      <span class="ml-1 text-[10px] px-1 rounded bg-purple-900/60 text-purple-300" title="used in filters">flt</span>
+                      <span class="ml-1 text-[10px] px-1 rounded bg-purple-900/60 text-purple-300" title="используется в фильтрах">фил</span>
                     @endif
                     @if($f['tracked'])
-                      <span class="ml-1 text-[10px] px-1 rounded bg-blue-900/60 text-blue-300" title="tracked in lot_changes">trk</span>
+                      <span class="ml-1 text-[10px] px-1 rounded bg-blue-900/60 text-blue-300" title="отслеживается в lot_changes">изм</span>
                     @endif
                   </div>
                   @if($f['db_column'] !== $f['name'])
@@ -143,11 +158,11 @@
                 <td class="px-4 py-3 align-top text-xs text-gray-400">
                   {{ $f['dtype'] }}
                 </td>
-                @foreach($sources as $src)
+                @if($singleSource)
                   <td class="px-4 py-3 align-top">
-                    @if(isset($f['coverage'][$src]))
+                    @if($activeSource && isset($f['coverage'][$activeSource]))
                       @php
-                        $c = $f['coverage'][$src];
+                        $c = $f['coverage'][$activeSource];
                         $pct = $c['pct'];
                         $barColor = $pct >= 80 ? 'bg-emerald-500' : ($pct >= 40 ? 'bg-amber-400' : 'bg-red-500');
                         $txtColor = $pct >= 80 ? 'text-emerald-400' : ($pct >= 40 ? 'text-amber-400' : 'text-red-400');
@@ -165,21 +180,48 @@
                       <div class="text-center text-xs text-gray-700">—</div>
                     @endif
                   </td>
-                @endforeach
+                @else
+                  @foreach($sources as $src)
+                    <td class="px-4 py-3 align-top">
+                      @if(isset($f['coverage'][$src]))
+                        @php
+                          $c = $f['coverage'][$src];
+                          $pct = $c['pct'];
+                          $barColor = $pct >= 80 ? 'bg-emerald-500' : ($pct >= 40 ? 'bg-amber-400' : 'bg-red-500');
+                          $txtColor = $pct >= 80 ? 'text-emerald-400' : ($pct >= 40 ? 'text-amber-400' : 'text-red-400');
+                        @endphp
+                        <div class="flex items-center gap-2">
+                          <div class="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden min-w-[50px]">
+                            <div class="{{ $barColor }} h-full rounded-full" style="width:{{ min(100, $pct) }}%"></div>
+                          </div>
+                          <span class="text-xs font-bold {{ $txtColor }} w-12 text-right">{{ $pct }}%</span>
+                        </div>
+                        <div class="text-[10px] text-gray-600 text-right mt-0.5">
+                          {{ number_format($c['filled']) }}/{{ number_format($c['total']) }}
+                        </div>
+                      @else
+                        <div class="text-center text-xs text-gray-700">—</div>
+                      @endif
+                    </td>
+                  @endforeach
+                @endif
                 <td class="px-4 py-3 align-top">
-                  @if(empty($f['extractions']))
-                    <span class="text-[11px] text-gray-600 italic">not mapped in field_mappings.py</span>
+                  @if(empty($displayExtractions))
+                    <span class="text-[11px] text-gray-600 italic">
+                      {{ $singleSource ? 'для активного источника не описано в field_mappings.py' : 'не описано в field_mappings.py' }}
+                    </span>
                   @else
                     <div class="space-y-1">
-                      @foreach($f['extractions'] as $e)
+                      @foreach($displayExtractions as $e)
                         <div class="text-[11px] flex items-start gap-2">
-                          <span class="px-1.5 py-0.5 rounded uppercase tracking-wide
-                            @if($e['source']==='encar') bg-indigo-900/60 text-indigo-300
-                            @elseif($e['source']==='kbcha') bg-pink-900/60 text-pink-300
-                            @else bg-gray-800 text-gray-400
-                            @endif">
-                            {{ $e['source'] }}
-                          </span>
+                          @if(!$singleSource)
+                            <span class="px-1.5 py-0.5 rounded uppercase tracking-wide
+                              @if($e['source']==='encar') bg-indigo-900/60 text-indigo-300
+                              @else bg-gray-800 text-gray-400
+                              @endif">
+                              {{ $ui::source($e['source']) }}
+                            </span>
+                          @endif
                           <div class="flex-1 font-mono text-gray-300 break-all">
                             {{ $e['raw_location'] }}
                             <span class="text-gray-600">→</span>

@@ -14,10 +14,9 @@ class CarLot:
     year: int
     price: int                    # Always in KRW (canonical)
     mileage: int = 0
-    model_en: str | None = None   # Canonical English model name (resolved from Korean)
-
-    # Year+month compact encoding: int YYYYMM (e.g. 202006). None if unknown.
-    registration_year_month: int | None = None
+    model_group: str | None = None     # Encar ModelGroup (level 2): "카니발", "3 Series"
+    model_en: str | None = None        # Encar Model English name (level 3): "Carnival 4th Gen"
+    badge_group: str | None = None     # Encar BadgeGroup (level 4): "가솔린 3500cc"
 
     # Technical specs
     fuel: str | None = None
@@ -27,7 +26,9 @@ class CarLot:
     engine_volume: float | None = None
     color: str | None = None
     seat_color: str | None = None
-    trim: str | None = None
+    badge: str | None = None        # Encar Badge (level 5): "가솔린 2.5T 4WD" — direct from API
+    trim: str | None = None        # Encar BadgeDetail (level 6): "프레스티지" — direct from API
+    trim_en: str | None = None     # English trim name from Encar detail API (gradeDetailEnglishName)
 
     # Location & links
     location: str | None = None
@@ -40,7 +41,8 @@ class CarLot:
     # Registration & documents
     vin: str | None = None
     plate_number: str | None = None
-    registration_date: str | None = None
+    first_reg_date: str | None = None   # Date of first vehicle registration (최초등록일)
+    listed_at: str | None = None        # Date the ad was published on the source site
 
     # Legal / registration status
     lien_status: str | None = None
@@ -82,12 +84,14 @@ class CarLot:
         "sell_type",          # -> lots.sell_type_raw column
         "manufacturer_kr",    # -> duplicate of make
         "model_en",           # -> first-class column
-        "model_kr",           # -> duplicate of model
-        "badge_kr",           # -> duplicate of trim
-        "model_group_kr",     # -> duplicate of model
-        "year_month",         # -> duplicate of registration_year_month
+        "model_group_kr",     # -> lots.model_group column
+        "badge_group_kr",     # -> lots.badge_group column
+        "badge_kr",           # -> lots.badge column
+        "badge_detail_kr",    # -> lots.trim column
         "origin_price",       # -> duplicate of retail_value
         "seat_count",         # -> extracted to seat_count column
+        "grade_detail_en",    # -> first-class column trim_en
+        "grade_detail_kr",    # -> duplicate of trim (= badge_detail_kr)
     })
 
     def _clean_raw_data(self) -> dict:
@@ -107,6 +111,7 @@ class CarLot:
             "source": self.source,
             "make": self.make,
             "model": self.model,
+            "model_group": self.model_group,
             "model_en": self.model_en,
             "year": self.year,
             "price": self.price,
@@ -123,19 +128,22 @@ class CarLot:
             "location": self.location,
             "color": self.color,
             "seat_color": self.seat_color,
+            "badge_group": self.badge_group,
+            "badge": self.badge,
             "trim": self.trim,
+            "trim_en": self.trim_en,
             "engine_volume": self.engine_volume,
             "lien_status": self.lien_status,
             "seizure_status": self.seizure_status,
             "total_loss_history": self.total_loss_history,
             "retail_value": self.retail_value,
             "repair_cost": self.repair_cost,
-            "registration_year_month": self.registration_year_month,
             "image_url": self.image_url,
             "lot_url": self.lot_url,
             "raw_data": raw_json,
             "plate_number": self.plate_number,
-            "registration_date": self.registration_date,
+            "first_reg_date": self.first_reg_date,
+            "listed_at": self.listed_at,
             "options": options_json,
             "paid_options": paid_options_json,
             "sell_type": self.sell_type,

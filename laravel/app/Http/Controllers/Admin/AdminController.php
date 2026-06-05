@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminUser;
 use App\Models\LotChange;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ class AdminController extends Controller
 {
     public function showLogin()
     {
-        if (session('admin_authenticated')) {
+        if (session('admin_user_id')) {
             return redirect()->route('admin.dashboard');
         }
         return view('admin.login');
@@ -19,20 +20,27 @@ class AdminController extends Controller
 
     public function processLogin(Request $request)
     {
-        $token    = config('admin.token');
+        $username = trim($request->input('username', ''));
         $password = $request->input('password', '');
 
-        if ($token && hash_equals($token, $password)) {
-            $request->session()->put('admin_authenticated', true);
+        $user = AdminUser::where('username', $username)->first();
+
+        if ($user && $user->checkPassword($password)) {
+            $request->session()->regenerate();
+            $request->session()->put('admin_user_id', $user->id);
+            $request->session()->put('admin_role', $user->role);
+            $request->session()->put('admin_username', $user->username);
             return redirect()->route('admin.dashboard');
         }
 
-        return redirect()->route('admin.login')->withErrors(['password' => 'Неверный пароль']);
+        return redirect()->route('admin.login')
+            ->withErrors(['password' => 'Неверный логин или пароль'])
+            ->withInput(['username' => $username]);
     }
 
     public function logout(Request $request)
     {
-        $request->session()->forget('admin_authenticated');
+        $request->session()->flush();
         return redirect()->route('admin.login');
     }
 
@@ -41,8 +49,14 @@ class AdminController extends Controller
         $t0 = microtime(true);
         $dbg = [];
 
+        $activeSources = array_values(array_filter(
+            (array) config('auction.sources', ['encar']),
+            fn ($source) => is_string($source) && $source !== '' && $source !== 'kbcha'
+        ));
+
         $sources = DB::table('lots')
             ->select('source', DB::raw('SUM(is_active) as active'), DB::raw('COUNT(*) as total'), DB::raw('MAX(parsed_at) as last_parsed'))
+            ->whereIn('source', $activeSources)
             ->groupBy('source')
             ->get();
         $dbg['sources'] = round((microtime(true) - $t0) * 1000);

@@ -73,15 +73,17 @@ def _generate_floppy_proxies(count: int = 20) -> list[str]:
         _CACHED_PROXIES = []
         return _CACHED_PROXIES
 
-    proxies = []
-    base_creds = "user-3L8YmcrVpKK3wN9W"  # Base username from provider
-    password = "1TigQ7ujPds0xcv6"  # Password from provider
+    if not Config.FLOPPY_USERNAME or not Config.FLOPPY_PASSWORD:
+        logger.warning("[FloppyData] FLOPPY_USERNAME or FLOPPY_PASSWORD not set, proxy generation disabled")
+        _CACHED_PROXIES = []
+        return _CACHED_PROXIES
 
+    proxies = []
     for _ in range(count):
         session = _generate_random_session()
         proxy_url = (
-            f"http://{base_creds}-type-residential-session-{session}"
-            f"-country-KR-rotation-15:{password}@geo.g-w.info:10080"
+            f"http://{Config.FLOPPY_USERNAME}-type-residential-session-{session}"
+            f"-country-KR-rotation-15:{Config.FLOPPY_PASSWORD}@{Config.FLOPPY_HOST}"
         )
         proxies.append(proxy_url)
 
@@ -106,16 +108,16 @@ def check_floppy_balance() -> dict | None:
         r = httpx.get(url, headers={"X-Api-Key": Config.FLOPPYDATA_API_KEY}, timeout=10)
         r.raise_for_status()
         data = r.json()
-        # Log readable summary
-        for proxy_type in ("residential", "mobile", "datacenter"):
-            info = data.get(proxy_type, {})
-            sub = info.get("subscription", {})
-            non_exp = info.get("nonExpiring", {})
-            sub_gb = sub.get("gb", 0)
-            non_gb = non_exp.get("gb", 0)
-            expires = sub.get("expiresOn", "n/a")
-            if sub_gb or non_gb:
-                logger.info(f"[FloppyData] {proxy_type}: subscription={sub_gb}GB (expires {expires}), non-expiring={non_gb}GB")
+        # Log readable summary — response is flat: {subscription: {gb, expiresOn}, nonExpiring: {gb}}
+        sub     = data.get("subscription", {})
+        non_exp = data.get("nonExpiring", {})
+        sub_gb  = sub.get("gb", 0)
+        non_gb  = non_exp.get("gb", 0)
+        expires = sub.get("expiresOn", "n/a")
+        total   = sub_gb + non_gb
+        logger.info(f"[FloppyData] balance: {total:.2f} GB total "
+                    f"(subscription={sub_gb:.2f} GB expires {expires}, "
+                    f"non-expiring={non_gb:.4f} GB)")
         return data
     except Exception as e:
         logger.warning(f"[FloppyData] Failed to check balance: {e}")

@@ -1,12 +1,16 @@
 @extends('admin.layout')
-@section('title', 'Changes')
+@section('title', 'Изменения')
 
 @section('content')
+
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
 
 {{-- Charts row --}}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-    <div class="text-sm font-semibold text-white mb-4">Changes per day (14 days)</div>
+    <div class="text-sm font-semibold text-white mb-4">Изменения по дням (14 дней)</div>
     @php $maxCnt = $dailyChanges->max('cnt') ?: 1; @endphp
     <div class="flex items-end gap-1 h-28">
       @foreach($dailyChanges as $day)
@@ -25,7 +29,7 @@
 
   <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-800">
-      <span class="font-semibold text-white text-sm">Most changed lots (7 days)</span>
+      <span class="font-semibold text-white text-sm">Наиболее изменяемые лоты (7 дней)</span>
     </div>
     <div class="max-h-[180px] overflow-y-auto">
       <table class="w-full text-sm">
@@ -38,7 +42,7 @@
             </td>
           </tr>
           @empty
-          <tr><td colspan="2" class="px-5 py-6 text-center text-gray-600">No data</td></tr>
+          <tr><td colspan="2" class="px-5 py-6 text-center text-gray-600">Нет данных</td></tr>
           @endforelse
         </tbody>
       </table>
@@ -52,7 +56,8 @@
   <a href="{{ route('admin.changes', array_filter(['event' => $ev])) }}"
      class="px-3 py-1.5 rounded-lg text-sm transition
             {{ $event === $ev ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white' }}">
-    {{ $ev ?: 'All' }}
+@php $evLabels = ['' => 'Все', 'update' => 'Обновление', 'delisted' => 'Снятые', 'relisted' => 'Возвращённые']; @endphp
+    {{ $evLabels[$ev] ?? $ev }}
   </a>
   @endforeach
 </div>
@@ -61,18 +66,18 @@
   <table class="w-full text-sm">
     <thead>
       <tr class="text-xs text-gray-500 uppercase border-b border-gray-800">
-        <th class="px-5 py-3 text-left">Lot ID</th>
-        <th class="px-5 py-3 text-left">Source</th>
-        <th class="px-5 py-3 text-left">Event</th>
-        <th class="px-5 py-3 text-left">Fields changed</th>
-        <th class="px-5 py-3 text-left">When</th>
+        <th class="px-5 py-3 text-left">ID лота</th>
+        <th class="px-5 py-3 text-left">Источник</th>
+        <th class="px-5 py-3 text-left">Событие</th>
+        <th class="px-5 py-3 text-left">Изменённые поля</th>
+        <th class="px-5 py-3 text-left">Когда</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-800">
       @forelse($changes as $ch)
       <tr class="hover:bg-gray-800/50">
         <td class="px-5 py-3 font-mono text-xs text-gray-400">{{ $ch->lot_id }}</td>
-        <td class="px-5 py-3 text-gray-400 text-xs">{{ $ch->source }}</td>
+        <td class="px-5 py-3 text-gray-400 text-xs">{{ $ui::source($ch->source) }}</td>
         <td class="px-5 py-3">
           @php
             $badge = match($ch->event) {
@@ -81,15 +86,15 @@
               default    => 'bg-blue-900 text-blue-400',
             };
           @endphp
-          <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ch->event }}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full {{ $badge }}">{{ $ui::event($ch->event) }}</span>
         </td>
         <td class="px-5 py-3 text-xs space-y-0.5">
           @php
-            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'yes' : 'no') : (is_array($v) ? json_encode($v) : $v));
+            $fv = fn($v) => is_null($v) ? '—' : (is_bool($v) ? ($v ? 'да' : 'нет') : (is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : $v));
           @endphp
           @foreach($ch->changes as $field => $diff)
             <div>
-              <span class="text-gray-500">{{ $field }}:</span>
+              <span class="text-gray-500">{{ $ui::field($field) }} <span class="text-gray-600">({{ $field }})</span>:</span>
               @if(isset($diff['old']))
                 <span class="line-through text-gray-600 ml-1">{{ $fv($diff['old']) }}</span>
                 <span class="{{ $ch->event === 'delisted' ? 'text-red-400' : ($ch->event === 'relisted' ? 'text-green-400' : 'text-blue-400') }} ml-1">→ {{ $fv($diff['new']) }}</span>
@@ -104,7 +109,7 @@
         </td>
       </tr>
       @empty
-      <tr><td colspan="5" class="px-5 py-12 text-center text-gray-600">No changes recorded yet</td></tr>
+      <tr><td colspan="5" class="px-5 py-12 text-center text-gray-600">Изменений пока нет</td></tr>
       @endforelse
     </tbody>
   </table>

@@ -2,457 +2,52 @@
 
 namespace App\Http\Controllers\Bot;
 
+use App\Bot\BotDispatcher;
 use App\Http\Controllers\Controller;
-use App\Models\Subscription;
-use App\Models\User;
-use App\Services\ChatSearchService;
-use App\Services\ProviderAggregator;
-use App\Services\SearchQuery;
-use App\Services\TelegramBot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
-    private TelegramBot $bot;
-    private string $miniAppUrl;
+    public function __construct(private readonly BotDispatcher $dispatcher) {}
 
     public function handle(Request $request): Response
     {
-        $update          = $request->all();
-
+        $update   = $request->all();
         $updateId = $update['update_id'] ?? null;
-        if ($updateId) {
-            $cacheKey = 'tg_upd_' . $updateId;
-            if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-                return response('ok', 200);
-            }
-            \Illuminate\Support\Facades\Cache::put($cacheKey, 1, 300);
-        }
 
-        $this->bot       = new TelegramBot(config('auction.bot_token'));
-        $this->miniAppUrl = config('auction.miniapp_url', '');
-
-        if (isset($update['callback_query'])) {
-            $this->handleCallback($update['callback_query']);
-            return response('ok', 200);
-        }
-
-        $message = $update['message'] ?? null;
-        if (!$message) {
-            return response('ok', 200);
-        }
-
-        $chatId    = $message['chat']['id'];
-        $userId    = $message['from']['id'];
-        $text      = trim($message['text'] ?? '');
-        $firstName = $message['from']['first_name'] ?? '';
-
-        $this->upsertUser($message['from']);
-
-        Log::info('[bot] message', [
-            'user_id'  => $userId,
-            'username' => $message['from']['username'] ?? '',
-            'chat_id'  => $chatId,
-            'text'     => mb_substr($text, 0, 200),
+        // Log every incoming update so we know the request is arriving
+        Log::info('[webhook] received', [
+            'update_id' => $updateId,
+            'type'      => isset($update['message']) ? 'message'
+                         : (isset($update['callback_query']) ? 'callback' : 'other'),
         ]);
 
-        if ($text === '/start') {
-            $this->handleStart($chatId, $firstName);
-        } elseif ($text === '/help') {
-            $this->handleHelp($chatId);
-        } elseif ($text === '/mysubs') {
-            $this->handleMySubs($chatId, $userId);
-        } elseif ($text === '/demo') {
-            $this->handleDemo($chatId, $userId);
-        } elseif ($text === '/demo2') {
-            $this->handleDemoSeed($chatId, $userId, $firstName);
-        } elseif ($text !== '' && !str_starts_with($text, '/')) {
-            $this->handleTextSearch($chatId, $userId, $message['from']['username'] ?? '', $text);
+        // Dedup — soft-fail if Redis is down
+        if ($updateId) {
+            try {
+                $key = 'tg_upd_' . $updateId;
+                if (Cache::has($key)) {
+                    Log::info('[webhook] duplicate, skipping', ['update_id' => $updateId]);
+                    return response('ok', 200);
+                }
+                Cache::put($key, 1, 300);
+            } catch (\Throwable $e) {
+                Log::warning('[webhook] dedup cache failed: ' . $e->getMessage());
+            }
         }
 
-        $webAppData = $message['web_app_data']['data'] ?? null;
-        if ($webAppData) {
-            $this->handleWebAppData($chatId, $webAppData);
+        try {
+            $this->dispatcher->dispatch($update);
+        } catch (\Throwable $e) {
+            Log::error('[webhook] dispatch failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         return response('ok', 200);
-    }
-
-    private function handleStart(int|string $chatId, string $firstName): void
-    {
-        $name = htmlspecialchars($firstName);
-
-        $text = "👋 Привет, <b>{$name}</b>!\n\n"
-            ."Я — бот для поиска авто на аукционах:\n\n"
-            ."🇷 <b>Encar</b> · <b>KBChacha</b>\n\n"
-            ."🔍 <b>Что я умею:</b>\n"
-            ."• Поиск по 200+ маркам и моделям\n"
-            ."• 13 фильтров: цена, пробег, кузов, КПП, привод…\n"
-            ."• Подписки — уведомлю о новых лотах\n"
-            ."• Избранное — сохраняй интересные варианты\n\n"
-            ."Нажми <b>«Открыть поиск»</b> чтобы начать 👇";
-
-        $keyboard = [];
-        if ($this->miniAppUrl) {
-            $keyboard[] = [['text' => '🔍 Открыть поиск', 'web_app' => ['url' => $this->miniAppUrl]]];
-            $this->bot->setChatMenuButton($chatId, '🔍 Открыть поиск', $this->miniAppUrl);
-        }
-        $keyboard[] = [
-            ['text' => '🔔 Мои подписки', 'callback_data' => 'mysubs'],
-            ['text' => '📨 Демо уведомления', 'callback_data' => 'demo_notify'],
-        ];
-        $keyboard[] = [
-            ['text' => '🗂 Загрузить демо-данные', 'callback_data' => 'demo_seed'],
-            ['text' => 'ℹ️ Помощь', 'callback_data' => 'help'],
-        ];
-
-        $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
-    }
-
-    private function handleHelp(int|string $chatId): void
-    {
-        $text = "ℹ️ <b>Как пользоваться:</b>\n\n"
-            ."1️⃣ Нажмите <b>«Открыть поиск»</b> — откроется приложение\n"
-            ."2️⃣ Задайте фильтры: марка, модель, год, цена…\n"
-            ."3️⃣ Нажмите <b>«Найти»</b> — увидите карточки лотов\n"
-            ."4️⃣ Нажмите <b>«Подписаться»</b> — получайте уведомления о новых лотах\n\n"
-            ."<b>Команды:</b>\n"
-            ."/start — Главное меню\n"
-            ."/mysubs — Мои подписки\n"
-            ."/help — Эта справка";
-
-        $keyboard = [];
-        if ($this->miniAppUrl) {
-            $keyboard[] = [['text' => '🔍 Открыть поиск', 'web_app' => ['url' => $this->miniAppUrl]]];
-        }
-
-        if ($keyboard) {
-            $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
-        } else {
-            $this->bot->sendMessage($chatId, $text);
-        }
-    }
-
-    private function handleMySubs(int|string $chatId, int|string $userId): void
-    {
-        $subs = Subscription::where('user_id', $userId)->active()->get();
-
-        if ($subs->isEmpty()) {
-            $text = "🔔 <b>Мои подписки</b>\n\nУ вас пока нет активных подписок.\n\nОткройте поиск, найдите интересные лоты и нажмите <b>«Подписаться»</b>.";
-            $keyboard = [];
-            if ($this->miniAppUrl) {
-                $keyboard[] = [['text' => '🔍 Открыть поиск', 'web_app' => ['url' => $this->miniAppUrl]]];
-            }
-            if ($keyboard) {
-                $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
-            } else {
-                $this->bot->sendMessage($chatId, $text);
-            }
-            return;
-        }
-
-        $text = "🔔 <b>Мои подписки</b> ({$subs->count()})\n\n";
-        $keyboard = [];
-
-        foreach ($subs as $i => $sub) {
-            $num   = $i + 1;
-            $label = htmlspecialchars($sub->label());
-            $badge = $sub->new_lots_count > 0 ? " · <b>+{$sub->new_lots_count} новых</b>" : '';
-            $text .= "{$num}. {$label}{$badge}\n";
-
-            $keyboard[] = [
-                ['text' => "❌ {$num}. {$sub->label()}", 'callback_data' => "unsub:{$sub->id}"],
-            ];
-        }
-
-        if ($this->miniAppUrl) {
-            $keyboard[] = [['text' => '📱 Открыть приложение', 'web_app' => ['url' => $this->miniAppUrl]]];
-        }
-
-        $this->bot->sendMessageWithKeyboard($chatId, $text, $keyboard);
-    }
-
-    private function handleDemoSeed(int|string $chatId, int|string $userId, string $firstName): void
-    {
-        $this->bot->sendMessage($chatId, "⏳ Создаю демо-данные...");
-
-        try {
-            \Illuminate\Support\Facades\Artisan::call('demo:seed', ['--telegram-id' => $userId]);
-            $output = trim(\Illuminate\Support\Facades\Artisan::output());
-
-            $this->bot->sendMessage($chatId,
-                "✅ Готово, <b>{$firstName}</b>!\n\n"
-                ."Созданы:\n"
-                ."• 4 подписки (Toyota, Honda, BMW, Tesla)\n"
-                ."• 6 избранных лотов\n\n"
-                ."Теперь попробуй:\n"
-                ."• /demo — симулировать уведомления\n"
-                ."• /mysubs — посмотреть подписки\n"
-                ."• Открой Mini App → Избранное"
-            );
-        } catch (\Throwable $e) {
-            $this->bot->sendMessage($chatId, "❌ Ошибка: " . htmlspecialchars($e->getMessage()));
-        }
-    }
-
-    private function handleDemo(int|string $chatId, int|string $userId): void
-    {
-        $subs = Subscription::where('user_id', $userId)->active()->get();
-
-        if ($subs->isEmpty()) {
-            $this->bot->sendMessage($chatId, "⚠️ Нет активных подписок.\n\nСначала откройте поиск, найдите лоты и нажмите <b>«Подписаться»</b>.");
-            return;
-        }
-
-        $this->bot->sendMessage($chatId, "⏳ Симулирую проверку подписок...");
-
-        $aggregator = app(ProviderAggregator::class);
-        $sent = 0;
-
-        foreach ($subs as $sub) {
-            $query        = SearchQuery::fromArray($sub->query ?? []);
-            $query->limit = 50;
-            $result       = $aggregator->search($query);
-
-            if (empty($result->lots)) {
-                continue;
-            }
-
-            $fakeLots = array_slice($result->lots, 0, 3);
-            $this->bot->notifyNewLots($chatId, $sub->label(), $fakeLots, $sub->id, $sub->query ?? []);
-
-            $previews = array_map(fn ($l) => [
-                'id' => $l->id, 'make' => $l->make, 'model' => $l->model,
-                'year' => $l->year, 'price' => $l->price, 'imageUrl' => $l->imageUrl,
-                'sourceName' => $l->sourceName, 'lotUrl' => $l->lotUrl ?? null,
-                'damage' => $l->damage ?? null,
-            ], $fakeLots);
-
-            $sub->update([
-                'last_checked_at'  => now(),
-                'new_lots_count'   => $sub->new_lots_count + count($fakeLots),
-                'new_lot_previews' => array_slice(array_merge($previews, $sub->new_lot_previews ?? []), 0, 5),
-            ]);
-
-            $sent++;
-        }
-
-        $this->bot->sendMessage($chatId, "✅ Готово! Отправлены уведомления по <b>{$sent}</b> подпискам.");
-    }
-
-    private function handleTextSearch(int|string $chatId, int|string $userId, string $username, string $text): void
-    {
-        try {
-            $this->doTextSearch($chatId, $userId, $username, $text);
-        } catch (\Throwable $e) {
-            Log::error('[bot] search error', ['user_id' => $userId, 'username' => $username, 'text' => $text, 'error' => $e->getMessage()]);
-            $this->bot->sendMessage($chatId, '❌ Произошла ошибка при поиске. Попробуйте позже.');
-        }
-    }
-
-    private function doTextSearch(int|string $chatId, int|string $userId, string $username, string $text): void
-    {
-        $chatSearch = new ChatSearchService();
-
-        Log::info('[bot] chat query', [
-            'user_id'  => $userId,
-            'username' => $username,
-            'prompt'   => $text,
-        ]);
-
-        $parsed = $chatSearch->parseAndSearch($text);
-
-        if ($parsed === null) {
-            Log::warning('[bot] parse returned null', ['user_id' => $userId, 'prompt' => $text]);
-            return;
-        }
-
-        $query         = $parsed['query'];
-        $tolerantQuery = $parsed['tolerantQuery'];
-        $description   = $parsed['description'];
-        $toleranceNote = $parsed['toleranceNote'];
-        $isAi          = $parsed['isAi'] ?? false;
-
-        Log::info('[bot] parsed filters', [
-            'user_id'  => $userId,
-            'username' => $username,
-            'mode'     => $isAi ? 'ai' : 'fallback',
-            'prompt'   => $text,
-            'filters'  => array_filter($query->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []),
-            'tolerant' => array_filter($tolerantQuery->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []),
-        ]);
-
-        $modeTag    = $isAi ? '🤖' : '📋';
-        $statusText = "{$modeTag} Ищу: <b>{$description}</b>";
-        if ($toleranceNote) {
-            $statusText .= "\n📊 Диапазон поиска: {$toleranceNote}";
-        }
-        $this->bot->sendMessage($chatId, $statusText);
-
-        $aggregator = app(ProviderAggregator::class);
-        $t0         = microtime(true);
-        $result     = $aggregator->search($tolerantQuery);
-        $ms         = (int) ((microtime(true) - $t0) * 1000);
-
-        Log::info('[bot] search result', [
-            'user_id'  => $userId,
-            'username' => $username,
-            'prompt'   => $text,
-            'total'    => $result->total,
-            'ms'       => $ms,
-        ]);
-
-        if (empty($result->lots)) {
-            $this->bot->sendMessage($chatId, "😕 Ничего не найдено. Попробуйте изменить запрос.");
-            return;
-        }
-
-        $this->bot->sendMessage($chatId,
-            "✅ Найдено <b>{$result->total}</b> лотов. Топ-5:"
-        );
-
-        foreach (array_slice($result->lots, 0, 5) as $lot) {
-            $lotData = $lot->toArray();
-            $lotUrl  = $lotData['lotUrl'] ?? '#';
-            $buttons = $lotUrl !== '#'
-                ? [[['text' => '🔗 Открыть лот', 'url' => $lotUrl]]]
-                : null;
-            $this->bot->sendLotCard($chatId, $lotData, $buttons);
-        }
-
-        $queryArray    = array_filter($parsed['query']->toSearchArray(), fn ($v) => $v !== null && $v !== '' && $v !== []);
-        $footerButtons = [];
-
-        if ($this->miniAppUrl) {
-            $deepLink = $this->miniAppUrl . '?search=' . urlencode(json_encode($queryArray));
-            $footerButtons[] = [['text' => '📱 Все результаты (' . $result->total . ')', 'web_app' => ['url' => $deepLink]]];
-            $this->bot->setChatMenuButton($chatId, '🔍 Все результаты (' . $result->total . ')', $deepLink);
-        }
-        $footerButtons[] = [['text' => '🔔 Подписаться', 'callback_data' => 'sub_chat:' . base64_encode(json_encode($queryArray))]];
-
-        $this->bot->sendMessageWithKeyboard($chatId,
-            "Показаны 5 из {$result->total}. Подпишитесь, чтобы получать уведомления о новых лотах.",
-            $footerButtons
-        );
-    }
-
-    private function handleCallback(array $callback): void
-    {
-        $callbackId = $callback['id'];
-        $chatId     = $callback['message']['chat']['id'] ?? null;
-        $userId     = $callback['from']['id'] ?? null;
-        $data       = $callback['data'] ?? '';
-
-        if (!$chatId || !$userId) {
-            $this->bot->answerCallbackQuery($callbackId);
-            return;
-        }
-
-        if ($data === 'mysubs') {
-            $this->bot->answerCallbackQuery($callbackId);
-            $this->handleMySubs($chatId, $userId);
-            return;
-        }
-
-        if ($data === 'help') {
-            $this->bot->answerCallbackQuery($callbackId);
-            $this->handleHelp($chatId);
-            return;
-        }
-
-        if ($data === 'demo_notify') {
-            $this->bot->answerCallbackQuery($callbackId, '⏳ Отправляю...');
-            $this->handleDemo($chatId, $userId);
-            return;
-        }
-
-        if ($data === 'demo_seed') {
-            $this->bot->answerCallbackQuery($callbackId, '⏳ Создаю...');
-            $firstName = $callback['from']['first_name'] ?? '';
-            $this->handleDemoSeed($chatId, $userId, $firstName);
-            return;
-        }
-
-        if (str_starts_with($data, 'sub_chat:')) {
-            $encoded   = substr($data, 9);
-            $queryData = json_decode(base64_decode($encoded), true);
-
-            if (!$queryData) {
-                $this->bot->answerCallbackQuery($callbackId, 'Ошибка данных');
-                return;
-            }
-
-            $aggregator = app(ProviderAggregator::class);
-            $query      = SearchQuery::fromArray($queryData);
-            $query->limit = 100;
-            $result     = $aggregator->search($query);
-            $knownIds   = array_map(fn ($l) => $l->id, $result->lots);
-
-            $sub = Subscription::create([
-                'user_id'         => $userId,
-                'query'           => $queryData,
-                'known_lot_ids'   => $knownIds,
-                'active'          => true,
-                'last_checked_at' => now(),
-            ]);
-
-            $this->bot->answerCallbackQuery($callbackId, '✅ Подписка создана!');
-            $this->bot->sendMessage($chatId,
-                "🔔 Подписка создана: <b>" . htmlspecialchars($sub->label()) . "</b>\n\n"
-                . "Вы получите уведомление, когда появятся новые лоты."
-            );
-            return;
-        }
-
-        if (str_starts_with($data, 'unsub:')) {
-            $subId = (int) substr($data, 6);
-            $sub   = Subscription::where('id', $subId)->where('user_id', $userId)->active()->first();
-
-            if ($sub) {
-                $sub->update(['active' => false]);
-                $this->bot->answerCallbackQuery($callbackId, '✅ Подписка удалена');
-                $this->bot->sendMessage($chatId,
-                    "🔕 Подписка <b>".htmlspecialchars($sub->label())."</b> удалена."
-                );
-            } else {
-                $this->bot->answerCallbackQuery($callbackId, 'Подписка не найдена');
-            }
-            return;
-        }
-
-        $this->bot->answerCallbackQuery($callbackId);
-    }
-
-    private function handleWebAppData(int|string $chatId, string $webAppData): void
-    {
-        $data  = json_decode($webAppData, true);
-        $lots  = $data['top_lots'] ?? [];
-        $total = $data['total']    ?? 0;
-
-        $this->bot->sendMessage($chatId, sprintf('🔍 Найдено <b>%d</b> лотов. Топ результаты:', $total));
-
-        foreach (array_slice($lots, 0, 3) as $lot) {
-            $lotUrl = $lot['lotUrl'] ?? '#';
-            $buttons = $lotUrl !== '#'
-                ? [[['text' => '🔗 Открыть лот', 'url' => $lotUrl]]]
-                : null;
-            $this->bot->sendLotCard($chatId, $lot, $buttons);
-        }
-    }
-
-    private function upsertUser(array $from): void
-    {
-        try {
-            User::updateOrCreate(
-                ['id' => $from['id']],
-                [
-                    'username'   => $from['username'] ?? '',
-                    'first_name' => $from['first_name'] ?? '',
-                    'last_seen'  => now(),
-                ]
-            );
-        } catch (\Throwable) {}
     }
 }

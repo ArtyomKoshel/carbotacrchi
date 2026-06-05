@@ -9,13 +9,20 @@ class LogsController extends Controller
 {
     public function logs(Request $request)
     {
-        $baseFile = config('admin.log_file');
+        $baseFile = (string) config('admin.log_file', '');
+        $isSuper = $request->session()->get('admin_role') === 'super';
         $defaultLines = config('admin.log_lines', 1000);
         $maxLines = min((int) $request->query('limit', $defaultLines), 20000);
         $level    = $request->query('level', '');
         $search   = trim($request->query('search', ''));
         $source   = trim($request->query('source', ''));
         $fileIdx  = (int) $request->query('file', 0);
+        $anomaly  = $request->query('anomaly') === '1';
+        if ($anomaly && !$isSuper) {
+            abort(403, 'Доступ запрещён');
+        }
+        $anomalyFile = trim($request->query('anomalyfile', ''));
+        $anomalyFiles = $isSuper ? $this->scanAnomalyFiles($baseFile) : [];
         $page     = max(0, (int) $request->query('page', 0));
         $appLog     = $request->query('app') === '1';
         $appFile    = trim($request->query('appfile', ''));
@@ -58,7 +65,17 @@ class LogsController extends Controller
         }
 
         $logFile = $baseFile;
-        if ($appLog && file_exists($appLogPath)) {
+        if ($anomaly) {
+            if ($anomalyFile) {
+                $candidate = dirname($baseFile) . '/' . basename($anomalyFile);
+                if (file_exists($candidate)) {
+                    $logFile = $candidate;
+                }
+            } elseif (!empty($anomalyFiles)) {
+                $logFile = $anomalyFiles[0]['path'];
+                $anomalyFile = $anomalyFiles[0]['label'];
+            }
+        } elseif ($appLog && file_exists($appLogPath)) {
             $logFile = $appLogPath;
         } elseif ($jobFile) {
             $logFile = dirname($baseFile) . '/jobs/' . basename($jobFile);
@@ -95,12 +112,13 @@ class LogsController extends Controller
             $lines      = array_slice($filtered, $page * $maxLines, $maxLines);
         }
 
-        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile', 'fileSize', 'appLog', 'appLogPath', 'appLogFiles', 'appFile'));
+        return view('admin.logs', compact('lines', 'error', 'level', 'search', 'source', 'fileIdx', 'rotationFiles', 'maxLines', 'page', 'totalLines', 'totalPages', 'jobFiles', 'jobFile', 'fileSize', 'appLog', 'appLogPath', 'appLogFiles', 'appFile', 'isSuper', 'anomaly', 'anomalyFile', 'anomalyFiles'));
     }
 
     public function logsTail(Request $request)
     {
-        $baseFile = config('admin.log_file');
+        $baseFile = (string) config('admin.log_file', '');
+        $isSuper = $request->session()->get('admin_role') === 'super';
         if (!$baseFile) {
             return response()->json(['lines' => [], 'error' => 'Log file path not configured'], 400);
         }
@@ -108,6 +126,11 @@ class LogsController extends Controller
         $level     = $request->query('level', '');
         $search    = trim($request->query('search', ''));
         $source    = trim($request->query('source', ''));
+        $anomaly   = $request->query('anomaly') === '1';
+        if ($anomaly && !$isSuper) {
+            return response()->json(['lines' => [], 'error' => 'Доступ запрещён'], 403);
+        }
+        $anomalyFile = trim($request->query('anomalyfile', ''));
         $fileIdx   = (int) $request->query('file', 0);
         $jobFile   = trim($request->query('job', ''));
         $appLog     = $request->query('app') === '1';
@@ -125,7 +148,19 @@ class LogsController extends Controller
         $limit     = min(max((int) $request->query('limit', 1500), 1), 5000);
 
         $logFile = $baseFile;
-        if ($appLog && file_exists($appLogPath)) {
+        if ($anomaly) {
+            if ($anomalyFile) {
+                $candidate = dirname($baseFile) . '/' . basename($anomalyFile);
+                if (file_exists($candidate)) {
+                    $logFile = $candidate;
+                }
+            } else {
+                $files = $this->scanAnomalyFiles($baseFile);
+                if (!empty($files)) {
+                    $logFile = $files[0]['path'];
+                }
+            }
+        } elseif ($appLog && file_exists($appLogPath)) {
             $logFile = $appLogPath;
         } elseif ($jobFile) {
             $candidate = dirname($baseFile) . '/jobs/' . basename($jobFile);
@@ -243,8 +278,9 @@ class LogsController extends Controller
 
     public function logsDownload(Request $request)
     {
-        $baseFile = config('admin.log_file');
-        if (!$baseFile || !file_exists($baseFile)) {
+        $baseFile = (string) config('admin.log_file', '');
+        $isSuper = $request->session()->get('admin_role') === 'super';
+        if (!$baseFile) {
             abort(404, 'Log file not found');
         }
 
@@ -255,9 +291,26 @@ class LogsController extends Controller
         $level  = $request->query('level', '');
         $search = trim($request->query('search', ''));
         $source = trim($request->query('source', ''));
+        $anomaly = $request->query('anomaly') === '1';
+        if ($anomaly && !$isSuper) {
+            abort(403, 'Доступ запрещён');
+        }
+        $anomalyFile = trim($request->query('anomalyfile', ''));
 
         $logFile = $baseFile;
-        if ($appLog && file_exists($appLogPath)) {
+        if ($anomaly) {
+            if ($anomalyFile) {
+                $candidate = dirname($baseFile) . '/' . basename($anomalyFile);
+                if (file_exists($candidate)) {
+                    $logFile = $candidate;
+                }
+            } else {
+                $files = $this->scanAnomalyFiles($baseFile);
+                if (!empty($files)) {
+                    $logFile = $files[0]['path'];
+                }
+            }
+        } elseif ($appLog && file_exists($appLogPath)) {
             $logFile = $appLogPath;
         } elseif ($jobFile) {
             $candidate = dirname($baseFile) . '/jobs/' . basename($jobFile);
@@ -328,6 +381,41 @@ class LogsController extends Controller
             return [];
         }
 
+        usort($found, fn ($a, $b) => filemtime($b) - filemtime($a));
+
+        return array_map(fn ($path) => [
+            'path'  => $path,
+            'label' => basename($path),
+            'size'  => filesize($path) ?: 0,
+            'mtime' => filemtime($path) ?: 0,
+        ], $found);
+    }
+
+    /**
+     * Scan parser log directory for taxonomy anomaly JSONL files.
+     * Returns array of ['path', 'label', 'size', 'mtime'] sorted newest-first.
+     */
+    private function scanAnomalyFiles(string $baseFile): array
+    {
+        if (!$baseFile) {
+            return [];
+        }
+
+        $dir = dirname($baseFile);
+        if (!is_dir($dir)) {
+            return [];
+        }
+
+        $found = array_merge(
+            glob($dir . '/taxonomy_anomalies.jsonl') ?: [],
+            glob($dir . '/taxonomy_anomalies-*.jsonl') ?: [],
+            glob($dir . '/taxonomy_anomalies.jsonl.*') ?: [],
+        );
+        if (!$found) {
+            return [];
+        }
+
+        $found = array_values(array_unique(array_filter($found, fn ($path) => is_file($path))));
         usort($found, fn ($a, $b) => filemtime($b) - filemtime($a));
 
         return array_map(fn ($path) => [

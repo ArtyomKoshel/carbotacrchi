@@ -1,7 +1,8 @@
 const TG = (() => {
-  const twa = window.Telegram?.WebApp;
+  const getTwa = () => window.Telegram?.WebApp ?? null;
 
   function init() {
+    const twa = getTwa();
     if (!twa) return;
     twa.ready();
     twa.expand();
@@ -12,18 +13,22 @@ const TG = (() => {
   }
 
   function getUserId() {
+    const twa = getTwa();
     return twa?.initDataUnsafe?.user?.id ?? 0;
   }
 
   function getInitData() {
+    const twa = getTwa();
     return twa?.initData ?? '';
   }
 
   function getTheme() {
+    const twa = getTwa();
     return twa?.colorScheme ?? 'dark';
   }
 
   function haptic(type = 'impact', style = 'light') {
+    const twa = getTwa();
     if (!twa?.HapticFeedback) return;
     if (type === 'impact')       twa.HapticFeedback.impactOccurred(style);
     else if (type === 'notification') twa.HapticFeedback.notificationOccurred(style);
@@ -31,12 +36,14 @@ const TG = (() => {
   }
 
   function sendToChatAndClose(data) {
+    const twa = getTwa();
     if (twa) {
       twa.sendData(JSON.stringify(data));
     }
   }
 
   function setMainButton(text, onClick) {
+    const twa = getTwa();
     if (!twa?.MainButton) return;
     twa.MainButton.setText(text);
     twa.MainButton.onClick(onClick);
@@ -44,22 +51,36 @@ const TG = (() => {
   }
 
   function hideMainButton() {
+    const twa = getTwa();
     twa?.MainButton?.hide();
   }
 
   function back(cb) {
+    const twa = getTwa();
     if (!twa?.BackButton) return;
     twa.BackButton.onClick(cb);
     twa.BackButton.show();
   }
 
   function hideBack() {
+    const twa = getTwa();
     twa?.BackButton?.hide();
   }
 
   function close() {
+    const twa = getTwa();
     twa?.close();
   }
 
-  return { init, getUserId, getInitData, getTheme, haptic, sendToChatAndClose, setMainButton, hideMainButton, back, hideBack, close };
+  function minimize() {
+    const twa = getTwa();
+    if (typeof twa?.minimize === 'function') twa.minimize();
+  }
+
+  function canMinimize() {
+    const twa = getTwa();
+    return typeof twa?.minimize === 'function';
+  }
+
+  return { init, getUserId, getInitData, getTheme, haptic, sendToChatAndClose, setMainButton, hideMainButton, back, hideBack, close, minimize, canMinimize };
 })();

@@ -39,7 +39,7 @@ FIELD_GROUPS = {
                        "damage", "secondary_damage"],
     "History":        ["has_accident", "insurance_count", "owners_count",
                        "flood_history", "total_loss_history",
-                       "registration_date"],
+                       "first_reg_date", "listed_at"],
     "Financial":      ["price", "lien_status", "seizure_status",
                        "tax_paid", "repair_cost", "retail_value",
                        "new_car_price_ratio"],

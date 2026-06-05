@@ -1,5 +1,5 @@
 @extends('admin.layout')
-@section('title', 'Stats')
+@section('title', 'Статистика')
 
 @section('content')
 
@@ -7,7 +7,7 @@
 
   {{-- Daily changes chart (simple bar) --}}
   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
-    <div class="text-sm font-semibold text-white mb-4">Changes per day (last 14 days)</div>
+    <div class="text-sm font-semibold text-white mb-4">Изменения по дням (14 дней)</div>
     @php $maxCnt = $dailyChanges->max('cnt') ?: 1; @endphp
     <div class="flex items-end gap-1 h-32">
       @foreach($dailyChanges as $day)
@@ -29,7 +29,7 @@
   {{-- Top changed lots --}}
   <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
     <div class="px-5 py-4 border-b border-gray-800">
-      <span class="font-semibold text-white text-sm">Most changed lots (7 days)</span>
+      <span class="font-semibold text-white text-sm">Наиболее изменяемые лоты (7 дней)</span>
     </div>
     <table class="w-full text-sm">
       <tbody class="divide-y divide-gray-800">
@@ -37,11 +37,11 @@
         <tr class="hover:bg-gray-800/50">
           <td class="px-5 py-2.5 font-mono text-xs text-gray-400">{{ $row->lot_id }}</td>
           <td class="px-5 py-2.5 text-right">
-            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-900 text-blue-400">{{ $row->cnt }} changes</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-900 text-blue-400">{{ $row->cnt }} измен.</span>
           </td>
         </tr>
         @empty
-        <tr><td colspan="2" class="px-5 py-8 text-center text-gray-600">No data yet</td></tr>
+        <tr><td colspan="2" class="px-5 py-8 text-center text-gray-600">Данных пока нет</td></tr>
         @endforelse
       </tbody>
     </table>

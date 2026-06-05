@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Lot extends Model
 {
-    protected $table = 'lots';
+    protected $table     = 'lots';
     public $incrementing = false;
-    protected $keyType = 'string';
+    protected $keyType   = 'string';
 
     protected $casts = [
         'options'    => 'array',

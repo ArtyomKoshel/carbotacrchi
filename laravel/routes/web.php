@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminLotsController;
+use App\Http\Controllers\Admin\AdminUsersController;
 use App\Http\Controllers\Admin\BotFiltersController;
 use App\Http\Controllers\Admin\FieldsController;
 use App\Http\Controllers\Admin\LogsController;
@@ -55,6 +57,16 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::get('/fields',                        [FieldsController::class, 'index'])->name('fields');
     Route::post('/fields/recompute',             [FieldsController::class, 'recompute'])->name('fields.recompute');
     Route::get('/fields-schema.json',            [FieldsController::class, 'schema'])->name('fields.schema');
+
+    // Lots browse
+    Route::get('/lots-browse',                   [AdminLotsController::class, 'browse'])->name('lots-browse');
+
+    // Admin users management (super only)
+    Route::get('/users',                         [AdminUsersController::class, 'index'])->name('users');
+    Route::post('/users',                        [AdminUsersController::class, 'create'])->name('users.create');
+    Route::delete('/users/{id}',                 [AdminUsersController::class, 'delete'])->name('users.delete');
+    Route::patch('/users/{id}/password',         [AdminUsersController::class, 'updatePassword'])->name('users.password');
+    Route::post('/users/permissions',            [AdminUsersController::class, 'updatePermissions'])->name('users.permissions');
 
     // Legacy redirects — keep old bookmarks working.
     Route::get('/accuracy',       fn () => redirect()->route('admin.fields'))->name('accuracy');

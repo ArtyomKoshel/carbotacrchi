@@ -2,191 +2,81 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#17212b">
-  <title>Поиск по аукционам</title>
+  <title>Поиск авто из Кореи</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/filters.css">
-  <link rel="stylesheet" href="css/cards.css">
+  <link rel="stylesheet" href="css/app.css?v=9">
+  <link rel="stylesheet" href="css/filters.css?v=9">
+  <link rel="stylesheet" href="css/cards.css?v=9">
+  <link rel="stylesheet" href="css/chat.css?v=9">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.min.css">
 </head>
 <body>
+<!-- Global loading overlay — shown during app init, hidden after filters load -->
+<div id="app-loading-overlay">
+  <div class="app-loading-spinner"></div>
+  <div class="app-loading-text">Загрузка…</div>
+</div>
+
 <div id="app">
 
   <!-- ── SEARCH / FILTER SCREEN ── -->
   <div id="screen-search" class="screen active">
-    <div class="header">
-      <span class="header-title">🔍 Поиск по аукционам</span>
+    <div id="search-top-bar">
+      <div class="header">
+        <span class="header-title">Поиск авто из Кореи</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="header-action filters-reset-btn" id="filters-reset-btn" onclick="App.resetSearch()">Очистить</button>
+          <button class="header-action" id="minimize-btn" style="display:none" onclick="TG.minimize()" title="Свернуть">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mode toggle: Filters / AI-chat -->
+      <div class="search-mode-tabs">
+        <button class="search-mode-tab active" id="mode-tab-filters" onclick="App.setSearchMode('filters')">Фильтры</button>
+        <button class="search-mode-tab" id="mode-tab-chat" onclick="App.setSearchMode('chat')">✨ ИИ-поиск</button>
+      </div>
     </div>
 
-    <div class="filters-screen" id="filters-scroll">
-
-      <div class="filter-section">
-        <div class="filter-label">Источники</div>
-        <div class="source-chips" id="source-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Тип кузова</div>
-        <div class="chip-group" id="bodytype-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Марка и модель</div>
-        <div class="filter-selects">
-          <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
-          </div>
-          <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
-          </div>
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Год выпуска</div>
-        <div class="filter-range-row">
-          <input class="filter-input" type="number" id="filter-year-from"
-                 placeholder="От" min="1990" max="2025">
-          <input class="filter-input" type="number" id="filter-year-to"
-                 placeholder="До" min="1990" max="2025">
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Цена ($)</div>
-        <div class="filter-range-row">
-          <div class="filter-input-wrap">
-            <span class="filter-input-prefix">$</span>
-            <input class="filter-input has-prefix" type="number" id="filter-price-min" placeholder="От" min="0">
-          </div>
-          <div class="filter-input-wrap">
-            <span class="filter-input-prefix">$</span>
-            <input class="filter-input has-prefix" type="number" id="filter-price-max" placeholder="До" min="0">
-          </div>
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Пробег (km)</div>
-        <div class="filter-range-row">
-          <input class="filter-input" type="number" id="filter-mileage-min" placeholder="От" min="0">
-          <input class="filter-input" type="number" id="filter-mileage-max" placeholder="До" min="0">
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Объём двигателя (л)</div>
-        <div class="filter-range-row">
-          <input class="filter-input" type="number" id="filter-engine-min" placeholder="От" min="0" step="0.1">
-          <input class="filter-input" type="number" id="filter-engine-max" placeholder="До" min="0" step="0.1">
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Трансмиссия</div>
-        <div class="chip-group" id="transmission-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Топливо</div>
-        <div class="chip-group" id="fuel-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Привод</div>
-        <div class="chip-group" id="drive-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Тип повреждений</div>
-        <div class="chip-group" id="damage-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Статус title</div>
-        <div class="chip-group" id="title-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Цвет</div>
-        <div class="chip-group" id="color-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Комплектация</div>
-        <input class="filter-input" type="text" id="filter-trim" placeholder="노블레스, Noblesse, Prestige…">
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Состояние (ДТП)</div>
-        <div class="chip-group" id="accident-chips"></div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Владельцев</div>
-        <div class="filter-range-row">
-          <input class="filter-input" type="number" id="filter-owners-min" placeholder="От" min="0" max="20">
-          <input class="filter-input" type="number" id="filter-owners-max" placeholder="До" min="0" max="20">
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">Страховых случаев</div>
-        <div class="filter-range-row">
-          <input class="filter-input" type="number" id="filter-insurance-min" placeholder="От" min="0">
-          <input class="filter-input" type="number" id="filter-insurance-max" placeholder="До" min="0">
-        </div>
-      </div>
-
-      <div class="filter-divider"></div>
-
-      <div class="filter-section">
-        <div class="filter-label">VIN</div>
-        <input class="filter-input" type="text" id="filter-vin" placeholder="Поиск по VIN" maxlength="17" style="text-transform:uppercase">
-      </div>
+    <!-- Filters panel -->
+    <div class="filters-screen" id="mode-panel-filters">
+      <div id="filters-container"></div>
 
       <div class="search-btn-wrap">
+        <div class="search-count-hint" id="search-count-hint" style="display:none">
+          найдено <b id="search-count-value">0</b>
+        </div>
         <button class="btn btn-primary" id="search-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
-          Найти
+          <span id="search-btn-label">Найти</span>
         </button>
       </div>
+    </div>
 
+    <!-- AI chat panel -->
+    <div class="chat-screen" id="mode-panel-chat" style="display:none">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-intro" id="chat-intro">
+          <div class="chat-intro-icon">✨</div>
+          <div class="chat-intro-title">ИИ-поиск</div>
+          <div class="chat-intro-desc">Опишите автомобиль своими словами — ИИ подберёт нужные параметры</div>
+          <div class="chat-intro-example" id="chat-example-1">Хочу Hyundai Sonata 2020–2022, до $15 000, без аварий</div>
+          <div class="chat-intro-example" id="chat-example-2">Kia K5 до 2023 года, автомат, до 20 000$</div>
+        </div>
+      </div>
+      <div class="chat-input-bar">
+        <textarea class="chat-input" id="chat-input"
+                  placeholder="Например: Hyundai Sonata 2020, до $15 000…"
+                  rows="1"></textarea>
+        <button class="chat-send-btn" id="chat-send-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -231,6 +121,11 @@
 
       <div class="cards-grid" id="cards-grid"></div>
 
+      <div id="load-more-wrap" style="display:none;text-align:center;padding:12px 0">
+        <button class="btn btn-secondary btn-sm" id="load-more-btn">Загрузить ещё</button>
+      </div>
+      <div id="scroll-sentinel" style="height:1px"></div>
+
       <div id="results-empty" class="empty-state" style="display:none">
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
@@ -248,11 +143,14 @@
     <div class="header">
       <span class="header-title">❤️ Избранное</span>
     </div>
-    <div id="favorites-list" class="empty-state">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-      </svg>
-      <p>Нет сохранённых лотов.</p>
+    <div id="favorites-list">
+      <div id="favorites-grid" class="cards-grid"></div>
+      <div id="favorites-empty" class="empty-state" style="display:none">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <p>Нет сохранённых лотов.</p>
+      </div>
     </div>
   </div>
 
@@ -308,11 +206,15 @@
 
 </div>
 
-<script src="js/telegram.js"></script>
-<script src="js/api.js"></script>
-<script src="js/filters.js"></script>
-<script src="js/results.js"></script>
-<script src="js/subscriptions.js"></script>
-<script src="js/app.js"></script>
+<script src="js/telegram.js?v=9"></script>
+<script src="js/browser-auth.js?v=9"></script>
+<script src="js/api.js?v=9"></script>
+<script src="js/taxonomy.js?v=9"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+<script src="js/filters.js?v=9"></script>
+<script src="js/results.js?v=9"></script>
+<script src="js/subscriptions.js?v=9"></script>
+<script src="js/chat.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>

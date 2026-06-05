@@ -1,35 +1,93 @@
 const Results = (() => {
-  let lots       = [];
-  let favorites  = new Set();
-  let activeLot  = null;
+  let lots            = [];
+  let favorites       = new Set();
+  let activeLot       = null;
+  let searchedOptions = new Set(); // option codes from current search query
+  let currentQuery    = null;      // full query for field-level highlighting
+
+  const CATEGORY_EMOJI = {
+    exterior:    '🚗',
+    safety:      '🛡️',
+    convenience: '⭐',
+    interior:    '🪑',
+  };
 
   function setFavorites(ids) {
     favorites = new Set(ids);
   }
 
-  function render(data) {
-    lots = data.lots ?? [];
-    const total  = data.total  ?? 0;
-    const errors = data.errors ?? [];
+  function setSearchOptions(codes) {
+    searchedOptions = new Set(Array.isArray(codes) ? codes : []);
+  }
 
-    document.getElementById('results-count').textContent =
-      `${total} ${ruLots(total)}`;
+  function setSearchQuery(q) {
+    currentQuery = q ?? null;
+    console.log('[HIGHLIGHT]', JSON.stringify({ t: q?.transmissions, f: q?.fuelTypes, d: q?.driveTypes, bt: q?.bodyTypes, ha: q?.hasAccident }));
+  }
+
+  function _isQueried(field) {
+    if (!currentQuery) return false;
+    const q = currentQuery;
+    switch (field) {
+      case 'has_accident':    return q.hasAccident !== null && q.hasAccident !== undefined;
+      case 'flood_history':   return q.floodHistory !== null && q.floodHistory !== undefined;
+      case 'owners_count':    return (q.ownersCountMax ?? 0) > 0 || (q.ownersCountMin ?? 0) > 0;
+      case 'insurance_count': return (q.insuranceCountMax ?? 0) > 0 || (q.insuranceCountMin ?? 0) > 0;
+      case 'listed_at':       return !!(q.listedAfter || q.listedBefore);
+      case 'first_reg_date':  return !!(q.firstRegAfter || q.firstRegBefore);
+      case 'body_type':       return (q.bodyTypes?.length ?? 0) > 0;
+      case 'transmission':    return (q.transmissions?.length ?? 0) > 0;
+      case 'fuel':            return (q.fuelTypes?.length ?? 0) > 0;
+      case 'drive_type':      return (q.driveTypes?.length ?? 0) > 0;
+      case 'engine_volume':   return (q.engineMin ?? 0) > 0 || (q.engineMax ?? 0) > 0;
+      case 'color':           return (q.colors?.length ?? 0) > 0;
+      case 'trim':            return !!(q.trim);
+      case 'generation':      return !!(q.generation);
+      case 'mileage':         return (q.mileageMax ?? 0) > 0 || (q.mileageMin ?? 0) > 0;
+      case 'vin':             return !!(q.vin);
+      default:                return false;
+    }
+  }
+
+  function render(data, mount) {
+    lots = data.lots ?? [];
+    const total   = data.total  ?? 0;
+    const errors  = data.errors ?? [];
+    const relaxed = data.relaxed ?? false;
+    const relaxedMessage = data.relaxedMessage ?? '';
+    const isCustomMount = !!mount;
+
+    if (!isCustomMount) {
+      document.getElementById('results-count').textContent =
+        `${total} ${ruLots(total)}`;
+    }
 
     const banner = document.getElementById('errors-banner');
-    if (errors.length) {
-      banner.textContent = `⚠️ Ошибка источников: ${errors.join(', ')}`;
-      banner.style.display = 'block';
-    } else {
-      banner.style.display = 'none';
+    if (!isCustomMount) {
+      if (relaxed && relaxedMessage) {
+        banner.innerHTML = `ℹ️ ${relaxedMessage}`;
+        banner.className = 'errors-banner errors-banner--relaxed';
+        banner.style.display = 'block';
+      } else if (errors.length) {
+        banner.innerHTML = `⚠️ Ошибка источников: ${errors.join(', ')}`;
+        banner.className = 'errors-banner';
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
     }
 
-    const grid = document.getElementById('cards-grid');
+    const grid = mount?.grid ?? document.getElementById('cards-grid');
+    const emptyState = mount?.empty ?? document.getElementById('results-empty');
+
+    if (!grid) return;
+
     if (!lots.length) {
       grid.innerHTML = '';
-      document.getElementById('results-empty').style.display = 'flex';
+      if (emptyState) emptyState.style.display = 'flex';
       return;
     }
-    document.getElementById('results-empty').style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
     grid.innerHTML = lots.map((lot, i) => renderCard(lot, i)).join('');
 
     grid.querySelectorAll('.lot-card').forEach((card, i) => {
@@ -44,16 +102,97 @@ const Results = (() => {
     });
   }
 
+  function showSkeletons(n = 6) {
+    const grid = document.getElementById('cards-grid');
+    const emptyState = document.getElementById('results-empty');
+    if (!grid) return;
+    if (emptyState) emptyState.style.display = 'none';
+    grid.innerHTML = Array.from({ length: n }, () => `
+      <div class="lot-card lot-card--skeleton">
+        <div class="lot-card__img"></div>
+        <div class="lot-card__body">
+          <div class="skeleton-line w80"></div>
+          <div class="skeleton-line w55"></div>
+          <div class="skeleton-line w35"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  function appendCards(newLots) {
+    if (!newLots || !newLots.length) return;
+    const startIdx = lots.length;
+    lots = lots.concat(newLots);
+
+    const grid = document.getElementById('cards-grid');
+    if (!grid) return;
+
+    const fragment = document.createDocumentFragment();
+    const temp = document.createElement('div');
+    temp.innerHTML = newLots.map((lot, i) => renderCard(lot, startIdx + i)).join('');
+    while (temp.firstChild) fragment.appendChild(temp.firstChild);
+    grid.appendChild(fragment);
+
+    const newCards = grid.querySelectorAll('.lot-card');
+    for (let i = startIdx; i < newCards.length; i++) {
+      const card = newCards[i];
+      const lot = lots[i];
+      card.addEventListener('click', e => {
+        if (e.target.closest('.lot-card__fav-btn')) return;
+        openSheet(lot);
+      });
+      const favBtn = card.querySelector('.lot-card__fav-btn');
+      if (favBtn) favBtn.addEventListener('click', () => toggleFav(lot, favBtn));
+    }
+  }
+
   function renderCard(lot, i) {
-    const price  = '$' + Number(lot.price).toLocaleString();
-    const km     = Number(lot.mileage).toLocaleString() + ' km';
-    const isFav  = favorites.has(lot.id);
-    const imgSrc = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const cardFields = new Set(Filters.getCardFields());
+    const price     = '₩' + Number(lot.price).toLocaleString();
+    const km        = Number(lot.mileage).toLocaleString() + ' км';
+    const isFav     = favorites.has(lot.id);
+    const imgSrc    = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
+    const makeName  = lot.makeEn       || lot.make  || '';
+    const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
+
+    // Drivetrain line: "Автомат · Бензин · AWD · 2.0л" — plain text, not tags
+    const drivelineParts = [
+      lot.transmission ? Taxonomy.label('transmission', lot.transmission) : null,
+      lot.fuel         ? Taxonomy.label('fuel',         lot.fuel)         : null,
+      lot.driveType    ? Taxonomy.label('drive_type',   lot.driveType)    : null,
+      lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume}л` : null,
+    ].filter(Boolean);
+    const drivelineHtml = drivelineParts.length
+      ? `<div class="lot-card__driveline">${drivelineParts.map(escHtml).join(' · ')}</div>`
+      : '';
+
+    // Tags: only for safety alerts and searched-field highlights
+    const tags = [];
+    if (lot.hasAccident)
+      tags.push({ label: '⚠ Авария', cls: 'lot-card__tag--danger' });
+    else if (_isQueried('has_accident') && lot.hasAccident === false)
+      tags.push({ label: '✓ Без аварий', cls: 'lot-card__tag--match' });
+
+    if (lot.floodHistory)
+      tags.push({ label: '💧 Затоплен', cls: 'lot-card__tag--danger' });
+
+    if (_isQueried('owners_count') && lot.ownersCount != null)
+      tags.push({ label: `${lot.ownersCount} влад.`, cls: 'lot-card__tag--match' });
+    if (_isQueried('drive_type') && lot.driveType)
+      tags.push({ label: Taxonomy.label('drive_type', lot.driveType), cls: 'lot-card__tag--match' });
+
+    const tagsHtml = tags.length
+      ? `<div class="lot-card__tags">${tags.map(t =>
+          `<span class="lot-card__tag${t.cls ? ' ' + t.cls : ''}">${escHtml(t.label)}</span>`
+        ).join('')}</div>`
+      : '';
+
+    // Calendar SVG for date
+    const calIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
+      <path d="M11 1v1H5V1H3v1H1.5A1.5 1.5 0 000 3.5v10A1.5 1.5 0 001.5 15h13A1.5 1.5 0 0016 13.5v-10A1.5 1.5 0 0014.5 2H13V1h-2zm3 5H2V4h12v2z"/>
+    </svg>`;
 
     return `
       <div class="lot-card" data-idx="${i}">
-        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(lot.make)} ${escHtml(lot.model)}"
+        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(makeName)} ${escHtml(modelName)}"
              onerror="this.src='/miniapp/img/placeholder.svg'">
         <button class="lot-card__fav-btn${isFav?' saved':''}" data-id="${escHtml(lot.id)}"
                 aria-label="Сохранить">
@@ -61,29 +200,14 @@ const Results = (() => {
         </button>
         <div class="lot-card__body">
           <div class="lot-card__source">${escHtml(lot.sourceName)}</div>
-          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
+          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}</div>
           <div class="lot-card__price">${price}</div>
           <div class="lot-card__meta">
-            <span class="lot-card__meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a6 6 0 100 12A6 6 0 008 1zM0 8a8 8 0 1116 0A8 8 0 010 8z"/><path d="M8 4v4l2.5 2.5-1 1L7 8.5V4h1z"/></svg>
-              ${escHtml(lot.auctionDate ?? '—')}
-            </span>
-            <span class="lot-card__meta-item">
-              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm0 14A6 6 0 118 2a6 6 0 010 12z"/><path d="M7 4h2v5H7zM7 10h2v2H7z"/></svg>
-              ${km}
-            </span>
+            <span class="lot-card__meta-item">${calIcon} ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}</span>
+            <span class="lot-card__meta-item">${km}</span>
           </div>
-          ${lot.damage ? `<div class="lot-card__damage">⚡ ${escHtml(lot.damage)}</div>` : ''}
-          <div class="lot-card__tags">
-            ${cardFields.has('has_accident') && lot.hasAccident  ? `<span class="lot-card__tag lot-card__tag--danger">Авария</span>`   : ''}
-            ${cardFields.has('flood_history') && lot.floodHistory ? `<span class="lot-card__tag lot-card__tag--danger">Затоплен</span>` : ''}
-            ${cardFields.has('owners_count') && lot.ownersCount  ? `<span class="lot-card__tag">${lot.ownersCount} влад.</span>`       : ''}
-            ${cardFields.has('body_type') && lot.bodyType     ? `<span class="lot-card__tag">${escHtml(lot.bodyType)}</span>`       : ''}
-            ${cardFields.has('transmission') && lot.transmission ? `<span class="lot-card__tag">${escHtml(lot.transmission)}</span>`  : ''}
-            ${cardFields.has('fuel') && lot.fuel         ? `<span class="lot-card__tag">${escHtml(lot.fuel)}</span>`           : ''}
-            ${cardFields.has('drive_type') && lot.driveType    ? `<span class="lot-card__tag">${escHtml(lot.driveType)}</span>`      : ''}
-            ${cardFields.has('trim') && lot.trim            ? `<span class="lot-card__tag">🏷 ${escHtml(lot.trim)}</span>`         : ''}
-          </div>
+          ${drivelineHtml}
+          ${tagsHtml}
         </div>
       </div>`;
   }
@@ -109,123 +233,121 @@ const Results = (() => {
     }
   }
 
+  function fmtDate(raw) {
+    if (!raw) return null;
+    // ISO timestamp → only the date part: "2022-07-19T00:00:00Z" → "2022-07-19"
+    const m = String(raw).match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : String(raw);
+  }
+
   function openSheet(lot) {
     activeLot = lot;
-    const overlay = document.getElementById('sheet-overlay');
-    const price   = '$' + Number(lot.price).toLocaleString();
-    const km      = Number(lot.mileage).toLocaleString() + ' km';
-    const imgSrc  = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const isFav   = favorites.has(lot.id);
+    const overlay   = document.getElementById('sheet-overlay');
+    const makeName  = lot.makeEn       || lot.make  || '';
+    const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
+    const price    = '$' + Number(lot.price).toLocaleString();
+    const km       = Number(lot.mileage).toLocaleString() + ' km';
+    const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
+    const isFav    = favorites.has(lot.id);
+    const d = (label, value, extra = '', hl = false) =>
+      value ? `<div class="sheet-detail-item${hl ? ' sheet-detail-item--match' : ''}"${extra}>
+        <span class="sheet-detail-label">${label}</span>
+        <span class="sheet-detail-value">${value}</span>
+      </div>` : '';
 
     document.getElementById('sheet-content').innerHTML = `
-      <div class="sheet-handle"></div>
-      <img class="sheet-img" src="${imgSrc}" alt="${escHtml(lot.make)}"
+      <div class="sheet-header" id="sheet-drag-handle">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header-row">
+          <span class="sheet-header-source">${escHtml(lot.sourceName)}</span>
+          <button class="sheet-close-btn" onclick="Results.closeSheet()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <img class="sheet-img" src="${imgSrc}" alt="${escHtml(makeName)}"
            onerror="this.src='/miniapp/img/placeholder.svg'">
       <div class="sheet-body">
-        <div class="sheet-source">${escHtml(lot.sourceName)}</div>
-        <div class="sheet-title">${escHtml(lot.year)} ${escHtml(lot.make)} ${escHtml(lot.model)}</div>
+        <div class="sheet-title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}</div>
         <div class="sheet-price">${price}</div>
+        <div class="sheet-section-title">Основное</div>
         <div class="sheet-details">
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Пробег</span>
-            <span class="sheet-detail-value">${km}</span>
-          </div>
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Дата аукциона</span>
-            <span class="sheet-detail-value">${escHtml(lot.auctionDate ?? '—')}</span>
-          </div>
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Местоположение</span>
-            <span class="sheet-detail-value">${escHtml(lot.location ?? '—')}</span>
-          </div>
-          <div class="sheet-detail-item">
-            <span class="sheet-detail-label">Статус</span>
-            <span class="sheet-detail-value">${escHtml(lot.title ?? '—')}</span>
-          </div>
-          ${lot.bodyType ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Кузов</span>
-            <span class="sheet-detail-value">${escHtml(lot.bodyType)}</span>
-          </div>` : ''}
-          ${lot.transmission ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">КПП</span>
-            <span class="sheet-detail-value">${escHtml(lot.transmission)}</span>
-          </div>` : ''}
-          ${lot.fuel ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Топливо</span>
-            <span class="sheet-detail-value">${escHtml(lot.fuel)}</span>
-          </div>` : ''}
-          ${lot.driveType ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Привод</span>
-            <span class="sheet-detail-value">${escHtml(lot.driveType)}</span>
-          </div>` : ''}
-          ${lot.engineVolume ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Двигатель</span>
-            <span class="sheet-detail-value">${lot.engineVolume} л${lot.cylinders ? ' / ' + lot.cylinders + ' цил.' : ''}</span>
-          </div>` : ''}
-          ${lot.color ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Цвет</span>
-            <span class="sheet-detail-value">${escHtml(lot.color)}</span>
-          </div>` : ''}
-          ${lot.trim ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Комплектация</span>
-            <span class="sheet-detail-value">${escHtml(lot.trim)}</span>
-          </div>` : ''}
-          ${lot.hasKeys !== null && lot.hasKeys !== undefined ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Ключи</span>
-            <span class="sheet-detail-value">${lot.hasKeys ? 'Есть' : 'Нет'}</span>
-          </div>` : ''}
-          ${lot.vin ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">VIN</span>
-            <span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>
-          </div>` : ''}
-          ${lot.damage ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">Повреждения</span>
-            <span class="sheet-detail-value" style="color:var(--danger)">${escHtml(lot.damage)}</span>
-          </div>` : ''}
-          ${lot.secondaryDamage ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">Доп. повреждения</span>
-            <span class="sheet-detail-value" style="color:var(--danger)">${escHtml(lot.secondaryDamage)}</span>
-          </div>` : ''}
-          ${lot.document ? `<div class="sheet-detail-item" style="grid-column:span 2">
-            <span class="sheet-detail-label">Документ</span>
-            <span class="sheet-detail-value" style="font-size:12px">${escHtml(lot.document)}</span>
-          </div>` : ''}
-          ${lot.retailValue ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Рыночная цена</span>
-            <span class="sheet-detail-value">$${Number(lot.retailValue).toLocaleString()}</span>
-          </div>` : ''}
-          ${lot.repairCost ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Стоимость ремонта</span>
-            <span class="sheet-detail-value" style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>
-          </div>` : ''}
-          ${lot.hasAccident !== null && lot.hasAccident !== undefined ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Авария (офиц.)</span>
-            <span class="sheet-detail-value" style="color:${lot.hasAccident ? 'var(--danger)' : 'var(--success)'}"
-            >${lot.hasAccident ? 'Да' : 'Нет'}</span>
-          </div>` : ''}
-          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Затопление</span>
-            <span class="sheet-detail-value" style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}"
-            >${lot.floodHistory ? 'Да' : 'Нет'}</span>
-          </div>` : ''}
-          ${lot.ownersCount ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Владельцев</span>
-            <span class="sheet-detail-value">${lot.ownersCount}</span>
-          </div>` : ''}
-          ${lot.plateNumber ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Номер</span>
-            <span class="sheet-detail-value" style="font-family:monospace">${escHtml(lot.plateNumber)}</span>
-          </div>` : ''}
-          ${lot.dealerName ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Дилер</span>
-            <span class="sheet-detail-value">${escHtml(lot.dealerName)}</span>
-          </div>` : ''}
-          ${lot.dealerPhone ? `<div class="sheet-detail-item">
-            <span class="sheet-detail-label">Телефон</span>
-            <span class="sheet-detail-value">${escHtml(lot.dealerPhone)}</span>
-          </div>` : ''}
+          ${d('Пробег', km, '', _isQueried('mileage'))}
+          ${d('Объявление', escHtml(lot.listedAt ?? lot.auctionDate ?? '—'), '', _isQueried('listed_at'))}
+          ${d('Местоположение', escHtml(lot.location ?? '—'))}
         </div>
-        <div id="sheet-inspection" style="margin:0 0 12px"></div>
+
+        <div class="sheet-section-title">Характеристики</div>
+        <div class="sheet-details">
+          ${d('Кузов',        lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '', '', _isQueried('body_type'))}
+          ${d('КПП',          lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '', '', _isQueried('transmission'))}
+          ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '', '', _isQueried('fuel'))}
+          ${d('Привод',       lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '', '', _isQueried('drive_type'))}
+          ${d('Двигатель',    lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '', '', _isQueried('engine_volume'))}
+          ${d('Цвет кузова',  lot.color        ? escHtml(Taxonomy.label('color', lot.color))           : '', '', _isQueried('color'))}
+          ${d('Цвет салона',  lot.seatColor    ? escHtml(Taxonomy.label('seat_color', lot.seatColor)) : '')}
+          ${d('Мест',         lot.seatCount    ? String(lot.seatCount)                                : '')}
+          ${d('Комплектация', lot.trim         ? escHtml(Taxonomy.label('trim', lot.trim))            : '', '', _isQueried('trim'))}
+          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)                              : '', '', _isQueried('generation'))}
+        </div>
+
+        <div class="sheet-section-title">История</div>
+        <div class="sheet-details">
+          ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`, '', _isQueried('has_accident')) : ''}
+          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`, '', _isQueried('flood_history')) : ''}
+          ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '', '', _isQueried('owners_count'))}
+          ${d('Страховых',    lot.insuranceCount ? String(lot.insuranceCount) : '', '', _isQueried('insurance_count'))}
+          ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"', _isQueried('vin'))}
+          ${d('Документ', lot.document ? `<span style="font-size:12px">${escHtml(lot.document)}</span>` : '', ' style="grid-column:span 2"')}
+          ${d('Рыночная цена',    lot.retailValue  ? `$${Number(lot.retailValue).toLocaleString()}`  : '')}
+          ${d('Стоимость ремонта',lot.repairCost   ? `<span style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>` : '')}
+          ${d('Номер',  lot.plateNumber ? `<span style="font-family:monospace">${escHtml(lot.plateNumber)}</span>` : '')}
+          ${d('Дилер',  lot.dealerName  ? escHtml(lot.dealerName)  : '')}
+          ${d('Телефон',lot.dealerPhone ? escHtml(lot.dealerPhone) : '')}
+          ${lot.hasKeys !== null && lot.hasKeys !== undefined ? d('Ключи', lot.hasKeys ? 'Есть' : 'Нет') : ''}
+        </div>
+        ${Array.isArray(lot.options) && lot.options.length ? (() => {
+          // Searched options first, then the rest
+          const searched = lot.options.filter(o => searchedOptions.has(o.code));
+          const rest     = lot.options.filter(o => !searchedOptions.has(o.code));
+          const sorted   = [...searched, ...rest];
+          const id       = `opts-${lot.id}`;
+
+          const renderOpt = (o, highlight) => {
+            const name  = escHtml(o.name_ru || o.name_en || o.name_kr || o.code);
+            const emoji = CATEGORY_EMOJI[o.category] || '⚙️';
+            const bg    = highlight ? 'rgba(51,144,236,.22)' : 'rgba(255,255,255,.05)';
+            const ring  = highlight ? `border:1.5px solid var(--accent);` : 'border:1.5px solid transparent;';
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;background:${bg};${ring}border-radius:10px;padding:6px 4px">
+              <span style="font-size:20px;line-height:1">${emoji}</span>
+              <span style="font-size:9px;color:${highlight ? 'var(--accent)' : 'var(--hint)'};line-height:1.2;font-weight:${highlight ? 600 : 400}">${name}</span>
+            </div>`;
+          };
+
+          const first10 = sorted.slice(0, 10);
+          const more    = sorted.slice(10);
+          const moreHtml = more.length ? `
+            <div id="${id}-more" style="display:none;grid-column:1/-1;display:none">
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                ${more.map(o => renderOpt(o, searchedOptions.has(o.code))).join('')}
+              </div>
+            </div>
+            <button onclick="document.getElementById('${id}-more').style.display=document.getElementById('${id}-more').style.display==='none'?'block':'none';this.textContent=this.textContent.includes('▼')?'Скрыть ▲':'Ещё ${more.length} ▼'"
+              style="grid-column:1/-1;background:none;border:none;color:var(--hint);font-size:11px;cursor:pointer;padding:4px 0">
+              Ещё ${more.length} ▼
+            </button>` : '';
+
+          return `<div style="margin:12px 0 0">
+            <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 6px">Опции (${sorted.length})</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 4px">
+              ${first10.map(o => renderOpt(o, searchedOptions.has(o.code))).join('')}
+              ${moreHtml}
+            </div>
+          </div>`;
+        })() : ''}
+        <div id="sheet-inspection" style="margin:12px 0 12px"></div>
         <div class="sheet-actions">
           <a href="${escHtml(lot.lotUrl)}" target="_blank" rel="noopener"
              class="btn btn-primary" style="text-decoration:none;flex:1">Открыть лот</a>
@@ -238,13 +360,39 @@ const Results = (() => {
     overlay.classList.add('open');
     TG.haptic('impact', 'medium');
 
+    // Swipe-to-dismiss on the drag handle header
+    const sheetEl  = document.getElementById('sheet-content');
+    const dragArea = document.getElementById('sheet-drag-handle');
+    if (sheetEl && dragArea) {
+      let startY = 0;
+      const onStart = e => { startY = e.touches[0].clientY; sheetEl.style.transition = 'none'; };
+      const onMove  = e => {
+        const dy = e.touches[0].clientY - startY;
+        if (dy > 0) sheetEl.style.transform = `translateY(${dy}px)`;
+      };
+      const onEnd   = e => {
+        sheetEl.style.transition = '';
+        if (e.changedTouches[0].clientY - startY > 110) {
+          closeSheet();
+        } else {
+          sheetEl.style.transform = '';
+        }
+        dragArea.removeEventListener('touchstart', onStart);
+        dragArea.removeEventListener('touchmove',  onMove);
+        dragArea.removeEventListener('touchend',   onEnd);
+      };
+      dragArea.addEventListener('touchstart', onStart, { passive: true });
+      dragArea.addEventListener('touchmove',  onMove,  { passive: true });
+      dragArea.addEventListener('touchend',   onEnd);
+    }
+
     API.getInspection(lot.id).then(insp => {
       const el = document.getElementById('sheet-inspection');
       if (!el || !insp) return;
       const rows = [];
-      if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(insp.valid_until)}</span></div>`);
+      if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.valid_until))}</span></div>`);
       if (insp.cert_no)     rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Номер акта</span><span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(insp.cert_no)}</span></div>`);
-      if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(insp.first_registration)}</span></div>`);
+      if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.first_registration))}</span></div>`);
       if (insp.inspection_mileage)  rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Пробег (акт)</span><span class="sheet-detail-value">${Number(insp.inspection_mileage).toLocaleString()} km</span></div>`);
       if (insp.accident_detail) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Структурные повреждения</span><span class="sheet-detail-value" style="color:var(--danger)">${escHtml(insp.accident_detail)}</span></div>`);
       if (insp.outer_detail)    rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Внешние ремонты</span><span class="sheet-detail-value">${escHtml(insp.outer_detail)}</span></div>`);
@@ -285,6 +433,8 @@ const Results = (() => {
   }
 
   function closeSheet() {
+    const sheetEl = document.getElementById('sheet-content');
+    if (sheetEl) sheetEl.style.transform = '';
     document.getElementById('sheet-overlay').classList.remove('open');
     activeLot = null;
   }
@@ -315,5 +465,5 @@ const Results = (() => {
     setTimeout(() => t.classList.remove('show'), 2000);
   }
 
-  return { render, setFavorites, closeSheet, sheetToggleFav };
+  return { render, appendCards, showSkeletons, setFavorites, setSearchOptions, setSearchQuery, closeSheet, sheetToggleFav };
 })();

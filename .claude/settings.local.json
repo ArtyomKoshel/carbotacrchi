@@ -24,7 +24,21 @@
       "Bash(pip download:*)",
       "Read(//tmp/**)",
       "Bash(python -m zipfile -l koreancar-2.0.2-py3-none-any.whl)",
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(dir \"D:\\\\work\\\\carbot\" /b)",
+      "Bash(cd /d D:\\\\work\\\\carbot)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(python3 -c ' *)",
+      "WebFetch(domain:www.hyundai.com)",
+      "WebFetch(domain:blog.carvazo.com)",
+      "Bash(cd /d D:\\\\work\\\\carbot\\\\laravel)",
+      "Bash(php -l app/Console/Commands/CatalogImport.php)",
+      "WebFetch(domain:auto.danawa.com)",
+      "Bash(cd /d/work/carbot/laravel && find . -type f -name \"*.php\" | grep -E \"\\(NormalizeEncarTaxonomy|GradeExtractor|CatalogLookup|TaxonomyRule|TaxonomySuggestion\\)\" | head -20)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\work\\\\carbot\" -Directory | Where-Object { $_.Name -notmatch '^\\(node_modules|vendor|\\\\.git\\)$' } | Select-Object -ExpandProperty Name | Sort-Object)",
+      "Bash(awk '{print $9, $5}')",
+      "Bash(xargs ls -lh)"
     ]
   }
 }

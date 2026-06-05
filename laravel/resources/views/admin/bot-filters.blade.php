@@ -1,7 +1,11 @@
 @extends('admin.layout')
-@section('title', 'Bot Filters')
+@section('title', 'Бот-фильтры')
 
 @section('content')
+
+@php
+  $ui = \App\Support\AdminUiLabels::class;
+@endphp
 
 @php
   $categoryLabels = [
@@ -36,7 +40,7 @@
 
 @if($errors->any())
 <div class="mb-4 px-4 py-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
-  <p class="font-semibold mb-1">Validation errors:</p>
+  <p class="font-semibold mb-1">Ошибки валидации:</p>
   <ul class="list-disc list-inside">
     @foreach($errors->all() as $error)
       <li>{{ $error }}</li>
@@ -138,8 +142,10 @@
             $tolType = $setting->tolerance_type ?: 'none';
             $tolValue = $setting->tolerance_value;
             $tolDisplay = $tolType === 'percentage' && $tolValue !== null ? $tolValue * 100 : $tolValue;
+            $fieldUiLabel = $ui::field($setting->field_name);
             $searchText = mb_strtolower(trim(implode(' ', [
               $setting->field_name,
+              $fieldUiLabel,
               $setting->field_label,
               $setting->description,
               $setting->dtype,
@@ -153,12 +159,9 @@
                data-dtype="{{ $setting->dtype }}"
                data-search="{{ e($searchText) }}">
             <div class="col-span-4 min-w-0">
-              <div class="text-white font-medium truncate">{{ $setting->field_label ?: $setting->field_name }}</div>
+              <div class="text-white font-medium truncate">{{ $fieldUiLabel }}</div>
               <div class="text-[11px] text-gray-500 truncate">
                 <span class="font-mono text-gray-400">{{ $setting->field_name }}</span>
-                @if($setting->description)
-                  · {{ $setting->description }}
-                @endif
               </div>
             </div>
 
@@ -212,7 +215,7 @@
         @endforeach
       </div>
     @empty
-      <div class="px-5 py-10 text-center text-gray-500 text-sm">No settings found.</div>
+      <div class="px-5 py-10 text-center text-gray-500 text-sm">Настройки не найдены.</div>
     @endforelse
 
     <div class="px-5 py-4 border-t border-gray-800 flex items-center justify-between">
@@ -415,14 +418,14 @@
 
       const d = json.data || {};
       const pretty = [
-        `mode: ${d.mode || 'unknown'}`,
-        `description: ${d.description || '-'}`,
-        `tolerance: ${d.toleranceNote || '-'}`,
+        `режим: ${d.mode || 'неизвестно'}`,
+        `описание: ${d.description || '-'}`,
+        `допуски: ${d.toleranceNote || '-'}`,
         '',
-        'parsed:',
+        'исходный разбор:',
         JSON.stringify(d.parsed || {}, null, 2),
         '',
-        'tolerant:',
+        'разбор с допусками:',
         JSON.stringify(d.tolerant || {}, null, 2),
       ].join('\n');
 

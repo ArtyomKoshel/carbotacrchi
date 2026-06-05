@@ -44,38 +44,38 @@ class ParseFilter extends Model
 
     public const ACTIONS = ['allow', 'skip', 'flag', 'mark_inactive'];
 
-    public const SOURCES = ['encar', 'kbcha'];
+    public const SOURCES = ['encar'];
 
     public const PHASES = ['pre', 'post'];
 
     public const PHASE_LABELS = [
-        'pre'  => 'Pre-filter (before enrichment)',
-        'post' => 'Post-filter (after inspections)',
+        'pre'  => 'До осмотра',
+        'post' => 'После осмотра',
     ];
 
     /** Human-friendly labels for UI. */
     public const OPERATOR_LABELS = [
-        'eq'           => '= equal',
-        'ne'           => '≠ not equal',
-        'gt'           => '> greater',
-        'gte'          => '≥ greater or equal',
-        'lt'           => '< less',
-        'lte'          => '≤ less or equal',
-        'in'           => '∈ in list',
-        'not_in'       => '∉ not in list',
-        'between'      => 'between [min,max]',
-        'is_null'      => 'is null',
-        'is_not_null'  => 'is not null',
-        'contains'     => 'contains',
-        'not_contains' => 'does not contain',
-        'regex'        => 'matches regex',
+        'eq'           => '= равно',
+        'ne'           => '≠ не равно',
+        'gt'           => '> больше',
+        'gte'          => '≥ больше или равно',
+        'lt'           => '< меньше',
+        'lte'          => '≤ меньше или равно',
+        'in'           => '∈ в списке',
+        'not_in'       => '∉ не в списке',
+        'between'      => 'между [мин,макс]',
+        'is_null'      => 'пусто (null)',
+        'is_not_null'  => 'не пусто (не null)',
+        'contains'     => 'содержит',
+        'not_contains' => 'не содержит',
+        'regex'        => 'совпадает с regex',
     ];
 
     public const ACTION_LABELS = [
-        'allow'         => '✓ allow (whitelist)',
-        'skip'          => '✗ skip (do not save)',
-        'flag'          => '⚑ flag (save + tag)',
-        'mark_inactive' => '⊘ mark inactive',
+        'allow'         => '✓ пропустить (белый список)',
+        'skip'          => '✗ исключить (не сохранять)',
+        'flag'          => '⚑ пометить (сохранить + тег)',
+        'mark_inactive' => '⊘ сделать неактивным',
     ];
 
     /** Decode the JSON-encoded value column. */

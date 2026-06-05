@@ -16,6 +16,9 @@ class Config:
     KBCHA_WORKERS = int(os.getenv("KBCHA_WORKERS", "10"))
 
     LOG_FILE = os.getenv("LOG_FILE", "/app/logs/parser.log")
+    PARSER_ANOMALY_FILE = os.getenv("PARSER_ANOMALY_FILE", "")
+    PARSER_ANOMALY_MAX_BYTES = int(os.getenv("PARSER_ANOMALY_MAX_BYTES", str(10 * 1024 * 1024)))
+    PARSER_ANOMALY_MAX_LINES = int(os.getenv("PARSER_ANOMALY_MAX_LINES", "200000"))
 
     # Redis — supports both REDIS_URL (Railway standard) and individual vars
     _redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
@@ -35,10 +38,13 @@ class Config:
     ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
     ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "5"))
 
-    # FloppyData API for dynamic proxy generation
-    FLOPPYDATA_API_KEY = os.getenv("FLOPPYDATA_API_KEY", "")
-    FLOPPY_BASE_URL = os.getenv("FLOPPY_BASE_URL", "https://client-api.floppy.host")
-    PROXY_DEBUG = os.getenv("PROXY_DEBUG", "false").lower() in ("1", "true", "yes")
+    # FloppyData proxy credentials
+    FLOPPYDATA_API_KEY  = os.getenv("FLOPPYDATA_API_KEY", "")
+    FLOPPY_BASE_URL     = os.getenv("FLOPPY_BASE_URL", "https://api.floppydata.net")
+    FLOPPY_USERNAME     = os.getenv("FLOPPY_USERNAME", "")
+    FLOPPY_PASSWORD     = os.getenv("FLOPPY_PASSWORD", "")
+    FLOPPY_HOST         = os.getenv("FLOPPY_HOST", "geo.g-w.info:10080")
+    PROXY_DEBUG         = os.getenv("PROXY_DEBUG", "false").lower() in ("1", "true", "yes")
 
     USD_KRW_RATE = float(os.getenv("USD_KRW_RATE", "1350"))
 

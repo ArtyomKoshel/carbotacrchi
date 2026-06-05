@@ -53,14 +53,38 @@ abstract class AbstractDbProvider extends AbstractProvider
         match ($sort) {
             'price_asc' => $builder->orderBy('price', 'asc'),
             'price_desc' => $builder->orderBy('price', 'desc'),
-            default => $builder->orderBy('registration_date', 'desc')->orderBy('id', 'desc'),
+            default => $builder->orderBy('listed_at', 'desc')->orderBy('id', 'desc'),
         };
     }
 
     private function applyDbFilters(Builder $builder, SearchQuery $query): void
     {
-        if ($query->make)  $builder->whereRaw('make LIKE ?', [$query->make . '%']);
-        if ($query->model) $builder->whereRaw('model_en LIKE ?', ['%' . $query->model . '%']);
+        // make → make_en (English brand name)
+        if ($query->make) {
+            $builder->where(function ($q) use ($query) {
+                $q->where('make_en', $query->make)
+                  ->orWhere(function ($q2) use ($query) {
+                      $q2->whereNull('make_en')
+                         ->whereRaw('make LIKE ?', [$query->make . '%']);
+                  });
+            });
+        }
+
+        // model → model_group_en (Encar Level 3: ModelGroup English name)
+        if ($query->model) {
+            $builder->where(function ($q) use ($query) {
+                $q->whereRaw('model_group_en LIKE ?', ['%' . $query->model . '%'])
+                  ->orWhere(function ($q2) use ($query) {
+                      $q2->whereNull('model_group_en')
+                         ->whereRaw('model_group LIKE ?', ['%' . $query->model . '%']);
+                  });
+            });
+        }
+
+        // generation UI input → model_en (Encar Level 3: full Model variant, e.g. "A5 (F5)")
+        if ($query->generation) {
+            $builder->whereRaw('model_en LIKE ?', ['%' . $query->generation . '%']);
+        }
 
         if ($query->yearFrom)   $builder->where('year', '>=', $query->yearFrom);
         if ($query->yearTo)     $builder->where('year', '<=', $query->yearTo);
@@ -84,9 +108,6 @@ abstract class AbstractDbProvider extends AbstractProvider
         if ($query->seatCountMin) $builder->where('seat_count', '>=', $query->seatCountMin);
         if ($query->seatCountMax) $builder->where('seat_count', '<=', $query->seatCountMax);
 
-        if ($query->registrationYearMonthMin) $builder->where('registration_year_month', '>=', $query->registrationYearMonthMin);
-        if ($query->registrationYearMonthMax) $builder->where('registration_year_month', '<=', $query->registrationYearMonthMax);
-
         if ($query->hasAccident !== null)      $builder->where('has_accident', $query->hasAccident);
         if ($query->floodHistory !== null)     $builder->where('flood_history', $query->floodHistory);
         if ($query->totalLossHistory !== null) $builder->where('total_loss_history', $query->totalLossHistory);
@@ -101,5 +122,10 @@ abstract class AbstractDbProvider extends AbstractProvider
         if ($query->sellTypes)     $builder->whereIn('sell_type', $query->sellTypes);
 
         if ($query->vin) $builder->where('vin', $query->vin);
+
+        if ($query->listedAfter)    $builder->where('listed_at', '>=', $query->listedAfter);
+        if ($query->listedBefore)   $builder->where('listed_at', '<=', $query->listedBefore);
+        if ($query->firstRegAfter)  $builder->where('first_reg_date', '>=', $query->firstRegAfter);
+        if ($query->firstRegBefore) $builder->where('first_reg_date', '<=', $query->firstRegBefore);
     }
 }

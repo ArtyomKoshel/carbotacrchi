@@ -3,17 +3,27 @@ from __future__ import annotations
 import logging
 import re as _re
 import time as _time
+import json as _json
+import os as _os
+from datetime import datetime as _dt, timezone as _tz, timedelta as _td
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable
 
+
+
 import httpx
+try:
+    import pymysql as _pymysql
+    from pymysql.cursors import DictCursor as _DictCursor
+except Exception:  # pragma: no cover - parser may run in reduced env for tests
+    _pymysql = None
+    _DictCursor = None
 
 from config import Config
 from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser, ProgressUpdate
 from .._shared import sell_type as _sell
-from .._shared.korean_model_names import resolve_model_en
 from .client import EncarClient, ProxyBudgetExhausted, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
@@ -25,87 +35,122 @@ _BATCH_SIZE = 20   # batch_details API hard-caps at 20 items
 _MAX_SAFE_OFFSET = 9900  # Encar search API (Elasticsearch) caps at ~10k results per query
 
 
+def ensure_anomaly_file_exists() -> None:
+    """No-op stub kept for import compatibility with logging_config.py."""
+    pass
+
+
+def _clean_model_str(model_raw: str, badge: str, model_group: str) -> str:
+    """
+    Return a clean model/generation string from the raw Encar Model field.
+
+    The Encar Model field is a composite string, e.g.:
+      "더 뉴 쏘렌토 4세대 가솔린 2.5T 4WD"
+
+    We strip:
+      1. Badge suffix ("가솔린 2.5T 4WD") — already available as a separate field
+      2. Known Korean model prefixes (더 뉴, 올 뉴, …) — fixed list, no regex
+
+    Result: "쏘렌토 4세대"
+    """
+    s = model_raw.strip()
+
+    # 1. Strip badge suffix from end of model string
+    if badge:
+        badge_s = badge.strip()
+        if s.endswith(badge_s):
+            s = s[: -len(badge_s)].strip()
+
+    # 2. Strip known model prefixes (fixed list, no regex)
+    _PREFIXES = [
+        "더 뉴 더 뉴 ", "더 뉴 더뉴 ", "더뉴 더뉴 ",
+        "더 뉴 ", "더뉴 ",
+        "올 뉴 ", "올뉴 ",
+        "완전변경 ", "부분변경 ", "신형 ", "뉴 ",
+    ]
+    for prefix in _PREFIXES:
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+            break
+
+    return s.strip() or model_raw.strip()
+
+
 def _lot_from_search(item: dict, norm: EncarNormalizer) -> CarLot:
-    vid = str(item["Id"])
-    make_kr = item.get("Manufacturer", "")
-    model    = item.get("Model", "")
-    badge    = item.get("Badge", "")        # grade/fuel e.g. "디젤 2.2 4WD"
-    badge_detail = item.get("BadgeDetail", "")  # trim e.g. "노블레스"
+    """
+    Build a CarLot from a single Encar search-list item.
+
+    All fields come DIRECTLY from the API — no regex, no string parsing.
+    Tech specs (engine_volume, drive_type) come from the detail API
+    (_enrich_from_detail) or catalog_badges fallback (lots:normalize-from-catalog).
+    """
+    vid          = str(item["Id"])
+    make_kr      = (item.get("Manufacturer") or "").strip()
+    model_group  = (item.get("ModelGroup") or "").strip()
+    model_raw    = (item.get("Model") or "").strip()
+    badge_group  = (item.get("BadgeGroup") or "").strip()
+    badge        = (item.get("Badge") or "").strip()
+    badge_detail = (item.get("BadgeDetail") or "").strip()
+
+    # Clean model string (strip badge suffix + model prefixes, no regex)
+    model = _clean_model_str(model_raw, badge, model_group)
 
     year_raw = item.get("FormYear") or str(item.get("Year") or "")
     year = int(str(year_raw)[:4]) if year_raw and len(str(year_raw)) >= 4 else 0
 
     price_man = int(item.get("Price") or 0)
-    if price_man > 1_000_000_000:  # > 10 trillion KRW — clearly garbage data
+    if price_man > 1_000_000_000:
         logger.warning(f"[encar] lot {item.get('Id')}: absurd price {price_man}만원, zeroing")
         price_man = 0
     price_raw = norm.price_from_man(price_man)
     mileage   = int(item.get("Mileage") or 0)
 
-    # Drive type: scan badge + model tokens for known keywords (e.g. "4WD", "AWD", "2WD")
-    _drive_tokens = f"{model} {badge}".split()
-    drive_type = next(
-        (norm.drive(t) for t in _drive_tokens if norm.drive(t)),
-        None,
-    )
-
-    # Main photo: first Photos entry or Photo prefix
     photos = item.get("Photos") or []
     photo_path = photos[0]["location"] if photos else ""
-    image_url = EncarClient.photo_url(photo_path) if photo_path else None
+    image_url  = EncarClient.photo_url(photo_path) if photo_path else None
 
-    location = item.get("OfficeCityState") or ""
+    location = (item.get("OfficeCityState") or "").strip()
 
     conditions = item.get("Condition") or []
     sell_type, sell_type_raw = _sell.normalize_encar(
         item.get("SellType"), item.get("AdType"), conditions,
     )
 
-    # FormYear is already an INT like 202006 (YYYYMM) — store as first-class col.
-    form_year = item.get("FormYear") or item.get("Year")
-    reg_ym: int | None = None
-    if form_year:
-        try:
-            s = str(int(form_year))  # drop possible ".0"
-            if len(s) == 6 and s.isdigit():
-                reg_ym = int(s)
-        except (TypeError, ValueError):
-            pass
+    # Raw data: only fields NOT available as first-class columns
+    _raw_data: dict = {
+        "model_kr_raw": model_raw,   # original composite for reference
+        "ad_type":      item.get("AdType"),
+        "condition":    conditions,
+    }
 
-    _model_str = f"{model} {badge}".strip() if badge else model
+    # Seat color: store raw Korean — lots:normalize-from-catalog translates via translations.seat_color
+    seat_color_raw = (item.get("SeatColor") or "").strip() or None
+
     return CarLot(
         id=vid,
         source=_SOURCE,
-        make=norm.make(make_kr),
-        model=_model_str,
-        model_en=resolve_model_en(_model_str),
-        trim=badge_detail or None,
+        make=make_kr,                      # ← raw Korean: "기아", "현대", "KG모빌리티(쌍용)"
+        model=model,
+        model_group=model_group,           # ← raw Korean from API (Encar ModelGroup)
+        model_en=None,                     # ← filled by lots:normalize-from-catalog
+        badge_group=badge_group or None,   # ← raw Korean from API (Encar BadgeGroup)
+        badge=badge,                       # ← raw Korean from API (Encar Badge)
+        trim=badge_detail or None,         # ← raw Korean from API (Encar BadgeDetail)
         year=year,
         price=price_raw,
         mileage=mileage,
-        registration_year_month=reg_ym,
-        fuel=norm.fuel(item.get("FuelType")),
+        fuel=norm.fuel(item.get("FuelType")),  # ← structured enum from API, safe to map
         transmission=norm.transmission(item.get("Transmission")),
-        color=norm.color(item.get("Color")),
-        seat_color=norm.color(item.get("SeatColor")),
-        drive_type=drive_type,
+        color=norm.color(item.get("Color")),   # ← structured enum, mostly English already
+        seat_color=seat_color_raw,             # ← raw Korean, normalization translates
+        # engine_volume, drive_type, body_type, seat_count → from detail API
+        # (fallback: lots:normalize-from-catalog via catalog_badges)
         location=location or None,
         image_url=image_url,
         lot_url=f"https://fem.encar.com/cars/detail/{vid}",
         sell_type=sell_type,
         sell_type_raw=sell_type_raw or None,
-        raw_data={
-            "manufacturer_kr":   make_kr,
-            "model_kr":          model,
-            "model_group_kr":    item.get("ModelGroup"),
-            "badge_kr":          badge,
-            "badge_detail_kr":   badge_detail,
-            # ad_type + condition[] are kept as debug context for sell_type
-            # normalization (the normalized result already lives in the
-            # lots.sell_type + lots.sell_type_raw columns).
-            "ad_type":           item.get("AdType"),
-            "condition":         conditions,
-        },
+        raw_data=_raw_data,
     )
 
 
@@ -145,7 +190,7 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
         lot.location = contact["address"]
 
     if manage.get("registDateTime"):
-        lot.registration_date = manage["registDateTime"][:10]
+        lot.listed_at = manage["registDateTime"][:10]
 
     # NOTE: lien_status/seizure_status are set from the Record API in _enrich_from_record
     # (rec["loan"] / rec["robberCnt"]) which is the authoritative source.
@@ -192,10 +237,13 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
         except (TypeError, ValueError):
             pass
 
+    # Promote English trim name to first-class column (grade_detail_kr duplicates lots.trim)
+    grade_detail_en = (cat.get("gradeDetailEnglishName") or "").strip() or None
+    if grade_detail_en and not lot.trim_en:
+        lot.trim_en = grade_detail_en
+
     lot.raw_data.update({
-        "grade_detail_kr": cat.get("gradeDetailName"),
-        "grade_detail_en": cat.get("gradeDetailEnglishName"),
-        "ad_status":       adv.get("status"),
+        "ad_status": adv.get("status"),
     })
 
 
@@ -235,8 +283,8 @@ def _enrich_from_record(lot: CarLot, rec: dict) -> InspectionRecord:
     if my_cost + other_cost > 0:
         lot.repair_cost = my_cost + other_cost
 
-    if rec.get("firstDate") and not lot.registration_date:
-        lot.registration_date = rec["firstDate"]
+    if rec.get("firstDate") and not lot.first_reg_date:
+        lot.first_reg_date = rec["firstDate"]
 
     accidents = rec.get("accidents") or []
     acc_lines = [
@@ -325,8 +373,8 @@ def _enrich_from_inspection(
         record.valid_until = ve
     if fr := _parse_date8(detail.get("firstRegistrationDate")):
         record.first_registration = fr
-        if not lot.registration_date:
-            lot.registration_date = fr
+        if not lot.first_reg_date:
+            lot.first_reg_date = fr
 
     if detail.get("mileage"):
         record.inspection_mileage = int(detail["mileage"])
@@ -426,8 +474,8 @@ def _enrich_from_inspection_html(
         m = _re.search(r"(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일", reg_raw)
         if m:
             reg_date = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
-            if not lot.registration_date:
-                lot.registration_date = reg_date
+            if not lot.first_reg_date:
+                lot.first_reg_date = reg_date
             if not record.first_registration:
                 record.first_registration = reg_date
 
@@ -927,13 +975,155 @@ class EncarParser(AbstractParser):
             "reparse": True,
         }
 
+    def run_sample(self, lots_per_model: int = 7) -> dict:
+        """
+        Sample mode: fetch N lots per (Manufacturer, ModelGroup) pair.
+
+        Phase 1 — single API call to discover all (maker_kr, model_group_kr) pairs.
+        Phase 2 — for each pair fetch `lots_per_model` lots using a targeted query,
+                   enrich them, and save to DB.
+
+        Designed for integration testing: gives a small, representative dataset
+        covering every model group so that lots:normalize-from-catalog can be
+        validated before running a full parse.
+        """
+        source = _SOURCE
+        run_start = _time.monotonic()
+        stats = self.init_stats()
+
+        logger.info(f"[{source}] ===== SAMPLE MODE: {lots_per_model} lots/model =====")
+        check_floppy_balance()
+
+        existing_ids = self.repo.get_existing_ids(source)
+        seen_ids: set[str] = set()
+
+        # ── Phase 1: discover all (maker_kr, model_group_kr) pairs ────────────
+        logger.info(f"[{source}] Phase 1: discovering makers and model groups…")
+        pairs: dict[str, set[str]] = {}  # maker_kr → {model_group_kr}
+
+        try:
+            page1 = self._client.search(
+                query="(And.Hidden.N._.CarType.A.)",
+                offset=0,
+                count=_PAGE_SIZE,
+            )
+            for item in page1.get("SearchResults", []):
+                mk = (item.get("Manufacturer") or "").strip()
+                mg = (item.get("ModelGroup") or "").strip()
+                if mk:
+                    pairs.setdefault(mk, set())
+                    if mg:
+                        pairs[mk].add(mg)
+        except Exception as e:
+            logger.error(f"[{source}] Phase 1 failed: {e}")
+            return {"total": 0, "errors": 1, "error_log": [str(e)]}
+
+        total_pairs = sum(len(mgs) for mgs in pairs.values())
+        logger.info(
+            f"[{source}] Phase 1 done: {len(pairs)} makers, {total_pairs} model groups"
+        )
+
+        # ── Phase 2: N lots per (maker, model_group) pair ─────────────────────
+        total_saved = 0
+        total_pairs_done = 0
+
+        for maker_kr in sorted(pairs.keys()):
+            model_groups = sorted(pairs[maker_kr])
+            if not model_groups:
+                # maker without model group — fetch with maker filter only
+                model_groups = [""]
+
+            for mg_kr in model_groups:
+                if mg_kr:
+                    query = (
+                        f"(And.Hidden.N._.CarType.A."
+                        f"_.Manufacturer.{maker_kr}."
+                        f"_.ModelGroup.{mg_kr}.)"
+                    )
+                    label = f"{maker_kr}/{mg_kr}"
+                else:
+                    query = f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker_kr}.)"
+                    label = maker_kr
+
+                try:
+                    data = self._client.search(
+                        query=query, offset=0, count=lots_per_model
+                    )
+                except ProxyBudgetExhausted as e:
+                    logger.error(f"[{source}] [{label}] proxy budget exhausted: {e}")
+                    break
+                except Exception as e:
+                    logger.warning(f"[{source}] [{label}] fetch error: {e}, skipping")
+                    stats["errors"] += 1
+                    continue
+
+                items = (data.get("SearchResults") or [])[:lots_per_model]
+                if not items:
+                    logger.debug(f"[{source}] [{label}] no results, skipping")
+                    continue
+
+                page_lots: list[CarLot] = []
+                for item in items:
+                    vid = str(item.get("Id", ""))
+                    if not vid or vid in seen_ids:
+                        continue
+                    seen_ids.add(vid)
+                    page_lots.append(_lot_from_search(item, self._norm))
+
+                if not page_lots:
+                    continue
+
+                # Enrich with detail API (engine_volume, body_type, drive_type…)
+                self._enrich_batch(page_lots, stats)
+                # Enrich with accident/record data
+                self._enrich_accident_data(page_lots, stats)
+
+                self.repo.upsert_batch(page_lots, stats)
+
+                n_new = sum(1 for l in page_lots if l.id not in existing_ids)
+                n_upd = len(page_lots) - n_new
+                stats["new"]     += n_new
+                stats["updated"] += n_upd
+                stats["total"]   += len(page_lots)
+                total_saved      += len(page_lots)
+                total_pairs_done += 1
+
+                logger.info(
+                    f"[{source}] [{label}] "
+                    f"{len(page_lots)} lots saved (new={n_new}, upd={n_upd})"
+                )
+
+                # Small pause to be polite to the API
+                _time.sleep(0.3)
+
+        elapsed = _time.monotonic() - run_start
+        logger.info(
+            f"[{source}] ===== SAMPLE DONE: {total_saved} lots "
+            f"from {total_pairs_done}/{total_pairs} pairs "
+            f"in {self.format_elapsed(elapsed)} ====="
+        )
+        return {
+            "total":      stats["total"],
+            "new":        stats["new"],
+            "updated":    stats["updated"],
+            "errors":     stats["errors"],
+            "elapsed_s":  round(elapsed, 1),
+            "time":       self.format_elapsed(elapsed),
+            "mode":       f"sample/{lots_per_model}",
+        }
+
     def run(
         self,
         max_pages: int | None = None,
         maker_filter: str | None = None,
         on_page_callback: Callable | None = None,
         checkpoint: dict | None = None,
+        sample: int | None = None,
     ) -> dict:
+        # Sample mode: delegate entirely to run_sample()
+        if sample:
+            return self.run_sample(lots_per_model=sample)
+
         source = _SOURCE
         run_start = _time.monotonic()
         stats = self.init_stats()

@@ -23,6 +23,11 @@ class FieldsController extends Controller
     /** GET /admin/fields — unified mapping catalogue + coverage stats. */
     public function index(FieldMappingsService $mappings, FieldRegistryService $registry)
     {
+        $activeSources = array_values(array_filter(
+            (array) config('auction.sources', ['encar']),
+            fn ($source) => is_string($source) && $source !== '' && $source !== 'kbcha'
+        ));
+
         $schema   = $mappings->schema();
         $mappingByAttr = [];
         foreach ($schema['mappings'] ?? [] as $m) {
@@ -35,7 +40,15 @@ class FieldsController extends Controller
             $registryByName[$f['name']] = $f;
         }
 
-        $coverageRaw = FieldCoverageStat::orderBy('source')->orderBy('field_name')->get();
+        $coverageRaw = FieldCoverageStat::query()
+            ->when(
+                !empty($activeSources),
+                fn ($q) => $q->whereIn('source', $activeSources),
+                fn ($q) => $q->where('source', '!=', 'kbcha')
+            )
+            ->orderBy('source')
+            ->orderBy('field_name')
+            ->get();
         $coverageByField = [];
         $sources = [];
         $computedAt = null;
@@ -54,7 +67,7 @@ class FieldsController extends Controller
         sort($sources);
 
         $hiddenFields = array_values(array_filter(
-            config('admin.fields_hidden', []),
+            (array) config('admin.fields_hidden', []),
             fn ($f) => is_string($f) && $f !== ''
         ));
         $hiddenSet = array_fill_keys($hiddenFields, true);

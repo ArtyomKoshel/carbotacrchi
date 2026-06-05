@@ -35,6 +35,85 @@ def test_search_returns_results():
     client.close()
 
 
+def test_lot_from_search_field_mapping():
+    """Verify that _lot_from_search maps API fields directly — no regex, no parsing.
+
+    New Encar API format (post-2025):
+      Model      = clean model + generation suffix (e.g. "카니발 4세대")
+      ModelGroup = base model group (e.g. "카니발")
+      Badge      = powertrain badge (e.g. "가솔린 1.6T 2WD")
+      BadgeDetail = trim level (e.g. "노블레스") — directly mapped to lots.trim
+      FuelType    = fuel (e.g. "가솔린") — directly mapped to lots.fuel
+
+    generation is NOT extracted at parse time — it is populated later by
+    lots:normalize-from-catalog via catalog_models.generation lookup.
+    """
+    norm = EncarNormalizer()
+
+    # Carnival-style: generation in model_kr, trim in BadgeDetail
+    lot = _lot_from_search({
+        "Id": "42109333",
+        "Manufacturer": "기아",
+        "Model": "카니발 4세대",
+        "ModelGroup": "카니발",
+        "Badge": "11인승 프레스티지",
+        "BadgeDetail": "",
+        "FuelType": "디젤",
+        "Year": 202101.0,
+        "FormYear": "202101",
+        "Price": 1759.0,
+        "Mileage": 179251,
+        "Photos": [],
+    }, norm)
+
+    assert lot.model == "카니발 4세대"      # stored as-is, generation extracted by catalog
+    assert lot.model_group == "카니발"       # direct from ModelGroup
+    assert lot.badge == "11인승 프레스티지"   # direct from Badge
+    assert lot.trim is None                  # BadgeDetail empty → None
+    assert lot.generation is None            # populated later from catalog_models
+    assert lot.fuel == "diesel"              # FuelType → vocab lookup
+
+    # Sorento-style: trim in BadgeDetail
+    lot2 = _lot_from_search({
+        "Id": "42101772",
+        "Manufacturer": "기아",
+        "Model": "쏘렌토 4세대",
+        "ModelGroup": "쏘렌토",
+        "Badge": "HEV 1.6 2WD",
+        "BadgeDetail": "프레스티지",
+        "FuelType": "하이브리드",
+        "Year": 202101.0,
+        "FormYear": "202101",
+        "Price": 2690.0,
+        "Mileage": 54039,
+        "Photos": [],
+    }, norm)
+
+    assert lot2.model == "쏘렌토 4세대"
+    assert lot2.model_group == "쏘렌토"
+    assert lot2.badge == "HEV 1.6 2WD"
+    assert lot2.trim == "프레스티지"         # direct from BadgeDetail
+    assert lot2.fuel == "hybrid"             # 하이브리드 → hybrid
+
+    # Old-style model string with badge suffix — _clean_model_str strips it
+    lot3 = _lot_from_search({
+        "Id": "99001",
+        "Manufacturer": "현대",
+        "Model": "더 뉴 쏘렌토 4세대 HEV 1.6 2WD",
+        "ModelGroup": "쏘렌토",
+        "Badge": "HEV 1.6 2WD",
+        "BadgeDetail": "프레스티지",
+        "FuelType": "하이브리드",
+        "Year": 202101.0,
+        "FormYear": "202101",
+        "Price": 2690.0,
+        "Mileage": 54039,
+        "Photos": [],
+    }, norm)
+
+    assert lot3.model == "쏘렌토 4세대"     # badge suffix stripped, "더 뉴" prefix stripped
+
+
 def test_lot_from_search():
     client = EncarClient()
     norm = EncarNormalizer()

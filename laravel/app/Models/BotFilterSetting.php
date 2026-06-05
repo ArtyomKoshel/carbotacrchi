@@ -21,6 +21,7 @@ class BotFilterSetting extends Model
         'insurance_count',
         'has_accident',
         'owners_count',
+        'first_reg_date',
         'flood_history',
         'lot_url',
     ];

@@ -10,7 +10,7 @@ from config import Config
 from logging_config import setup_logging
 from repository import LotRepository
 import parsers  # noqa: F401 — triggers parser registration
-from parsers.registry import get_enabled
+from parsers.registry import get_enabled, get_all
 from scheduler import start_scheduler
 
 logger = logging.getLogger("parser")
@@ -30,6 +30,11 @@ def _parse_args() -> argparse.Namespace:
                         help="Re-fetch detail pages for lots already in DB (no list page fetching)")
     parser.add_argument("--limit", type=int, default=None,
                         help="Max lots to re-enrich (used with --reenrich)")
+    parser.add_argument("--sample", type=int, default=None,
+                        help="Sample mode: fetch N lots per model group (e.g. --sample 7). "
+                             "Covers all model groups with a small representative dataset.")
+    parser.add_argument("--source", type=str, default=None,
+                        help="Run only this source parser (e.g. --source=encar or --source=kbcha)")
     return parser.parse_args()
 
 
@@ -51,12 +56,30 @@ def wait_for_db(max_retries: int = 30, delay: float = 2.0) -> None:
     logger.error("MySQL not available, starting anyway")
 
 
-def run_once(pages: int | None = None, maker: str | None = None) -> None:
+def run_once(
+    pages: int | None = None,
+    maker: str | None = None,
+    sample: int | None = None,
+    source: str | None = None,
+) -> None:
     repo = LotRepository()
     try:
-        for key, reg in get_enabled().items():
+        # When --source is explicit, search all registered parsers (even disabled ones)
+        registry = get_all() if source else get_enabled()
+        for key, reg in registry.items():
+            # Filter by --source if specified
+            if source and key != source:
+                logger.info(f"{reg.cls.__name__} ({key}): skipped (--source={source})")
+                continue
             parser = reg.cls(repo)
-            result = parser.run(max_pages=pages, maker_filter=maker)
+            # sample mode is Encar-only — skip parsers that don't support it
+            if sample and not hasattr(parser, 'run_sample'):
+                logger.info(f"{parser.get_source_name()}: skipped (sample mode not supported)")
+                continue
+            kwargs = dict(max_pages=pages, maker_filter=maker)
+            if sample:
+                kwargs['sample'] = sample
+            result = parser.run(**kwargs)
             if isinstance(result, dict):
                 logger.info(
                     f"{parser.get_source_name()}: {result.get('total', 0)} lots imported "
@@ -105,9 +128,10 @@ def main() -> None:
         run_reenrich(limit=args.limit)
         return
 
-    if args.once:
-        logger.info("Running in one-shot mode")
-        run_once(pages=args.pages, maker=args.maker)
+    if args.once or args.sample:
+        mode = f"sample/{args.sample}" if args.sample else "one-shot"
+        logger.info(f"Running in {mode} mode")
+        run_once(pages=args.pages, maker=args.maker, sample=args.sample, source=args.source)
         return
 
     logger.info("Starting scheduler (first run in ~60s via job queue)...")

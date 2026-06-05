@@ -68,14 +68,22 @@ FIELD_MAPPINGS: list[FieldMapping] = [
     FieldMapping(
         attribute="model", db_column="model",
         extractions={
-            "encar": SourceExtraction("Model + Badge",         "f'{Model} {Badge}'.strip()"),
+            "encar": SourceExtraction("Model",                 "Encar taxonomy normalization (strip tail powertrain tokens, split trim suffix)"),
             "kbcha": SourceExtraction("title (HTML)",          "KBChaNormalizer.parse_title().model"),
         },
     ),
     FieldMapping(
+        attribute="generation", db_column="generation",
+        extractions={
+            "encar": SourceExtraction("Model / ModelGroup",    "extract_generation() from parenthetical codes / ModelGroup tokens"),
+            "kbcha": SourceExtraction("title generation-token", "KBChaNormalizer.parse_title().generation"),
+        },
+        notes="Generation/chassis code stored separately for cleaner model search/facets.",
+    ),
+    FieldMapping(
         attribute="model_en", db_column="model_en",
         extractions={
-            "encar": SourceExtraction("model (derived)",       "resolve_model_en(model_str) via korean_model_names"),
+            "encar": SourceExtraction("model (derived)",       "resolve_model_en(model_clean) via korean_model_names"),
             "kbcha": SourceExtraction("model (derived)",       "resolve_model_en(model) via korean_model_names"),
         },
         notes="Canonical English model name resolved from Korean. Used for search filtering.",
@@ -110,10 +118,17 @@ FIELD_MAPPINGS: list[FieldMapping] = [
         },
     ),
     FieldMapping(
-        attribute="registration_date", db_column="registration_date",
+        attribute="first_reg_date", db_column="first_reg_date",
         extractions={
-            "encar": SourceExtraction("manage.registDateTime[:10] or record.firstDate", "ISO date"),
-            "kbcha": SourceExtraction("연식 reg portion",        "date parsing"),
+            "encar": SourceExtraction("record.firstDate / inspection.firstRegistrationDate / HTML 최초등록일", "ISO date"),
+            "kbcha": SourceExtraction("연식 → YYYY-MM-01", "date parsing"),
+        },
+    ),
+    FieldMapping(
+        attribute="listed_at", db_column="listed_at",
+        extractions={
+            "encar": SourceExtraction("manage.registDateTime[:10]", "ISO date"),
+            "kbcha": SourceExtraction("", ""),
         },
     ),
     FieldMapping(
