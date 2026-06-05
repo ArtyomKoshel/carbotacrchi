@@ -11,6 +11,9 @@ return new class extends Migration
     {
         // make/model added as nullable in previous migration — change to NOT NULL DEFAULT ''
         // so they can participate in a unique key (NULL != NULL in MySQL unique indexes)
+        // First fill NULLs so the NOT NULL constraint doesn't fail
+        DB::statement("UPDATE taxonomy_terms SET make = '' WHERE make IS NULL");
+        DB::statement("UPDATE taxonomy_terms SET model = '' WHERE model IS NULL");
         DB::statement("ALTER TABLE taxonomy_terms MODIFY COLUMN make VARCHAR(80) NOT NULL DEFAULT ''");
         DB::statement("ALTER TABLE taxonomy_terms MODIFY COLUMN model VARCHAR(160) NOT NULL DEFAULT ''");
 
