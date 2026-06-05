@@ -5,6 +5,7 @@ namespace App\Bot;
 use App\Bot\Callbacks\SubscribeCallback;
 use App\Bot\Callbacks\UnsubscribeCallback;
 use App\Bot\Commands\HelpCommand;
+use App\Bot\Commands\LinkBrowserCommand;
 use App\Bot\Commands\MySubsCommand;
 use App\Bot\Commands\NewSearchCommand;
 use App\Bot\Commands\StartCommand;
@@ -50,7 +51,11 @@ class BotDispatcher
             'text'     => mb_substr($text, 0, 200),
         ]);
 
+        // /start link_TOKEN — browser linking takes priority over regular /start
+        $linkToken = $this->extractLinkToken($text);
+
         match (true) {
+            $linkToken !== null                            => (new LinkBrowserCommand($this->bot, $this->miniAppUrl))->handle($ctx, $linkToken),
             $text === '/start'                            => (new StartCommand($this->bot, $this->miniAppUrl))->handle($ctx),
             $text === '/help'                             => (new HelpCommand($this->bot, $this->miniAppUrl))->handle($ctx),
             $text === '/mysubs'                           => (new MySubsCommand($this->bot, $this->miniAppUrl))->handle($ctx),
@@ -133,5 +138,17 @@ class BotDispatcher
                 ['username' => $from['username'] ?? '', 'first_name' => $from['first_name'] ?? '', 'last_seen' => now()]
             );
         } catch (\Throwable) {}
+    }
+
+    /**
+     * Extract the browser link token from "/start link_TOKEN" messages.
+     * Returns null for any other message.
+     */
+    private function extractLinkToken(string $text): ?string
+    {
+        if (preg_match('/^\/start\s+link_([A-Za-z0-9]+)$/', $text, $m)) {
+            return $m[1];
+        }
+        return null;
     }
 }

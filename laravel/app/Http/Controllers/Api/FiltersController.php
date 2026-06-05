@@ -126,7 +126,15 @@ class FiltersController extends Controller
                   });
             });
         }
-        if ($badge !== '')      $base->where('badge', $badge);
+        // badge = badge_en (fallback to badge when EN missing)
+        if ($badge !== '') {
+            $base->where(function ($q) use ($badge) {
+                $q->where('badge_en', $badge)
+                  ->orWhere(function ($q2) use ($badge) {
+                      $q2->whereNull('badge_en')->where('badge', $badge);
+                  });
+            });
+        }
         if ($trim !== '')       $base->where('trim', $trim);
         // generation → model_en (Encar Level 3 — full Model variant, e.g. "A5 (F5)")
         if ($generation !== '') {
@@ -137,7 +145,7 @@ class FiltersController extends Controller
         $modelGroups = $this->pluck(clone $base, 'model_group');
         // Level 3: model_group_en (English ModelGroup)
         $models      = $this->pluckNonEmpty(clone $base, 'model_group_en');
-        $badges      = $this->pluck(clone $base, 'badge');
+        $badges      = $this->pluckCoalesced(clone $base, 'badge_en', 'badge');
         $trims       = $this->pluckFiltered(clone $base, 'trim', ['', '(세부등급 없음)']);
         $bodyTypes     = $this->pluck(clone $base, 'body_type');
         $fuelTypes     = $this->pluck(clone $base, 'fuel');
@@ -178,7 +186,7 @@ class FiltersController extends Controller
         $make    = trim((string) $request->query('make', ''));
         $modelGroup = trim((string) $request->query('model_group', ''));
         $model   = trim((string) $request->query('model', ''));
-        $locale  = trim((string) $request->query('locale', 'en')) ?: 'en';
+        $locale  = trim((string) $request->query('locale', 'ru')) ?: 'ru';
         $sources = config('auction.sources', ['encar', 'kbcha']);
         $sources = is_array($sources) ? $sources : ['encar', 'kbcha'];
 

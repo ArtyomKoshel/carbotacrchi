@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\BrowserLinkToken;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,19 @@ class ValidateTelegramAuth
             return $next($request);
         }
 
+        // Browser mode: authenticate via a linked browser_token
+        $browserToken = (string) ($request->input('browser_token') ?? '');
+        if ($browserToken !== '') {
+            $record = BrowserLinkToken::findValid($browserToken);
+            if ($record && $record->isLinked()) {
+                // Inject user_id so downstream controllers work unchanged
+                $request->merge(['user_id' => $record->chat_id]);
+                return $next($request);
+            }
+            return response()->json(['ok' => false, 'error' => 'Browser token not linked or expired'], 401);
+        }
+
+        // Telegram WebApp mode: validate initData HMAC
         $initData = (string) ($request->input('init_data') ?? '');
 
         if (!$this->validate($initData)) {

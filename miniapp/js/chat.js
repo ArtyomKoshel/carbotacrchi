@@ -179,5 +179,27 @@ const Chat = (() => {
       c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  return { init, send };
+  function reset() {
+    // Reset server-side AI session (fire-and-forget)
+    API.resetChat().catch(() => {});
+
+    // Restore chat DOM to initial state
+    const msgs = document.getElementById('chat-messages');
+    if (msgs) {
+      msgs.innerHTML = `
+        <div class="chat-intro" id="chat-intro">
+          <div class="chat-intro-icon">✨</div>
+          <div class="chat-intro-title">ИИ-поиск</div>
+          <div class="chat-intro-desc">Опишите автомобиль своими словами — ИИ подберёт нужные параметры</div>
+          <div class="chat-intro-example" id="chat-example-1">Хочу Hyundai Sonata 2020–2022, до $15 000, без аварий</div>
+          <div class="chat-intro-example" id="chat-example-2">Kia K5 до 2023 года, автомат, до 20 000$</div>
+        </div>`;
+      document.getElementById('chat-example-1')?.addEventListener('click', () =>
+        _fillAndSend('Хочу Hyundai Sonata 2020–2022, до $15 000, без аварий'));
+      document.getElementById('chat-example-2')?.addEventListener('click', () =>
+        _fillAndSend('Kia K5 до 2023 года, автомат, до 20 000$'));
+    }
+  }
+
+  return { init, send, reset };
 })();

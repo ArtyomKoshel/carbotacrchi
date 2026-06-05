@@ -2,6 +2,7 @@
 
 return [
     'bot_token'          => env('TELEGRAM_BOT_TOKEN', ''),
+    'bot_username'       => env('TELEGRAM_BOT_USERNAME', ''),
     'webhook_secret'     => env('TELEGRAM_WEBHOOK_SECRET', ''),
     'miniapp_url'        => env('MINIAPP_URL', 'https://localhost:8080/miniapp/'),
     'data_dir'           => storage_path('app/data'),

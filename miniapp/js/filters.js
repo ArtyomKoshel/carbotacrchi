@@ -93,13 +93,13 @@ const Filters = (() => {
     body_type:          { type: 'chips',      stateKey: 'bodyTypes',     optionsKey: 'bodyTypeOptions',     fallbackKey: 'bodyTypes' },
     drive_type:         { type: 'chips',      stateKey: 'driveTypes',    optionsKey: 'driveTypeOptions',    fallbackKey: 'driveTypes' },
     color:              { type: 'chips',      stateKey: 'colors',        optionsKey: 'colorOptions',        fallbackKey: 'colors' },
-    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Any'},{value:'false',label:'✅ No accidents'},{value:'true',label:'⚠️ Has accidents'}] },
-    flood_history:      { type: 'bool_chips', stateKey: 'floodHistory',       options: [{value:'',label:'Any'},{value:'false',label:'✅ No flooding'},{value:'true',label:'🌊 Flood history'}] },
-    total_loss_history: { type: 'bool_chips', stateKey: 'totalLossHistory',   options: [{value:'',label:'Any'},{value:'false',label:'✅ Not written off'},{value:'true',label:'❌ Total loss'}] },
+    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Любой'},{value:'false',label:'✅ Без ДТП'},{value:'true',label:'⚠️ Есть ДТП'}] },
+    flood_history:      { type: 'bool_chips', stateKey: 'floodHistory',       options: [{value:'',label:'Любой'},{value:'false',label:'✅ Без подтоплений'},{value:'true',label:'🌊 Было подтопление'}] },
+    total_loss_history: { type: 'bool_chips', stateKey: 'totalLossHistory',   options: [{value:'',label:'Любой'},{value:'false',label:'✅ Не тотал'},{value:'true',label:'❌ Тотальная потеря'}] },
     insurance_count:    { type: 'range',      idMin: 'filter-insurance-min',   idMax: 'filter-insurance-max',  inputType: 'number', min: 0 },
     owners_count:       { type: 'range',      idMin: 'filter-owners-min',      idMax: 'filter-owners-max',     inputType: 'number', min: 0, max: 20 },
-    lien_status:        { type: 'chips',      stateKey: 'lienStatuses',   optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ Clean title'}] },
-    seizure_status:     { type: 'chips',      stateKey: 'seizureStatuses',optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ No seizure'}] },
+    lien_status:        { type: 'chips',      stateKey: 'lienStatuses',   optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ Чистый'}] },
+    seizure_status:     { type: 'chips',      stateKey: 'seizureStatuses',optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ Нет ареста'}] },
     options:            { type: 'options_select', id: 'filter-options' },
   };
 
@@ -110,7 +110,7 @@ const Filters = (() => {
 
   async function init() {
     try {
-      filtersData = await API.getFilters('en');
+      filtersData = await API.getFilters('ru');
       Taxonomy.ingestFilters(filtersData ?? {});
       const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
       if (sourceKeys.length) state.sources = sourceKeys;
@@ -182,7 +182,10 @@ const Filters = (() => {
 
     const labelSpan = document.createElement('span');
     labelSpan.className = 'filter-label__text';
-    labelSpan.textContent = apiLabel || name;
+    const displayLabel = name === 'make'
+      ? 'Марка / Модель / Комплектация'
+      : (apiLabel || name);
+    labelSpan.textContent = displayLabel;
     header.appendChild(labelSpan);
 
     if (canCollapse) {
@@ -219,16 +222,16 @@ const Filters = (() => {
         selects.className = 'filter-selects';
         selects.innerHTML = `
           <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-make"><option value="">Any make</option></select>
+            <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
           </div>
           <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-model"><option value="">Any model</option></select>
+            <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
           </div>
           <div class="filter-select-wrap" id="filter-badge-wrap" style="display:none">
-            <select class="filter-select" id="filter-badge"><option value="">Any badge</option></select>
+            <select class="filter-select" id="filter-badge"><option value="">Любая серия</option></select>
           </div>
           <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
-            <select class="filter-select" id="filter-trim"><option value="">Any trim</option></select>
+            <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
           </div>`;
         body.appendChild(selects);
         break;
@@ -497,7 +500,7 @@ const Filters = (() => {
 
     makeSelectInstance = _tsBase(el, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Any make' }, ...makes],
+      options:  [{ value: '', text: 'Любая марка' }, ...makes],
       items:    state.make ? [state.make] : [''],
       onChange(val) {
         const v = val || '';
@@ -528,7 +531,7 @@ const Filters = (() => {
 
     modelSelectInstance = _tsBase(el, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Any model' }, ...models.map(m => ({ value: m, text: m }))],
+      options:  [{ value: '', text: 'Любая модель' }, ...models.map(m => ({ value: m, text: m }))],
       items:    state.model ? [state.model] : [''],
       onChange(val) {
         const v = val || '';
@@ -567,7 +570,7 @@ const Filters = (() => {
 
     badgeSelectInstance = _tsBase(sel, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Any badge' }, ...opts],
+      options:  [{ value: '', text: 'Любая серия' }, ...opts],
       items:    state.badge ? [state.badge] : [''],
       onChange(val) {
         const v = val || '';
@@ -585,7 +588,7 @@ const Filters = (() => {
     const model = state.model;
     const reqId = ++trimRequestSeq;
     try {
-      const data = await API.getTrims(make, model, 'en');
+      const data = await API.getTrims(make, model, 'ru');
       if (reqId !== trimRequestSeq) return;
       if (make !== state.make || model !== state.model) return;
       const trimOpts = data?.trimOptions ?? [];
@@ -622,7 +625,7 @@ const Filters = (() => {
 
     trimSelectInstance = _tsBase(sel, {
       maxItems: 1,
-      options:  [{ value: '', text: 'Any trim' }, ...opts],
+      options:  [{ value: '', text: 'Любая комплектация' }, ...opts],
       items:    state.trim ? [state.trim] : [''],
       onChange(val) { state.trim = val || ''; },
     });
@@ -813,6 +816,10 @@ const Filters = (() => {
     resetState();
     render();
     _updateResetBtn();
+    // Reset AI chat context and history
+    if (typeof Chat !== 'undefined') Chat.reset();
+    // Clear last search so page reload doesn't restore the old query
+    try { localStorage.removeItem('lastSearch'); } catch (_) {}
     TG.haptic('notification', 'success');
   }
 

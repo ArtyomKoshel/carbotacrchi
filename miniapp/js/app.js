@@ -27,6 +27,14 @@ const App = (() => {
   async function init() {
     TG.init();
 
+    // Browser mode: initialize linking bar (no-op inside Telegram WebApp)
+    if (typeof BrowserAuth !== 'undefined') {
+      BrowserAuth.init((_chatId) => {
+        // Called when user completes linking — reload subscriptions
+        Subscriptions.loadSubs();
+      });
+    }
+
     if (TG.canMinimize()) {
       const btn = document.getElementById('minimize-btn');
       if (btn) btn.style.display = '';

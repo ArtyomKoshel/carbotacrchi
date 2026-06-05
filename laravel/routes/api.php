@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BrowserAuthController;
 use App\Http\Controllers\Api\FavoritesController;
 use App\Http\Controllers\Api\FiltersController;
 use App\Http\Controllers\Api\InspectionsController;
@@ -10,6 +11,10 @@ use App\Http\Controllers\Internal\LotsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/lots/{lotId}/inspection', [InspectionsController::class, 'show']);
+
+// Browser ↔ Telegram linking (no auth required — public endpoints)
+Route::post('/auth/browser-init',          [BrowserAuthController::class, 'init']);
+Route::get('/auth/browser-status',         [BrowserAuthController::class, 'status']);
 
 Route::middleware('telegram.auth')->group(function () {
     Route::post('/search',                    [SearchController::class,       'search']);
