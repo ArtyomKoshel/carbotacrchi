@@ -339,6 +339,13 @@ body.browser-mode #app { padding-bottom: calc(56px + 44px); }
   cursor: pointer; white-space: nowrap;
 }
 .blb-btn:hover { opacity: .85; }
+.blb-btn--unlink {
+  background: transparent;
+  color: var(--hint);
+  border: 1px solid rgba(255,255,255,.15);
+  font-weight: 400;
+}
+.blb-btn--unlink:hover { color: var(--text); border-color: rgba(255,255,255,.3); opacity: 1; }
 .blb-dots {
   display: flex; gap: 4px; align-items: center; flex-shrink: 0;
 }

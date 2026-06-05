@@ -148,8 +148,9 @@ const BrowserAuth = (() => {
     bar.addEventListener('click', e => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
-      if (btn.dataset.action === 'link')  startLinking();
-      if (btn.dataset.action === 'retry') startLinking();
+      if (btn.dataset.action === 'link')   startLinking();
+      if (btn.dataset.action === 'retry')  startLinking();
+      if (btn.dataset.action === 'unlink') _unlink();
     });
 
     if (isLinked()) {
@@ -183,7 +184,8 @@ const BrowserAuth = (() => {
         const name = _user?.first_name || _user?.username || 'Telegram';
         return `
           <span class="blb-icon">✅</span>
-          <span class="blb-text">Привязан: <b>${_esc(name)}</b></span>`;
+          <span class="blb-text">Привязан: <b>${_esc(name)}</b></span>
+          <button class="blb-btn blb-btn--unlink" data-action="unlink">Отвязать</button>`;
       }
 
       case 'timeout':
@@ -208,6 +210,19 @@ const BrowserAuth = (() => {
     if (!bar) return;
     bar.innerHTML = _barHtml(state);
     bar.dataset.state = state;
+  }
+
+  function _unlink() {
+    _stopPolling();
+    _token  = null;
+    _chatId = null;
+    _user   = null;
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(CHAT_KEY);
+      localStorage.removeItem(USER_KEY);
+    } catch (_) {}
+    _setBarState('idle');
   }
 
   function _esc(v) {

@@ -369,7 +369,22 @@ const App = (() => {
     setTimeout(() => t.classList.remove('show'), 2200);
   }
 
+  /** Called by the "Очистить" button — resets filters AND clears stale results. */
+  function resetSearch() {
+    Filters.reset();
+
+    // Clear results grid so stale cards don't show when user switches to Results tab
+    const grid = document.getElementById('cards-grid');
+    if (grid) grid.innerHTML = '';
+    const wrap = document.getElementById('load-more-wrap');
+    if (wrap) wrap.style.display = 'none';
+    paginationState = { query: null, offset: 0, total: 0, loading: false, limit: 40 };
+
+    // Go back to search tab
+    switchTab('search');
+  }
+
   document.addEventListener('DOMContentLoaded', init);
 
-  return { switchTab, showToast, searchWithQuery, setSearchMode };
+  return { switchTab, showToast, searchWithQuery, setSearchMode, resetSearch };
 })();
