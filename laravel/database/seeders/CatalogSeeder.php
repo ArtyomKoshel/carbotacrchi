@@ -32,17 +32,18 @@ class CatalogSeeder extends Seeder
             }
 
             $before = DB::table($table)->count();
-            $sql    = file_get_contents($path);
+            $raw    = file_get_contents($path);
+
+            // Strip comment-only lines before splitting
+            $sql = implode("\n", array_filter(
+                explode("\n", $raw),
+                fn($line) => ! str_starts_with(ltrim($line), '--')
+            ));
 
             // Split into individual statements and execute one by one
-            $statements = array_filter(
-                array_map('trim', explode(";\n", $sql)),
-                fn($s) => ! empty($s) && ! str_starts_with($s, '--')
-            );
-
             $count = 0;
-            foreach ($statements as $statement) {
-                $statement = rtrim($statement, ';');
+            foreach (explode(";\n", $sql) as $statement) {
+                $statement = trim(rtrim($statement, ';'));
                 if (empty($statement)) {
                     continue;
                 }
