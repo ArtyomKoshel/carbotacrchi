@@ -19,6 +19,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('catalog_model_trims')) {
+            return;
+        }
+
         Schema::create('catalog_model_trims', function (Blueprint $table) {
             $table->id();
             $table->string('source', 32)->default('encar')->index();
