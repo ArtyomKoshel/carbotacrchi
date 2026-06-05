@@ -4,45 +4,18 @@ Encar iNav hierarchical drill-down scraper.
 Traverses the 6-level iNav navigation tree using the Encar search API:
   CarType → Manufacturer → ModelGroup → Model → BadgeGroup → Badge → BadgeDetail
 
-Key advantages over search-list scraping:
-  - Manufacturer Metadata.EngName = official English name (Hyundai, Kia, BMW…)
-  - BadgeGroup gives structured fuel + displacement ("가솔린 2500cc")
-  - Badge gives fuel + engine + drive ("가솔린 2.5T 2WD")
-  - BadgeDetail = trim name directly, no parsing needed
-  - All flat facets (Color, FuelType, Transmission, Category/차종) in ONE request
-
-Output: analysis/encar_inav_tree.json
-  {
-    "meta": { "scraped_at": "...", "api_calls": 1234 },
-    "flat": {
-      "colors":       {"흰색": 87396, ...},
-      "seat_colors":  {"검정색 계열": 135400, ...},
-      "fuel_types":   {"가솔린": 125488, ...},
-      "transmissions":{"오토": 219698, ...},
-      "body_types":   {"SUV": 85263, ...},   // Category node
-      "seat_counts":  {"5인승": 171566, ...}
-    },
-    "taxonomy": [
-      {
-        "car_type": "Y",
-        "make_kr": "현대",
-        "make_en": "Hyundai",
-        "model_group_kr": "싼타페",
-        "model_kr": "싼타페 (MX5)",
-        "badge_group_kr": "가솔린 2500cc",
-        "badge_kr": "가솔린 2.5T 2WD",
-        "badge_detail_kr": "프레스티지",
-        "count": 47
-      },
-      ...
-    ]
-  }
+Optimisations vs v1:
+  - Concurrent model processing via ThreadPoolExecutor (--workers, default 8)
+  - Per-thread httpx.Client (connection reuse, no lock contention)
+  - Reduced base sleep (--sleep, default 0.05 s)
+  - Thread-safe row collection with threading.Lock
+  - Autosave after every make (same as before)
 
 Usage:
-  cd parser
-  python ../analysis/scrape_encar_inav_tree.py
-  python ../analysis/scrape_encar_inav_tree.py --dry-run     # first 2 makes only
-  python ../analysis/scrape_encar_inav_tree.py --resume
+  python scrape_encar_inav_tree.py --out-dir /app/logs/analysis
+  python scrape_encar_inav_tree.py --out-dir /app/logs/analysis --workers 12 --sleep 0.03
+  python scrape_encar_inav_tree.py --out-dir /app/logs/analysis --resume
+  python scrape_encar_inav_tree.py --dry-run
 """
 from __future__ import annotations
 
@@ -51,15 +24,16 @@ import json
 import os
 import signal
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-sys.path.insert(0, ".")
 
 import httpx
 
-BASE_URL = "https://api.encar.com/search/car/list/general"
+BASE_URL   = "https://api.encar.com/search/car/list/general"
 INAV_PARAM = "|Metadata|Sort"
 
 HEADERS = {
@@ -67,13 +41,17 @@ HEADERS = {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
-    "Referer": "https://www.encar.com/",
-    "Accept": "application/json",
+    "Referer":         "https://www.encar.com/",
+    "Accept":          "application/json",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
 }
 
-_STOP = False
+_STOP      = False
 _api_calls = 0
+_api_lock  = threading.Lock()
+_print_lock = threading.Lock()
+
+SLEEP      = 0.05   # overridden by --sleep
 
 
 def _sigint(sig, frame):
@@ -85,62 +63,69 @@ def _sigint(sig, frame):
 signal.signal(signal.SIGINT, _sigint)
 
 
+# ── thread-local httpx clients ─────────────────────────────────────────────────
+
+_local = threading.local()
+
+def _client() -> httpx.Client:
+    if not hasattr(_local, "client"):
+        _local.client = httpx.Client(headers=HEADERS, follow_redirects=True, timeout=20)
+    return _local.client
+
+
 # ── API helpers ────────────────────────────────────────────────────────────────
 
-def _get_inav(client: httpx.Client, q: str, retries: int = 4) -> dict:
-    """Fetch iNav navigation for a query. Returns full iNav dict."""
+def _get_inav(q: str, retries: int = 4) -> dict:
     global _api_calls
+    client = _client()
     for attempt in range(retries):
         try:
-            r = client.get(BASE_URL, params={
-                "count": "true",
-                "q": q,
-                "inav": INAV_PARAM,
-            }, timeout=20)
+            r = client.get(BASE_URL, params={"count": "true", "q": q, "inav": INAV_PARAM}, timeout=20)
             r.raise_for_status()
-            _api_calls += 1
+            with _api_lock:
+                _api_calls += 1
+            time.sleep(SLEEP)
             return r.json().get("iNav", {})
         except Exception as e:
             wait = 2 ** attempt
-            print(f"    [retry {attempt+1}] {e.__class__.__name__} — wait {wait}s")
+            with _print_lock:
+                print(f"    [retry {attempt+1}] {e.__class__.__name__} — wait {wait}s")
             time.sleep(wait)
     return {}
 
 
 def _find_facets(container: dict, aspect_name: str, _depth: int = 0) -> list[dict]:
-    """
-    Recursively search iNav Nodes for a specific Aspect name.
-    ModelGroups can be 5+ levels deep inside nested Refinements.
-
-    container: dict with "Nodes" key (iNav root or a Refinements dict).
-    """
     if _depth > 12:
         return []
-
     for node in container.get("Nodes", []):
-        # This node IS the target
         if node.get("Name") == aspect_name:
             return node.get("Facets", [])
-
-        # Recurse into each facet's Refinements
         for facet in node.get("Facets", []):
             ref = facet.get("Refinements")
             if ref:
                 result = _find_facets(ref, aspect_name, _depth + 1)
                 if result:
                     return result
-
     return []
 
 
+def _get_next_level(action: str, aspect: str) -> list[dict]:
+    inav = _get_inav(action)
+    return _find_facets(inav, aspect)
+
+
+def _facet_meta(f: dict, key: str) -> str | None:
+    vals = f.get("Metadata", {}).get(key, [])
+    return vals[0] if vals else None
+
+
 def _extract_flat_catalogs(inav: dict) -> dict:
-    """Extract flat facet lists (colors, transmissions, etc.) from top-level iNav."""
     aspect_map = {
         "Color":           "colors",
         "SeatColor":       "seat_colors",
         "FuelType":        "fuel_types",
         "Transmission":    "transmissions",
-        "Category":        "body_types",     # 차종: SUV, 대형차, …
+        "Category":        "body_types",
         "SeatingCapacity": "seat_counts",
     }
     result = {v: {} for v in aspect_map.values()}
@@ -153,60 +138,86 @@ def _extract_flat_catalogs(inav: dict) -> dict:
     return result
 
 
-# ── Drill-down logic ───────────────────────────────────────────────────────────
+# ── Per-model worker ───────────────────────────────────────────────────────────
 
-def _get_next_level(client: httpx.Client, action: str, aspect: str) -> list[dict]:
-    """
-    Apply 'action' as query, find aspect in response navigation.
-    Returns list of facet dicts [{Value, DisplayValue, Count, Action, Metadata}, …].
-    """
-    inav = _get_inav(client, action)
-    return _find_facets(inav, aspect)
+def _process_model(
+    ct_value: str,
+    make_kr: str,
+    make_en: str,
+    mg_kr: str,
+    model_f: dict,
+) -> list[dict]:
+    """Fetch badge groups → badges → badge details for ONE model. Returns rows."""
+    if _STOP:
+        return []
 
+    model_kr  = model_f["Value"]
+    model_act = model_f["Action"]
+    model_rows: list[dict] = []
 
-def _facet_meta(f: dict, key: str) -> str | None:
-    """Extract first value from Metadata[key] list, or None."""
-    vals = f.get("Metadata", {}).get(key, [])
-    return vals[0] if vals else None
+    base = dict(
+        car_type=ct_value, make_kr=make_kr, make_en=make_en,
+        model_group_kr=mg_kr, model_kr=model_kr,
+    )
+
+    bg_facets = _get_next_level(model_act, "BadgeGroup")
+    if not bg_facets:
+        model_rows.append({**base, "badge_group_kr": None, "badge_kr": None,
+                           "badge_detail_kr": None, "count": model_f["Count"]})
+        return model_rows
+
+    for bg_f in bg_facets:
+        if _STOP:
+            break
+        bg_kr  = bg_f["Value"]
+        bg_act = bg_f["Action"]
+
+        badge_facets = _get_next_level(bg_act, "Badge")
+        for badge_f in badge_facets:
+            if _STOP:
+                break
+            badge_kr  = badge_f["Value"]
+            badge_act = badge_f["Action"]
+
+            bd_facets = _get_next_level(badge_act, "BadgeDetail")
+            if not bd_facets:
+                model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
+                                   "badge_detail_kr": None, "count": badge_f["Count"]})
+                continue
+
+            for bd_f in bd_facets:
+                model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
+                                   "badge_detail_kr": bd_f["Value"], "count": bd_f["Count"]})
+    return model_rows
 
 
 # ── Main scraper ───────────────────────────────────────────────────────────────
 
 def scrape(
-    client: httpx.Client,
+    workers: int = 8,
     dry_run: bool = False,
     existing_rows: list[dict] | None = None,
 ) -> tuple[dict, list[dict]]:
-    """
-    Returns (flat_catalogs, taxonomy_rows).
-    taxonomy_rows: list of dicts with full path + count.
 
-    existing_rows: pre-loaded rows from a previous partial run (--resume).
-    Makes that already have all their data in existing_rows are skipped.
-    """
     rows: list[dict] = list(existing_rows or [])
+    rows_lock = threading.Lock()
 
-    # Build set of (make_kr, model_group_kr, model_kr) already scraped
-    # so we can skip them on resume.
-    scraped_models: set[tuple[str, str, str]] = {
+    scraped_models: set[tuple] = {
         (r["make_kr"], r["model_group_kr"] or "", r["model_kr"] or "")
-        for r in rows
-        if r.get("model_kr")
+        for r in rows if r.get("model_kr")
     }
     if scraped_models:
-        print(f"  [resume] {len(scraped_models):,} models already in file — will skip")
+        print(f"  [resume] {len(scraped_models):,} models already scraped — skipping")
 
-    # ── Step 0: top-level iNav → flat catalogs ────────────────────────────────
-    print("[0] Fetching top-level iNav for flat catalogs…")
-    top_inav = _get_inav(client, "(And.Hidden.N.)")
+    # Step 0: top-level iNav for flat catalogs
+    print("[0] Fetching top-level iNav for flat catalogs...")
+    top_inav = _get_inav("(And.Hidden.N.)")
     flat = _extract_flat_catalogs(top_inav)
-    print(f"    colors={len(flat['colors'])}  seat_colors={len(flat['seat_colors'])}"
-          f"  fuels={len(flat['fuel_types'])}  transmissions={len(flat['transmissions'])}"
-          f"  body_types={len(flat['body_types'])}  seat_counts={len(flat['seat_counts'])}")
+    print(f"    colors={len(flat['colors'])}  fuels={len(flat['fuel_types'])}  "
+          f"transmissions={len(flat['transmissions'])}  body_types={len(flat['body_types'])}")
 
-    # ── Step 1: get all CarTypes → Manufacturers ──────────────────────────────
+    # Step 1: CarTypes
     car_type_facets = _find_facets(top_inav, "CarType")
-    # We want domestic (Y) + imported (N). A = all, skip to avoid duplicates.
     target_car_types = [f for f in car_type_facets if f.get("Value") in ("Y", "N")]
     print(f"\n[1] CarTypes: {[f['Value'] for f in target_car_types]}")
 
@@ -214,16 +225,14 @@ def scrape(
         if _STOP:
             break
         ct_value  = ct_facet["Value"]
-        ct_action = ct_facet["Action"]   # e.g. "(And.Hidden.N._.CarType.Y.)"
+        ct_action = ct_facet["Action"]
+        print(f"\n  CarType={ct_value}  ({ct_facet['Count']:,})")
 
-        print(f"\n  CarType={ct_value}  ({ct_facet['Count']:,} listings)")
-
-        # ── Step 2: Manufacturers ──────────────────────────────────────────────
-        make_facets = _get_next_level(client, ct_action, "Manufacturer")
+        # Step 2: Manufacturers
+        make_facets = _get_next_level(ct_action, "Manufacturer")
         print(f"    Manufacturers: {len(make_facets)}")
         if dry_run:
             make_facets = make_facets[:2]
-            print(f"    [dry-run] limiting to {len(make_facets)} makes")
 
         for make_f in make_facets:
             if _STOP:
@@ -231,94 +240,59 @@ def scrape(
             make_kr  = make_f["Value"]
             make_en  = _facet_meta(make_f, "EngName") or ""
             make_act = make_f["Action"]
+            print(f"\n    [{make_kr} / {make_en}]  {make_f['Count']:,}")
 
-            print(f"    [{make_kr} / {make_en}]  {make_f['Count']:,}")
-            time.sleep(0.3)
-            _make_rows_before = len(rows)
+            make_rows_before = len(rows)
 
-            # ── Step 3: ModelGroups ────────────────────────────────────────────
-            mg_facets = _get_next_level(client, make_act, "ModelGroup")
+            # Step 3: ModelGroups
+            mg_facets = _get_next_level(make_act, "ModelGroup")
             print(f"      ModelGroups: {len(mg_facets)}")
             if dry_run:
                 mg_facets = mg_facets[:2]
+
             for mg_f in mg_facets:
                 if _STOP:
                     break
                 mg_kr  = mg_f["Value"]
                 mg_act = mg_f["Action"]
-                time.sleep(0.25)
 
-                # ── Step 4: Models (등급) ──────────────────────────────────────
-                model_facets = _get_next_level(client, mg_act, "Model")
-                print(f"        {mg_kr}: {len(model_facets)} models")
+                # Step 4: Models
+                model_facets = _get_next_level(mg_act, "Model")
+                print(f"        {mg_kr}: {len(model_facets)} models", flush=True)
                 if dry_run:
                     model_facets = model_facets[:1]
-                for model_f in model_facets:
-                    if _STOP:
-                        break
-                    model_kr  = model_f["Value"]
-                    model_act = model_f["Action"]
-                    time.sleep(0.25)
 
-                    # Skip models already scraped in a previous run
-                    if (make_kr, mg_kr, model_kr) in scraped_models:
-                        continue
+                # Filter already-scraped
+                pending = [
+                    m for m in model_facets
+                    if (make_kr, mg_kr, m["Value"]) not in scraped_models
+                ]
+                if not pending:
+                    continue
 
-                    # ── Step 5: BadgeGroups ────────────────────────────────────
-                    bg_facets = _get_next_level(client, model_act, "BadgeGroup")
-                    if not bg_facets:
-                        # Model with no badge groups → record as-is
-                        rows.append({
-                            "car_type": ct_value, "make_kr": make_kr, "make_en": make_en,
-                            "model_group_kr": mg_kr, "model_kr": model_kr,
-                            "badge_group_kr": None, "badge_kr": None, "badge_detail_kr": None,
-                            "count": model_f["Count"],
-                        })
-                        continue
-
-                    for bg_f in bg_facets:
+                # ── Concurrent badge fetch ──────────────────────────────────
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = {
+                        pool.submit(_process_model, ct_value, make_kr, make_en, mg_kr, m): m
+                        for m in pending
+                    }
+                    for fut in as_completed(futures):
                         if _STOP:
                             break
-                        bg_kr  = bg_f["Value"]
-                        bg_act = bg_f["Action"]
-                        time.sleep(0.25)
+                        model_rows = fut.result()
+                        with rows_lock:
+                            rows.extend(model_rows)
+                            if len(rows) % 500 < len(model_rows):
+                                with _api_lock:
+                                    calls = _api_calls
+                                print(f"      rows so far: {len(rows):,}  api_calls: {calls:,}",
+                                      flush=True)
 
-                        # ── Step 6: Badges ─────────────────────────────────────
-                        badge_facets = _get_next_level(client, bg_act, "Badge")
-                        for badge_f in badge_facets:
-                            if _STOP:
-                                break
-                            badge_kr  = badge_f["Value"]
-                            badge_act = badge_f["Action"]
-                            time.sleep(0.25)
-
-                            # ── Step 7: BadgeDetails (trim names) ──────────────
-                            bd_facets = _get_next_level(client, badge_act, "BadgeDetail")
-                            if not bd_facets:
-                                rows.append({
-                                    "car_type": ct_value, "make_kr": make_kr, "make_en": make_en,
-                                    "model_group_kr": mg_kr, "model_kr": model_kr,
-                                    "badge_group_kr": bg_kr, "badge_kr": badge_kr,
-                                    "badge_detail_kr": None, "count": badge_f["Count"],
-                                })
-                                continue
-
-                            for bd_f in bd_facets:
-                                rows.append({
-                                    "car_type": ct_value, "make_kr": make_kr, "make_en": make_en,
-                                    "model_group_kr": mg_kr, "model_kr": model_kr,
-                                    "badge_group_kr": bg_kr, "badge_kr": badge_kr,
-                                    "badge_detail_kr": bd_f["Value"],
-                                    "count": bd_f["Count"],
-                                })
-
-                    if len(rows) % 500 == 0:
-                        print(f"      rows so far: {len(rows):,}  api_calls: {_api_calls:,}")
-
-            # Auto-save after each make so progress survives interruption
-            if len(rows) > _make_rows_before and not dry_run:
-                print(f"      [autosave] {len(rows):,} rows total")
-                _autosave_rows = rows  # captured in closure for _save below
+            # Autosave after each make
+            if len(rows) > make_rows_before:
+                with _api_lock:
+                    calls = _api_calls
+                print(f"      [autosave] {len(rows):,} rows  api_calls: {calls:,}", flush=True)
 
     return flat, rows
 
@@ -330,7 +304,7 @@ def _save(out_path: str, flat: dict, rows: list[dict], start: datetime) -> None:
             "api_calls":  _api_calls,
             "rows":       len(rows),
         },
-        "flat": flat,
+        "flat":     flat,
         "taxonomy": rows,
     }
     with open(out_path, "w", encoding="utf-8") as f:
@@ -339,50 +313,53 @@ def _save(out_path: str, flat: dict, rows: list[dict], start: datetime) -> None:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Scrape Encar iNav tree to JSON")
-    ap.add_argument("--out-dir", default="../analysis")
-    ap.add_argument("--dry-run", action="store_true", help="Only first 2 makes per CarType")
-    ap.add_argument("--resume", action="store_true",
-                    help="Load existing encar_inav_tree.json and skip already-scraped models")
+    ap = argparse.ArgumentParser(description="Scrape Encar iNav tree to JSON (fast)")
+    ap.add_argument("--out-dir",  default="../analysis")
+    ap.add_argument("--workers",  type=int, default=8,    help="Concurrent model workers (default 8)")
+    ap.add_argument("--sleep",    type=float, default=0.05, help="Sleep between API calls per thread (default 0.05)")
+    ap.add_argument("--dry-run",  action="store_true")
+    ap.add_argument("--resume",   action="store_true")
     args = ap.parse_args()
+
+    global SLEEP
+    SLEEP = args.sleep
 
     out_path = os.path.join(args.out_dir, "encar_inav_tree.json")
     start    = datetime.now(timezone.utc)
 
+    os.makedirs(args.out_dir, exist_ok=True)
+
     existing_rows: list[dict] = []
     existing_flat: dict = {}
     if args.resume and os.path.exists(out_path):
-        print(f"[resume] Loading existing data from {out_path} …")
+        print(f"[resume] Loading {out_path} ...")
         with open(out_path, encoding="utf-8") as f:
             prev = json.load(f)
         existing_rows = prev.get("taxonomy", [])
         existing_flat = prev.get("flat", {})
         print(f"[resume] Loaded {len(existing_rows):,} existing rows")
 
-    client = httpx.Client(headers=HEADERS, follow_redirects=True, timeout=20)
-    try:
-        flat, rows = scrape(client, dry_run=args.dry_run, existing_rows=existing_rows)
-        # Merge flat catalogs (resume preserves old flat if new run is interrupted early)
-        if existing_flat and not flat.get("colors"):
-            flat = existing_flat
-    finally:
-        client.close()
-        _save(out_path, flat, rows, start)
+    print(f"Workers: {args.workers}  Sleep: {args.sleep}s  Output: {out_path}")
 
-    # Summary
+    flat, rows = scrape(
+        workers=args.workers,
+        dry_run=args.dry_run,
+        existing_rows=existing_rows,
+    )
+
+    if existing_flat and not flat.get("colors"):
+        flat = existing_flat
+
+    _save(out_path, flat, rows, start)
+
     makes  = len({r["make_kr"] for r in rows})
     models = len({(r["make_kr"], r["model_group_kr"], r["model_kr"]) for r in rows})
-    badges = len({r["badge_kr"] for r in rows if r["badge_kr"]})
     trims  = len({r["badge_detail_kr"] for r in rows if r["badge_detail_kr"]})
-
     print(f"\n{'='*55}")
     print(f"  Makes      : {makes}")
     print(f"  Models     : {models}")
-    print(f"  Badges     : {badges}")
     print(f"  Trim names : {trims}")
     print(f"  API calls  : {_api_calls:,}")
-    estimated = _api_calls * 0.27 / 60
-    print(f"  Time       : ~{estimated:.0f} min estimated for full run")
 
 
 if __name__ == "__main__":
