@@ -376,3 +376,39 @@ body.browser-mode #app { padding-bottom: calc(56px + 44px); }
 }
 .bottom-nav-item.active  { color: var(--accent); }
 .bottom-nav-item svg { width: 22px; height: 22px; }
+
+/* ── Help screen ── */
+.help-content {
+  padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  height: 100%;
+}
+.help-section {
+  margin-bottom: 24px;
+}
+.help-section h3 {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  margin: 0 0 8px;
+}
+.help-section p {
+  font-size: 14px; color: var(--hint); line-height: 1.55;
+  margin: 0 0 8px;
+}
+.help-section p b { color: var(--text); }
+.help-link {
+  color: var(--link); word-break: break-all; font-size: 13px;
+}
+.help-filters-grid {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+}
+.help-filter-chip {
+  background: var(--bg2); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: 12px; color: var(--hint);
+}
+.help-example {
+  background: var(--bg2); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 12px; font-size: 13px; color: var(--text);
+  font-style: italic; margin: 8px 0;
+}

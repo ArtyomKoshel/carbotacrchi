@@ -32,18 +32,8 @@ def _generate_kbcha_proxies(count: int = 20) -> list[str]:
         _CACHED_PROXIES = []
         return _CACHED_PROXIES
 
-    base_creds = "user-3L8YmcrVpKK3wN9W"
-    password = "1TigQ7ujPds0xcv6"
-    proxies = []
-    for _ in range(count):
-        session = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        proxies.append(
-            f"http://{base_creds}-type-residential-session-{session}"
-            f"-country-KR-rotation-15:{password}@geo.g-w.info:10080"
-        )
-    logger.info(f"[kbcha:proxy] Generated {len(proxies)} KR residential proxy sessions")
-    _CACHED_PROXIES = proxies
-    return proxies
+    _CACHED_PROXIES = []
+    return _CACHED_PROXIES
 
 
 def _reset_proxy_cache() -> None:
