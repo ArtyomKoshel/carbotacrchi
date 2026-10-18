@@ -125,6 +125,11 @@ class TelegramBot
             $titleParts[] = (string) ((int) $lot['year']);
         }
         $title = trim(implode(' ', $titleParts));
+        $lotUrl = $lot['lotUrl'] ?? '#';
+        // The car name itself opens the lot — the "Открыть лот" line alone is a tiny tap target
+        if ($title !== '' && $lotUrl !== '#') {
+            $title = sprintf('<a href="%s">%s</a>', htmlspecialchars((string) $lotUrl), $title);
+        }
         $source = in_array('source', $cardFields, true) && !empty($lot['sourceName'])
             ? htmlspecialchars((string) $lot['sourceName'])
             : '';
@@ -220,7 +225,6 @@ class TelegramBot
             $lines[] = '📍 ' . htmlspecialchars((string) $lot['location']);
         }
 
-        $lotUrl = $lot['lotUrl'] ?? '#';
         if (in_array('lot_url', $cardFields, true) && $lotUrl !== '#') {
             $lines[] = sprintf('🔗 <a href="%s">Открыть лот</a>', htmlspecialchars((string) $lotUrl));
         }

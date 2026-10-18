@@ -42,6 +42,13 @@ class ChatSearchService
             return null;
         }
 
+        if (trim((string) ($parsed['generation'] ?? '')) === '') {
+            $generation = $this->detectGeneration($text, $parsed);
+            if ($generation !== null) {
+                $parsed['generation'] = $generation;
+            }
+        }
+
         $query        = SearchQuery::fromArray($parsed);
         $query->limit = 50;
 
@@ -57,6 +64,41 @@ class ChatSearchService
             'isAi'          => $this->lastParseWasAi,
             'refined'       => $this->lastParseWasRefinement,
         ];
+    }
+
+    /**
+     * Recover a chassis code the AI dropped ("bmw 3 g20 …" parsed without generation,
+     * so F30 cars got mixed in). A token like G20 / F30 / W213 / DN8 counts only if an
+     * active lot of the parsed make/model has it as "(CODE)" in model_en — random words
+     * never become a filter.
+     */
+    private function detectGeneration(string $text, array $parsed): ?string
+    {
+        if (!preg_match_all('/(?<![\p{L}\p{N}])([A-Za-z]{1,3}\d{1,3}[A-Za-z]?)(?![\p{L}\p{N}])/u', $text, $m)) {
+            return null;
+        }
+
+        $make  = trim((string) ($parsed['make'] ?? ''));
+        $model = trim((string) ($parsed['model'] ?? ''));
+
+        foreach (array_unique(array_map('strtoupper', $m[1])) as $code) {
+            try {
+                $found = DB::table('lots')
+                    ->where('is_active', 1)
+                    ->where('model_en', 'like', '%(' . $code . ')%')
+                    ->when($make !== '', fn ($q) => $q->where('make_en', $make))
+                    ->when($model !== '', fn ($q) => $q->where('model_group_en', 'like', '%' . $model . '%'))
+                    ->exists();
+            } catch (\Throwable $e) {
+                Log::warning('[ChatSearch] detectGeneration: ' . $e->getMessage());
+                return null;
+            }
+            if ($found) {
+                return $code;
+            }
+        }
+
+        return null;
     }
 
     private function parseQuery(string $text, ?array $prevState = null): ?array

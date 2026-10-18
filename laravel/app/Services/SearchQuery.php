@@ -166,7 +166,6 @@ class SearchQuery
             ];
             $isFloat = $setting->dtype === 'float';
 
-            // When only one bound is set, tolerance creates a range around that value.
             // Save originals first to avoid double-applying tolerance.
             $minValue = $clone->$minProp;
             $maxValue = $clone->$maxProp;
@@ -180,16 +179,11 @@ class SearchQuery
                 continue;
             }
 
-            if ($hasMin && !$hasMax) {
-                // "от X" (e.g. "год от 2020") — only expand min downward.
-                // Do NOT create a max — user explicitly has no upper bound.
-                $clone->$minProp = self::applyTolerance($origMin, $tolerance, true, $isFloat);
-            } elseif (!$hasMin && $hasMax) {
-                // "до X" (e.g. "пробег до 100 000") — only expand max upward.
-                // Do NOT create a min — user explicitly has no lower bound.
-                $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
-            } else {
-                // Both bounds set (exact year, price range, etc.) — widen outward.
+            // Bounds the user stated are strict: "2019-2022", "пробег до 60 000",
+            // "от 2020" must not be widened (client feedback: a 2019-2022 search
+            // returned 2018 and 2023 cars). Tolerance only turns a single point value
+            // ("2020 года", "2.0 л", min == max) into a range around it.
+            if ($hasMin && $hasMax && $origMin == $origMax) {
                 $clone->$minProp = self::applyTolerance($origMin, $tolerance, true,  $isFloat);
                 $clone->$maxProp = self::applyTolerance($origMax, $tolerance, false, $isFloat);
             }

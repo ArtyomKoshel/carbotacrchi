@@ -152,6 +152,12 @@ const Results = (() => {
     const imgSrc    = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
     const makeName  = lot.makeEn       || lot.make  || '';
     const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
+    // When the search filters by trim, show each card's trim right after the name
+    const trimMapped = lot.trim ? Taxonomy.label('trim', lot.trim) : '';
+    const trimLabel = _isQueried('trim') && lot.trim
+      ? (trimMapped !== lot.trim ? trimMapped : (lot.trimEn || lot.trim))
+      : '';
+    const trimHtml  = trimLabel ? ` <span class="lot-card__trim">${escHtml(trimLabel)}</span>` : '';
 
     // Drivetrain line: "Автомат · Бензин · AWD · 2.0л" — plain text, not tags
     const drivelineParts = [
@@ -200,7 +206,7 @@ const Results = (() => {
         </button>
         <div class="lot-card__body">
           <div class="lot-card__source">${escHtml(lot.sourceName)}</div>
-          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}</div>
+          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}${trimHtml}</div>
           <div class="lot-card__price">${price}</div>
           <div class="lot-card__meta">
             <span class="lot-card__meta-item">${calIcon} ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}</span>
