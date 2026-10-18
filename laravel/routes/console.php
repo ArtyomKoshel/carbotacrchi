@@ -5,9 +5,11 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('subscriptions:check')->everyThirtyMinutes();
 
 // Backfill model_en, generation, fuel, drive_type, trim from catalog tables.
-// Runs frequently so new lots get normalized soon after the parser ingests them.
+// Hourly; skipped while a parse job runs — its table-wide UPDATEs would fight the
+// parser's upserts for row locks. The first tick after the run catches up.
 Schedule::command('lots:normalize-from-catalog --apply')
-    ->everyFifteenMinutes()
+    ->hourlyAt(25)
+    ->skip(fn () => \App\Models\ParseJob::where('status', 'running')->exists())
     ->withoutOverlapping()
     ->runInBackground();
 

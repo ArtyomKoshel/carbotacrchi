@@ -100,10 +100,18 @@ touch "$APP_DIR/storage/logs/laravel.log"
 chown -R www-data:www-data /app/logs "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 
-# Read-only mode: disable parser before supervisord starts
+# Migrations (set RUN_MIGRATIONS=false to skip; never in read-only mode)
+if [ "${RUN_MIGRATIONS:-true}" = "true" ] && [ "$APP_READONLY" != "true" ]; then
+    echo "[start] Running migrations..."
+    php "$APP_DIR/artisan" migrate --force --no-interaction \
+        || echo "[start] WARNING: migrate failed, continuing anyway"
+fi
+
+# Read-only mode: disable parser and scheduler (both write to the DB) before supervisord starts
 if [ "$APP_READONLY" = "true" ]; then
-    echo "[start] READ-ONLY mode: disabling parser process..."
+    echo "[start] READ-ONLY mode: disabling parser and scheduler processes..."
     sed -i '/\[program:parser\]/,/^\[/{s/autostart=true/autostart=false/}' /etc/supervisord.conf
+    sed -i '/\[program:scheduler\]/,/^\[/{s/autostart=true/autostart=false/}' /etc/supervisord.conf
 fi
 
 # Start web server
