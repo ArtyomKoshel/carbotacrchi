@@ -16,7 +16,7 @@ COPY laravel/ /var/www/html/
 COPY miniapp/ /var/www/html/miniapp/
 COPY analysis/ /var/www/analysis/
 
-RUN composer update --no-interaction --no-plugins --prefer-dist --no-dev --optimize-autoloader
+RUN composer install --no-interaction --no-plugins --prefer-dist --no-dev --optimize-autoloader
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
