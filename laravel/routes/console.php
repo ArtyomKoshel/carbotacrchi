@@ -24,7 +24,12 @@ Schedule::call(function () {
 
     $cutoff = time() - (7 * 24 * 3600);
     $deleted = 0;
+    $activeIds = \App\Models\ParseJob::activeIds();
     foreach (glob($jobDir . '/job-*.log*') ?: [] as $f) {
+        $jobId = \App\Models\ParseJob::idFromLogFile($f);
+        if ($jobId !== null && isset($activeIds[$jobId])) {
+            continue; // an interrupted job may resume and keep logging
+        }
         $mtime = @filemtime($f);
         if ($mtime !== false && $mtime < $cutoff) {
             if (@unlink($f)) {

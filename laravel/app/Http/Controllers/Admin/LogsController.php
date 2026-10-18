@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ParseJob;
 use Illuminate\Http\Request;
 
 class LogsController extends Controller
@@ -263,9 +264,17 @@ class LogsController extends Controller
             return redirect()->route('admin.logs')->with('error', 'No job logs directory');
         }
         try {
-            $files = glob($jobDir . '/job-*.log*');
+            // Never delete logs of jobs that are still pending / running / resumable
+            $activeIds = ParseJob::activeIds();
+            $files = glob($jobDir . '/job-*.log*') ?: [];
             $deleted = 0;
+            $kept = 0;
             foreach ($files as $f) {
+                $jobId = ParseJob::idFromLogFile($f);
+                if ($jobId !== null && isset($activeIds[$jobId])) {
+                    $kept++;
+                    continue;
+                }
                 if (unlink($f)) {
                     $deleted++;
                 }
@@ -273,7 +282,11 @@ class LogsController extends Controller
         } catch (\Throwable $e) {
             return redirect()->route('admin.logs')->with('error', 'Clear failed: ' . $e->getMessage());
         }
-        return redirect()->route('admin.logs')->with('success', "Deleted {$deleted} job log file(s)");
+        $message = "Deleted {$deleted} job log file(s)";
+        if ($kept > 0) {
+            $message .= ", kept {$kept} of active job(s)";
+        }
+        return redirect()->route('admin.logs')->with('success', $message);
     }
 
     public function logsDownload(Request $request)

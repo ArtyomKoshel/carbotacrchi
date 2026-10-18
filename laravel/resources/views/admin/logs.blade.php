@@ -80,7 +80,7 @@
     </div>
     {{-- Очистка логов задач (10H) --}}
     <form method="POST" action="{{ route('admin.logs.clear.jobs') }}" class="mt-2"
-          onsubmit="return confirm('Удалить ВСЕ логи задач ({{ count($jobFiles) }} файлов)?')">
+          onsubmit="return confirm('Удалить логи завершённых задач? Логи активных задач сохранятся.')">
       @csrf
       <button type="submit"
               class="w-full px-2 py-1 rounded text-xs bg-gray-800 text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition">
