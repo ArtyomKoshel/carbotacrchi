@@ -374,36 +374,45 @@ class LotsNormalizeFromCatalog extends Command
             }
         }
 
-        // ── 4b. drive_type from catalog_drive_tokens (badge_en token scan) ──────
-        // Tokens: xDrive, 4MATIC, quattro, sDrive, 2WD, FWD, etc.
+        // ── 4b. drive_type from catalog_drive_tokens (badge / badge_en token scan) ──
+        // Tokens: xDrive, 4MATIC, quattro, 콰트로, sDrive, 2WD, FWD, etc.
+        // Scans the Korean badge too: it is always filled, badge_en is not, and
+        // Korean tokens (콰트로, 4드라이브) never appear in badge_en.
+        // Scoped tokens (make_kr / model_group_kr set, e.g. Genesis 2WD → rwd) run
+        // before global ones, so a platform rule wins over the generic 2WD → fwd.
         // Runs AFTER catalog_badges so exact match wins over token match.
-        $this->line('<fg=cyan>4b. drive_type</> (catalog_drive_tokens badge_en token scan)');
+        $this->line('<fg=cyan>4b. drive_type</> (catalog_drive_tokens badge token scan)');
+
+        $tokenMatch = "(l.badge LIKE CONCAT('%', cdt.token, '%') OR l.badge_en LIKE CONCAT('%', cdt.token, '%'))";
+        $scopeMatch = 'cdt.make_kr = l.make AND (cdt.model_group_kr IS NULL OR cdt.model_group_kr = l.model_group)';
 
         $tokenCount = (int) DB::selectOne("
             SELECT COUNT(DISTINCT l.id) AS cnt
             FROM lots l
             JOIN catalog_drive_tokens cdt
-                ON l.badge_en LIKE CONCAT('%', cdt.token, '%')
+                ON {$tokenMatch}
+               AND (cdt.make_kr IS NULL OR ({$scopeMatch}))
             WHERE l.source     = ?
               AND l.drive_type IS NULL
-              AND l.badge_en   IS NOT NULL
         ", [$source])->cnt;
 
         $this->line("   drive_type from tokens: {$tokenCount} lots");
 
         if ($apply && $tokenCount > 0) {
-            // Apply one token at a time in drive_type priority order: awd > rwd > fwd
-            foreach (['awd', 'rwd', 'fwd'] as $dt) {
-                DB::statement("
-                    UPDATE lots l
-                    JOIN catalog_drive_tokens cdt ON cdt.drive_type = ?
-                    SET l.drive_type = ?,
-                        l.updated_at = NOW()
-                    WHERE l.source     = ?
-                      AND l.drive_type IS NULL
-                      AND l.badge_en   IS NOT NULL
-                      AND l.badge_en LIKE CONCAT('%', cdt.token, '%')
-                ", [$dt, $dt, $source]);
+            // Scoped rows first, then global; within each, priority awd > rwd > fwd
+            foreach (["cdt.make_kr IS NOT NULL AND {$scopeMatch}", 'cdt.make_kr IS NULL'] as $scope) {
+                foreach (['awd', 'rwd', 'fwd'] as $dt) {
+                    DB::statement("
+                        UPDATE lots l
+                        JOIN catalog_drive_tokens cdt ON cdt.drive_type = ?
+                        SET l.drive_type = ?,
+                            l.updated_at = NOW()
+                        WHERE l.source     = ?
+                          AND l.drive_type IS NULL
+                          AND {$tokenMatch}
+                          AND {$scope}
+                    ", [$dt, $dt, $source]);
+                }
             }
         }
 
