@@ -173,7 +173,7 @@ class EncarClient:
         return result if n else None
 
     def _activate_proxy(self) -> bool:
-        """Switch from direct to proxy pool on first block (403/429). No-op if already active."""
+        """Switch from direct to proxy pool on first block (403/404/429). No-op if already active."""
         if self._proxy_active or not self._proxy_pool:
             return False
         self._proxy_active = True
@@ -239,11 +239,15 @@ class EncarClient:
         return str(proxy_info)
 
     def _request(self, method: str, url: str, context: str = "", **kwargs) -> httpx.Response:
-        """Execute HTTP request; on first block (403/429) activates proxy and retries once."""
+        """Execute HTTP request; on first block (403/404/429) activates proxy and retries once.
+
+        Encar answers non-Korean IPs with 404 (formerly 403), so a 404 on the direct
+        connection counts as a block. Once the proxy is active, 404 means a real miss.
+        """
         try:
             return self._do_request(method, url, context, **kwargs)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code in (403, 407, 429) and self._activate_proxy():
+            if e.response.status_code in (403, 404, 407, 429) and self._activate_proxy():
                 logger.info(f"[encar:proxy] {e.response.status_code} on direct — retrying via proxy | {context}")
                 time.sleep(1)
                 return self._do_request(method, url, context, **kwargs)
