@@ -78,7 +78,7 @@ carbot/
 ├── 📁 docker/                     Docker-конфиги
 │   ├── nginx/default.conf         Nginx: Mini App + PHP-FPM proxy
 │   └── php/
-│       ├── Dockerfile             PHP 8.2-FPM + Composer
+│       ├── Dockerfile             PHP 8.4-FPM + Composer
 │       ├── entrypoint.sh          Bootstrap: composer install, migrate, key:generate
 │       └── php.ini
 │

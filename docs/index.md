@@ -1,7 +1,7 @@
 # CarBot — Документация
 
 > Telegram Mini App + Bot для поиска машин на корейских аукционах.  
-> **Stack:** Laravel 11 · PHP 8.2 · Python 3.11 · MySQL 8 · Docker
+> **Stack:** Laravel 13 · PHP 8.4 · Python 3.11 · MySQL 8 · Docker
 
 ---
 

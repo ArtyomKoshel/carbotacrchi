@@ -65,7 +65,7 @@ flowchart TB
 | **MySQL** | MySQL 8 | Хранилище всех данных |
 | **GradeExtractorService** | Laravel/PHP | Извлекает структурированные поля из сырого текста грейда |
 | **TaxonomyRuleEngine** | Laravel/PHP | Применяет правила корректировки к лотам |
-| **Laravel API** | Laravel 11, PHP 8.2 | REST API для Mini App и Bot |
+| **Laravel API** | Laravel 13, PHP 8.4 | REST API для Mini App и Bot |
 | **Admin Panel** | Laravel Blade + Tailwind | Управление правилами, фильтрами, лотами |
 | **Telegram Mini App** | Vanilla JS | Поиск по каталогу с фильтрами |
 | **Telegram Bot** | Laravel + Groq AI | Поиск по свободному тексту |

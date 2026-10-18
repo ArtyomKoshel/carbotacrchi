@@ -3,7 +3,7 @@
 Telegram Mini App + Bot for searching cars across Korean auction platforms. A company uses the bot to find cars for clients instead of manually browsing multiple auction sites.
 
 **Sources:** Encar (API) · KBChacha (scraper)
-**Stack:** Laravel 11 · PHP 8.2 · MySQL 8 · Python 3.11 · Docker
+**Stack:** Laravel 13 · PHP 8.4 · MySQL 8 · Python 3.11 · Docker
 
 ## Quick Start
 

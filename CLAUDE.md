@@ -3,7 +3,7 @@
 Telegram Mini App + Bot for searching cars on Korean auction platforms (Encar, KBChacha).  
 Company uses it to find cars for clients instead of manually browsing auction sites.
 
-**Stack:** Laravel 11 · PHP 8.2 · Python 3.11 · MySQL 8 · Docker  
+**Stack:** Laravel 13 · PHP 8.4 · Python 3.11 · MySQL 8 · Docker  
 **Deploy:** Railway (remote). Migrations run on Railway — never run `migrate:fresh` locally against prod DB.
 
 ---
