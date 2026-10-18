@@ -134,10 +134,13 @@ class EncarClient:
         else:
             proxy_pool = [proxy] if proxy else []
         self._proxy_pool: list[str] = proxy_pool
-        self._proxy_active: bool = False
-        self._proxies: list[str | None] = [None]  # start direct; proxy activated on first block
+        # Start on the proxy when one is configured: Encar blocks non-Korean IPs, so a
+        # direct first try only costs an extra 404 per client (one client per lot in
+        # _enrich_accident_data). Without a pool, stay direct.
+        self._proxy_active: bool = bool(proxy_pool)
+        self._proxies: list[str | None] = list(proxy_pool) if proxy_pool else [None]
         self._proxy_idx: int = 0
-        self._s = self._build_client(None)
+        self._s = self._build_client(self._proxies[0])
         self._request_count: int = 0
         self._error_count: int = 0
         self._proxy_bytes: int = 0
