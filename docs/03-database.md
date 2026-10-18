@@ -260,6 +260,10 @@ KR→EN кэш переводов. Используется `translate:run` дл
 | `field_coverage_stats` | Процент заполненности каждого поля |
 | `admin_users` | Пользователи админ-панели |
 | `subscription_seen_lots` | Просмотренные лоты по подпискам |
+| `notification_recipients` | Получатели Telegram-уведомлений админам: chat id, типы, флаг enabled |
+| `notification_settings` | Пороги уведомлений (key → value) |
+| `notification_events` | Дедупликация: отправленные события и открытые/закрытые инциденты |
+| `notification_log` | Каждая попытка отправки уведомления |
 
 ---
 

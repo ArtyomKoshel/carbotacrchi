@@ -11,6 +11,11 @@ return [
             'path'      => storage_path('framework/cache/data'),
             'lock_path' => storage_path('framework/cache/data'),
         ],
+        'redis' => [
+            'driver'          => 'redis',
+            'connection'      => 'cache',
+            'lock_connection' => 'cache',
+        ],
     ],
 
     'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'carbot'), '_').'_cache_'),

@@ -65,6 +65,12 @@ class AdminPagePermission extends Model
         'admin.users.delete'           => null,
         'admin.users.password'         => null,
         'admin.users.permissions'      => null,
+        'admin.notifications'          => null, // super-only
+        'admin.notifications.store'    => null,
+        'admin.notifications.update'   => null,
+        'admin.notifications.delete'   => null,
+        'admin.notifications.test'     => null,
+        'admin.notifications.settings' => null,
     ];
 
     /** Get enabled page keys for limited role */

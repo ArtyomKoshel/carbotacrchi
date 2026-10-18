@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Facades\Schedule;
 
+// Admin Telegram notifications (jobs, DB down, balances). Registered first so it
+// still runs when the DB is down and later events' DB-backed filters throw.
+// The command takes its own lock in the notifications state store.
+Schedule::command('notifications:watch')->everyFiveMinutes();
+
 Schedule::command('subscriptions:check')->everyThirtyMinutes();
 
 // Backfill model_en, generation, fuel, drive_type, trim from catalog tables.
@@ -9,7 +14,13 @@ Schedule::command('subscriptions:check')->everyThirtyMinutes();
 // parser's upserts for row locks. The first tick after the run catches up.
 Schedule::command('lots:normalize-from-catalog --apply')
     ->hourlyAt(25)
-    ->skip(fn () => \App\Models\ParseJob::where('status', 'running')->exists())
+    ->skip(function () {
+        try {
+            return \App\Models\ParseJob::where('status', 'running')->exists();
+        } catch (\Throwable) {
+            return true; // DB unreachable: nothing to normalize against
+        }
+    })
     ->withoutOverlapping()
     ->runInBackground();
 

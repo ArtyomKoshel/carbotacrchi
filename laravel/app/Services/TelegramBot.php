@@ -9,11 +9,23 @@ use Illuminate\Support\Facades\Log;
 class TelegramBot
 {
     private string $token;
-    private string $apiBase = 'https://api.telegram.org/bot';
+    private string $apiBase;
 
-    public function __construct(string $token)
+    public function __construct(string $token, string $apiBase = 'https://api.telegram.org/bot')
     {
-        $this->token = $token;
+        $this->token   = $token;
+        $this->apiBase = $apiBase;
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->token !== '';
+    }
+
+    /** Strip the bot token from a message (exception texts quote the request URL). */
+    public function redact(string $message): string
+    {
+        return $this->token !== '' ? str_replace($this->token, '***', $message) : $message;
     }
 
     public function sendMessage(int|string $chatId, string $text, array $extra = []): array
@@ -330,8 +342,9 @@ class TelegramBot
             }
             return $json;
         } catch (\Throwable $e) {
-            Log::error('[TelegramBot] '.$method.' failed: '.$e->getMessage());
-            return ['ok' => false, 'error' => $e->getMessage()];
+            $error = $this->redact($e->getMessage());
+            Log::error('[TelegramBot] '.$method.' failed: '.$error);
+            return ['ok' => false, 'error' => $error];
         }
     }
 }

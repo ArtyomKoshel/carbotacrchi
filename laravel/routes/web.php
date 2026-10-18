@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AdminUsersController;
 use App\Http\Controllers\Admin\BotFiltersController;
 use App\Http\Controllers\Admin\FieldsController;
 use App\Http\Controllers\Admin\LogsController;
+use App\Http\Controllers\Admin\NotificationsController;
 use App\Http\Controllers\Admin\ParseFiltersController;
 use App\Http\Controllers\Admin\ParserJobsController;
 use App\Http\Controllers\Bot\WebhookController;
@@ -67,6 +68,14 @@ Route::middleware('admin.auth')->prefix('admin')->name('admin.')->group(function
     Route::delete('/users/{id}',                 [AdminUsersController::class, 'delete'])->name('users.delete');
     Route::patch('/users/{id}/password',         [AdminUsersController::class, 'updatePassword'])->name('users.password');
     Route::post('/users/permissions',            [AdminUsersController::class, 'updatePermissions'])->name('users.permissions');
+
+    // Telegram notifications for admins (super only)
+    Route::get('/notifications',                         [NotificationsController::class, 'index'])->name('notifications');
+    Route::post('/notifications/recipients',             [NotificationsController::class, 'store'])->name('notifications.store');
+    Route::put('/notifications/recipients/{id}',         [NotificationsController::class, 'update'])->name('notifications.update');
+    Route::delete('/notifications/recipients/{id}',      [NotificationsController::class, 'delete'])->name('notifications.delete');
+    Route::post('/notifications/recipients/{id}/test',   [NotificationsController::class, 'test'])->name('notifications.test');
+    Route::post('/notifications/settings',               [NotificationsController::class, 'settings'])->name('notifications.settings');
 
     // Legacy redirects — keep old bookmarks working.
     Route::get('/accuracy',       fn () => redirect()->route('admin.fields'))->name('accuracy');
