@@ -13,6 +13,16 @@ Schedule::command('lots:normalize-from-catalog --apply')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Lot lifecycle: hide lots the latest successful full run missed, archive and
+// delete those missing from the last N runs. Counted in runs, so an idle parser
+// changes nothing. Hourly so it lands within an hour of each (~12 h) run; skipped
+// while a parse job runs, so its deletes never compete with the parser's upserts.
+Schedule::command('lots:lifecycle')
+    ->hourlyAt(45)
+    ->skip(fn () => \App\Models\ParseJob::where('status', 'running')->exists())
+    ->withoutOverlapping(120)
+    ->runInBackground();
+
 Schedule::call(function () {
     $baseFile = config('admin.log_file');
     if (!$baseFile) {

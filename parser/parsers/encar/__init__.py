@@ -20,6 +20,7 @@ except Exception:  # pragma: no cover - parser may run in reduced env for tests
     _DictCursor = None
 
 from config import Config
+from lifecycle import coverage_pct, format_db_ts, utc_now_seconds
 from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser, ProgressUpdate
@@ -722,7 +723,7 @@ def _enrich_from_sellingpoint(lot: CarLot, sp: dict, norm: EncarNormalizer) -> N
 
 
 class EncarParser(AbstractParser):
-    MIN_DELIST_COVERAGE = Config.ENCAR_DELIST_COVERAGE
+    MIN_DELIST_COVERAGE = Config.LOTS_LIFECYCLE_MIN_COVERAGE
 
     def __init__(self, repo: LotRepository):
         super().__init__(repo)
@@ -1126,6 +1127,10 @@ class EncarParser(AbstractParser):
 
         source = _SOURCE
         run_start = _time.monotonic()
+        # Wall-clock start on the parsed_at clock: lots not upserted by this
+        # run keep an older parsed_at. Encar ignores checkpoints and always
+        # rescans, so a resumed job is still a whole run from this point.
+        run_started_at = utc_now_seconds()
         stats = self.init_stats()
 
         pages = max_pages or 9999  # 0 / None = all pages
@@ -1282,7 +1287,11 @@ class EncarParser(AbstractParser):
 
         # ── Delist phase ─────────────────────────────────────────────────
         _delist_phase = self.start_phase("delist", lots_in=len(seen_ids))
-        stale = self.delist_if_complete(seen_ids, reference_total=api_total, grace_hours=1)
+        full_run = self.is_full_run(
+            coverage_pct(stats["total"], api_total),
+            maker_filter=maker_filter, max_pages=max_pages,
+        )
+        stale = self.delist_unseen(run_started_at) if full_run else 0
         self.end_phase(_delist_phase, lots_out=stale)
 
         _proxy_bytes = self._client.proxy_bytes
@@ -1293,6 +1302,9 @@ class EncarParser(AbstractParser):
             api_total=api_total, stale=stale, db_count=db_count,
         )
         result.extra["proxy_bytes"] = _proxy_bytes
+        # Read back by Laravel lots:lifecycle when it counts successful runs.
+        result.extra["run_started_at"] = format_db_ts(run_started_at)
+        result.extra["full_run"] = full_run
         return result.to_dict()
 
     def _enrich_batch(self, lots: list[CarLot], stats: dict) -> None:

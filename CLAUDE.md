@@ -59,4 +59,4 @@ SELECT source, COUNT(*) FROM taxonomy_anomaly_queue WHERE resolved_at IS NULL GR
 - `raw_data['pre_norm']` stores the original state before first normalization
 - Parser filters: PRE (before DB write) and POST (after inspection) — different levels
 - Taxonomy rules override catalog data (higher priority)
-- `is_active=0` means filtered out by `parse_filters`, not deleted
+- `is_active=0` means filtered out by `parse_filters` or delisted (missed by the latest successful full run). `lots:lifecycle` deletes lots missed by the last 5 successful full runs, keeping a row in `lots_archive`. Counted in runs, never days (docs/04-parser.md#жизненный-цикл-лота)

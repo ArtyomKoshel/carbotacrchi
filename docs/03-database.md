@@ -40,6 +40,7 @@ flowchart LR
         PF[(parse_filters)]
         FSL[(filter_skip_log)]
         PJ[(parse_jobs)]
+        LA[(lots_archive)]
         FCS[(field_coverage\nstats)]
         AU[(admin_users)]
     end
@@ -134,7 +135,7 @@ Encar организует данные в 6 уровней (iNav). Каждый
 | `options` | JSON | Коды опций Encar (`["001","014",…]`) |
 | `paid_options` | JSON | Платные опции |
 | `raw_data` | JSON | Сырые данные API + `pre_norm` snapshot |
-| `is_active` | BOOLEAN | `0` = отфильтрован `parse_filters` |
+| `is_active` | BOOLEAN | `0` = отфильтрован `parse_filters` или снят с продажи (не найден последним успешным полным прогоном, см. [04-parser](./04-parser.md#жизненный-цикл-лота)) |
 | `parsed_at` | TIMESTAMP | Время парсинга |
 | `expires_at` | TIMESTAMP | Время истечения актуальности |
 
@@ -260,6 +261,7 @@ KR→EN кэш переводов. Используется `translate:run` дл
 | `field_coverage_stats` | Процент заполненности каждого поля |
 | `admin_users` | Пользователи админ-панели |
 | `subscription_seen_lots` | Просмотренные лоты по подпискам |
+| `lots_archive` | Компактная строка (~200 байт) удалённого `lots:lifecycle` лота: `id, source, make_en, model_group_en, model_en, year, mileage, price, first_seen, last_seen, sold_detected_at` — история цен проданных машин |
 
 ---
 

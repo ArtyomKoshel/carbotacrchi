@@ -53,6 +53,9 @@ class Config:
     BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
     REQUEST_DELAY = float(os.getenv("REQUEST_DELAY", "2.0"))
 
-    # Delist coverage thresholds (percent)
-    ENCAR_DELIST_COVERAGE = float(os.getenv("ENCAR_DELIST_COVERAGE", "95"))
+    # Lot lifecycle: a full run with at least this coverage (processed / API
+    # total, percent) hides the lots it did not see and counts towards purging.
+    # Laravel's `lots:lifecycle` reads the same env var (config/lifecycle.php).
+    LOTS_LIFECYCLE_MIN_COVERAGE = float(os.getenv("LOTS_LIFECYCLE_MIN_COVERAGE", "85"))
+    # KBChacha keeps its own delist threshold (source currently unused).
     KBCHA_DELIST_COVERAGE = float(os.getenv("KBCHA_DELIST_COVERAGE", "80"))
