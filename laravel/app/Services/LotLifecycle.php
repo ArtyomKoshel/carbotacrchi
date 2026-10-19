@@ -20,8 +20,9 @@ use Illuminate\Support\Facades\Schema;
  * in sync. "Seen in a run" means parsed_at >= that run's start, because upsert
  * stamps parsed_at on every lot a run sees.
  *
- * Children of a purged lot: lot_photos, lot_inspections and lot_changes go by
- * FK ON DELETE CASCADE; lot_options has no FK and is deleted explicitly.
+ * Children of a purged lot: lot_inspections and lot_changes go by FK ON DELETE
+ * CASCADE. The old pivots (lot_photos with FK, lot_options without) are handled
+ * only while they still exist — they are dropped by 2026_10_20_000001.
  * Lots referenced by favorites are never purged.
  */
 class LotLifecycle
@@ -287,7 +288,7 @@ class LotLifecycle
         return [
             'lots'               => $purge,
             'lots_archive'       => $purge,
-            'lot_photos'         => $children('lot_photos'),
+            'lot_photos'         => Schema::hasTable('lot_photos') ? $children('lot_photos') : 0,
             'lot_inspections'    => $children('lot_inspections'),
             'lot_changes'        => $children('lot_changes'),
             'lot_options'        => Schema::hasTable('lot_options') ? $children('lot_options') : 0,
@@ -306,6 +307,11 @@ class LotLifecycle
     {
         $totals = ['lots' => 0, 'lots_archive' => 0, 'lot_photos' => 0, 'lot_inspections' => 0, 'lot_changes' => 0, 'lot_options' => 0];
         $hasOptions = Schema::hasTable('lot_options');
+        // Both pivots are gone after 2026_10_20_000001; only count what still exists.
+        $childTables = array_values(array_filter(
+            ['lot_photos', 'lot_inspections', 'lot_changes'],
+            fn (string $t) => $t !== 'lot_photos' || Schema::hasTable('lot_photos'),
+        ));
 
         while (!$shouldStop()) {
             $candidates = self::withoutFavorites($this->purgeQuery($cutoff))
@@ -314,7 +320,7 @@ class LotLifecycle
                 break;
             }
 
-            $done = DB::transaction(function () use ($candidates, $cutoff, $hasOptions) {
+            $done = DB::transaction(function () use ($candidates, $cutoff, $hasOptions, $childTables) {
                 // Re-check under row locks: nothing may have changed, but a lot
                 // re-activated or favourited meanwhile must survive.
                 $ids = self::withoutFavorites($this->purgeQuery($cutoff))
@@ -324,8 +330,8 @@ class LotLifecycle
                 }
                 $in = implode(',', array_fill(0, count($ids), '?'));
 
-                $counts = [];
-                foreach (['lot_photos', 'lot_inspections', 'lot_changes'] as $t) {
+                $counts = ['lot_photos' => 0];
+                foreach ($childTables as $t) {
                     $counts[$t] = DB::table($t)->whereIn('lot_id', $ids)->count();
                 }
 
