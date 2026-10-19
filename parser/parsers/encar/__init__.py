@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import queue as _queue
 import re as _re
+import threading as _threading
 import time as _time
 import json as _json
 import os as _os
@@ -25,7 +27,7 @@ from models import CarLot, InspectionRecord
 from repository import LotRepository
 from ..base import AbstractParser, ProgressUpdate
 from .._shared import sell_type as _sell
-from .client import EncarClient, ProxyBudgetExhausted, _generate_floppy_proxies, _reset_proxy_cache, check_floppy_balance
+from .client import EncarClient, ProxyBudgetExhausted, _reset_proxy_cache, check_floppy_balance
 from .normalizer import EncarNormalizer
 
 logger = logging.getLogger(__name__)
@@ -729,12 +731,64 @@ class EncarParser(AbstractParser):
         super().__init__(repo)
         self._client = EncarClient()
         self._norm = EncarNormalizer()
+        # Enrichment clients, one per worker, reused across lots and pages so each
+        # keeps its proxy tunnel / TLS connection alive (see _enrich_accident_data).
+        self._enrich_clients: _queue.Queue[EncarClient] | None = None
+        self._enrich_client_seq = 0
+        self._enrich_lock = _threading.Lock()
 
     def _regenerate_proxies(self):
         """Clear proxy cache, generate fresh sessions, and rebuild the HTTP client."""
         _reset_proxy_cache()
         self._client = EncarClient()
+        self._close_enrich_clients()  # pooled clients hold the old sessions
         logger.info(f"[{_SOURCE}] Client rebuilt with fresh proxy sessions")
+
+    # ── Enrichment client pool ───────────────────────────────────────────
+    def _new_enrich_client(self) -> EncarClient:
+        with self._enrich_lock:
+            idx = self._enrich_client_seq
+            self._enrich_client_seq += 1
+        return EncarClient(proxy_index=idx)
+
+    def _borrow_enrich_client(self) -> EncarClient:
+        """Take a pooled client (pool size = Config.ENCAR_WORKERS, created lazily)."""
+        with self._enrich_lock:
+            if self._enrich_clients is None:
+                self._enrich_clients = _queue.Queue()
+                pool, size = self._enrich_clients, max(1, Config.ENCAR_WORKERS)
+            else:
+                pool, size = self._enrich_clients, 0
+        for _ in range(size):
+            pool.put(self._new_enrich_client())
+        return pool.get()
+
+    def _return_enrich_client(self, client: EncarClient, healthy: bool) -> None:
+        """Give a client back; one that saw errors is closed and replaced by a fresh one."""
+        pool = self._enrich_clients
+        if not healthy:
+            try:
+                client.close()
+            except Exception:
+                pass
+            client = self._new_enrich_client()
+        if pool is None:  # pool closed meanwhile (run ended / proxies regenerated)
+            client.close()
+            return
+        pool.put(client)
+
+    def _close_enrich_clients(self) -> None:
+        with self._enrich_lock:
+            pool, self._enrich_clients = self._enrich_clients, None
+        if pool is None:
+            return
+        while True:
+            try:
+                pool.get_nowait().close()
+            except _queue.Empty:
+                break
+            except Exception:
+                pass
 
     def get_source_key(self) -> str:
         return _SOURCE
@@ -873,11 +927,16 @@ class EncarParser(AbstractParser):
             consecutive_empty = 0  # reset on any page with new data
             pass  # page lots counted
 
+            # Lots the list data already rules out (year, mileage, price, sell
+            # type) skip the detail and accident calls. They still count as seen
+            # below, so coverage and delisting are unchanged.
+            to_enrich = self.repo.prefilter_list_stage(page_lots, stats)
+
             _t_batch_start = _time.monotonic()
-            self._enrich_batch(page_lots, stats)
+            self._enrich_batch(to_enrich, stats)
             stats["search_time"] += _time.monotonic() - _t_batch_start
 
-            self.repo.upsert_batch(page_lots, stats)
+            self.repo.upsert_batch(to_enrich, stats)
             # Photos are auto-upserted by LotRepository.upsert_batch from
             # lot.photos (see parser/models.py). No need to handle them here.
             for lot in page_lots:
@@ -905,10 +964,10 @@ class EncarParser(AbstractParser):
 
             _t_after_upsert = _time.monotonic()
             new_lots = [l for l in page_lots if l.id not in existing_ids]
-            # Enrich ALL lots (not just new) so has_accident/damage stays current
-            if page_lots:
+            # Enrich ALL kept lots (not just new) so has_accident/damage stays current
+            if to_enrich:
                 _t_enr = _time.monotonic()
-                self._enrich_accident_data(page_lots, stats)
+                self._enrich_accident_data(to_enrich, stats)
                 stats["enrich_time"] += _time.monotonic() - _t_enr
 
             _t_total = _time.monotonic() - _t_page
@@ -951,7 +1010,10 @@ class EncarParser(AbstractParser):
                 message=f"Fetching accident records for {total} lot(s)...",
             ))
 
-        self._enrich_accident_data(lots, stats)
+        try:
+            self._enrich_accident_data(lots, stats)
+        finally:
+            self._close_enrich_clients()
 
         elapsed = _time.monotonic() - run_start
         logger.info(
@@ -1074,12 +1136,15 @@ class EncarParser(AbstractParser):
                 if not page_lots:
                     continue
 
+                # List-stage PRE rules first: no detail/accident calls for lots
+                # that will be dropped anyway (they still count as seen below).
+                to_enrich = self.repo.prefilter_list_stage(page_lots, stats)
                 # Enrich with detail API (engine_volume, body_type, drive_type…)
-                self._enrich_batch(page_lots, stats)
+                self._enrich_batch(to_enrich, stats)
                 # Enrich with accident/record data
-                self._enrich_accident_data(page_lots, stats)
+                self._enrich_accident_data(to_enrich, stats)
 
-                self.repo.upsert_batch(page_lots, stats)
+                self.repo.upsert_batch(to_enrich, stats)
 
                 n_new = sum(1 for l in page_lots if l.id not in existing_ids)
                 n_upd = len(page_lots) - n_new
@@ -1298,6 +1363,7 @@ class EncarParser(AbstractParser):
 
         _proxy_bytes = self._client.proxy_bytes
         self._client.close()
+        self._close_enrich_clients()
 
         result = self.finalize_summary(
             elapsed, stats, seen_ids,
@@ -1444,21 +1510,22 @@ class EncarParser(AbstractParser):
 
     def _enrich_accident_data(self, lots: list[CarLot], stats: dict) -> None:
         """Fetch record + inspection in parallel; DB writes on main thread."""
+        if not lots:  # e.g. the whole page was filtered at list stage
+            return
         source = _SOURCE
         workers = min(Config.ENCAR_WORKERS, len(lots))
 
-        proxy_list = _generate_floppy_proxies(count=max(workers, 20)) if Config.FLOPPYDATA_API_KEY else []
-
         def _task(lot: CarLot, idx: int) -> tuple[CarLot, InspectionRecord | None, int]:
-            if proxy_list:
-                proxy = proxy_list[idx % len(proxy_list)]
-            else:
-                proxy = None
-            client = EncarClient(proxy=proxy)
+            # A pooled client per worker keeps its connection between lots; at most
+            # `workers` tasks run at once, so the pool never runs dry.
+            client = self._borrow_enrich_client()
+            healthy = False
             try:
-                return self._fetch_lot_enrichment(lot, client, self._norm)
+                result = self._fetch_lot_enrichment(lot, client, self._norm)
+                healthy = result[2] == 0
+                return result
             finally:
-                client.close()
+                self._return_enrich_client(client, healthy)
 
         results: list[tuple[CarLot, InspectionRecord | None, int]] = []
         with ThreadPoolExecutor(max_workers=workers) as pool:

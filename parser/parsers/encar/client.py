@@ -128,19 +128,20 @@ _CLIENT_MAX_AGE = 30 * 60  # rebuild httpx.Client every 30 minutes
 
 
 class EncarClient:
-    def __init__(self, proxy: str | None = None):
+    def __init__(self, proxy: str | None = None, proxy_index: int = 0):
         if Config.FLOPPYDATA_API_KEY:
             proxy_pool = _generate_floppy_proxies(count=max(Config.ENCAR_WORKERS, 20))
         else:
             proxy_pool = [proxy] if proxy else []
         self._proxy_pool: list[str] = proxy_pool
         # Start on the proxy when one is configured: Encar blocks non-Korean IPs, so a
-        # direct first try only costs an extra 404 per client (one client per lot in
-        # _enrich_accident_data). Without a pool, stay direct.
+        # direct first try only costs an extra 404 per client. Without a pool, stay direct.
         self._proxy_active: bool = bool(proxy_pool)
         self._proxies: list[str | None] = list(proxy_pool) if proxy_pool else [None]
-        self._proxy_idx: int = 0
-        self._s = self._build_client(self._proxies[0])
+        # proxy_index spreads pooled clients over different proxy sessions (= IPs);
+        # without it every client would start on session 0.
+        self._proxy_idx: int = proxy_index % len(self._proxies)
+        self._s = self._build_client(self._proxies[self._proxy_idx])
         self._request_count: int = 0
         self._error_count: int = 0
         self._proxy_bytes: int = 0

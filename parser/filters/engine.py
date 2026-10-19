@@ -50,13 +50,36 @@ class FilterEngine:
         self.by_rule: dict[str, int] = defaultdict(int)
         self._skip_log_buffer: list[dict] = []
 
-    def evaluate(self, lot, phase: str | None = None) -> FilterResult:
+    @staticmethod
+    def _value_known(rule: Rule, lot) -> bool:
+        """True when the lot already has a real value for the rule's field.
+
+        Used for early (list-stage) evaluation: None, "" and 0 mean "not known
+        yet" (the list API sends 0 for a missing year/price/mileage that the
+        detail call may still fill), so such rules are deferred, never matched.
+        """
+        try:
+            value = rule.extract(lot)
+        except Exception:
+            return False
+        if value is None or value == "":
+            return False
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value == 0:
+            return False
+        return True
+
+    def evaluate(self, lot, phase: str | None = None, only_fields: set[str] | None = None) -> FilterResult:
         """Evaluate all applicable rules and return the strongest resulting action.
 
         Args:
             lot: CarLot object to evaluate.
             phase: if set, only evaluate rules matching this phase ('pre'/'post').
                    If None, evaluates ALL rules (backward-compatible).
+            only_fields: early evaluation. Only rules on these fields whose value
+                   the lot already has are evaluated; an AND-group counts only if
+                   every member qualifies. Everything else is left for the full
+                   evaluation later, so an early pass can only skip lots the full
+                   pass would skip too.
 
         Rules are partitioned into:
         - **Ungrouped** (group_id is None): each rule is independent (OR logic).
@@ -69,6 +92,20 @@ class FilterEngine:
             applicable = self._rules.for_source_phase(source, phase)
         else:
             applicable = self._rules.for_source(source)
+
+        if only_fields is not None:
+            def _qualifies(r: Rule) -> bool:
+                return r.field in only_fields and self._value_known(r, lot)
+            # An allow rule beats skip in the full pass. If one can't be judged
+            # yet, an early skip could drop a lot the full pass would keep.
+            if any(r.action == ACTION_ALLOW and not _qualifies(r) for r in applicable):
+                return FilterResult(action=ACTION_ALLOW, matched_rules=[])
+            # A group may only fire if all of its members can be judged now.
+            incomplete = {r.group_id for r in applicable if r.group_id is not None and not _qualifies(r)}
+            applicable = [
+                r for r in applicable
+                if _qualifies(r) and (r.group_id is None or r.group_id not in incomplete)
+            ]
 
         # ── Partition into ungrouped vs grouped ──────────────────────────────
         ungrouped: list[Rule] = []

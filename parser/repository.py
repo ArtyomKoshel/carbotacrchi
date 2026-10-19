@@ -122,8 +122,24 @@ class LotRepository:
         engine.flush_skip_log(self)
         return deactivated
 
+    #: Fields a list (search) item already carries. PRE rules on them can run
+    #: before the detail / accident API calls (see prefilter_list_stage).
+    LIST_STAGE_FIELDS: frozenset[str] = frozenset({"year", "price", "mileage", "sell_type"})
+
+    def prefilter_list_stage(self, lots: list[CarLot], stats: dict | None) -> list[CarLot]:
+        """PRE-phase rules that the list data can already decide, before enrichment.
+
+        Skipping here saves the detail + record/inspection requests for lots the
+        normal PRE pass in upsert_batch would drop anyway (~half of all listings
+        in run #12). Only rules on LIST_STAGE_FIELDS with a known value are used,
+        so a lot is never skipped here that the full pass would keep. Skip log,
+        stats and deactivation of already-active lots work as in the full pass.
+        """
+        return self._run_filter_phase(lots, stats, phase="pre", only_fields=self.LIST_STAGE_FIELDS)
+
     def _run_filter_phase(
-        self, lots: list[CarLot], stats: dict | None, phase: str
+        self, lots: list[CarLot], stats: dict | None, phase: str,
+        only_fields: frozenset[str] | set[str] | None = None,
     ) -> list[CarLot]:
         """Internal: evaluate a single filter phase on in-memory lots."""
         if not lots:
@@ -133,7 +149,7 @@ class LotRepository:
         skipped_ids: list[str] = []
         filtered_counts: dict[str, int] = {}
         for lot in lots:
-            result = engine.evaluate(lot, phase=phase)
+            result = engine.evaluate(lot, phase=phase, only_fields=only_fields)
             if result.should_skip:
                 for rule in result.matched_rules:
                     if rule.action == "skip":
@@ -154,8 +170,9 @@ class LotRepository:
                 stats["filter_rules"][name] = stats["filter_rules"].get(name, 0) + n
         if filtered_counts:
             rule_summary = ", ".join(f"{n}={c}" for n, c in sorted(filtered_counts.items(), key=lambda kv: -kv[1]))
+            stage = f"{phase}/list" if only_fields is not None else phase
             logger.info(
-                f"[filter:{phase}] skipped {len(skipped_ids)} lots by rules: {rule_summary}"
+                f"[filter:{stage}] skipped {len(skipped_ids)} lots by rules: {rule_summary}"
             )
 
         # Flush skip log to database
