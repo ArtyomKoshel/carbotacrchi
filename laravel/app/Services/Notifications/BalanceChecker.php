@@ -97,6 +97,50 @@ class BalanceChecker
      */
     public static function parseProxyBalance(array $data): ?array
     {
+        // Known FloppyData shapes first. Both repeat the same traffic several
+        // times (GB and bytes, per bucket and as a total), so the generic walk
+        // below would count it 2-4x (v2 showed 55.95 GB for a real 14 GB).
+        $date = static function ($v): ?CarbonImmutable {
+            try {
+                return is_string($v) && $v !== '' ? CarbonImmutable::parse($v) : null;
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+        $gbOf = static function ($traffic): ?float {
+            if (!is_array($traffic)) {
+                return null;
+            }
+            if (isset($traffic['availableGb']) && is_numeric($traffic['availableGb'])) {
+                return (float) $traffic['availableGb'];
+            }
+            if (isset($traffic['availableBytes']) && is_numeric($traffic['availableBytes'])) {
+                return (float) $traffic['availableBytes'] / 1024 ** 3;
+            }
+            return null;
+        };
+
+        // v2: {expiring: {expiresAt, traffic}, nonExpiring: {traffic}, total: {traffic}}
+        if (isset($data['total']['traffic']) || isset($data['expiring']['traffic'])) {
+            $total = $gbOf($data['total']['traffic'] ?? null)
+                ?? (($gbOf($data['expiring']['traffic'] ?? null) ?? 0.0) + ($gbOf($data['nonExpiring']['traffic'] ?? null) ?? 0.0));
+            $expiringGb = $gbOf($data['expiring']['traffic'] ?? null) ?? 0.0;
+            return [
+                'gb'         => round($total, 3),
+                'expires_at' => $expiringGb > 0 ? $date($data['expiring']['expiresAt'] ?? null) : null,
+            ];
+        }
+
+        // v1: {subscription: {expiresOn, bytes, gb}, nonExpiring: {bytes, gb}}
+        if (isset($data['subscription']) && is_array($data['subscription'])) {
+            $sub = (float) ($data['subscription']['gb'] ?? 0);
+            return [
+                'gb'         => round($sub + (float) ($data['nonExpiring']['gb'] ?? 0), 3),
+                'expires_at' => $sub > 0 ? $date($data['subscription']['expiresOn'] ?? null) : null,
+            ];
+        }
+
+        // Unknown shape: best-effort walk.
         $gb      = 0.0;
         $found   = false;
         $expires = null;

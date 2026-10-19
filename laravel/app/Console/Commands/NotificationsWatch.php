@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\NotificationEvent;
 use App\Models\NotificationSetting;
 use App\Models\ParseJob;
+use App\Services\LotLifecycle;
 use App\Services\Notifications\BalanceChecker;
 use App\Services\Notifications\JobReport;
 use App\Services\Notifications\NotificationState;
@@ -342,10 +343,18 @@ class NotificationsWatch extends Command
     private function checkRecentRun(): void
     {
         $hours = $this->th['no_run_hours'];
-        $last  = ParseJob::where('status', 'done')
+        // Only successful full runs count (same rule as lots:lifecycle): a
+        // maker/max_pages test job or a low-coverage run is not "the parser ran".
+        $last = ParseJob::where('status', 'done')
             ->where(fn ($q) => $q->whereNull('type')->orWhere('type', '!=', 'reparse'))
-            ->max('updated_at');
-        $last  = $last ? Carbon::parse($last) : null;
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get(['id', 'type', 'status', 'filters', 'result', 'created_at', 'updated_at'])
+            ->first(fn (ParseJob $j) => LotLifecycle::runRejection(
+                $j->getAttributes(), (float) config('lifecycle.min_coverage'), (float) config('lifecycle.min_write_ratio'),
+            ) === null)
+            ?->updated_at;
+        $last = $last ? Carbon::parse($last) : null;
         $stale = $last === null || $last->lt(now()->subMinutes((int) round($hours * 60)));
         $this->line('runs: last successful full run '.($last?->toDateTimeString() ?? 'never'));
 
