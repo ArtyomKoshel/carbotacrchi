@@ -14,10 +14,12 @@ class EncarOptionCatalog extends Model
     public    $incrementing = false;
 
     protected $fillable = [
-        'code', 'name_kr', 'name_en', 'name_ru', 'icon_url', 'category', 'sort_order',
+        'code', 'name_kr', 'name_en', 'name_ru', 'icon_url', 'category', 'sort_order', 'bit',
     ];
 
-    private const CACHE_KEY = 'encar_option_catalog';
+    // v2: entries carry `bit` (lots.options_mask); new key so a cache filled by
+    // older code without `bit` is never read as "no bits assigned".
+    private const CACHE_KEY = 'encar_option_catalog:v2';
     private const CACHE_TTL = 86400; // 24 часа
 
     /**
@@ -30,7 +32,7 @@ class EncarOptionCatalog extends Model
     {
         return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, fn () =>
             static::orderBy('sort_order')
-                ->get(['code', 'name_ru', 'name_en', 'name_kr', 'icon_url', 'category'])
+                ->get(['code', 'name_ru', 'name_en', 'name_kr', 'icon_url', 'category', 'bit'])
                 ->keyBy('code')
         );
     }

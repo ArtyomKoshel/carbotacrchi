@@ -4,23 +4,37 @@ namespace App\Search\Specifications;
 
 use App\Models\Translation;
 use App\Services\SearchQuery;
+use App\Support\OptionBits;
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
 
 class OptionsSpec implements LotSpecification
 {
     public function apply(Builder $query, SearchQuery $search): void
     {
-        // Option codes: AND-logic using indexed pivot table (replaces slow JSON_CONTAINS).
-        // Each required option narrows the lot set via a subquery EXISTS check.
-        foreach ($search->options as $code) {
-            $code = (string) $code;
-            $query->whereExists(function ($sub) use ($code): void {
-                $sub->select(DB::raw(1))
-                    ->from('lot_options')
-                    ->whereColumn('lot_options.lot_id', 'lots.id')
-                    ->where('lot_options.option_code', $code);
-            });
+        // Option codes, AND-logic: one bitmask test on the lots row
+        // (see App\Support\OptionBits). Rows the backfill hasn't reached yet
+        // (options_mask NULL) and codes without a mask bit use the JSON list.
+        if ($search->options) {
+            [$mask, $jsonOnly] = OptionBits::split($search->options);
+
+            if ($mask !== 0) {
+                $maskCodes = array_values(array_diff(
+                    array_map('strval', $search->options),
+                    $jsonOnly,
+                ));
+                $query->where(function (Builder $sub) use ($mask, $maskCodes): void {
+                    $sub->whereRaw('(lots.options_mask & CAST(? AS UNSIGNED)) = CAST(? AS UNSIGNED)', [
+                        OptionBits::unsigned($mask), OptionBits::unsigned($mask),
+                    ])->orWhere(function (Builder $legacy) use ($maskCodes): void {
+                        $legacy->whereNull('lots.options_mask')
+                            ->whereRaw('JSON_CONTAINS(lots.options, ?)', [json_encode($maskCodes)]);
+                    });
+                });
+            }
+
+            foreach ($jsonOnly as $code) {
+                $query->whereRaw('? MEMBER OF (lots.options)', [$code]);
+            }
         }
 
         if ($search->trim) {

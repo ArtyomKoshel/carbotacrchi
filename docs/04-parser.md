@@ -42,7 +42,7 @@ flowchart TD
     subgraph WRITE["4 · Запись (Upsert)"]
         W1["LotRepository\n.upsert_batch(lots)"]
         W2["INSERT ... ON DUPLICATE\nKEY UPDATE"]
-        W3["Синхронизация\nlot_photos"]
+        W3["options_mask + photo_*\n(колонки lots)"]
     end
 
     subgraph POST["5 · Пост-фильтр"]
@@ -120,7 +120,7 @@ class CarLot:
     sell_type:     str | None = None
     sell_type_raw: str | None = None
 
-    # Фото → lot_photos (НЕ попадают в raw_data)
+    # Фото → компактные колонки lots.photo_* (НЕ попадают в raw_data)
     photos: list[str] | None = None
 
     # Сырые API-данные (всё остальное)
@@ -136,7 +136,7 @@ class CarLot:
 
 | Метод | Описание |
 |-------|----------|
-| `upsert_batch(lots)` | INSERT + ON DUPLICATE KEY UPDATE; синхронизирует `lot_photos` |
+| `upsert_batch(lots)` | INSERT + ON DUPLICATE KEY UPDATE; пишет `options_mask` и `photo_*` (см. `lot_compact.py`) |
 | `_apply_filters(lots, stats)` | PRE-фаза FilterEngine — удаляет лоты из памяти до записи |
 | `apply_post_filters(lot_ids)` | POST-фаза FilterEngine — ставит `is_active=0` в БД |
 | `_get_filter_engine()` | Ленивая загрузка + кэш правил (обновляется каждые 60 с) |

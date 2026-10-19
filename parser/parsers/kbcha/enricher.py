@@ -25,8 +25,8 @@ _RAW_DATA_KEYS = (
     "autocafe_url", "carmodoo_url", "moldeoncar_url", "mpark_url", "inspection_url",
     "_original_msrp_man",
     # NOTE: "photos" intentionally NOT in this list — they go to lot.photos
-    # transit field (see _apply_combined) and are auto-upserted by
-    # LotRepository.upsert_batch into the `lot_photos` table.
+    # transit field (see _apply_combined) and are packed by
+    # CarLot.to_db_row into the lots.photo_* columns.
 )
 
 _PHOTO_ONLY_MARKER = "딜러가 사진으로 등록한 성능점검기록부입니다"
@@ -194,7 +194,7 @@ class KBChaEnricher:
                 f"{total_skipped} skipped, {stats.get('errors', 0)} errors"
             )
 
-        # Photos are auto-upserted into lot_photos by LotRepository.upsert_batch
+        # Photos are packed into lots.photo_* by CarLot.to_db_row
         # from the lot.photos transit field set in _apply_combined. We only
         # need to log final stats here.
         for lot in all_valid_lots:
@@ -316,7 +316,7 @@ class KBChaEnricher:
         if raw_info:
             lot.raw_data["raw_info"] = raw_info
 
-        # Photos go to the transit field (auto-upserted into `lot_photos`).
+        # Photos go to the transit field (packed into lots.photo_*).
         photos = combined.pop("photos", None)
         if photos:
             lot.photos = list(photos)

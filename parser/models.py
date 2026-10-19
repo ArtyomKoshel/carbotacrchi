@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass, field
 from typing import ClassVar
 
+from lot_compact import encode_photos
+
 
 @dataclass
 class CarLot:
@@ -67,8 +69,8 @@ class CarLot:
     sell_type: str | None = None
     sell_type_raw: str | None = None  # raw value from source for debugging
 
-    # Photos — transit field: repository upserts these into `lot_photos`
-    # after upsert_batch and does NOT serialize them into raw_data.
+    # Photos — transit field: to_db_row() packs them into the compact
+    # lots.photo_* columns (see lot_compact.py); NOT serialized into raw_data.
     photos: list[str] | None = None
 
     # Raw data
@@ -78,9 +80,9 @@ class CarLot:
     # into raw_data JSON (otherwise each lot row carries kilobytes of duplicate
     # data). Kept as a class-level constant for documentation.
     _RAW_DATA_BLOCKLIST: ClassVar[frozenset[str]] = frozenset({
-        "photos",             # -> lot_photos table (via CarLot.photos field)
+        "photos",             # -> lots.photo_* columns (via CarLot.photos field)
         "photo_path",         # -> superseded by image_url column
-        "photo_count",        # -> COUNT(*) from lot_photos
+        "photo_count",        # -> derivable from lots.photo_codes
         "sell_type",          # -> lots.sell_type_raw column
         "manufacturer_kr",    # -> duplicate of make
         "model_en",           # -> first-class column
@@ -149,6 +151,7 @@ class CarLot:
             "sell_type": self.sell_type,
             "sell_type_raw": self.sell_type_raw,
             "seat_count": self.seat_count,
+            **encode_photos(self.photos),
         }
 
     def merge_details(self, details: dict) -> None:

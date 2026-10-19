@@ -220,6 +220,18 @@ php artisan lots:ai-model-en-backfill \
   --apply
 ```
 
+### `lots:compact-backfill`
+
+Разовое заполнение компактных колонок из старых pivot-таблиц: `lots.options_mask` из `lots.options`,
+`lots.photo_*` из `lot_photos`. Идёт чанками по PK, трогает только NULL — можно прерывать и перезапускать,
+безопасно при работающем парсере.
+
+```bash
+php artisan lots:compact-backfill                 # обе части
+php artisan lots:compact-backfill --only=photos   # только фото
+php artisan lots:compact-backfill --verify        # сверить с lot_options / lot_photos без записи
+```
+
 ### `lots:compute-field-coverage`
 
 Вычисляет процент заполненности каждого поля. Пишет в `field_coverage_stats`.

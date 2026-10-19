@@ -241,7 +241,7 @@
 | retail_value | ✅ ~60% | ✅ ~50% |
 | location | ✅ 100% | ✅ ~80% |
 | options | ✅ 100% | ✅ ~60% |
-| lot_photos | ✅ 100% | ✅ 100% |
+| photos (`lots.photo_*`) | ✅ 100% | ✅ 100% |
 | inspection cert | ✅ ~60% | ✅ ~40% |
 | outer_damage | ✅ ~60% | ✅ ~60% |
 | engine_code (raw_data) | ✅ ~60% | ❌ нет |
