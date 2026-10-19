@@ -137,4 +137,37 @@ class LotLifecycleRunsTest extends TestCase
     {
         $this->assertNull(LotLifecycle::runRejection(self::job(1, '2026-10-01 00:00:00', 90.0, $over), self::MIN));
     }
+
+    public static function writeChecks(): array
+    {
+        return [
+            // Like prod job #9: reported 96% coverage, wrote 0 lots.
+            'wrote nothing'      => ['{"coverage_pct": 96, "api_total": 219766, "lots_written": 0}', 'wrote 0 of 219766 listed (< 50%)'],
+            'just below half'    => ['{"coverage_pct": 96, "api_total": 1000, "lots_written": 499}', 'wrote 499 of 1000 listed (< 50%)'],
+            'no api total'       => ['{"coverage_pct": 96, "lots_written": 5000}', 'wrote 5000 of 0 listed (< 50%)'],
+            // Like prod job #12: 156,893 written of 194,436 listed.
+            'healthy run'        => ['{"coverage_pct": 92.6, "api_total": 194436, "lots_written": 156893}', null],
+            'exactly half'       => ['{"coverage_pct": 96, "api_total": 1000, "lots_written": 500}', null],
+            // Rows from before the check can't be judged here; the command checks the latest run live.
+            'legacy, unmeasured' => ['{"coverage_pct": 96, "api_total": 219766}', null],
+        ];
+    }
+
+    #[DataProvider('writeChecks')]
+    public function test_runs_must_have_written_lots(string $result, ?string $reason): void
+    {
+        $job = self::job(1, '2026-10-01 00:00:00', null, ['result' => $result]);
+        $this->assertSame($reason, LotLifecycle::runRejection($job, self::MIN, 0.5));
+    }
+
+    public function test_successful_runs_carry_api_total(): void
+    {
+        $runs = LotLifecycle::successfulRuns([
+            self::job(12, '2026-10-18 16:41:10', null, ['result' => '{"coverage_pct": 92.6, "api_total": 194436, "lots_written": 156893}']),
+            self::job(9, '2026-06-29 07:27:33', null, ['result' => '{"coverage_pct": 96, "api_total": 219766, "lots_written": 0}']),
+        ], self::MIN, 0.5);
+
+        $this->assertSame([12], array_column($runs, 'id'));
+        $this->assertSame(194436, $runs[0]['api_total']);
+    }
 }

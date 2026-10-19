@@ -1287,9 +1287,11 @@ class EncarParser(AbstractParser):
 
         # ── Delist phase ─────────────────────────────────────────────────
         _delist_phase = self.start_phase("delist", lots_in=len(seen_ids))
+        lots_written = self.repo.count_written_since(source, run_started_at)
         full_run = self.is_full_run(
             coverage_pct(stats["total"], api_total),
             maker_filter=maker_filter, max_pages=max_pages,
+            lots_written=lots_written, api_total=api_total,
         )
         stale = self.delist_unseen(run_started_at) if full_run else 0
         self.end_phase(_delist_phase, lots_out=stale)
@@ -1305,6 +1307,7 @@ class EncarParser(AbstractParser):
         # Read back by Laravel lots:lifecycle when it counts successful runs.
         result.extra["run_started_at"] = format_db_ts(run_started_at)
         result.extra["full_run"] = full_run
+        result.extra["lots_written"] = lots_written
         return result.to_dict()
 
     def _enrich_batch(self, lots: list[CarLot], stats: dict) -> None:

@@ -24,6 +24,7 @@ class LotsLifecycle extends Command
         {--source=encar : Lot source}
         {--runs= : Purge after this many successful full runs (default config lifecycle.purge_after_runs)}
         {--min-coverage= : Coverage % for a full run to count (default config lifecycle.min_coverage)}
+        {--min-write-ratio= : Share of API-listed lots a run must really write to count (default config lifecycle.min_write_ratio)}
         {--batch= : Lots per transaction (default config lifecycle.batch)}
         {--pause-ms= : Pause between transactions (default config lifecycle.pause_ms)}
         {--orphan-options : Also delete lot_options rows whose lot no longer exists (one-off cleanup)}';
@@ -36,6 +37,7 @@ class LotsLifecycle extends Command
         $source   = (string) $this->option('source');
         $runsN    = (int) ($this->option('runs') ?? config('lifecycle.purge_after_runs'));
         $minCov   = (float) ($this->option('min-coverage') ?? config('lifecycle.min_coverage'));
+        $minWrite = (float) ($this->option('min-write-ratio') ?? config('lifecycle.min_write_ratio'));
         $batch    = max(1, (int) ($this->option('batch') ?? config('lifecycle.batch')));
         $pauseMs  = max(0, (int) ($this->option('pause-ms') ?? config('lifecycle.pause_ms')));
 
@@ -48,11 +50,31 @@ class LotsLifecycle extends Command
         }
 
         $lc = new LotLifecycle($source, $batch, $pauseMs);
-        $runs = LotLifecycle::successfulRuns($lc->loadJobs(), $minCov);
+        $runs = LotLifecycle::successfulRuns($lc->loadJobs(), $minCov, $minWrite);
         $delistCutoff = LotLifecycle::delistCutoff($runs);
         $purgeCutoff = LotLifecycle::purgeCutoff($runs, $runsN);
 
-        $this->printRuns($lc, $runs, $runsN, $minCov);
+        $this->printRuns($lc, $runs, $runsN, $minCov, $minWrite);
+
+        // Both steps trust the latest run's start as "seen since". Check live that
+        // it really wrote lots: a run whose upserts silently failed would
+        // otherwise hide (and later delete) the whole catalog.
+        if ($runs) {
+            $latest  = $runs[0];
+            $written = $lc->writtenSince($latest['started_at']);
+            $need    = (int) ceil($latest['api_total'] * $minWrite);
+            if ($latest['api_total'] <= 0 || $written < $need) {
+                $msg = sprintf(
+                    'Latest successful run #%d wrote only %s lots since its start (need %s = %d%% of %s listed); skipping delist and purge.',
+                    $latest['id'], number_format($written), number_format($need),
+                    (int) round($minWrite * 100), number_format($latest['api_total']),
+                );
+                $this->error($msg);
+                logger()->warning('[lots:lifecycle] ' . $msg);
+                return self::SUCCESS;
+            }
+            $this->line(sprintf('Latest run #%d wrote %s lots (need %s): OK.', $latest['id'], number_format($written), number_format($need)));
+        }
 
         // Stop between batches if a parse job has started meanwhile.
         $stopped = false;
@@ -115,7 +137,7 @@ class LotsLifecycle extends Command
         return self::SUCCESS;
     }
 
-    private function printRuns(LotLifecycle $lc, array $runs, int $runsN, float $minCov): void
+    private function printRuns(LotLifecycle $lc, array $runs, int $runsN, float $minCov, float $minWrite): void
     {
         $this->info(sprintf(
             'Successful full runs (coverage >= %.1f%%, no maker/max_pages filter): %d, purge after %d.',
@@ -138,7 +160,7 @@ class LotsLifecycle extends Command
         if ($this->output->isVerbose()) {
             $rejected = [];
             foreach ($lc->loadJobs() as $job) {
-                if ($why = LotLifecycle::runRejection($job, $minCov)) {
+                if ($why = LotLifecycle::runRejection($job, $minCov, $minWrite)) {
                     $rejected[] = [$job['id'], $job['created_at'], $why];
                 }
             }

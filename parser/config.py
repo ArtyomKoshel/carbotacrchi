@@ -57,5 +57,9 @@ class Config:
     # total, percent) hides the lots it did not see and counts towards purging.
     # Laravel's `lots:lifecycle` reads the same env var (config/lifecycle.php).
     LOTS_LIFECYCLE_MIN_COVERAGE = float(os.getenv("LOTS_LIFECYCLE_MIN_COVERAGE", "85"))
+    # ...and must really have written at least this share of the API total
+    # (lots with parsed_at >= run start), so a run whose upserts silently fail
+    # never hides the catalog. Laravel reads the same env var.
+    LOTS_LIFECYCLE_MIN_WRITE_RATIO = float(os.getenv("LOTS_LIFECYCLE_MIN_WRITE_RATIO", "0.5"))
     # KBChacha keeps its own delist threshold (source currently unused).
     KBCHA_DELIST_COVERAGE = float(os.getenv("KBCHA_DELIST_COVERAGE", "80"))

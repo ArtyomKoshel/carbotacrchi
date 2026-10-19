@@ -568,6 +568,24 @@ class LotRepository:
             logger.error(f"[DB] count_active failed: {e}")
             return -1
 
+    def count_written_since(self, source: str, since: datetime) -> int | None:
+        """Lots this run really persisted: parsed_at >= run start (any is_active).
+
+        None when the count fails, which lifecycle.writes_ok treats as "not
+        verified", so the run does not delist.
+        """
+        conn = self._get_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT COUNT(*) AS cnt FROM lots WHERE source = %s AND parsed_at >= %s",
+                    (source, since.strftime("%Y-%m-%d %H:%M:%S")),
+                )
+                return int(cursor.fetchone()["cnt"])
+        except Exception as e:
+            logger.error(f"[DB] count_written_since failed: {e}")
+            return None
+
     def delist_not_seen_since(self, source: str, since: datetime, batch_size: int = 2000) -> int:
         """Set is_active=0 on active lots whose parsed_at is older than `since`.
 

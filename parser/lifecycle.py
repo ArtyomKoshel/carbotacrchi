@@ -24,6 +24,20 @@ def coverage_pct(processed: int, api_total: int) -> float:
     return round(processed / api_total * 100, 1)
 
 
+def writes_ok(lots_written: int | None, api_total: int, min_write_ratio: float) -> bool:
+    """True when the run really persisted lots, not just counted them.
+
+    coverage_pct comes from the parser's own counters. In June 2026 two runs
+    reported ~95% coverage while their upserts silently stopped (job #9 wrote
+    0 lots), so delisting on coverage alone would hide the whole catalog.
+    `lots_written` is the number of lots with parsed_at >= run start, read back
+    from the DB. None (not measured) never passes.
+    """
+    if lots_written is None or not api_total:
+        return False
+    return lots_written >= api_total * min_write_ratio
+
+
 def is_successful_full_run(
     *,
     coverage: float,
@@ -31,16 +45,22 @@ def is_successful_full_run(
     maker_filter: str | None = None,
     max_pages: int | None = None,
     resumed: bool = False,
+    lots_written: int | None = None,
+    api_total: int = 0,
+    min_write_ratio: float = 0.5,
 ) -> bool:
     """True when a finished run saw the whole marketplace well enough to delist.
 
     A run limited by maker or page count only saw a slice, so lots outside the
     slice must not be hidden. A run resumed from a checkpoint skipped work it
     did before the interruption, so its start time no longer bounds what it saw.
+    A run whose writes did not reach the DB (see writes_ok) saw nothing usable.
     """
     if maker_filter or max_pages or resumed:
         return False
-    return coverage >= min_coverage
+    if coverage < min_coverage:
+        return False
+    return writes_ok(lots_written, api_total, min_write_ratio)
 
 
 def utc_now_seconds() -> datetime:

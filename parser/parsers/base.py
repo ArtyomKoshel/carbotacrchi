@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
 
+from config import Config
 from lifecycle import is_successful_full_run
 from repository import LotRepository
 
@@ -170,6 +171,9 @@ class AbstractParser(ABC):
     #: Minimum coverage (processed / API total, percent) for a full run to delist.
     #: Subclasses may override (Encar uses Config.LOTS_LIFECYCLE_MIN_COVERAGE).
     MIN_DELIST_COVERAGE: float = 80.0
+    #: Share of API-listed lots that must really be written (parsed_at >= run
+    #: start) before a run may delist. See lifecycle.writes_ok.
+    MIN_WRITE_RATIO: float = Config.LOTS_LIFECYCLE_MIN_WRITE_RATIO
 
     def __init__(self, repo: LotRepository):
         self.repo = repo
@@ -240,11 +244,15 @@ class AbstractParser(ABC):
         maker_filter: str | None = None,
         max_pages: int | None = None,
         resumed: bool = False,
+        lots_written: int | None = None,
+        api_total: int = 0,
     ) -> bool:
         """True when this finished run counts as a successful full run (lifecycle.py).
 
         Only such runs delist, and only they count towards purging in Laravel's
         `lots:lifecycle`. Parsers store the answer as result["full_run"].
+        `lots_written` is read back from the DB (lots with parsed_at >= run start),
+        so a run whose upserts silently failed never hides the catalog.
         """
         ok = is_successful_full_run(
             coverage=coverage,
@@ -252,11 +260,15 @@ class AbstractParser(ABC):
             maker_filter=maker_filter,
             max_pages=max_pages,
             resumed=resumed,
+            lots_written=lots_written,
+            api_total=api_total,
+            min_write_ratio=self.MIN_WRITE_RATIO,
         )
         if not ok:
             logger.warning(
                 f"[{self.get_source_key()}] Not a successful full run, skipping delist "
                 f"(coverage {coverage:.1f}%, min {self.MIN_DELIST_COVERAGE}%, "
+                f"written {lots_written} of {api_total} listed, min ratio {self.MIN_WRITE_RATIO}, "
                 f"maker={maker_filter!r}, max_pages={max_pages!r}, resumed={resumed})."
             )
         return ok

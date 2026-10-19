@@ -39,7 +39,7 @@ class LotLifecycle
      *
      * @param array{type?:?string, status?:string, filters?:mixed, result?:mixed, created_at?:mixed} $job
      */
-    public static function runRejection(array $job, float $minCoverage): ?string
+    public static function runRejection(array $job, float $minCoverage, float $minWriteRatio = 0.5): ?string
     {
         $type = ($job['type'] ?? null) ?: 'full';
         if ($type !== 'full') {
@@ -64,6 +64,15 @@ class LotLifecycle
         $coverage = (float) $result['coverage_pct'];
         if ($coverage < $minCoverage) {
             return sprintf('coverage %.1f%% < %.1f%%', $coverage, $minCoverage);
+        }
+        // Parsers record lots_written (parsed_at >= run start, read back from the
+        // DB) since the write check. Older rows can't be checked here; the
+        // command verifies the latest run live instead (writtenSince).
+        if (isset($result['lots_written']) && is_numeric($result['lots_written'])) {
+            $apiTotal = (int) ($result['api_total'] ?? 0);
+            if ($apiTotal <= 0 || (int) $result['lots_written'] < $apiTotal * $minWriteRatio) {
+                return sprintf('wrote %d of %d listed (< %d%%)', (int) $result['lots_written'], $apiTotal, (int) round($minWriteRatio * 100));
+            }
         }
         if (self::runStart($job) === null) {
             return 'no start time';
@@ -100,18 +109,20 @@ class LotLifecycle
      * @param  iterable<array> $jobs parse_jobs rows of one source, any order
      * @return list<array{id:int, started_at:CarbonImmutable, coverage:float}>
      */
-    public static function successfulRuns(iterable $jobs, float $minCoverage): array
+    public static function successfulRuns(iterable $jobs, float $minCoverage, float $minWriteRatio = 0.5): array
     {
         $runs = [];
         foreach ($jobs as $job) {
             $job = (array) $job;
-            if (self::runRejection($job, $minCoverage) !== null) {
+            if (self::runRejection($job, $minCoverage, $minWriteRatio) !== null) {
                 continue;
             }
+            $result = self::decode($job['result'] ?? null);
             $runs[] = [
                 'id'         => (int) ($job['id'] ?? 0),
                 'started_at' => self::runStart($job),
-                'coverage'   => (float) self::decode($job['result'] ?? null)['coverage_pct'],
+                'coverage'   => (float) $result['coverage_pct'],
+                'api_total'  => (int) ($result['api_total'] ?? 0),
             ];
         }
         usort($runs, fn ($a, $b) => [$b['started_at'], $b['id']] <=> [$a['started_at'], $a['id']]);
@@ -169,6 +180,15 @@ class LotLifecycle
     public static function parseJobRunning(): bool
     {
         return DB::table('parse_jobs')->where('status', 'running')->exists();
+    }
+
+    /** Lots of this source written since $since (parsed_at >= $since), any is_active. */
+    public function writtenSince(CarbonImmutable $since): int
+    {
+        return DB::table('lots')
+            ->where('source', $this->source)
+            ->where('parsed_at', '>=', self::ts($since))
+            ->count();
     }
 
     /** Active lots not seen since $cutoff. */

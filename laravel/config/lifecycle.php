@@ -12,6 +12,12 @@ return [
     // when its coverage_pct (processed / API total) is at least this.
     'min_coverage' => (float) env('LOTS_LIFECYCLE_MIN_COVERAGE', 85),
 
+    // ...and must really have written at least this share of its API total
+    // (lots with parsed_at >= run start). June 2026 job #9 reported 96% coverage
+    // but wrote 0 lots; without this check it would hide the whole catalog.
+    // Same env var as the parser.
+    'min_write_ratio' => (float) env('LOTS_LIFECYCLE_MIN_WRITE_RATIO', 0.5),
+
     // Inactive lots not seen in this many latest successful full runs are purged.
     'purge_after_runs' => (int) env('LOTS_PURGE_AFTER_RUNS', 5),
 

@@ -38,7 +38,23 @@ def test_coverage_is_rounded_like_run_result():
     (99.0, {"resumed": True}, False),         # start time no longer bounds what it saw
 ])
 def test_successful_full_run(coverage, kwargs, expected):
-    assert is_successful_full_run(coverage=coverage, min_coverage=85.0, **kwargs) is expected
+    # Writes verified (run #12: 156,893 lots written of 194,436 listed)
+    written = {"lots_written": 156_893, "api_total": 194_436}
+    assert is_successful_full_run(coverage=coverage, min_coverage=85.0, **written, **kwargs) is expected
+
+
+@pytest.mark.parametrize("lots_written, api_total, expected", [
+    (156_893, 194_436, True),    # prod run #12: ~81% of listings written
+    (0, 219_766, False),         # prod run #9: reported 96% coverage, wrote nothing
+    (97_218, 194_436, True),     # exactly 50% is enough
+    (97_217, 194_436, False),
+    (None, 194_436, False),      # not measured never delists
+    (1000, 0, False),            # no API total
+])
+def test_run_must_have_written_lots(lots_written, api_total, expected):
+    assert is_successful_full_run(
+        coverage=96.0, min_coverage=85.0, lots_written=lots_written, api_total=api_total,
+    ) is expected
 
 
 def test_run_start_matches_parsed_at_format():
@@ -76,6 +92,7 @@ def _flow(coverage, **kwargs):
     repo = _FakeRepo()
     p = _Parser(repo)
     start = datetime(2026, 10, 18, 16, 41, 12)
+    kwargs = {"lots_written": 156_893, "api_total": 194_436, **kwargs}
     full = p.is_full_run(coverage, **kwargs)
     stale = p.delist_unseen(start) if full else 0
     return full, stale, repo.calls
@@ -90,6 +107,8 @@ def test_full_run_delists_lots_older_than_run_start():
 @pytest.mark.parametrize("coverage, kwargs", [
     (60.0, {}),
     (99.0, {"maker_filter": "BMW", "max_pages": 2}),
+    (96.0, {"lots_written": 0, "api_total": 219_766}),     # prod job #9: counted, wrote nothing
+    (96.0, {"lots_written": None, "api_total": 219_766}),  # count query failed
 ])
 def test_partial_run_touches_nothing(coverage, kwargs):
     full, stale, calls = _flow(coverage, **kwargs)
