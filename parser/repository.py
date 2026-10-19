@@ -11,6 +11,7 @@ from pymysql.cursors import DictCursor
 
 import api_client
 from config import Config
+from lot_compact import OptionBits
 from models import CarLot, InspectionRecord
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class LotRepository:
 
     def __init__(self):
         self._conn: pymysql.Connection | None = None
+        self._option_bits = OptionBits()
 
     def _get_filter_engine(self):
         """Return a FilterEngine with rules from DB (cached, refreshed every 60s)."""
@@ -362,9 +364,10 @@ class LotRepository:
                 owners_count, insurance_count,
                 location, color, seat_color,
                 badge_group, `trim`, trim_en, badge,
-                `options`, paid_options,
+                `options`, options_mask, paid_options,
                 retail_value, repair_cost,
                 image_url, lot_url, raw_data,
+                photo_dir, photo_base_id, photo_codes, photo_ext_upper, photo_urls,
                 fetched_at, is_active, parsed_at,
                 plate_number, first_reg_date, listed_at,
                 sell_type, sell_type_raw,
@@ -380,9 +383,10 @@ class LotRepository:
                 %(owners_count)s, %(insurance_count)s,
                 %(location)s, %(color)s, %(seat_color)s,
                 %(badge_group)s, %(trim)s, %(trim_en)s, %(badge)s,
-                %(options)s, %(paid_options)s,
+                %(options)s, %(options_mask)s, %(paid_options)s,
                 %(retail_value)s, %(repair_cost)s,
                 %(image_url)s, %(lot_url)s, %(raw_data)s,
+                %(photo_dir)s, %(photo_base_id)s, %(photo_codes)s, %(photo_ext_upper)s, %(photo_urls)s,
                 %(now)s, %(is_active)s, %(now)s,
                 %(plate_number)s, %(first_reg_date)s, %(listed_at)s,
                 %(sell_type)s, %(sell_type_raw)s,
@@ -408,8 +412,17 @@ class LotRepository:
                 trim_en=COALESCE(VALUES(trim_en), trim_en),
                 badge=COALESCE(VALUES(badge), badge),
                 `options`=COALESCE(VALUES(`options`), `options`),
+                options_mask=COALESCE(VALUES(options_mask), options_mask),
                 paid_options=COALESCE(VALUES(paid_options), paid_options),
                 image_url=COALESCE(VALUES(image_url), image_url),
+                -- Photos: photo_codes is non-NULL whenever the parser saw the
+                -- gallery, so overwrite the whole group then (photo changes
+                -- propagate) and keep it otherwise. photo_codes goes last.
+                photo_dir=IF(VALUES(photo_codes) IS NULL, photo_dir, VALUES(photo_dir)),
+                photo_base_id=IF(VALUES(photo_codes) IS NULL, photo_base_id, VALUES(photo_base_id)),
+                photo_ext_upper=IF(VALUES(photo_codes) IS NULL, photo_ext_upper, VALUES(photo_ext_upper)),
+                photo_urls=IF(VALUES(photo_codes) IS NULL, photo_urls, VALUES(photo_urls)),
+                photo_codes=COALESCE(VALUES(photo_codes), photo_codes),
                 lot_url=VALUES(lot_url),
                 raw_data=VALUES(raw_data),
                 is_active=VALUES(is_active),
@@ -435,6 +448,7 @@ class LotRepository:
         for lot in lots:
             row = lot.to_db_row()
             row["now"] = now
+            row["options_mask"] = self._option_bits.mask(conn, lot.options)
             # Respect filter-engine mark_inactive flag (default: active)
             row["is_active"] = 0 if lot.raw_data.get("_filter_mark_inactive") else 1
             rows.append(row)
@@ -487,9 +501,6 @@ class LotRepository:
             lots = [l for l in lots if not l.raw_data.get("_db_skip")]
             rows = [l.to_db_row() for l in lots]
 
-        # Sync lot_options pivot table
-        self._sync_lot_options(lots)
-
         # Detect field changes for existing lots and persist to lot_changes
         changes_to_insert = []
         for lot in lots:
@@ -528,16 +539,6 @@ class LotRepository:
             self._insert_lot_changes(changes_to_insert)
             if stats is not None:
                 stats["updated"] = stats.get("updated", 0) + len(changes_to_insert)
-
-        # Auto-upsert photos from the transit field `lot.photos` into the
-        # `lot_photos` table. Parsers populate `lot.photos` during enrichment;
-        # storing them here keeps the raw_data column free of bulky arrays.
-        for lot in lots:
-            if lot.photos:
-                try:
-                    self.upsert_photos(lot.id, lot.photos)
-                except Exception as e:
-                    logger.warning(f"[DB] upsert_photos auto {lot.id}: {e}")
 
         return len(rows)
 
@@ -636,26 +637,6 @@ class LotRepository:
             logger.error(f"[DB] count_by_source failed: {e}")
             return {"active": 0, "inactive": 0}
 
-    def upsert_photos(self, lot_id: str, photos: list[str]) -> int:
-        """Insert photos into lot_photos. Skips duplicates by (lot_id, position)."""
-        if not photos:
-            return 0
-        conn = self._get_conn()
-        sql = """
-            INSERT IGNORE INTO lot_photos (lot_id, url, position)
-            VALUES (%s, %s, %s)
-        """
-        rows = [(lot_id, url, pos) for pos, url in enumerate(photos)]
-        try:
-            with conn.cursor() as cursor:
-                cursor.executemany(sql, rows)
-            conn.commit()
-            return len(rows)
-        except Exception as e:
-            conn.rollback()
-            logger.warning(f"[DB] upsert_photos failed for {lot_id}: {type(e).__name__}: {e}")
-            return 0
-
     def _upsert_via_api(self, lots: list[CarLot], stats: dict | None) -> int:
         """Send lots to Laravel API instead of direct DB write. Falls back to direct on error."""
         source = lots[0].source if lots else "unknown"
@@ -702,50 +683,6 @@ class LotRepository:
             return self.upsert_batch(lots, stats)
         finally:
             api_client.INTERNAL_TOKEN = original  # type: ignore[assignment]
-
-    def _sync_lot_options(self, lots: list) -> None:
-        """Sync lot_options pivot table after upserting lots."""
-        conn = self._get_conn()
-
-        inserts = []
-        lot_ids_with_options = []
-        for lot in lots:
-            codes = lot.options if hasattr(lot, "options") and lot.options else []
-            if isinstance(codes, str):
-                try:
-                    codes = json.loads(codes)
-                except Exception:
-                    codes = []
-            if not isinstance(codes, list):
-                codes = []
-            if codes:
-                lot_ids_with_options.append(lot.id)
-                for code in set(codes):
-                    code = str(code).strip()
-                    if code:
-                        inserts.append((lot.id, code))
-
-        if not lot_ids_with_options:
-            return
-
-        try:
-            with conn.cursor() as cursor:
-                # Remove stale option rows for lots being upserted
-                for chunk in [lot_ids_with_options[i:i+500] for i in range(0, len(lot_ids_with_options), 500)]:
-                    placeholders = ",".join(["%s"] * len(chunk))
-                    cursor.execute(f"DELETE FROM lot_options WHERE lot_id IN ({placeholders})", chunk)
-
-                # Insert fresh option rows
-                if inserts:
-                    for chunk in [inserts[i:i+1000] for i in range(0, len(inserts), 1000)]:
-                        cursor.executemany(
-                            "INSERT IGNORE INTO lot_options (lot_id, option_code) VALUES (%s, %s)",
-                            chunk,
-                        )
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            logger.warning(f"[DB] lot_options sync failed: {e}")
 
     def insert_filter_skip_log(self, entries: list[dict]) -> int:
         """Upsert filter skip log entries: one row per (source, source_id, rule_name).

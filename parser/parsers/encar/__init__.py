@@ -201,8 +201,8 @@ def _enrich_from_detail(lot: CarLot, detail: dict, norm: EncarNormalizer) -> Non
     if outer and not lot.image_url:
         lot.image_url = EncarClient.photo_url(outer[0])
 
-    # Photos go to the transit field `lot.photos` — LotRepository.upsert_batch
-    # will persist them into the `lot_photos` table. They are NOT serialized
+    # Photos go to the transit field `lot.photos` — CarLot.to_db_row packs
+    # them into the compact lots.photo_* columns. They are NOT serialized
     # into raw_data (see CarLot._RAW_DATA_BLOCKLIST).
     all_photo_urls = [EncarClient.photo_url(p["path"]) for p in photos if p.get("path")]
     if all_photo_urls:

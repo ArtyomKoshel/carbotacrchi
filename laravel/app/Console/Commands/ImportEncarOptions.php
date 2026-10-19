@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\EncarOptionCatalog;
+use App\Support\OptionBits;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -89,6 +90,13 @@ class ImportEncarOptions extends Command
         );
 
         $this->info('Upserted ' . count($items) . ' option records.');
+
+        // New codes need a lots.options_mask bit (and lots that already have
+        // them get it set) — always, the mask must not lag the catalog.
+        foreach (OptionBits::assignMissing() as $code => $bit) {
+            $this->info("Assigned options_mask bit {$bit} to new code {$code}"
+                . ($bit >= OptionBits::MASK_BITS ? ' (beyond 64 bits: searched via JSON)' : ''));
+        }
 
         if (!$noFlush) {
             EncarOptionCatalog::flushCache();

@@ -75,6 +75,8 @@ class ComputeFieldCoverage extends Command
         // Location & links
         ['field' => 'location',          'pred' => "X IS NOT NULL AND X <> ''"],
         ['field' => 'image_url',         'pred' => "X IS NOT NULL AND X <> ''"],
+        // Virtual: the gallery lives in the compact photo_* columns (no `X`).
+        ['field' => 'photos',            'pred' => "(photo_codes <> '' OR photo_urls IS NOT NULL)"],
         ['field' => 'lot_url',          'pred' => "X IS NOT NULL AND X <> ''"],
 
         // Identity (always present)
@@ -89,7 +91,6 @@ class ComputeFieldCoverage extends Command
      * Value is the join-target table with an id column `lot_id`.
      */
     private const JOINED_CHECKS = [
-        'photos'            => 'lot_photos',
         'inspection_record' => 'lot_inspections',
     ];
 
@@ -176,7 +177,7 @@ class ComputeFieldCoverage extends Command
                 ];
             }
 
-            // Virtual / joined fields — lot_photos, lot_inspections.
+            // Virtual / joined fields — lot_inspections.
             foreach ($joinedChecks as $name => $joinTable) {
                 $filled = (int) DB::selectOne(
                     "SELECT COUNT(DISTINCT lot_id) AS c FROM {$joinTable} "

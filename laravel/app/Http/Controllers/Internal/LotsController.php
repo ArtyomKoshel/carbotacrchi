@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Internal;
 
 use App\Http\Controllers\Controller;
+use App\Support\LotPhotos;
+use App\Support\OptionBits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,7 @@ class LotsController extends Controller
 {
     /**
      * Upsert a batch of lots from the parser.
-     * Validates the payload structure, upserts to DB, syncs lot_options pivot.
+     * Validates the payload structure, upserts to DB (options mask + photo columns included).
      *
      * POST /internal/lots/upsert
      * Header: X-Internal-Token: <token>
@@ -101,6 +103,18 @@ class LotsController extends Controller
 
             $row = $this->buildRow($lot, $source, $now);
 
+            // Photo columns move as a group, and only when the parser saw the
+            // gallery (photo_codes set) — otherwise keep what is stored.
+            if (($lot['photo_codes'] ?? null) !== null) {
+                foreach (LotPhotos::COLUMNS as $col) {
+                    $row[$col] = $lot[$col] ?? null;
+                }
+                $row['photo_ext_upper'] = (int) ($lot['photo_ext_upper'] ?? 0);
+                if (is_array($row['photo_urls'])) {
+                    $row['photo_urls'] = json_encode($row['photo_urls'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                }
+            }
+
             if (isset($existingIds[$id])) {
                 DB::table('lots')->where('id', $id)->update(array_merge($row, ['updated_at' => $now]));
                 $updated++;
@@ -115,15 +129,6 @@ class LotsController extends Controller
                 $inserted++;
             }
 
-            // Sync lot_options pivot
-            $codes = $lot['options'] ?? [];
-            if (is_array($codes) && !empty($codes)) {
-                DB::table('lot_options')->where('lot_id', $id)->delete();
-                $optRows = array_map(fn ($c) => ['lot_id' => $id, 'option_code' => (string) $c], array_unique($codes));
-                foreach (array_chunk($optRows, 200) as $chunk) {
-                    DB::table('lot_options')->insertOrIgnore($chunk);
-                }
-            }
         }
 
         return [$inserted, $updated];
@@ -173,6 +178,7 @@ class LotsController extends Controller
             'first_reg_date'          => $lot['first_reg_date']   ?? null,
             'listed_at'               => $lot['listed_at']        ?? null,
             'options'                 => $json($lot['options']    ?? null),
+            'options_mask'            => OptionBits::maskForStorage($lot['options'] ?? null),
             'paid_options'            => $json($lot['paid_options'] ?? null),
             'raw_data'                => $json($lot['raw_data']   ?? null),
             'is_active'               => (int) ($lot['is_active'] ?? 1),

@@ -10,10 +10,8 @@
 flowchart LR
     subgraph CORE["Основные"]
         LOTS[(lots)]
-        PHOTOS[(lot_photos)]
         INSP[(lot_inspections)]
         CHG[(lot_changes)]
-        OPT[(lot_options)]
     end
 
     subgraph CAT["Каталог"]
@@ -53,10 +51,8 @@ flowchart LR
         SSL[(subscription\nseen_lots)]
     end
 
-    LOTS ---|1:N| PHOTOS
     LOTS ---|1:1| INSP
     LOTS ---|1:N| CHG
-    LOTS ---|N:M| OPT
     CM ---|1:N| CG
     CM ---|1:N| CGN
     CG ---|1:N| CSG
@@ -131,8 +127,14 @@ Encar организует данные в 6 уровней (iNav). Каждый
 | `listed_at` | TIMESTAMP | Дата публикации объявления |
 | `lot_url` | VARCHAR(500) | Ссылка на объявление |
 | `image_url` | VARCHAR(500) | Первое фото |
+| `photo_dir` | TINYINT | Галерея по шаблону Encar: `carpicture{NN}` |
+| `photo_base_id` | INT | Id фото в имени файла (≠ id лота у перевыставленных) |
+| `photo_codes` | VARCHAR | Коды фото по порядку: `021,001,009`; `''` если используется `photo_urls` |
+| `photo_ext_upper` | BOOLEAN | `.JPG` вместо `.jpg` |
+| `photo_urls` | JSON | Явный список URL для фото вне шаблона (KBChacha и т.п.) |
 | `location` | VARCHAR(100) | Регион/город |
 | `options` | JSON | Коды опций Encar (`["001","014",…]`) |
+| `options_mask` | BIGINT UNSIGNED | Те же коды битами (`encar_option_catalog.bit`); поиск: `(options_mask & m) = m` |
 | `paid_options` | JSON | Платные опции |
 | `raw_data` | JSON | Сырые данные API + `pre_norm` snapshot |
 | `is_active` | BOOLEAN | `0` = отфильтрован `parse_filters` или снят с продажи (не найден последним успешным полным прогоном, см. [04-parser](./04-parser.md#жизненный-цикл-лота)) |
@@ -232,6 +234,7 @@ KR→EN кэш переводов. Используется `translate:run` дл
 | `name_kr` | Корейское название (`선루프`) |
 | `name_en` | Английское (`Sunroof`) |
 | `name_ru` | Русское (`Люк`) |
+| `bit` | Бит в `lots.options_mask` (стабильный; новые коды получают следующий в `options:import-encar`) |
 | `icon_url` | URL иконки Encar |
 | `category` | `exterior` \| `safety` \| `convenience` \| `interior` |
 
