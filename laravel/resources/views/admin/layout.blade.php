@@ -85,6 +85,13 @@
         <span class="text-base w-5 text-center leading-none">👥</span>
         Пользователи
       </a>
+      @php $activeNotif = request()->routeIs('admin.notifications') @endphp
+      <a href="{{ route('admin.notifications') }}"
+         class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition
+                {{ $activeNotif ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+        <span class="text-base w-5 text-center leading-none">🔔</span>
+        Уведомления
+      </a>
     @endif
 
     <div class="mt-auto pt-4 border-t border-gray-800">

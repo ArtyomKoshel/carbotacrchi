@@ -15,7 +15,10 @@ class AuctionServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TelegramBot::class, function () {
-            return new TelegramBot((string) env('TELEGRAM_BOT_TOKEN', ''));
+            return new TelegramBot(
+                (string) env('TELEGRAM_BOT_TOKEN', ''),
+                (string) config('auction.telegram_api_base', 'https://api.telegram.org/bot'),
+            );
         });
 
         $this->app->singleton(ProviderAggregator::class, function () {

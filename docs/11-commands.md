@@ -269,6 +269,42 @@ php artisan lots:lifecycle --orphan-options
 
 ---
 
+## Уведомления
+
+### `notifications:watch`
+
+Шлёт Telegram-уведомления админам: события задач парсинга, недоступность БД, низкие балансы FloppyData и DeepSeek, долгое отсутствие успешного прогона. Получателей, типы и пороги настраивают в [`/admin/notifications`](./08-api.md#уведомления-adminnotifications). В расписании стоит каждые 5 минут (`routes/console.php`, выполняет `schedule:work` в контейнере Railway).
+
+```bash
+php artisan notifications:watch [OPTIONS]
+
+  --dry-run         Печатать сообщения вместо отправки; ничего не пишет (ни в БД, ни в redis)
+  --only=LIST       Только эти проверки: jobs,proxy,ai,runs (БД проверяется всегда)
+```
+
+**Как работает:**
+- Каждое событие отправляется один раз: ключи хранятся в `notification_events`, например `job:42:started`, `job:42:finished`, `balance:proxy:low`. Инциденты (зависшая задача, низкий баланс, …) открываются, повторяются раз в `repeat_hours` и закрываются сообщением о восстановлении. Если доставка не прошла ни одному получателю, событие не помечается и уходит при следующем запуске.
+- Первый запуск на новой БД не пересылает уже завершённые задачи, только помечает их.
+- БД проверяется с таймаутом 5 с. Если MySQL недоступен, алерт уходит по снимку получателей из redis (`notifications:recipients`; без redis используется файловый кэш). Строки лога копятся в redis и пишутся в БД после восстановления.
+- Балансы опрашиваются не чаще раза в 15 минут (`NOTIFICATIONS_BALANCE_CHECK_MINUTES`). FloppyData: `GET /v2/proxy/rotating/balance`, при ошибке `/v1/rotating/balance`, заголовок `X-Api-Key`. DeepSeek: `GET /user/balance` с `AI_API_KEY`, только если `AI_API_URL` указывает на `deepseek.com`.
+- Секреты не логируются: токен бота вырезается из текстов ошибок, ошибки API пишутся как путь и HTTP-код.
+
+**Примеры:**
+```bash
+# Посмотреть, что ушло бы сейчас
+php artisan notifications:watch --dry-run
+
+# Только задачи парсинга
+php artisan notifications:watch --only=jobs --dry-run
+
+# Только балансы (отправить по-настоящему)
+php artisan notifications:watch --only=proxy,ai
+```
+
+**Env (необязательные):** `TELEGRAM_API_BASE`, `DEEPSEEK_BASE_URL`, `NOTIFICATIONS_CACHE_STORE` (`redis`, если задан `REDIS_HOST`, иначе `file`), `NOTIFICATIONS_BALANCE_CHECK_MINUTES`.
+
+---
+
 ## Утилиты
 
 ### `lots:ai-model-en-backfill`

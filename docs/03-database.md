@@ -265,6 +265,10 @@ KR→EN кэш переводов. Используется `translate:run` дл
 | `admin_users` | Пользователи админ-панели |
 | `subscription_seen_lots` | Просмотренные лоты по подпискам |
 | `lots_archive` | Компактная строка (~200 байт) удалённого `lots:lifecycle` лота: `id, source, make_en, model_group_en, model_en, year, mileage, price, first_seen, last_seen, sold_detected_at` — история цен проданных машин |
+| `notification_recipients` | Получатели Telegram-уведомлений админам: chat id, типы, флаг enabled |
+| `notification_settings` | Пороги уведомлений (key → value) |
+| `notification_events` | Дедупликация: отправленные события и открытые/закрытые инциденты |
+| `notification_log` | Каждая попытка отправки уведомления |
 
 ---
 
