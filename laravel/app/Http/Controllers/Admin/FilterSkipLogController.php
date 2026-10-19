@@ -22,13 +22,11 @@ class FilterSkipLogController extends Controller
             $query->byRule($request->rule_id);
         }
 
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $query->where('skipped_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->where('skipped_at', '<=', $request->date_to . ' 23:59:59');
-        }
+        // Filter by date range (lots that were being skipped within it)
+        $query->byDateRange(
+            $request->filled('date_from') ? $request->date_from : null,
+            $request->filled('date_to') ? $request->date_to . ' 23:59:59' : null,
+        );
 
         // Order and paginate
         $logs = $query->orderBy('skipped_at', 'desc')->paginate(50)->withQueryString();
@@ -46,8 +44,8 @@ class FilterSkipLogController extends Controller
             return back()->with('error', 'Days must be at least 1');
         }
 
-        $deleted = FilterSkipLog::where('skipped_at', '<', now()->subDays($days))->delete();
+        $deleted = FilterSkipLog::where('last_skipped_at', '<', now()->subDays($days))->delete();
 
-        return back()->with('success', "Deleted {$deleted} log entries older than {$days} days");
+        return back()->with('success', "Deleted {$deleted} log entries not skipped for {$days}+ days");
     }
 }

@@ -48,7 +48,7 @@ flowchart TD
     subgraph POST["5 · Пост-фильтр"]
         P1{{"FilterEngine\nPOST-phase"}}
         P2["UPDATE lots\nSET is_active=0"]
-        P3["INSERT filter_skip_log"]
+        P3["UPSERT filter_skip_log"]
     end
 
     START --> S1 --> S2 --> S3

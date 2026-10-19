@@ -31,7 +31,7 @@ flowchart TD
         Q1["lot_id в БД\n+ inspection данные"]
         Q2{{"FilterEngine\n.apply(lot_id)"}}
         Q3["UPDATE lots\nSET is_active=0"]
-        Q4["INSERT filter_skip_log"]
+        Q4["UPSERT filter_skip_log"]
         Q5["Лот остаётся активным"]
         Q1 --> Q2
         Q2 -->|"matched"| Q3 --> Q4
@@ -95,18 +95,23 @@ rule_group = "B": year < 2015
 
 ## `filter_skip_log`
 
-Каждый отфильтрованный лот логируется:
+Одна строка на пару «лот + правило» (`UNIQUE (source, source_id, rule_name)`).
+Парсер делает upsert: повторный пропуск тем же правилом не добавляет строку,
+а обновляет `last_skipped_at`, `skip_count` и `field_value`.
 
 ```sql
-lot_id
-source
-make, model, year
-filter_id       -- какое правило сработало
-reason          -- человекочитаемое объяснение
-created_at
+source, source_id, lot_url
+rule_name, rule_id, action   -- какое правило сработало (skip | mark_inactive)
+field_name, field_value      -- поле и его значение при последнем пропуске
+skipped_at                   -- первый пропуск этим правилом
+last_skipped_at              -- последний пропуск
+skip_count                   -- сколько раз пропущен
 ```
 
-Просмотр через `/admin/filter-skip-log`.
+Ретенция: `model:prune` (ежедневно 04:20) удаляет строки, у которых `last_skipped_at`
+старше 30 дней (`FilterSkipLog::RETENTION_DAYS`) — лот снят с продажи или больше не фильтруется.
+
+Просмотр и ручная очистка через `/admin/filter-skip-log`.
 
 ---
 

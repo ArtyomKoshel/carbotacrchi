@@ -60,7 +60,7 @@
   <form method="POST" action="{{ route('admin.filter-skip-log.cleanup') }}" class="flex items-end gap-4">
     @csrf
     <div>
-      <label class="text-xs text-gray-500 mb-1 block">Удалить записи старше (дней)</label>
+      <label class="text-xs text-gray-500 mb-1 block">Удалить записи без пропусков дольше (дней)</label>
       <input type="number" name="days" value="30" min="1"
              class="w-32 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
     </div>
@@ -68,7 +68,7 @@
             class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition">
       Очистить
     </button>
-    <span class="text-xs text-gray-600">Безвозвратно удаляет старые записи.</span>
+    <span class="text-xs text-gray-600">Безвозвратно удаляет старые записи. Автоматически — через {{ \App\Models\FilterSkipLog::RETENTION_DAYS }} дней.</span>
   </form>
 </div>
 
@@ -77,7 +77,9 @@
   <table class="w-full text-sm">
     <thead class="bg-gray-800/60 text-gray-400 text-xs uppercase tracking-wider">
       <tr>
-        <th class="px-4 py-3 text-left">Пропущено</th>
+        <th class="px-4 py-3 text-left">Впервые</th>
+        <th class="px-4 py-3 text-left">Последний раз</th>
+        <th class="px-4 py-3 text-right">Раз</th>
         <th class="px-4 py-3 text-left">Источник</th>
         <th class="px-4 py-3 text-left">ID лота</th>
         <th class="px-4 py-3 text-left">Правило</th>
@@ -90,6 +92,8 @@
       @forelse($logs as $log)
         <tr class="hover:bg-gray-800/40 transition">
           <td class="px-4 py-2 text-gray-400 whitespace-nowrap">{{ $log->skipped_at->format('Y-m-d H:i') }}</td>
+          <td class="px-4 py-2 text-gray-400 whitespace-nowrap">{{ $log->last_skipped_at?->format('Y-m-d H:i') }}</td>
+          <td class="px-4 py-2 text-gray-400 text-right">{{ $log->skip_count }}</td>
           <td class="px-4 py-2">
             <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold
               {{ $log->source === 'encar' ? 'bg-blue-900/60 text-blue-300' : 'bg-green-900/60 text-green-300' }}">
@@ -112,7 +116,7 @@
         </tr>
       @empty
         <tr>
-          <td colspan="7" class="px-4 py-8 text-center text-gray-600">Записей не найдено</td>
+          <td colspan="9" class="px-4 py-8 text-center text-gray-600">Записей не найдено</td>
         </tr>
       @endforelse
     </tbody>

@@ -743,13 +743,21 @@ class LotRepository:
             logger.warning(f"[DB] lot_options sync failed: {e}")
 
     def insert_filter_skip_log(self, entries: list[dict]) -> int:
-        """Bulk insert filter skip log entries."""
+        """Upsert filter skip log entries: one row per (source, source_id, rule_name).
+
+        A lot skipped again by the same rule only bumps last_skipped_at / skip_count;
+        skipped_at keeps the first hit.
+        """
         if not entries:
             return 0
         conn = self._get_conn()
         sql = """
             INSERT INTO filter_skip_log (source, source_id, lot_url, rule_name, rule_id, action, field_name, field_value)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                lot_url=VALUES(lot_url), rule_id=VALUES(rule_id), action=VALUES(action),
+                field_name=VALUES(field_name), field_value=VALUES(field_value),
+                last_skipped_at=CURRENT_TIMESTAMP, skip_count=skip_count + 1
         """
         rows = [
             (e["source"], e["source_id"], e["lot_url"], e["rule_name"],
