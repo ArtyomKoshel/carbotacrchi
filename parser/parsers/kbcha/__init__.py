@@ -7,6 +7,7 @@ import httpx
 
 from config import Config
 from models import CarLot
+from lifecycle import coverage_pct, format_db_ts, utc_now_seconds
 from repository import LotRepository
 from ..base import AbstractParser, ProgressUpdate
 from .client import KBChaClient, ProxyBudgetExhausted
@@ -185,6 +186,7 @@ class KBChaParser(AbstractParser):
     ) -> dict:
         source = self.get_source_key()
         run_start = _time.monotonic()
+        run_started_at = utc_now_seconds()
         stats = self.init_stats(detail_fetched=0, inspect_time=0.0)
 
         effective_pages = max_pages or 9999  # 0 / None = all pages
@@ -315,7 +317,11 @@ class KBChaParser(AbstractParser):
         # ── Delist phase ─────────────────────────────────────────────────
         _delist_phase = self.start_phase("delist", lots_in=len(seen_ids))
         ref_total = api_total or len(existing_ids) or stats["total"]
-        stale = self.delist_if_complete(seen_ids, reference_total=ref_total, grace_hours=1)
+        full_run = self.is_full_run(
+            coverage_pct(len(seen_ids), ref_total),
+            maker_filter=maker_filter, max_pages=max_pages, resumed=bool(completed_makers),
+        )
+        stale = self.delist_unseen(run_started_at) if full_run else 0
         self.end_phase(_delist_phase, lots_out=stale)
 
         if maker_stats:
@@ -341,6 +347,8 @@ class KBChaParser(AbstractParser):
         )
         result.extra["proxy_bytes"] = _proxy_bytes
         result.extra["maker_breakdown"] = maker_stats
+        result.extra["run_started_at"] = format_db_ts(run_started_at)
+        result.extra["full_run"] = full_run
         return result.to_dict()
 
     def _fetch_maker(

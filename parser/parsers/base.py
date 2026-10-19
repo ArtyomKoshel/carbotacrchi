@@ -6,7 +6,7 @@ need to implement source-specific fetch/parse logic. Shared here:
   - Stats dict initialization with a consistent schema
   - Final summary log + dict in the exact format the scheduler expects
   - Human-readable elapsed time formatting ("1h 23m")
-  - Coverage-guarded delist hook
+  - Delist hook for successful full runs (see lifecycle.py)
   - Error-type accounting helper
   - Unified RunResult / PhaseResult / ProgressUpdate dataclasses
 
@@ -19,8 +19,10 @@ import logging
 import time as _time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Callable
 
+from lifecycle import is_successful_full_run
 from repository import LotRepository
 
 logger = logging.getLogger(__name__)
@@ -165,8 +167,8 @@ _STATS_SCHEMA: dict[str, Any] = {
 class AbstractParser(ABC):
     """Common parser scaffolding. Subclasses override get_source_key/name + run."""
 
-    #: Minimum coverage (processed / existing-in-db) required to trigger delist.
-    #: Subclasses may override (e.g. Encar sets 95.0).
+    #: Minimum coverage (processed / API total, percent) for a full run to delist.
+    #: Subclasses may override (Encar uses Config.LOTS_LIFECYCLE_MIN_COVERAGE).
     MIN_DELIST_COVERAGE: float = 80.0
 
     def __init__(self, repo: LotRepository):
@@ -231,30 +233,45 @@ class AbstractParser(ABC):
         mins = int((seconds % 3600) // 60)
         return f"{hours}h {mins}m" if hours else f"{mins}m"
 
-    def delist_if_complete(
+    def is_full_run(
         self,
-        seen_ids: set[str],
-        reference_total: int,
-        grace_hours: int = 1,
-    ) -> int:
-        """Mark lots not in seen_ids as inactive, guarded by coverage threshold.
+        coverage: float,
+        *,
+        maker_filter: str | None = None,
+        max_pages: int | None = None,
+        resumed: bool = False,
+    ) -> bool:
+        """True when this finished run counts as a successful full run (lifecycle.py).
+
+        Only such runs delist, and only they count towards purging in Laravel's
+        `lots:lifecycle`. Parsers store the answer as result["full_run"].
+        """
+        ok = is_successful_full_run(
+            coverage=coverage,
+            min_coverage=self.MIN_DELIST_COVERAGE,
+            maker_filter=maker_filter,
+            max_pages=max_pages,
+            resumed=resumed,
+        )
+        if not ok:
+            logger.warning(
+                f"[{self.get_source_key()}] Not a successful full run, skipping delist "
+                f"(coverage {coverage:.1f}%, min {self.MIN_DELIST_COVERAGE}%, "
+                f"maker={maker_filter!r}, max_pages={max_pages!r}, resumed={resumed})."
+            )
+        return ok
+
+    def delist_unseen(self, run_started_at: datetime) -> int:
+        """Hide (is_active=0) the lots this run did not see. Call only for full runs.
+
+        "Not seen" is `parsed_at < run_started_at`: upsert stamps parsed_at on
+        every lot a run sees. Lots that reappear later are re-activated by the
+        next upsert.
 
         Args:
-            seen_ids: lot IDs observed during this run.
-            reference_total: denominator for coverage computation — typically
-                the count of currently-active DB rows OR the API-reported total.
-            grace_hours: don't delist lots updated more recently than this.
+            run_started_at: naive UTC start of this run (lifecycle.utc_now_seconds()).
         """
-        source = self.get_source_key()
-        coverage_pct = len(seen_ids) / reference_total * 100 if reference_total else 0.0
-        if coverage_pct < self.MIN_DELIST_COVERAGE:
-            logger.warning(
-                f"[{source}] Skipping delist: coverage {coverage_pct:.1f}% "
-                f"< {self.MIN_DELIST_COVERAGE}% "
-                f"(seen {len(seen_ids):,} / ref {reference_total:,})."
-            )
-            return 0
-        return self.repo.mark_inactive(source, seen_ids, grace_hours=grace_hours)
+        return self.repo.delist_not_seen_since(self.get_source_key(), run_started_at)
 
     # ── Phase tracking ───────────────────────────────────────────────────
     def start_phase(self, name: str, lots_in: int = 0) -> PhaseResult:

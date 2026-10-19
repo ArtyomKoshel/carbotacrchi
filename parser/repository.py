@@ -497,6 +497,9 @@ class LotRepository:
             if old is None:
                 continue  # new lot — no history yet
             new_row = lot.to_db_row()
+            # is_active is not a CarLot field; mirror what the upsert wrote so a
+            # delisted lot seen again is logged as 'relisted'.
+            new_row["is_active"] = 0 if lot.raw_data.get("_filter_mark_inactive") else 1
             diff = {}
             for field in self._TRACKED_FIELDS:
                 old_val = old.get(field)
@@ -564,53 +567,55 @@ class LotRepository:
             logger.error(f"[DB] count_active failed: {e}")
             return -1
 
-    def mark_inactive(self, source: str, active_ids: set[str], grace_hours: int = 1) -> int:
-        """Delist active lots not seen this run (with grace period to avoid double-run issues)."""
-        if not active_ids:
-            return 0
+    def delist_not_seen_since(self, source: str, since: datetime, batch_size: int = 2000) -> int:
+        """Set is_active=0 on active lots whose parsed_at is older than `since`.
 
+        `since` is the run start: every lot the run saw got parsed_at >= since
+        from upsert_batch, so older rows were not seen. Works in batches of
+        `batch_size` ids, one transaction each, and records a 'delisted'
+        lot_changes row per lot.
+        """
         conn = self._get_conn()
-        placeholders = ",".join(["%s"] * len(active_ids))
-        params = [source] + list(active_ids) + [grace_hours]
-
-        select_sql = f"""
-            SELECT id FROM lots
-            WHERE source = %s
-              AND is_active = 1
-              AND id NOT IN ({placeholders})
-              AND parsed_at < DATE_SUB(NOW(), INTERVAL %s HOUR)
-        """
-        update_sql = f"""
-            UPDATE lots SET is_active = 0, updated_at = NOW()
-            WHERE source = %s
-              AND is_active = 1
-              AND id NOT IN ({placeholders})
-              AND parsed_at < DATE_SUB(NOW(), INTERVAL %s HOUR)
-        """
-
+        since_s = since.strftime("%Y-%m-%d %H:%M:%S")
+        not_seen = "source = %s AND is_active = 1 AND (parsed_at < %s OR parsed_at IS NULL)"
+        total = 0
+        t0 = _time.monotonic()
         try:
-            t0 = _time.monotonic()
-            with conn.cursor() as cursor:
-                cursor.execute(select_sql, params)
-                delisted_ids = [row["id"] for row in cursor.fetchall()]
-                cursor.execute(update_sql, params)
-            conn.commit()
-            elapsed = _time.monotonic() - t0
-            logger.info(
-                f"[DB] Delist for '{source}': {len(delisted_ids)} lots delisted "
-                f"(grace={grace_hours}h) in {elapsed:.2f}s"
-            )
-            if delisted_ids:
+            while True:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        f"SELECT id FROM lots WHERE {not_seen} ORDER BY id LIMIT %s FOR UPDATE",
+                        (source, since_s, batch_size),
+                    )
+                    ids = [row["id"] for row in cursor.fetchall()]
+                    if not ids:
+                        conn.commit()
+                        break
+                    placeholders = ",".join(["%s"] * len(ids))
+                    cursor.execute(
+                        f"UPDATE lots SET is_active = 0, updated_at = NOW() "
+                        f"WHERE id IN ({placeholders}) AND {not_seen}",
+                        [*ids, source, since_s],
+                    )
+                    affected = cursor.rowcount
+                conn.commit()
                 self._insert_lot_changes([
                     {"lot_id": lid, "source": source, "event": "delisted",
                      "changes": {"is_active": {"old": True, "new": False}}}
-                    for lid in delisted_ids
+                    for lid in ids
                 ])
-            return len(delisted_ids)
+                total += affected
+                if affected == 0:  # rows locked by FOR UPDATE always match; guard anyway
+                    break
+            logger.info(
+                f"[DB] Delist for '{source}': {total} lots not seen since {since_s} UTC "
+                f"delisted in {_time.monotonic() - t0:.2f}s"
+            )
+            return total
         except Exception as e:
             conn.rollback()
-            logger.error(f"[DB] mark_inactive FAILED: {type(e).__name__}: {e}")
-            return 0
+            logger.error(f"[DB] delist_not_seen_since FAILED after {total} lots: {type(e).__name__}: {e}")
+            return total
 
     def count_by_source(self, source: str) -> dict:
         conn = self._get_conn()

@@ -207,6 +207,68 @@ php artisan options:name-by-ai             # 2. AI генерирует name_kr 
 
 ---
 
+## Жизненный цикл лотов
+
+### `lots:lifecycle`
+
+Скрывает лоты, которых не было в последнем успешном полном прогоне, а лоты, которых не было
+в последних N успешных прогонах, архивирует в `lots_archive` и удаляет вместе с детьми.
+Считает прогоны, а не дни. Правила и определение «успешного прогона» описаны в
+[04-parser → Жизненный цикл лота](./04-parser.md#жизненный-цикл-лота).
+
+Планировщик запускает команду каждый час в :45 (`routes/console.php`). Пока идёт парсинг
+(`parse_jobs.status = running`), запуск пропускается.
+
+```bash
+php artisan lots:lifecycle [OPTIONS]
+
+  --dry-run           Ничего не писать: показать прогоны и счётчики по правилам и таблицам
+  --source=encar      Источник
+  --runs=N            Удалять после N успешных прогонов (дефолт LOTS_PURGE_AFTER_RUNS=5)
+  --min-coverage=P    Порог покрытия прогона, % (дефолт LOTS_LIFECYCLE_MIN_COVERAGE=85)
+  --batch=2000        Лотов на транзакцию (LOTS_LIFECYCLE_BATCH)
+  --pause-ms=200      Пауза между транзакциями (LOTS_LIFECYCLE_PAUSE_MS)
+  --orphan-options    Также удалить строки lot_options, чьих лотов уже нет (разовая чистка)
+  -v                  Также показать done-прогоны, которые не засчитаны, и причину
+```
+
+`--dry-run` печатает две таблицы:
+- последние N успешных прогонов и отметки, какой из них даёт границу для delist, а какой для purge;
+- счётчики `Rule | Table | Rows`:
+
+```
++---------+---------------------------------+--------+
+| Rule    | Table                           | Rows   |
++---------+---------------------------------+--------+
+| delist  | lots (is_active 1→0)            | 3      |
+| delist  | lot_changes (insert 'delisted') | 3      |
+| purge   | lots_archive (insert)           | 5,002  |
+| purge   | lots (delete)                   | 5,002  |
+| purge   | lot_photos (FK cascade)         | 10,003 |
+| purge   | lot_inspections (FK cascade)    | 1      |
+| purge   | lot_changes (FK cascade)        | 2      |
+| purge   | lot_options (delete, no FK)     | 15,004 |
+| purge   | lots kept: in favorites         | 1      |
+| orphans | lot_options (delete, lot gone)  | 5      |
+| orphans | distinct missing lot_ids        | 2      |
++---------+---------------------------------+--------+
+```
+
+В dry-run purge учитывает лоты, которые delist скроет в этом же запуске.
+`lot_changes` в строке purge не включает строки `delisted`, которые delist добавит только в реальном запуске.
+
+**Примеры:**
+```bash
+# Что изменится сейчас (и почему не засчитаны отдельные прогоны)
+php artisan lots:lifecycle --dry-run -v
+
+# Разовая чистка осиротевших lot_options: сначала посмотреть, потом выполнить
+php artisan lots:lifecycle --dry-run --orphan-options
+php artisan lots:lifecycle --orphan-options
+```
+
+---
+
 ## Утилиты
 
 ### `lots:ai-model-en-backfill`
