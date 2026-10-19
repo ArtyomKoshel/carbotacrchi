@@ -44,3 +44,9 @@ Schedule::call(function () {
         logger()->info("[logs:cleanup] deleted {$deleted} old job log file(s)");
     }
 })->dailyAt('04:10')->name('logs:cleanup');
+
+// filter_skip_log retention: drop rows whose lot no rule has skipped for
+// FilterSkipLog::RETENTION_DAYS days (delisted or no longer filtered).
+Schedule::command('model:prune', ['--model' => [\App\Models\FilterSkipLog::class]])
+    ->dailyAt('04:20')
+    ->withoutOverlapping();
