@@ -736,6 +736,9 @@ class EncarParser(AbstractParser):
         self._enrich_clients: _queue.Queue[EncarClient] | None = None
         self._enrich_client_seq = 0
         self._enrich_lock = _threading.Lock()
+        # Detail batches used to go through self._client; keep counting their
+        # bytes so the job's proxy_bytes stays comparable with earlier runs.
+        self._detail_proxy_bytes = 0
 
     def _regenerate_proxies(self):
         """Clear proxy cache, generate fresh sessions, and rebuild the HTTP client."""
@@ -950,7 +953,7 @@ class EncarParser(AbstractParser):
                 stats["total"] += 1
 
             if on_page_callback:
-                stats["proxy_bytes"] = self._client.proxy_bytes
+                stats["proxy_bytes"] = self._client.proxy_bytes + self._detail_proxy_bytes
                 _progress = stats["total"] / total_count if total_count else 0
                 on_page_callback(ProgressUpdate(
                     phase="search",
@@ -1361,7 +1364,7 @@ class EncarParser(AbstractParser):
         stale = self.delist_unseen(run_started_at) if full_run else 0
         self.end_phase(_delist_phase, lots_out=stale)
 
-        _proxy_bytes = self._client.proxy_bytes
+        _proxy_bytes = self._client.proxy_bytes + self._detail_proxy_bytes
         self._client.close()
         self._close_enrich_clients()
 
@@ -1381,12 +1384,19 @@ class EncarParser(AbstractParser):
             return
         ids = [lot.id for lot in lots]
         id_map = {lot.id: lot for lot in lots}
+        chunks = [ids[i: i + _BATCH_SIZE] for i in range(0, len(ids), _BATCH_SIZE)]
 
-        for i in range(0, len(ids), _BATCH_SIZE):
-            chunk = ids[i: i + _BATCH_SIZE]
-            try:
-                details = self._client.batch_details(chunk)
-                pass  # batch_details received
+        # Network only in worker threads (one pooled client each); everything that
+        # touches lots or stats stays below, on this thread, in chunk order.
+        workers = max(1, min(Config.ENCAR_DETAIL_WORKERS, len(chunks)))
+        if workers == 1:
+            fetched = [self._fetch_detail_chunk(ch) for ch in chunks]
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                fetched = list(pool.map(self._fetch_detail_chunk, chunks))
+
+        for chunk, (details, singles) in zip(chunks, fetched):
+            if details is not None:
                 enriched = 0
                 for detail in details:
                     manage = detail.get("manage") or {}
@@ -1407,26 +1417,50 @@ class EncarParser(AbstractParser):
                     else:
                         pass  # unmatched listing
                 pass  # batch enrichment done
-            except Exception as e:
-                logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
+            else:
                 ok = 0
-                for vid in chunk:
-                    try:
-                        detail = self._client.detail(vid)
-                        if vid in id_map:
-                            _enrich_from_detail(id_map[vid], detail, self._norm)
-                            ok += 1
-                    except Exception as e2:
-                        logger.error(f"[encar] detail {vid} error: {type(e2).__name__}: {e2}")
+                for vid, detail, err in singles:
+                    if err is not None:
+                        logger.error(f"[encar] detail {vid} error: {type(err).__name__}: {err}")
                         stats["errors"] += 1
-                        # rotate proxy on block/rate-limit/proxy error
-                        if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
-                            self._client.rotate_proxy()
-                            logger.info(f"[encar] rotated proxy after {e2.response.status_code}")
-                        elif isinstance(e2, (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout)):
-                            self._client.rotate_proxy()
-                    _time.sleep(0.5)
+                    elif vid in id_map:
+                        _enrich_from_detail(id_map[vid], detail, self._norm)
+                        ok += 1
                 logger.info(f"[encar] single fallback: enriched {ok}/{len(chunk)} lots")
+
+    def _fetch_detail_chunk(self, chunk: list[str]) -> tuple[list[dict] | None, list[tuple[str, dict | None, Exception | None]]]:
+        """HTTP only, safe in a worker thread: one batch_details call, or on failure
+        the old per-lot fallback (with proxy rotation and 0.5 s spacing).
+
+        Returns (details, []) on success, else (None, [(vid, detail | None, error | None)]).
+        """
+        client = self._borrow_enrich_client()
+        healthy = True
+        bytes_before = client.proxy_bytes
+        try:
+            try:
+                return client.batch_details(chunk), []
+            except Exception as e:
+                healthy = False
+                logger.warning(f"[encar] batch_details failed ({type(e).__name__}: {e}), falling back to single fetch")
+            singles: list[tuple[str, dict | None, Exception | None]] = []
+            for vid in chunk:
+                try:
+                    singles.append((vid, client.detail(vid), None))
+                except Exception as e2:
+                    singles.append((vid, None, e2))
+                    # rotate proxy on block/rate-limit/proxy error
+                    if isinstance(e2, httpx.HTTPStatusError) and e2.response.status_code in (401, 403, 407, 408, 410, 429, 502, 503, 504):
+                        client.rotate_proxy()
+                        logger.info(f"[encar] rotated proxy after {e2.response.status_code}")
+                    elif isinstance(e2, (httpx.ProxyError, httpx.ConnectError, httpx.ReadTimeout)):
+                        client.rotate_proxy()
+                _time.sleep(0.5)
+            return None, singles
+        finally:
+            with self._enrich_lock:
+                self._detail_proxy_bytes += client.proxy_bytes - bytes_before
+            self._return_enrich_client(client, healthy)
 
     @staticmethod
     def _fetch_lot_enrichment(

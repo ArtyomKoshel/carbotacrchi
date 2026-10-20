@@ -37,6 +37,9 @@ class Config:
     ENCAR_INTERVAL_MINUTES = int(os.getenv("ENCAR_INTERVAL_MINUTES", "60"))
     ENCAR_SCHEDULE = os.getenv("ENCAR_SCHEDULE", "")
     ENCAR_WORKERS = int(os.getenv("ENCAR_WORKERS", "5"))
+    # Detail batches (20 lots each, 5 per search page) fetched in parallel.
+    # 1 = the old sequential behaviour.
+    ENCAR_DETAIL_WORKERS = int(os.getenv("ENCAR_DETAIL_WORKERS", "5"))
 
     # FloppyData proxy credentials
     FLOPPYDATA_API_KEY  = os.getenv("FLOPPYDATA_API_KEY", "")
