@@ -12,7 +12,7 @@ const Filters = (() => {
   const CONTEXT_DEBOUNCE_MS = 400;
 
   const state = {
-    sources:          ['encar', 'kbcha'],
+    sources:          [], // filled from /api/filters sources
     make:             '',
     model:            '',
     badge:            '',
@@ -51,9 +51,12 @@ const Filters = (() => {
     options:          [],
   };
 
+  function _sourceKeys() {
+    return (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
+  }
+
   function resetState() {
-    const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
-    state.sources = sourceKeys.length ? sourceKeys : ['encar', 'kbcha'];
+    state.sources = _sourceKeys();
     state.make = ''; state.model = ''; state.badge = '';
     state.yearFrom = ''; state.yearTo = '';
     state.priceMin = ''; state.priceMax = '';
@@ -112,8 +115,7 @@ const Filters = (() => {
     try {
       filtersData = await API.getFilters('ru');
       Taxonomy.ingestFilters(filtersData ?? {});
-      const sourceKeys = (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
-      if (sourceKeys.length) state.sources = sourceKeys;
+      state.sources = _sourceKeys();
       render();
     } catch (e) {
       console.error('Filters load failed', e);
@@ -138,6 +140,8 @@ const Filters = (() => {
       if (rendered.has(name)) continue;
       const ui = FIELD_UI[name];
       if (!ui || ui.type === 'skip') continue;
+      // Nothing to choose with a single source; the section returns once the API offers more
+      if (name === 'source' && _sourceKeys().length < 2) continue;
       rendered.add(name);
 
       if (name === 'make') { rendered.add('model'); rendered.add('trim'); }
@@ -147,7 +151,7 @@ const Filters = (() => {
     }
 
     // Always add sources at top if not from filterFields
-    if (!rendered.has('source')) {
+    if (!rendered.has('source') && _sourceKeys().length > 1) {
       const srcSection = buildFilterSection('source', FIELD_UI.source, 'Источники');
       if (srcSection) container.insertBefore(srcSection, container.firstChild);
     }
@@ -396,20 +400,31 @@ const Filters = (() => {
       return;
     }
 
-    container.innerHTML = options.map(o => `
-      <button class="filter-chip${(state[stateKey]||[]).includes(o.value) ? ' selected' : ''}"
-              data-value="${o.value}">${o.label}</button>
+    // Several raw values can share one label (e.g. 'Blue', '청옥색', '하늘색' → Синий):
+    // one chip per label, selecting it selects all of its raw values.
+    const groups = [];
+    const byLabel = new Map();
+    for (const o of options) {
+      let g = byLabel.get(o.label);
+      if (!g) { g = { label: o.label, values: [] }; byLabel.set(o.label, g); groups.push(g); }
+      if (!g.values.includes(o.value)) g.values.push(o.value);
+    }
+    const isSelected = g => g.values.some(v => (state[stateKey] || []).includes(v));
+
+    container.innerHTML = groups.map((g, i) => `
+      <button class="filter-chip${isSelected(g) ? ' selected' : ''}"
+              data-group="${i}">${escHtml(g.label)}</button>
     `).join('');
     container.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', () => {
-        const val = btn.dataset.value;
+        const g = groups[Number(btn.dataset.group)];
         if (!state[stateKey]) state[stateKey] = [];
-        if (state[stateKey].includes(val)) {
-          state[stateKey] = state[stateKey].filter(x => x !== val);
+        if (isSelected(g)) {
+          state[stateKey] = state[stateKey].filter(x => !g.values.includes(x));
         } else {
-          state[stateKey].push(val);
+          state[stateKey].push(...g.values.filter(v => !state[stateKey].includes(v)));
         }
-        btn.classList.toggle('selected', state[stateKey].includes(val));
+        btn.classList.toggle('selected', isSelected(g));
         TG.haptic('selection');
         _scheduleCountUpdate();
       });
@@ -438,9 +453,7 @@ const Filters = (() => {
   function renderSourceChips() {
     const container = document.getElementById('source-chips');
     if (!container) return;
-    const sources = filtersData?.sources ?? [
-      {key:'encar',name:'Encar'},{key:'kbcha',name:'KBChacha'},
-    ];
+    const sources = filtersData?.sources ?? [];
     container.innerHTML = sources.map(s => `
       <button class="source-chip${state.sources.includes(s.key)?' selected':''}"
               data-key="${s.key}">${s.name}</button>
@@ -458,6 +471,10 @@ const Filters = (() => {
         _scheduleCountUpdate();
       });
     });
+  }
+
+  function escHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   function _destroySelectInstances() {
@@ -659,7 +676,6 @@ const Filters = (() => {
     if (optionsSelectInstance) {
       state.options = [...optionsSelectInstance.items];
     }
-    console.log('[STATE]', JSON.stringify({ t: state.transmissions, f: state.fuelTypes, d: state.driveTypes, bt: state.bodyTypes, ha: state.hasAccident }));
     return {
       make:             state.make              || undefined,
       model:            state.model             || undefined,
@@ -696,7 +712,7 @@ const Filters = (() => {
       firstRegAfter:    state.firstRegAfter     || undefined,
       firstRegBefore:   state.firstRegBefore    || undefined,
       options:          state.options.length   ? state.options  : undefined,
-      sources:          state.sources,
+      sources:          state.sources.length ? state.sources : undefined,
       sort:             state.sort,
       limit:            40,
     };
@@ -725,7 +741,12 @@ const Filters = (() => {
     if (q.titleTypes)       state.titleTypes       = q.titleTypes;
     if (q.lienStatuses)     state.lienStatuses     = q.lienStatuses;
     if (q.seizureStatuses)  state.seizureStatuses  = q.seizureStatuses;
-    if (q.sources)          state.sources          = q.sources;
+    if (Array.isArray(q.sources)) {
+      // Saved queries may name sources that are no longer offered
+      const available = _sourceKeys();
+      const kept = available.length ? q.sources.filter(k => available.includes(k)) : q.sources;
+      if (kept.length) state.sources = kept;
+    }
     if (q.sort)             state.sort             = ['date', 'price_asc', 'price_desc'].includes(q.sort) ? q.sort : 'date';
     if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
     if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');

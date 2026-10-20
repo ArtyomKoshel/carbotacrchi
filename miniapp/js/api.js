@@ -20,8 +20,9 @@ const API = (() => {
     }
 
     if (!res.ok) {
-      const err = json?.error ?? `HTTP ${res.status}`;
-      throw new Error(err);
+      const err = new Error(json?.error ?? `HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
     }
 
     if (!json || json.ok !== true) {
@@ -89,6 +90,20 @@ const API = (() => {
     return { user_id: TG.getUserId(), init_data: TG.getInitData() };
   }
 
+  // In a browser that is not linked to Telegram these endpoints can only return 401,
+  // so fail locally instead of sending user_id=0 with an empty token.
+  function _requireAuth() {
+    if (typeof BrowserAuth !== 'undefined' && BrowserAuth.isBrowserMode() && !BrowserAuth.isLinked()) {
+      const err = new Error('Нужен вход через Telegram');
+      err.status = 401;
+      throw err;
+    }
+  }
+
+  function isAuthError(e) {
+    return e?.status === 401;
+  }
+
   function _authQuery() {
     if (typeof BrowserAuth !== 'undefined' && BrowserAuth.isBrowserMode()) {
       const token = localStorage.getItem('carbot_browser_token') || '';
@@ -109,18 +124,21 @@ const API = (() => {
 
   // ── Search ─────────────────────────────────────────────────────────────────
 
-  function search(query, offset = 0) {
+  async function search(query, offset = 0) {
+    _requireAuth();
     const q = offset > 0 ? { ...query, offset } : query;
     return request('POST', '/search', { ..._authBody(), query: q });
   }
 
   // ── AI Chat search ─────────────────────────────────────────────────────────
 
-  function searchChat(text) {
+  async function searchChat(text) {
+    _requireAuth();
     return request('POST', '/search-chat', { ..._authBody(), text });
   }
 
-  function resetChat() {
+  async function resetChat() {
+    _requireAuth();
     return request('POST', '/search-chat/reset', _authBody());
   }
 
@@ -145,33 +163,40 @@ const API = (() => {
 
   // ── Favorites ──────────────────────────────────────────────────────────────
 
-  function getFavorites() {
+  async function getFavorites() {
+    _requireAuth();
     return request('GET', `/favorites?${_authQuery()}`);
   }
 
-  function addFavorite(lotId, source, lotData) {
+  async function addFavorite(lotId, source, lotData) {
+    _requireAuth();
     return request('POST', '/favorites', { ..._authBody(), lot_id: lotId, source, lot_data: lotData });
   }
 
-  function removeFavorite(lotId) {
+  async function removeFavorite(lotId) {
+    _requireAuth();
     return request('DELETE', `/favorites/${encodeURIComponent(lotId)}?${_authQuery()}`);
   }
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
 
-  function getSubscriptions() {
+  async function getSubscriptions() {
+    _requireAuth();
     return request('GET', `/subscriptions?${_authQuery()}`);
   }
 
-  function subscribe(query) {
+  async function subscribe(query) {
+    _requireAuth();
     return request('POST', '/subscriptions', { ..._authBody(), query });
   }
 
-  function unsubscribe(id) {
+  async function unsubscribe(id) {
+    _requireAuth();
     return request('DELETE', `/subscriptions/${id}?${_authQuery()}`);
   }
 
-  function markSeen(id) {
+  async function markSeen(id) {
+    _requireAuth();
     return request('POST', `/subscriptions/${id}/seen`, _authBody());
   }
 
@@ -186,7 +211,7 @@ const API = (() => {
 
   return {
     getFilters, invalidateFiltersCache, isFiltersCached,
-    browserAuthInit, browserAuthStatus,
+    browserAuthInit, browserAuthStatus, isAuthError,
     search,
     searchChat, resetChat,
     getCount, getContext, getTrims,

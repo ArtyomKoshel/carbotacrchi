@@ -30,8 +30,12 @@ const App = (() => {
     // Browser mode: initialize linking bar (no-op inside Telegram WebApp)
     if (typeof BrowserAuth !== 'undefined') {
       BrowserAuth.init((_chatId) => {
-        // Called when user completes linking — reload subscriptions
+        // Called when user completes linking — reload subscriptions and
+        // re-run whatever the current screen failed to load without auth
         Subscriptions.loadSubs();
+        if (currentTab === 'results' && paginationState.query) searchWithQuery(paginationState.query);
+        if (currentTab === 'favorites') loadFavorites();
+        if (currentTab === 'alerts')    Subscriptions.loadAndRender();
       });
     }
 
@@ -194,7 +198,7 @@ const App = (() => {
       updateLoadMoreUI();
       setupScrollObserver();
     } catch (e) {
-      showError(e.message);
+      showError(e);
     } finally {
       paginationState.loading = false;
       showLoading(false);
@@ -296,6 +300,11 @@ const App = (() => {
         { grid: favGrid, empty: favEmpty }
       );
     } catch (e) {
+      if (API.isAuthError(e)) {
+        if (favEmpty) favEmpty.style.display = 'none';
+        if (favGrid) favGrid.innerHTML = `<div style="grid-column:span 2">${BrowserAuth.authRequiredHtml()}</div>`;
+        return;
+      }
       if (favGrid) favGrid.innerHTML = '';
       if (favEmpty) {
         favEmpty.style.display = 'flex';
@@ -352,10 +361,13 @@ const App = (() => {
     saveSearchMode(nextMode);
   }
 
-  function showError(msg) {
+  function showError(e) {
     const grid = document.getElementById('cards-grid');
-    if (grid) {
-      const escaped = String(msg ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    if (grid && API.isAuthError(e)) {
+      document.getElementById('results-count').textContent = '';
+      grid.innerHTML = `<div style="grid-column:span 2">${BrowserAuth.authRequiredHtml()}</div>`;
+    } else if (grid) {
+      const escaped = String(e?.message ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
       grid.innerHTML = `<div class="empty-state" style="grid-column:span 2"><p style="color:var(--danger)">${escaped}</p></div>`;
     }
     showLoading(false);
