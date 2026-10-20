@@ -19,12 +19,14 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Auth\Events\Login as LoginEvent;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
@@ -94,6 +96,16 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    public function boot(): void
+    {
+        // A panel sign-in also signs in to the old /admin pages
+        Event::listen(LoginEvent::class, function (LoginEvent $event) {
+            if ($event->guard === 'admin' && $event->user instanceof AdminUser) {
+                ShareLegacyAdminSession::remember($event->user);
+            }
+        });
     }
 
     private function themeUrl(): string

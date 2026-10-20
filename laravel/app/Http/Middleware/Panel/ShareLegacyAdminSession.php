@@ -12,30 +12,37 @@ use Symfony\Component\HttpFoundation\Response;
  * One sign-in for both admins while the old /admin pages still exist.
  *
  * The old pages keep the signed-in admin in session keys (admin_user_id,
- * admin_role, admin_username); the panel uses the `admin` guard. Whichever
- * one signed in, this fills in the other.
+ * admin_role, admin_username); the panel uses the `admin` guard. A panel
+ * sign-in writes the old keys right away (AdminPanelProvider listens to the
+ * Login event), so when the two disagree the old login is the newer one.
  */
 class ShareLegacyAdminSession
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $guard   = Auth::guard('admin');
-        $session = $request->session();
+        $guard    = Auth::guard('admin');
+        $legacyId = (int) $request->session()->get('admin_user_id');
 
-        if (!$guard->check() && ($legacyId = $session->get('admin_user_id'))) {
-            $guard->loginUsingId($legacyId);
+        if ($legacyId && (int) $guard->id() !== $legacyId) {
+            if (!$guard->loginUsingId($legacyId)) {
+                $guard->logout();
+            }
         }
 
         /** @var AdminUser|null $user */
         $user = $guard->user();
-        if ($user && (int) $session->get('admin_user_id') !== (int) $user->id) {
-            $session->put('admin_user_id', $user->id);
-            $session->put('admin_username', $user->username);
-        }
-        if ($user && $session->get('admin_role') !== $user->role) {
-            $session->put('admin_role', $user->role);
+        if ($user && $request->session()->get('admin_role') !== $user->role) {
+            self::remember($user);
         }
 
         return $next($request);
+    }
+
+    /** Session keys the old /admin pages read. */
+    public static function remember(AdminUser $user): void
+    {
+        session()->put('admin_user_id', $user->id);
+        session()->put('admin_role', $user->role);
+        session()->put('admin_username', $user->username);
     }
 }
