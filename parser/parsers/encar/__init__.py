@@ -724,6 +724,37 @@ def _enrich_from_sellingpoint(lot: CarLot, sp: dict, norm: EncarNormalizer) -> N
         lot.raw_data["selling_point"] = sentence
 
 
+# Everything the record / inspection calls set on a lot (_enrich_from_record,
+# _enrich_from_inspection), and what sellingpoint sets. A lot whose history is not
+# re-fetched this run takes these from the DB instead (_apply_stored), so filters,
+# the upsert and lot_changes see the same lot as after a real fetch.
+# tests/test_history_refresh.py fails if those helpers start setting anything else.
+_HISTORY_FIELDS = (
+    "owners_count", "insurance_count", "has_accident", "flood_history", "total_loss_history",
+    "lien_status", "seizure_status", "repair_cost", "first_reg_date", "vin",
+)
+_HISTORY_RAW_KEYS = ("engine_code", "warranty_type", "recall", "recall_status", "car_state", "mechanical_issues")
+_DRIVE_FIELDS = ("drive_type",)
+_DRIVE_RAW_KEYS = ("selling_point",)
+_BOOL_FIELDS = frozenset({"has_accident", "flood_history", "total_loss_history"})
+
+
+def _apply_stored(lot: CarLot, state: dict, fields: tuple[str, ...], raw_keys: tuple[str, ...]) -> None:
+    """Fill fields / raw_data keys the lot does not have yet from its DB row (history_state)."""
+    for f in fields:
+        v = state.get(f)
+        if v is None or getattr(lot, f) is not None:
+            continue
+        if f in _BOOL_FIELDS:
+            v = bool(v)
+        elif hasattr(v, "isoformat"):  # DATE column -> "YYYY-MM-DD", as the API gives it
+            v = v.isoformat()
+        setattr(lot, f, v)
+    for k in raw_keys:
+        if k in state["raw"] and k not in lot.raw_data:
+            lot.raw_data[k] = state["raw"][k]
+
+
 class EncarParser(AbstractParser):
     MIN_DELIST_COVERAGE = Config.LOTS_LIFECYCLE_MIN_COVERAGE
 
@@ -739,6 +770,9 @@ class EncarParser(AbstractParser):
         # Detail batches used to go through self._client; keep counting their
         # bytes so the job's proxy_bytes stays comparable with earlier runs.
         self._detail_proxy_bytes = 0
+        # Set by run(): lots whose history was checked after this keep the stored
+        # one (see _history_plan). None = fetch every lot's history, as before.
+        self._history_cutoff: _dt | None = None
 
     def _regenerate_proxies(self):
         """Clear proxy cache, generate fresh sessions, and rebuild the HTTP client."""
@@ -995,6 +1029,7 @@ class EncarParser(AbstractParser):
         source = _SOURCE
         run_start = _time.monotonic()
         stats = self.init_stats()
+        self._history_cutoff = None  # a reparse always fetches the history
 
         lots = self.repo.get_lots_by_source(source, ids=lot_ids)
         if not lots:
@@ -1056,6 +1091,7 @@ class EncarParser(AbstractParser):
         source = _SOURCE
         run_start = _time.monotonic()
         stats = self.init_stats()
+        self._history_cutoff = None  # trial runs fetch everything, as before
 
         logger.info(f"[{source}] ===== SAMPLE MODE: {lots_per_model} lots/model =====")
         check_floppy_balance()
@@ -1210,6 +1246,12 @@ class EncarParser(AbstractParser):
 
         existing_ids = self.repo.get_existing_ids(source)
         logger.info(f"[{source}] Existing active lots in DB: {len(existing_ids)}")
+
+        self._history_cutoff = self.repo.history_cutoff(source, Config.ENCAR_HISTORY_EVERY_RUNS)
+        logger.info(
+            f"[{source}] History re-check: every {Config.ENCAR_HISTORY_EVERY_RUNS} run(s), "
+            f"cutoff {self._history_cutoff or 'none (all lots)'}"
+        )
 
         seen_ids: set[str] = set()
 
@@ -1464,13 +1506,19 @@ class EncarParser(AbstractParser):
 
     @staticmethod
     def _fetch_lot_enrichment(
-        lot: CarLot, client: EncarClient, norm: EncarNormalizer
+        lot: CarLot, client: EncarClient, norm: EncarNormalizer,
+        with_sellingpoint: bool = True, outcome: dict | None = None,
     ) -> tuple[CarLot, InspectionRecord | None, int]:
-        """HTTP-only enrichment for one lot. Safe to run in a thread — no DB access."""
+        """HTTP-only enrichment for one lot. Safe to run in a thread — no DB access.
+
+        outcome["complete"] is set to False when any call failed (inspection and
+        sellingpoint failures are not counted in the returned errors).
+        """
         source = _SOURCE
         insp_record: InspectionRecord | None = None
         is_certified = False
         errors = 0
+        failed = False
 
         _inner_id = lot.raw_data.get("inspect_vehicle_id") or lot.id
         condition = set(lot.raw_data.get("condition") or [])
@@ -1509,6 +1557,7 @@ class EncarParser(AbstractParser):
             except Exception as e:
                 logger.warning(f"[{source}] record {lot.id}: {e}")
                 errors += 1
+                failed = True
 
         # Inspection JSON API — only if car has inspection data
         insp_api_ok = False
@@ -1523,6 +1572,7 @@ class EncarParser(AbstractParser):
                     insp_api_ok = True
             except Exception as e:
                 logger.warning(f"[{source}] inspection {lot.id}: {e}")
+                failed = True
 
         # NOTE: diagnosis endpoint disabled — returns 404 via proxies (requires
         # origin:fem.encar.com header which proxies strip). The /inspection
@@ -1532,38 +1582,101 @@ class EncarParser(AbstractParser):
         # NOTE: inspection_html removed after field-source audit (called 0/40, 0 unique fields).
         # sellingpoint kept — provides drive_type for ~2.5% of lots not covered by search.
 
-        if not lot.drive_type:
+        if with_sellingpoint and not lot.drive_type:
             try:
                 sp = _call(client.sellingpoint, lot.id)
                 if sp:
                     _enrich_from_sellingpoint(lot, sp, norm)
             except Exception as e:
                 logger.warning(f"[{source}] sellingpoint {lot.id}: {e}")
+                failed = True
 
+        if outcome is not None:
+            outcome["complete"] = not failed
         return lot, insp_record, errors
+
+    def _history_plan(self, lots: list[CarLot]) -> dict[str, str]:
+        """Which history calls each lot gets this run.
+
+        "full"    record + inspection + sellingpoint, as before: lots never checked
+                  (new ones), or every lot when there is no cutoff.
+        "recheck" record + inspection: checked before the cutoff, the list's
+                  condition (Record / Inspection flags) changed, or `lots` holds
+                  no history for it. Drive is not asked
+                  again for a lot that was already checked; it comes from the DB.
+        "stored"  no calls: checked recently, everything comes from the DB.
+        """
+        if self._history_cutoff is None:
+            return {lot.id: "full" for lot in lots}
+        state = self.repo.history_state(
+            [lot.id for lot in lots],
+            _HISTORY_FIELDS + _DRIVE_FIELDS,
+            _HISTORY_RAW_KEYS + _DRIVE_RAW_KEYS + ("condition",),
+        )
+        if state is None:
+            return {lot.id: "full" for lot in lots}
+        plan: dict[str, str] = {}
+        for lot in lots:
+            st = state.get(lot.id)
+            checked = st["history_checked_at"] if st else None
+            if checked is None:
+                plan[lot.id] = "full"
+                continue
+            _apply_stored(lot, st, _DRIVE_FIELDS, _DRIVE_RAW_KEYS)
+            condition = sorted(lot.raw_data.get("condition") or [])
+            same_condition = sorted(st["raw"].get("condition") or []) == condition
+            # Lots a PRE rule drops (e.g. max_insurance_count) never get their history
+            # written to `lots`; stored NULLs would let them pass the filter.
+            history_missing = ("Record" in condition or "Inspection" in condition) and all(
+                st[f] is None for f in ("owners_count", "insurance_count", "has_accident", "flood_history")
+            )
+            if checked < self._history_cutoff or not same_condition or history_missing:
+                plan[lot.id] = "recheck"
+            else:
+                _apply_stored(lot, st, _HISTORY_FIELDS, _HISTORY_RAW_KEYS)
+                plan[lot.id] = "stored"
+        return plan
 
     def _enrich_accident_data(self, lots: list[CarLot], stats: dict) -> None:
         """Fetch record + inspection in parallel; DB writes on main thread."""
         if not lots:  # e.g. the whole page was filtered at list stage
             return
         source = _SOURCE
-        workers = min(Config.ENCAR_WORKERS, len(lots))
+        plan = self._history_plan(lots)
+        to_fetch = [lot for lot in lots if plan[lot.id] != "stored"]
+        complete: set[str] = set()  # fetched without a failed call
+        written: set[str] = set()   # ...and stored by the upsert -> stamp history_checked_at
 
         def _task(lot: CarLot, idx: int) -> tuple[CarLot, InspectionRecord | None, int]:
             # A pooled client per worker keeps its connection between lots; at most
             # `workers` tasks run at once, so the pool never runs dry.
             client = self._borrow_enrich_client()
             healthy = False
+            outcome: dict = {}
             try:
-                result = self._fetch_lot_enrichment(lot, client, self._norm)
+                result = self._fetch_lot_enrichment(
+                    lot, client, self._norm,
+                    with_sellingpoint=plan[lot.id] == "full", outcome=outcome,
+                )
                 healthy = result[2] == 0
+                if healthy and outcome.get("complete"):
+                    with self._enrich_lock:
+                        complete.add(lot.id)
                 return result
             finally:
                 self._return_enrich_client(client, healthy)
 
-        results: list[tuple[CarLot, InspectionRecord | None, int]] = []
+        # Lots with a recent check go straight to the DB writes below, with the
+        # stored history already on them (_history_plan).
+        results: list[tuple[CarLot, InspectionRecord | None]] = [
+            (lot, None) for lot in lots if plan[lot.id] == "stored"
+        ]
+        n_stored = len(results)
+        stats["history_stored"] = stats.get("history_stored", 0) + n_stored
+        stats["history_fetched"] = stats.get("history_fetched", 0) + len(to_fetch)
+        workers = max(1, min(Config.ENCAR_WORKERS, len(to_fetch)))
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(lots)}
+            future_map = {pool.submit(_task, lot, idx): lot for idx, lot in enumerate(to_fetch)}
             for i, future in enumerate(as_completed(future_map)):
                 try:
                     lot, insp_record, errors = future.result()
@@ -1579,8 +1692,8 @@ class EncarParser(AbstractParser):
         n_accident = n_flood = n_insp = 0
         for lot, insp_record in results:
             try:
-                self.repo.upsert_batch([lot], stats)
-                pass  # lot enriched
+                if self.repo.upsert_batch([lot], stats):
+                    written.add(lot.id)
                 if lot.has_accident:    n_accident += 1
                 if lot.flood_history:   n_flood    += 1
             except Exception as e:
@@ -1591,8 +1704,10 @@ class EncarParser(AbstractParser):
                     self.repo.upsert_inspection(insp_record)
                 except Exception as e:
                     logger.warning(f"[{source}] upsert_inspection {lot.id}: {e}")
+        self.repo.mark_history_checked([lot.id for lot in to_fetch if lot.id in complete and lot.id in written])
         logger.info(
-            f"[STAT] [{source}] enriched {len(results)} lots: "
+            f"[STAT] [{source}] enriched {len(results)} lots "
+            f"(history fetched={len(to_fetch)}, stored={n_stored}): "
             f"accident={n_accident}, flood={n_flood}, insp={n_insp}"
         )
 

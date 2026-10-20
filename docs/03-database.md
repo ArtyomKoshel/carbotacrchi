@@ -139,6 +139,7 @@ Encar организует данные в 6 уровней (iNav). Каждый
 | `raw_data` | JSON | Сырые данные API + `pre_norm` snapshot |
 | `is_active` | BOOLEAN | `0` = отфильтрован `parse_filters` или снят с продажи (не найден последним успешным полным прогоном, см. [04-parser](./04-parser.md#жизненный-цикл-лота)) |
 | `parsed_at` | TIMESTAMP | Время парсинга |
+| `history_checked_at` | TIMESTAMP | Когда парсер последний раз получил историю (record + inspection), UTC; очередь перепроверки, см. [04-parser](./04-parser.md#история-лота-не-каждый-прогон) |
 | `expires_at` | TIMESTAMP | Время истечения актуальности |
 
 ---
