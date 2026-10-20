@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -10,9 +9,14 @@ use Illuminate\Support\Facades\Schema;
  * A full run re-checks only the oldest 1/ENCAR_HISTORY_EVERY_RUNS of active
  * lots plus new ones; the rest keep their stored history (docs/04-parser.md).
  *
- * The column add is INSTANT. Backfill: lot_inspections.updated_at is written
- * on every successful record/inspection fetch, so it is the last check time.
- * Chunked by lot_inspections.id to keep each UPDATE short.
+ * DDL only (INSTANT): migrations run before nginx starts and Railway's /up
+ * healthcheck allows 30 s, which a 288k-row backfill does not fit. Backfill
+ * once by hand, from lot_inspections.updated_at (written on every successful
+ * record/inspection fetch), in chunks of lot_inspections.id:
+ *   UPDATE lots l JOIN lot_inspections li ON li.lot_id = l.id
+ *   SET l.history_checked_at = li.updated_at
+ *   WHERE li.id > :a AND li.id <= :a + 100000 AND l.history_checked_at IS NULL;
+ * (done on prod 2026-10-20). Lots left NULL are just fetched in full next run.
  */
 return new class extends Migration
 {
@@ -22,16 +26,6 @@ return new class extends Migration
             Schema::table('lots', function (Blueprint $table) {
                 $table->timestamp('history_checked_at')->nullable();
             });
-        }
-
-        $maxId = (int) DB::table('lot_inspections')->max('id');
-        for ($from = 0; $from <= $maxId; $from += 20000) {
-            DB::statement(
-                'UPDATE lots l JOIN lot_inspections li ON li.lot_id = l.id
-                 SET l.history_checked_at = li.updated_at
-                 WHERE li.id > ? AND li.id <= ? AND l.history_checked_at IS NULL',
-                [$from, $from + 20000]
-            );
         }
     }
 
