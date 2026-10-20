@@ -46,6 +46,10 @@ class LotsCompactBackfill extends Command
                 $this->warn('lot_photos is gone — nothing to backfill photos from.');
                 continue;
             }
+            if ($part === 'options' && $this->option('verify') && !DB::getSchemaBuilder()->hasTable('lot_options')) {
+                $this->warn('lot_options is gone — nothing to verify options against.');
+                continue;
+            }
             $t0 = microtime(true);
             $n  = $this->option('verify') ? $this->verify($part, $chunk) : $this->backfill($part, $chunk);
             $this->info(sprintf('%s: %s lots in %.1fs', $part, number_format($n), microtime(true) - $t0));
