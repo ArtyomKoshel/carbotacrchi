@@ -97,6 +97,29 @@ flowchart LR
 
 ---
 
+## Новая админка (`/panel/`, Filament)
+
+Переезд админки на Filament 5 (Livewire 4), по разделам. Старые страницы `/admin/*` работают как раньше;
+пока раздел не переехал, пункт меню в `/panel` открывает старую страницу в новой вкладке.
+
+- **Вход** — те же `admin_users` и роли: guard `admin` (`config/auth.php`), вход по логину.
+  Middleware `ShareLegacyAdminSession` связывает сессии: вошёл в `/admin` — вошёл и в `/panel`, и наоборот.
+  Права роли `limited` берутся из `admin_page_permissions` (`AdminUser::canSeePage()`): «Лоты» = `lots-browse`,
+  «Перепарсить» = `lots`, «Обзор» = `dashboard`.
+- **Меню**: Работа (Обзор, Лоты) · Площадки · Данные · Поиск и команда · Система.
+- **Лоты** (`LotResource`): таблица с фильтрами-чипами, вкладки «Все активные / Новые сегодня / Снятые за 24 ч /
+  Без комплектации / Все» (счётчики грузятся отдельным запросом после таблицы), поиск по ID (префикс), VIN, госномеру,
+  `model_en`. Клик по строке открывает карточку справа: Данные, История (`lot_changes`), Осмотр, Сырые данные.
+  Та же карточка — отдельная страница `/panel/lots/{id}`. Фильтры, поиск, сортировка и вкладка хранятся в URL.
+- **Перепарсить** (для строки или до 500 выбранных) создаёт `parse_jobs` с `type=reparse` по площадкам
+  (`App\Services\LotReparseQueue`, тот же путь, что `POST /admin/lots/{id}/reparse`); лоты, уже ждущие перепарсинга, пропускаются.
+- **Тема** — `resources/css/filament/panel/theme.css` (Tailwind v4), шрифт Onest лежит на нашем сервере.
+  Собирается `npm run build:panel` в `public/css/filament/panel/` (на деплое это делает стадия `panel-assets` в `Dockerfile`).
+  Ассеты самого Filament публикует `php artisan filament:upgrade` (скрипт composer `post-autoload-dump`).
+  PHP-расширения `intl` и `zip` обязательны.
+
+---
+
 ## FieldMappingsService / FieldRegistryService
 
 Эти сервисы предоставляют PHP-слою метаданные из Python-парсера.

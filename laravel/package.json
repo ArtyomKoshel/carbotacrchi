@@ -1,0 +1,12 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build:panel": "tailwindcss -i resources/css/filament/panel/theme.css -o public/css/filament/panel/theme.css --minify && node scripts/panel-fonts.mjs"
+    },
+    "devDependencies": {
+        "@fontsource-variable/onest": "5.3.1",
+        "@tailwindcss/cli": "4.3.3",
+        "tailwindcss": "4.3.3"
+    }
+}

@@ -78,4 +78,10 @@ class AdminPagePermission extends Model
     {
         return static::where('enabled', true)->pluck('page_key')->toArray();
     }
+
+    /** allowedKeys(), read once per request (the panel checks it for every menu item). */
+    public static function allowedKeysCached(): array
+    {
+        return once(fn () => static::allowedKeys());
+    }
 }

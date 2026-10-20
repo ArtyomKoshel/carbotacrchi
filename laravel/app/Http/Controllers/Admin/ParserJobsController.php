@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ParseJob;
 use App\Models\ParserSchedule;
+use App\Services\LotReparseQueue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -43,26 +44,7 @@ class ParserJobsController extends Controller
                 ->withErrors(['lot_id' => "Lot {$lotId} not found"]);
         }
 
-        $source = $lot->source ?? null;
-        if (!$source && str_contains($lotId, '_')) {
-            $source = explode('_', $lotId, 2)[0];
-        }
-        $source = $source ?: 'encar';
-
-        $pending = ParseJob::where('type', 'reparse')
-            ->whereIn('status', ['pending', 'running', 'interrupted'])
-            ->whereJsonContains('target_lot_ids', $lotId)
-            ->exists();
-
-        if (!$pending) {
-            ParseJob::create([
-                'source' => $source,
-                'type' => 'reparse',
-                'status' => 'pending',
-                'target_lot_ids' => [$lotId],
-                'triggered_by' => 'admin',
-            ]);
-        }
+        app(LotReparseQueue::class)->queue([$lot]);
 
         return redirect()->route('admin.lots', ['q' => $lotId])
             ->with('success', "Re-parse queued for {$lotId}");
