@@ -2,13 +2,14 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\BalancesWidget;
+use App\Filament\Widgets\IncidentsWidget;
+use App\Filament\Widgets\PlatformHealthWidget;
 use App\Providers\Filament\AdminPanelProvider;
 use Filament\Pages\Dashboard;
-use Filament\Schemas\Components\EmptyState;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
-/** Panel home. Phase 2 fills it with the parsing and data-quality summary. */
+/** Panel home: is parsing healthy, is anything on fire, is there money for proxies and AI. */
 class Overview extends Dashboard
 {
     protected static ?string $title = 'Обзор';
@@ -26,12 +27,12 @@ class Overview extends Dashboard
         return AdminPanelProvider::admin()?->canSeePage('dashboard') ?? false;
     }
 
-    public function content(Schema $schema): Schema
+    public function getWidgets(): array
     {
-        return $schema->components([
-            EmptyState::make('Обзор появится на следующем этапе')
-                ->description('Здесь будет сводка: последние прогоны по площадкам, расписание, лоты за сутки и очередь аномалий. Пока откройте «Лоты» или старые страницы в меню.')
-                ->icon(Heroicon::OutlinedPresentationChartLine),
-        ]);
+        return [
+            PlatformHealthWidget::class,
+            IncidentsWidget::class,
+            BalancesWidget::class,
+        ];
     }
 }

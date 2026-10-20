@@ -222,10 +222,7 @@ class LotsTable
         ];
     }
 
-    /**
-     * Make → model group → model. Makes come from the make_en index, the
-     * lower levels only for the chosen make (catalog_models is small).
-     */
+    /** Make → model group → model; the lower levels load for the chosen make only. */
     private static function makeModelFilter(): Filter
     {
         return Filter::make('make_model')
@@ -275,24 +272,17 @@ class LotsTable
     }
 
     /**
-     * Model groups of a make: from catalog_models (475 rows on prod, covers every
-     * make/model pair in lots), or from lots when the catalog is not seeded.
+     * Model groups of a make (make_en index, then the rows of that make: ~0.2 s
+     * for Hyundai on prod; runs only when a make is picked).
      *
      * @return array<string, string>
      */
     private static function modelGroups(string $make): array
     {
-        foreach (['catalog_models', 'lots'] as $table) {
-            $groups = DB::table($table)
-                ->where('make_en', $make)->whereNotNull('model_group_en')
-                ->distinct()->orderBy('model_group_en')
-                ->pluck('model_group_en', 'model_group_en')->all();
-            if ($groups !== []) {
-                return $groups;
-            }
-        }
-
-        return [];
+        return DB::table('lots')
+            ->where('make_en', $make)->whereNotNull('model_group_en')
+            ->distinct()->orderBy('model_group_en')
+            ->pluck('model_group_en', 'model_group_en')->all();
     }
 
     /** From/to numeric filter on one column, with one chip per bound. */

@@ -125,11 +125,6 @@ class AdminPanelProvider extends PanelProvider
     {
         $items = [
             // [label, route, page key (null = super only), group]
-            ['Задачи парсинга', 'admin.jobs', 'jobs', self::GROUP_PLATFORMS],
-            ['Расписание', 'admin.schedules', 'schedules', self::GROUP_PLATFORMS],
-            ['Правила отбора', 'admin.filters', 'filters', self::GROUP_PLATFORMS],
-            ['Лог пропусков', 'admin.filter-skip-log.index', 'filter-skip-log', self::GROUP_PLATFORMS],
-            ['Поля и покрытие', 'admin.fields', 'fields', self::GROUP_DATA],
             ['Изменения лотов', 'admin.changes', 'changes', self::GROUP_DATA],
             ['Настройки поиска', 'admin.bot-filters', 'bot-filters', self::GROUP_SEARCH_TEAM],
             ['Пользователи админки', 'admin.users', null, self::GROUP_SEARCH_TEAM],

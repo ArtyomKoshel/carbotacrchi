@@ -44,6 +44,8 @@ RUN npm ci --no-audit --no-fund
 COPY laravel/resources/css ./resources/css
 COPY laravel/resources/views/filament ./resources/views/filament
 COPY laravel/app/Filament ./app/Filament
+COPY laravel/app/Livewire ./app/Livewire
+COPY laravel/resources/views/livewire ./resources/views/livewire
 COPY laravel/scripts ./scripts
 COPY --from=base /var/www/html/vendor/filament ./vendor/filament
 RUN npm run build:panel
