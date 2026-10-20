@@ -40,6 +40,10 @@ class Config:
     # Detail batches (20 lots each, 5 per search page) fetched in parallel.
     # 1 = the old sequential behaviour.
     ENCAR_DETAIL_WORKERS = int(os.getenv("ENCAR_DETAIL_WORKERS", "5"))
+    # A lot's history (record + inspection) is fetched for new lots and re-checked
+    # for known ones about once in this many full runs; in between the stored
+    # values are kept. 1 = fetch every lot's history every run (old behaviour).
+    ENCAR_HISTORY_EVERY_RUNS = int(os.getenv("ENCAR_HISTORY_EVERY_RUNS", "3"))
 
     # FloppyData proxy credentials
     FLOPPYDATA_API_KEY  = os.getenv("FLOPPYDATA_API_KEY", "")

@@ -603,6 +603,100 @@ class LotRepository:
             logger.error(f"[DB] count_written_since failed: {e}")
             return None
 
+    def history_cutoff(self, source: str, every_runs: int) -> datetime | None:
+        """Lots whose history was last checked before this time are due again.
+
+        The cutoff is the history_checked_at of the oldest 1/every_runs of active
+        lots, so each run re-checks those that waited longest and every lot comes
+        round about once in `every_runs` runs. A run that dies half-way leaves its
+        lots oldest, so the next run takes them. None (check everything, the old
+        behaviour) when every_runs <= 1, nothing was checked yet, or the query fails.
+        """
+        if every_runs <= 1:
+            return None
+        conn = self._get_conn()
+        where = "source = %s AND is_active = 1 AND history_checked_at IS NOT NULL"
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(f"SELECT COUNT(*) AS cnt FROM lots WHERE {where}", (source,))
+                cnt = int(cursor.fetchone()["cnt"])
+                if not cnt:
+                    return None
+                cursor.execute(
+                    f"SELECT history_checked_at AS t FROM lots WHERE {where} "
+                    "ORDER BY history_checked_at LIMIT 1 OFFSET %s",
+                    (source, cnt // every_runs),
+                )
+                row = cursor.fetchone()
+            conn.commit()  # end the read snapshot (autocommit is off)
+            return row["t"] if row else None
+        except Exception as e:
+            logger.error(f"[DB] history_cutoff failed: {e}")
+            return None
+
+    def history_state(
+        self, lot_ids: list[str], fields: tuple[str, ...], raw_keys: tuple[str, ...],
+    ) -> dict[str, dict] | None:
+        """{lot_id: {"history_checked_at", <fields>..., "raw": {key: value}}} for lots in the DB.
+
+        `raw` holds the raw_data keys from `raw_keys` that are present. None when
+        the query fails (e.g. history_checked_at not migrated yet); the caller then
+        checks every lot, as before.
+        """
+        if not lot_ids:
+            return {}
+        for name in fields + raw_keys:
+            if not re.fullmatch(r"[a-z_]+", name):
+                raise ValueError(f"bad column / key name: {name!r}")
+        cols = "".join(f", `{f}`" for f in fields)
+        raws = "".join(f", JSON_EXTRACT(raw_data, '$.{k}') AS `raw.{k}`" for k in raw_keys)
+        placeholders = ",".join(["%s"] * len(lot_ids))
+        conn = self._get_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    f"SELECT id, history_checked_at{cols}{raws} FROM lots WHERE id IN ({placeholders})",
+                    lot_ids,
+                )
+                rows = cursor.fetchall()
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"[DB] history_state failed: {e}")
+            return None
+        out: dict[str, dict] = {}
+        for row in rows:
+            st = {"history_checked_at": row["history_checked_at"], "raw": {}}
+            for f in fields:
+                st[f] = row[f]
+            for k in raw_keys:
+                v = row[f"raw.{k}"]
+                if v is not None:
+                    st["raw"][k] = json.loads(v)
+            out[row["id"]] = st
+        return out
+
+    def mark_history_checked(self, lot_ids: list[str]) -> None:
+        """Stamp history_checked_at = now (UTC, like parsed_at) on these lots."""
+        if not lot_ids:
+            return
+        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        placeholders = ",".join(["%s"] * len(lot_ids))
+        conn = self._get_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    f"UPDATE lots SET history_checked_at = %s WHERE id IN ({placeholders})",
+                    [now, *lot_ids],
+                )
+            conn.commit()
+        except Exception as e:
+            # Not fatal: an unmarked lot is simply checked again next run.
+            logger.warning(f"[DB] mark_history_checked failed: {e}")
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
     def delist_not_seen_since(self, source: str, since: datetime, batch_size: int = 2000) -> int:
         """Set is_active=0 on active lots whose parsed_at is older than `since`.
 
