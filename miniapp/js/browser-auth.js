@@ -166,7 +166,7 @@ const BrowserAuth = (() => {
       case 'idle':
         return `
           <span class="blb-icon">💬</span>
-          <span class="blb-text">Привяжите Telegram, чтобы получать уведомления</span>
+          <span class="blb-text">Войдите через Telegram, чтобы искать лоты и получать уведомления</span>
           <button class="blb-btn" data-action="link">Привязать</button>`;
 
       case 'loading':
@@ -225,10 +225,25 @@ const BrowserAuth = (() => {
     _setBarState('idle');
   }
 
+  /** Empty-state markup for a screen whose request got 401. */
+  function authRequiredHtml() {
+    const lock = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
+    if (!isBrowserMode()) {
+      return `<div class="empty-state auth-required">${lock}
+        <p><b>Сессия Telegram устарела</b><br>Закройте приложение и откройте его снова из бота.</p></div>`;
+    }
+    return `<div class="empty-state auth-required">${lock}
+      <p><b>Нужен вход через Telegram</b><br>Поиск, избранное и подписки доступны после привязки аккаунта.
+      Нажмите «Привязать», затем Start в боте — эта страница обновится сама.</p>
+      <button class="btn btn-primary btn-sm" style="width:auto" onclick="BrowserAuth.startLinking()">Привязать Telegram</button>
+    </div>`;
+  }
+
   function _esc(v) {
     return String(v ?? '').replace(/[&<>"']/g,
       c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  return { init, isBrowserMode, isLinked, getChatId, getUser, startLinking };
+  return { init, isBrowserMode, isLinked, getChatId, getUser, startLinking, authRequiredHtml };
 })();

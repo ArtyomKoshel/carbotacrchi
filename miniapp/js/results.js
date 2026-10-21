@@ -22,7 +22,6 @@ const Results = (() => {
 
   function setSearchQuery(q) {
     currentQuery = q ?? null;
-    console.log('[HIGHLIGHT]', JSON.stringify({ t: q?.transmissions, f: q?.fuelTypes, d: q?.driveTypes, bt: q?.bodyTypes, ha: q?.hasAccident }));
   }
 
   function _isQueried(field) {
@@ -251,8 +250,8 @@ const Results = (() => {
     const overlay   = document.getElementById('sheet-overlay');
     const makeName  = lot.makeEn       || lot.make  || '';
     const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
-    const price    = '$' + Number(lot.price).toLocaleString();
-    const km       = Number(lot.mileage).toLocaleString() + ' km';
+    const price    = '₩' + Number(lot.price).toLocaleString();
+    const km       = Number(lot.mileage).toLocaleString() + ' км';
     const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
     const isFav    = favorites.has(lot.id);
     const d = (label, value, extra = '', hl = false) =>
@@ -307,11 +306,9 @@ const Results = (() => {
           ${d('Страховых',    lot.insuranceCount ? String(lot.insuranceCount) : '', '', _isQueried('insurance_count'))}
           ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"', _isQueried('vin'))}
           ${d('Документ', lot.document ? `<span style="font-size:12px">${escHtml(lot.document)}</span>` : '', ' style="grid-column:span 2"')}
-          ${d('Рыночная цена',    lot.retailValue  ? `$${Number(lot.retailValue).toLocaleString()}`  : '')}
-          ${d('Стоимость ремонта',lot.repairCost   ? `<span style="color:var(--danger)">$${Number(lot.repairCost).toLocaleString()}</span>` : '')}
+          ${d('Рыночная цена',    lot.retailValue  ? `₩${Number(lot.retailValue).toLocaleString()}`  : '')}
+          ${d('Стоимость ремонта',lot.repairCost   ? `<span style="color:var(--danger)">₩${Number(lot.repairCost).toLocaleString()}</span>` : '')}
           ${d('Номер',  lot.plateNumber ? `<span style="font-family:monospace">${escHtml(lot.plateNumber)}</span>` : '')}
-          ${d('Дилер',  lot.dealerName  ? escHtml(lot.dealerName)  : '')}
-          ${d('Телефон',lot.dealerPhone ? escHtml(lot.dealerPhone) : '')}
           ${lot.hasKeys !== null && lot.hasKeys !== undefined ? d('Ключи', lot.hasKeys ? 'Есть' : 'Нет') : ''}
         </div>
         ${Array.isArray(lot.options) && lot.options.length ? (() => {
@@ -399,7 +396,7 @@ const Results = (() => {
       if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.valid_until))}</span></div>`);
       if (insp.cert_no)     rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Номер акта</span><span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(insp.cert_no)}</span></div>`);
       if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.first_registration))}</span></div>`);
-      if (insp.inspection_mileage)  rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Пробег (акт)</span><span class="sheet-detail-value">${Number(insp.inspection_mileage).toLocaleString()} km</span></div>`);
+      if (insp.inspection_mileage)  rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Пробег (акт)</span><span class="sheet-detail-value">${Number(insp.inspection_mileage).toLocaleString()} км</span></div>`);
       if (insp.accident_detail) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Структурные повреждения</span><span class="sheet-detail-value" style="color:var(--danger)">${escHtml(insp.accident_detail)}</span></div>`);
       if (insp.outer_detail)    rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Внешние ремонты</span><span class="sheet-detail-value">${escHtml(insp.outer_detail)}</span></div>`);
       const note = insp.details?.inspector_note;

@@ -2,7 +2,7 @@
 .filters-screen {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 80px;
+  /* no bottom padding: it would lift the sticky .search-btn-wrap off the bottom edge */
 }
 
 .filter-section {
@@ -116,7 +116,15 @@
 
 /* ── Search button area ── */
 .search-btn-wrap {
-  padding: 16px 16px 0;
+  /* Stays at the bottom of the scrolling filters, i.e. just above the bottom nav
+     and the browser link bar (#app reserves their height) */
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: 16px;
+  padding: 10px 16px 12px;
+  background: var(--bg);
+  border-top: 1px solid rgba(255,255,255,.06);
 }
 
 .search-count-hint {

@@ -144,7 +144,9 @@ const Subscriptions = (() => {
         });
       });
     } catch (e) {
-      container.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${e.message}</p></div>`;
+      container.innerHTML = API.isAuthError(e)
+        ? BrowserAuth.authRequiredHtml()
+        : `<div class="empty-state"><p style="color:var(--danger)">${escHtml(e.message)}</p></div>`;
     }
   }
 
@@ -184,7 +186,7 @@ const Subscriptions = (() => {
 
   function renderMiniLot(p) {
     const img    = p.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const price  = '$' + Number(p.price).toLocaleString();
+    const price  = '₩' + Number(p.price).toLocaleString();
     const urlAttr = p.lotUrl ? ` data-url="${escHtml(p.lotUrl)}"` : '';
     return `
       <div class="mini-lot"${urlAttr}>

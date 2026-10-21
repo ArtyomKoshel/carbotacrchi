@@ -58,9 +58,11 @@ const Chat = (() => {
       } else {
         _appendBotMsg(result?.message ?? 'Не удалось распознать запрос. Попробуйте переформулировать.');
       }
-    } catch (_) {
+    } catch (e) {
       _removeEl(typingId);
-      _appendBotMsg('Произошла ошибка. Попробуйте ещё раз.');
+      _appendBotMsg(API.isAuthError(e)
+        ? 'Нужен вход через Telegram: нажмите «Привязать» внизу экрана.'
+        : 'Произошла ошибка. Попробуйте ещё раз.');
     } finally {
       isLoading = false;
       _setSendEnabled(true);
