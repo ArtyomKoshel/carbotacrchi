@@ -5,9 +5,10 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
+        "filament/filament": "^5.10",
+        "guzzlehttp/guzzle": "^7.8",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
-        "guzzlehttp/guzzle": "^7.8",
         "predis/predis": "^2.2"
     },
     "require-dev": {
@@ -30,7 +31,8 @@
     "scripts": {
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
+            "@php artisan package:discover --ansi",
+            "@php artisan filament:upgrade"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"

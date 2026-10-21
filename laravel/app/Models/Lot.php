@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lot extends Model
 {
@@ -17,4 +19,15 @@ class Lot extends Model
         'parsed_at'  => 'datetime',
         'fetched_at' => 'datetime',
     ];
+
+    /** Field changes recorded by the parser (not named changes(): Model has a $changes property). */
+    public function lotChanges(): HasMany
+    {
+        return $this->hasMany(LotChange::class, 'lot_id');
+    }
+
+    public function inspection(): HasOne
+    {
+        return $this->hasOne(LotInspection::class, 'lot_id');
+    }
 }

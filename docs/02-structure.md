@@ -32,10 +32,10 @@ carbot/
 │   │   ├── migrations/            ~60 миграций
 │   │   └── seeders/               BotFilterSettingsSeeder, CatalogTokenMapSeeder
 │   ├── resources/views/
-│   │   └── admin/                 Blade-шаблоны (Tailwind, тёмная тема)
+│   │   └── filament/, livewire/   Шаблоны админ-панели (Filament, /admin)
 │   ├── routes/
 │   │   ├── api.php                /api/* endpoints
-│   │   └── web.php                /admin/* + /bot/webhook
+│   │   └── web.php                /bot/webhook + редиректы старых адресов админки
 │   └── storage/app/
 │       ├── field_mappings.json    Экспорт из parser/_shared/field_mappings.py
 │       └── fields.json            Экспорт из parser/fields/registry.py

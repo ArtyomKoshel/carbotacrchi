@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Compute field-fill coverage per source and cache it in `field_coverage_stats`.
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * Run hourly via the scheduler:
  *   $schedule->command('fields:compute-coverage')->hourly();
  *
- * The admin `/admin/fields` page reads from this table directly, keeping
+ * The admin (Покрытие полей, Площадка → Поля, Обзор) reads this table directly, keeping
  * pageload fast regardless of `lots` table size.
  */
 class ComputeFieldCoverage extends Command
@@ -107,10 +108,14 @@ class ComputeFieldCoverage extends Command
         ));
         $hiddenSet = array_fill_keys($hiddenFields, true);
 
-        $checks = array_values(array_filter(
-            self::CHECKS,
-            fn (array $c) => !isset($hiddenSet[$c['field']])
-        ));
+        // Skip checks on columns lots no longer has (registration_year_month was
+        // dropped; querying it failed the whole command), and duplicates.
+        $lotColumns = array_fill_keys(Schema::getColumnListing('lots'), true);
+        $checks = array_values(collect(self::CHECKS)
+            ->filter(fn (array $c) => !isset($hiddenSet[$c['field']]))
+            ->filter(fn (array $c) => !str_contains($c['pred'], 'X') || isset($lotColumns[$c['field']]))
+            ->unique('field')
+            ->all());
         $joinedChecks = array_filter(
             self::JOINED_CHECKS,
             fn ($joinTable, $name) => !isset($hiddenSet[$name]),

@@ -21,4 +21,9 @@ class User extends Model
     {
         return $this->hasMany(Favorite::class);
     }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
 }

@@ -1,0 +1,417 @@
+/*
+ * Theme of the /panel admin (Filament). Built by `npm run build:panel` into
+ * public/css/filament/panel/theme.css (the Dockerfile does it on deploy).
+ * Colors come from the panel provider: neutral grays, one accent (primary),
+ * success/warning/danger only for statuses.
+ */
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+@source '../../../../resources/views/livewire/**/*';
+@source '../../../../app/Livewire/**/*';
+
+/* Onest, self-hosted (scripts/panel-fonts.mjs copies the files) */
+@font-face {
+    font-family: 'Onest Variable';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url('/fonts/onest/onest-cyrillic-ext-wght-normal.woff2') format('woff2-variations');
+    unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+    font-family: 'Onest Variable';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url('/fonts/onest/onest-cyrillic-wght-normal.woff2') format('woff2-variations');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+    font-family: 'Onest Variable';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url('/fonts/onest/onest-latin-ext-wght-normal.woff2') format('woff2-variations');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+        U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: 'Onest Variable';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url('/fonts/onest/onest-latin-wght-normal.woff2') format('woff2-variations');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+        U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Numbers line up in tables and on the lot card */
+.fi-ta-table,
+.fi-in-text,
+.fi-tabs-item-badge,
+.fi-badge {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Lot thumbnails and photo */
+.lot-thumb {
+    @apply rounded-md object-cover ring-1 ring-gray-950/5 dark:ring-white/10;
+}
+.lot-photo {
+    @apply aspect-[4/3] w-full rounded-lg object-cover ring-1 ring-gray-950/5 dark:ring-white/10;
+}
+
+/* History tab */
+.lot-history {
+    @apply flex flex-col divide-y divide-gray-950/5 dark:divide-white/10;
+}
+.lot-history-item {
+    @apply py-3 first:pt-0 last:pb-0;
+}
+.lot-history-head {
+    @apply flex items-baseline justify-between gap-3;
+}
+.lot-history-event {
+    @apply text-sm font-medium text-gray-950 dark:text-white;
+}
+.lot-history-time {
+    @apply text-xs text-gray-500 tabular-nums dark:text-gray-400;
+}
+.lot-history-fields {
+    @apply mt-1.5 grid grid-cols-[minmax(9rem,max-content)_1fr] gap-x-4 gap-y-1 text-sm tabular-nums;
+}
+.lot-history-fields dt {
+    @apply text-gray-500 dark:text-gray-400;
+}
+.lot-history-fields dd {
+    @apply text-gray-950 dark:text-white;
+}
+.lot-history-old {
+    @apply text-gray-500 line-through decoration-gray-400/60 dark:text-gray-400;
+}
+.lot-history-arrow {
+    @apply mx-1 text-gray-400;
+}
+
+/* Raw data tab */
+.lot-raw {
+    @apply flex flex-col gap-2;
+}
+.lot-raw-block {
+    @apply rounded-lg ring-1 ring-gray-950/10 dark:ring-white/10;
+}
+.lot-raw-block summary {
+    @apply flex cursor-pointer items-baseline gap-2 px-3 py-2 text-sm text-gray-500 select-none dark:text-gray-400;
+}
+.lot-raw-block summary code {
+    @apply font-mono text-gray-950 dark:text-white;
+}
+.lot-raw-block pre {
+    @apply max-h-96 overflow-auto border-t border-gray-950/10 px-3 py-2 font-mono text-xs leading-relaxed text-gray-800 dark:border-white/10 dark:text-gray-200;
+}
+
+.lot-empty {
+    @apply text-sm text-gray-500 dark:text-gray-400;
+}
+
+.panel-intro {
+    @apply max-w-3xl text-sm text-gray-500 dark:text-gray-400;
+}
+
+/* Key/value tables in run details */
+.kv-table {
+    @apply w-full text-sm tabular-nums;
+}
+.kv-table th {
+    @apply py-1 pe-4 text-start text-xs font-medium text-gray-500 dark:text-gray-400;
+}
+.kv-table td {
+    @apply border-t border-gray-950/5 py-1 pe-4 text-gray-950 dark:border-white/10 dark:text-white;
+}
+.log-lines {
+    @apply max-h-96 overflow-auto rounded-lg bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-800 ring-1 ring-gray-950/5 dark:bg-white/5 dark:text-gray-200 dark:ring-white/10;
+}
+
+/* Run in progress */
+.run-progress {
+    @apply flex flex-col gap-2;
+}
+.run-progress-head {
+    @apply flex items-baseline justify-between text-sm font-medium text-gray-950 dark:text-white;
+}
+.run-progress-track {
+    @apply h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10;
+}
+.run-progress-bar {
+    @apply h-full rounded-full bg-primary-600 transition-[width] duration-700 dark:bg-primary-500;
+}
+.run-phases {
+    @apply flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500;
+}
+.run-phases .is-current {
+    @apply font-medium text-gray-950 dark:text-white;
+}
+.run-stats {
+    @apply mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-7;
+}
+.run-stats dt {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.run-stats dd {
+    @apply text-sm font-medium text-gray-950 tabular-nums dark:text-white;
+}
+.run-message {
+    @apply mt-3 truncate font-mono text-xs text-gray-500 dark:text-gray-400;
+}
+
+/* Field coverage bar */
+.coverage-cell {
+    @apply flex items-center gap-3 px-3 py-2;
+}
+.coverage-track {
+    @apply h-1.5 w-32 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10;
+}
+.coverage-fill {
+    @apply h-full rounded-full bg-gray-400 dark:bg-gray-500;
+}
+.coverage-value {
+    @apply text-sm text-gray-950 tabular-nums dark:text-white;
+}
+
+/* Overview */
+.health-grid {
+    @apply grid gap-6;
+}
+.health-title {
+    @apply hover:underline;
+}
+.health-body {
+    @apply grid gap-6 md:grid-cols-[minmax(14rem,18rem)_1fr];
+}
+.health-metrics {
+    @apply grid gap-4 sm:grid-cols-3;
+}
+.health-metric {
+    @apply flex flex-col gap-0.5;
+}
+.health-label {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.health-value {
+    @apply text-3xl font-semibold text-gray-950 tabular-nums dark:text-white;
+}
+.health-value-sm {
+    @apply block text-base font-semibold text-gray-950 tabular-nums dark:text-white;
+}
+.health-value-sm.is-warn {
+    @apply text-warning-600 dark:text-warning-400;
+}
+.health-hint {
+    @apply block text-xs text-gray-500 dark:text-gray-400;
+}
+.sparkline {
+    @apply mt-2 h-8 w-full;
+}
+.sparkline polyline {
+    @apply stroke-primary-600 dark:stroke-primary-400;
+    stroke-width: 1.5;
+}
+.incident {
+    @apply border-t border-gray-950/5 py-2 first:border-t-0 first:pt-0 dark:border-white/10;
+}
+.incident-head {
+    @apply flex items-center justify-between gap-3;
+}
+.incident-time {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.incident-key {
+    @apply mt-1 block font-mono text-xs text-gray-500 dark:text-gray-400;
+}
+.balances {
+    @apply grid gap-4 sm:grid-cols-2;
+}
+.balance dd {
+    @apply flex flex-col items-start gap-1;
+}
+
+/* Translation review */
+.review {
+    @apply flex flex-col gap-4;
+}
+.review-toolbar {
+    @apply flex flex-wrap items-center gap-3;
+}
+.review-keys {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.review kbd,
+.review-kbd {
+    @apply rounded border border-gray-300 px-1 font-mono text-[0.7rem] text-gray-600 dark:border-white/20 dark:text-gray-300;
+}
+.review-grid {
+    @apply grid items-start gap-4 lg:grid-cols-[minmax(16rem,22rem)_1fr];
+}
+.review-list {
+    @apply flex max-h-[32rem] flex-col overflow-y-auto;
+}
+.review-item {
+    @apply flex w-full flex-col items-start rounded-md px-3 py-2 text-start hover:bg-gray-50 dark:hover:bg-white/5;
+}
+.review-item.is-current {
+    @apply bg-primary-50 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:ring-primary-400/30;
+}
+.review-item-kr {
+    @apply text-sm text-gray-950 dark:text-white;
+}
+.review-item-en {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.review-item-cat {
+    @apply text-gray-400 dark:text-gray-500;
+}
+.review-card {
+    @apply grid gap-4 sm:grid-cols-2;
+}
+.review-card dt {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.review-card dd {
+    @apply text-sm text-gray-950 tabular-nums dark:text-white;
+}
+.review-big {
+    @apply text-xl! font-semibold;
+}
+.review-sub {
+    @apply mt-6 mb-2 text-xs font-medium text-gray-500 dark:text-gray-400;
+}
+.review-examples {
+    @apply flex flex-col gap-1 text-sm;
+}
+.review-examples a {
+    @apply text-primary-600 hover:underline dark:text-primary-400;
+}
+.review-examples span {
+    @apply ms-2 text-xs text-gray-500 dark:text-gray-400;
+}
+.review-actions {
+    @apply mt-6 flex flex-wrap items-center gap-2;
+}
+.review-spacer {
+    @apply flex-1;
+}
+
+/* Field coverage matrix */
+.matrix-wrap {
+    @apply overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10;
+}
+.matrix {
+    @apply w-full text-sm tabular-nums;
+}
+.matrix thead th {
+    @apply border-b border-gray-950/5 px-4 py-2 text-start text-xs font-medium text-gray-500 dark:border-white/10 dark:text-gray-400;
+}
+.matrix tbody th[scope='row'] {
+    @apply px-4 py-1.5 text-start font-normal text-gray-950 dark:text-white;
+}
+.matrix td {
+    @apply px-4 py-1.5;
+}
+.matrix .matrix-num {
+    @apply text-end;
+}
+.matrix-group th {
+    @apply bg-gray-50 px-4 py-1.5 text-start text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-gray-400;
+}
+.matrix-code {
+    @apply ms-2 font-mono text-xs text-gray-400 dark:text-gray-500;
+}
+.matrix-pct {
+    @apply text-gray-950 dark:text-white;
+}
+.matrix-pct.is-low {
+    @apply text-warning-600 dark:text-warning-400;
+}
+.matrix-bar {
+    @apply ms-2 inline-block h-1.5 w-20 overflow-hidden rounded-full bg-gray-100 align-middle dark:bg-white/10;
+}
+.matrix-bar span {
+    @apply block h-full bg-gray-400 dark:bg-gray-500;
+}
+.matrix-none {
+    @apply text-gray-400;
+}
+
+/* Search settings */
+.settings-table {
+    @apply w-full text-sm;
+}
+.settings-table thead th {
+    @apply border-b border-gray-950/5 py-2 pe-4 text-start text-xs font-medium text-gray-500 dark:border-white/10 dark:text-gray-400;
+}
+.settings-table tbody th {
+    @apply py-2 pe-4 text-start font-normal text-gray-950 dark:text-white;
+}
+.settings-table td {
+    @apply py-2 pe-4 align-middle;
+}
+.settings-table tbody tr {
+    @apply border-t border-gray-950/5 dark:border-white/10;
+}
+.settings-check {
+    @apply inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300;
+}
+.settings-tolerance {
+    @apply flex flex-wrap items-center gap-2;
+}
+.settings-num {
+    @apply w-28;
+}
+.settings-human {
+    @apply text-sm text-gray-950 tabular-nums dark:text-white;
+}
+.settings-saved {
+    @apply ms-2 text-xs text-success-600 dark:text-success-400;
+}
+.settings-test {
+    @apply flex flex-wrap items-center gap-3;
+}
+.settings-test-input {
+    @apply min-w-[20rem] flex-1;
+}
+.settings-test-desc {
+    @apply my-3 text-sm text-gray-950 dark:text-white;
+}
+.settings-diff {
+    @apply font-medium;
+}
+
+/* Logs */
+.log-lines-tall {
+    @apply max-h-[70vh];
+}
+.log-lines span {
+    @apply block;
+}
+.log-error {
+    @apply text-danger-700 dark:text-danger-400;
+}
+.log-warn {
+    @apply text-warning-700 dark:text-warning-400;
+}
+
+/* Changes per day */
+.days-chart {
+    @apply flex h-32 items-end gap-1.5;
+}
+.days-col {
+    @apply flex h-full flex-1 flex-col items-center justify-end gap-1;
+}
+.days-bar {
+    @apply w-full min-h-px rounded-t bg-gray-300 dark:bg-gray-600;
+}
+.days-label {
+    @apply text-[0.65rem] text-gray-500 tabular-nums dark:text-gray-400;
+}

@@ -57,21 +57,34 @@ flowchart LR
 
 ---
 
-## Админ-панель (`/admin/`)
+## Админ-панель (`/admin/`, Filament)
 
-Защищена middleware `admin.auth` (сессия `AdminUser`).
+Filament 5 (Livewire 4), `App\Providers\Filament\AdminPanelProvider`. В 2026-10 заменила Blade-админку; старые адреса
+(`/admin/jobs`, `/admin/bot-filters`, `/admin/users`, `/panel/*` …) перенаправляются на новые страницы (`routes/web.php`).
 
-| Страница | Контроллер | Назначение |
-|----------|-----------|------------|
-| `/admin/lots` | `AdminLotsController` | Просмотр и поиск по таблице `lots` |
-| `/admin/taxonomy/rules` | `TaxonomyRulesController` | Управление `taxonomy_rules` |
-| `/admin/bot-filters` | `BotFiltersController` | Настройка полей бот-поиска |
-| `/admin/filters` | `ParseFiltersController` | PRE/POST правила фильтрации |
-| `/admin/filter-skip-log` | — | Лог отфильтрованных лотов |
-| `/admin/parser/jobs` | `ParserJobsController` | История запусков парсера |
-| `/admin/fields` | `FieldsController` | Браузер реестра полей |
-| `/admin/logs` | `LogsController` | Просмотр логов приложения |
-| `/admin/notifications` | `NotificationsController` | Telegram-уведомления админам (только super) |
+- **Вход** — `admin_users`, guard `admin` (`config/auth.php`), вход по логину. Роль `super` видит всё; `limited` — разделы,
+  включённые в `admin_page_permissions` (`AdminUser::canSeePage()`, правится на странице «Доступ к админке»).
+- **Меню**: Работа (Обзор, Лоты) · Площадки (по пункту на каждый `source`) · Данные · Поиск и команда · Система.
+
+| Страница | Класс | Ключ права | Что делает |
+|----------|-------|-----------|------------|
+| `/admin` Обзор | `Pages\Overview` + виджеты | `dashboard` | Площадки: активные лоты и график 14 дней (точки — `result.db_count` прогонов), последний успешный полный прогон (правила `lots:lifecycle`), новые и снятые за 24 ч, заполненность полей; открытые инциденты; балансы прокси и DeepSeek (последняя проверка `notifications:watch`, если старше часа — запрос к API) |
+| `/admin/lots` Лоты | `Resources\Lots\LotResource` | `lots-browse` (перепарсинг — `lots`) | Таблица с фильтрами-чипами и вкладками (Все активные, Новые сегодня, Снятые за 24 ч, Без комплектации, Все; счётчики грузятся после таблицы), поиск по ID (префикс), VIN, госномеру, `model_en`; карточка справа и `/admin/lots/{id}`: Данные, История (`lot_changes`), Осмотр, Сырые данные; «Перепарсить» (до 500 лотов, `App\Services\LotReparseQueue` → `parse_jobs` `type=reparse`) |
+| `/admin/platforms/{source}` Площадка | `Pages\Platform` + `Livewire\Platform\*` | `jobs`, `schedules`, `filters`, `filter-skip-log`, `fields` по вкладкам | «Прогоны»: текущий прогон (опрос раз в 5 с), «Остановить», история с пометкой «засчитан», подробности и хвост лога задачи; «Запустить парсинг» — полный, тестовый (5 страниц) или выбранные марки (по задаче на марку) с оценкой трафика прокси. «Расписание» (`parser_schedules`). «Правила отбора» (`parse_filters`: фразой, порядок перетаскиванием = `priority`, группы И, значения по типу поля, имя генерируется, сколько активных лотов попадёт, срабатывания из `filter_skip_log`). «Лог пропусков». «Поля» (`field_coverage_stats`) |
+| `/admin/translation-review` Проверка переводов | `Pages\TranslationReview` | `taxonomy` | Очередь словаря KR→EN: «Ждут проверки» (`source=ai`), «Проверены», «Без перевода»; клавиши J/K, A, E, D. Исправление пишется в лоты со старым переводом или пустым полем, отклонение очищает их, чтобы `translate:run` перевёл заново (`App\Services\TranslationCatalog`). Заменяет очередь аномалий старого regex-пайплайна (таблицы удалены 2026-06-01) |
+| `/admin/translations` Переводы | `Resources\Translations\TranslationResource` | `taxonomy` | Весь словарь `translations` с правкой, добавлением, удалением |
+| `/admin/encar-options` Опции Encar | `Resources\EncarOptions\EncarOptionResource` | `taxonomy` | Названия и группы опций (`encar_option_catalog`), после правки сбрасывается кэш каталога |
+| `/admin/field-coverage` Покрытие полей | `Pages\FieldCoverage` | `fields` | Матрица поле × площадка, «Пересчитать» (`fields:compute-coverage`) |
+| `/admin/lot-changes` Изменения лотов | `Resources\LotChanges\LotChangeResource` | `changes` | `lot_changes` с фильтрами (период, событие, поле, площадка), график по дням и самые изменчивые лоты |
+| `/admin/search-settings` Настройки поиска | `Pages\SearchSettings` | `bot-filters` | `bot_filter_settings`: основные поля и «Все поля», допуск «±1 год / ±10 %», в карточке; каждая строка сохраняется сразу; проверка разбора запроса (через AI); сброс к умолчаниям |
+| `/admin/pickers` Подборщики | `Resources\BotUsers\BotUserResource` | только `super` | Пользователи бота (`users`) с числом поисков, избранного, подписок и их последними записями |
+| `/admin/admin-users` Доступ к админке | `Resources\AdminUsers\AdminUserResource` | только `super` | Администраторы, роли, пароли; что видит роль `limited` |
+| `/admin/notifications` Уведомления | `Pages\Notifications` | только `super` | См. ниже |
+| `/admin/logs` Логи | `Pages\Logs` | `logs` (очистка — `super`) | Лог парсера и его ротации, логи задач, `storage/logs/laravel*.log`; уровень, поиск, автообновление, скачивание |
+
+**Тема** — `resources/css/filament/panel/theme.css` (Tailwind v4), шрифт Onest лежит на нашем сервере. Собирается
+`npm run build:panel` в `public/css/filament/panel/` (на деплое — стадия `panel-assets` в `Dockerfile`). Ассеты самого
+Filament публикует `php artisan filament:upgrade` (скрипт composer `post-autoload-dump`). PHP-расширения `intl` и `zip` обязательны.
 
 ### Уведомления (`/admin/notifications`)
 
