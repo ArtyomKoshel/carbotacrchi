@@ -1,0 +1,63 @@
+{
+  "contract": "carlot/1",
+  "source": "encar",
+  "source_id": "39847215",
+  "url": "https://fem.encar.com/cars/detail/39847215",
+  "observed_at": "2026-10-21T09:15:00Z",
+  "run_id": 17,
+  "vehicle": {
+    "make": "현대",
+    "model": "쏘나타 (DN8)",
+    "model_group": "쏘나타",
+    "model_en": "Sonata (DN8)",
+    "badge_group": "가솔린 2000cc",
+    "badge": "2.0 가솔린",
+    "trim": "프레스티지",
+    "trim_en": "Prestige",
+    "year": 2021,
+    "first_registration": "2021-03-02",
+    "vin": "KMHL341CBMA123456",
+    "plate_number": "12가3456",
+    "fuel": "gasoline",
+    "transmission": "automatic",
+    "drive_type": "fwd",
+    "body_type": "sedan",
+    "engine_volume_l": 2.0,
+    "seat_count": 5,
+    "color": "white",
+    "seat_color": "black"
+  },
+  "listing": {
+    "price": {"amount": 18900000, "currency": "KRW"},
+    "mileage_km": 45210,
+    "location": "경기",
+    "listed_at": "2026-09-14T03:00:00Z",
+    "sell_type": "sale",
+    "sell_type_raw": "일반",
+    "retail_value": {"amount": 32000000, "currency": "KRW"},
+    "image_url": "https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg",
+    "photos": ["https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg"],
+    "options": ["001", "014"],
+    "paid_options": []
+  },
+  "history": {
+    "has_accident": false,
+    "flood": false,
+    "total_loss": false,
+    "owners_count": 2,
+    "insurance_count": 1,
+    "repair_cost": {"amount": 450000, "currency": "KRW"},
+    "lien_status": "clean",
+    "seizure_status": "clean"
+  },
+  "inspection": {
+    "cert_no": "1234567",
+    "inspected_on": "2026-09-10",
+    "mileage_km": 45100,
+    "has_accident": false,
+    "has_recall": false,
+    "details": {"inspector_note": "OK"}
+  },
+  "selection": {"passed": true},
+  "extra": {"ad_type": "normal", "condition": ["Record", "Inspection"]}
+}

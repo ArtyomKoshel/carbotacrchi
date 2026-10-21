@@ -1,0 +1,1 @@
+"""CarBot collector service."""

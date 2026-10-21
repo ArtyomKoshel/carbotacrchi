@@ -60,3 +60,23 @@ jobs:
           cache-dependency-path: parser/requirements.txt
       - run: pip install -r requirements.txt pytest
       - run: python -m pytest
+
+  collector:
+    name: Collector (ruff, mypy, pytest, contracts)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: collector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.4"
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - name: Contract schema is current
+        run: uv run python -m collector.contracts check
+      - run: uv run pytest
