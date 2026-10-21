@@ -94,6 +94,13 @@ class SelectionPhase(StrEnum):
     POST = "post"
 
 
+class RejectAction(StrEnum):
+    """What the deciding rule asks for (parse_filters.action)."""
+
+    SKIP = "skip"  # do not store a new lot; deactivate an existing one
+    MARK_INACTIVE = "mark_inactive"  # store the lot, inactive
+
+
 # JSON Schema "date-time" format checks are optional in many validators; the
 # pattern makes "timezone required" hold for every consumer.
 TzDatetime = Annotated[AwareDatetime, Field(json_schema_extra={"pattern": r"(Z|[+-]\d{2}:\d{2})$"})]
@@ -158,6 +165,10 @@ class History(_Model):
     repair_cost: Money | None = None
     lien_status: LegalStatus | None = None
     seizure_status: LegalStatus | None = None
+    observed_at: TzDatetime | None = Field(
+        default=None,
+        description="When this history was fetched from the source; None = not fetched in this run.",
+    )
 
 
 class Inspection(_Model):
@@ -189,18 +200,26 @@ class Selection(_Model):
     model_config = ConfigDict(
         json_schema_extra={
             "if": {"properties": {"passed": {"const": False}}, "required": ["passed"]},
-            "then": {"required": ["rule_ids"], "properties": {"rule_ids": {"minItems": 1}}},
+            "then": {
+                "required": ["rule_ids", "action", "phase"],
+                "properties": {"rule_ids": {"minItems": 1}, "action": {"type": "string"}},
+            },
+            "else": {"properties": {"rule_ids": {"maxItems": 0}, "action": {"type": "null"}}},
         },
     )
 
     passed: bool
     phase: SelectionPhase | None = None
-    rule_ids: tuple[int, ...] = ()
+    action: RejectAction | None = None
+    rule_ids: tuple[int, ...] = Field(default=(), description="Rules that rejected the lot")
+    flagged_rule_ids: tuple[int, ...] = Field(default=(), description="'flag' rules that matched")
 
     @model_validator(mode="after")
-    def _rules_explain_rejection(self) -> Selection:
-        if not self.passed and not self.rule_ids:
-            raise ValueError("a rejected lot names the rule ids that rejected it")
+    def _rejection_is_explained(self) -> Selection:
+        if self.passed and (self.rule_ids or self.action is not None):
+            raise ValueError("a passed lot has no rejecting rules or action")
+        if not self.passed and not (self.rule_ids and self.action and self.phase):
+            raise ValueError("a rejected lot names its phase, action and rejecting rule ids")
         return self
 
 

@@ -28,16 +28,27 @@
     "seat_color": "black"
   },
   "listing": {
-    "price": {"amount": 18900000, "currency": "KRW"},
+    "price": {
+      "amount": 18900000,
+      "currency": "KRW"
+    },
     "mileage_km": 45210,
     "location": "경기",
     "listed_at": "2026-09-14T03:00:00Z",
     "sell_type": "sale",
     "sell_type_raw": "일반",
-    "retail_value": {"amount": 32000000, "currency": "KRW"},
+    "retail_value": {
+      "amount": 32000000,
+      "currency": "KRW"
+    },
     "image_url": "https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg",
-    "photos": ["https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg"],
-    "options": ["001", "014"],
+    "photos": [
+      "https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg"
+    ],
+    "options": [
+      "001",
+      "014"
+    ],
     "paid_options": []
   },
   "history": {
@@ -46,9 +57,13 @@
     "total_loss": false,
     "owners_count": 2,
     "insurance_count": 1,
-    "repair_cost": {"amount": 450000, "currency": "KRW"},
+    "repair_cost": {
+      "amount": 450000,
+      "currency": "KRW"
+    },
     "lien_status": "clean",
-    "seizure_status": "clean"
+    "seizure_status": "clean",
+    "observed_at": "2026-10-21T09:14:00Z"
   },
   "inspection": {
     "cert_no": "1234567",
@@ -56,8 +71,21 @@
     "mileage_km": 45100,
     "has_accident": false,
     "has_recall": false,
-    "details": {"inspector_note": "OK"}
+    "details": {
+      "inspector_note": "OK"
+    }
   },
-  "selection": {"passed": true},
-  "extra": {"ad_type": "normal", "condition": ["Record", "Inspection"]}
+  "selection": {
+    "passed": true,
+    "flagged_rule_ids": [
+      7
+    ]
+  },
+  "extra": {
+    "ad_type": "normal",
+    "condition": [
+      "Record",
+      "Inspection"
+    ]
+  }
 }

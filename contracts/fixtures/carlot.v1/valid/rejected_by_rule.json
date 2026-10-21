@@ -3,7 +3,23 @@
   "source_id": "2",
   "url": "https://fem.encar.com/cars/detail/2",
   "observed_at": "2026-10-21T09:15:00Z",
-  "vehicle": {"make": "기아", "model": "K5", "year": 2020},
-  "listing": {"price": {"amount": 1000000}, "mileage_km": 260000},
-  "selection": {"passed": false, "phase": "pre", "rule_ids": [3]}
+  "vehicle": {
+    "make": "기아",
+    "model": "K5",
+    "year": 2020
+  },
+  "listing": {
+    "price": {
+      "amount": 1000000
+    },
+    "mileage_km": 260000
+  },
+  "selection": {
+    "passed": false,
+    "phase": "pre",
+    "action": "skip",
+    "rule_ids": [
+      3
+    ]
+  }
 }

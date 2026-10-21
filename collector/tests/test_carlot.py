@@ -10,7 +10,16 @@ from hypothesis import given
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
-from collector.domain.carlot import CONTRACT, CarLotV1, DriveType, Fuel, Money, Selection, SelectionPhase
+from collector.domain.carlot import (
+    CONTRACT,
+    CarLotV1,
+    DriveType,
+    Fuel,
+    Money,
+    RejectAction,
+    Selection,
+    SelectionPhase,
+)
 
 
 def test_full_fixture_parses_with_typed_fields(full_lot: dict[str, Any]) -> None:
@@ -102,7 +111,9 @@ def test_unknown_fields_are_refused_at_every_level(full_lot: dict[str, Any]) -> 
 def test_rejection_must_name_its_rules() -> None:
     with pytest.raises(ValidationError):
         Selection(passed=False)
-    assert Selection(passed=False, phase=SelectionPhase.PRE, rule_ids=(3,)).rule_ids == (3,)
+    assert Selection(
+        passed=False, phase=SelectionPhase.PRE, action=RejectAction.SKIP, rule_ids=(3,)
+    ).rule_ids == (3,)
 
 
 @given(amount=st.integers(min_value=0, max_value=10_000_000_000), currency=st.from_regex(r"\A[A-Z]{3}\Z"))

@@ -91,6 +91,21 @@
           ],
           "default": null
         },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When this history was fetched from the source; None = not fetched in this run.",
+          "title": "Observed At"
+        },
         "owners_count": {
           "anyOf": [
             {
@@ -528,9 +543,28 @@
       "title": "Money",
       "type": "object"
     },
+    "RejectAction": {
+      "description": "What the deciding rule asks for (parse_filters.action).",
+      "enum": [
+        "skip",
+        "mark_inactive"
+      ],
+      "title": "RejectAction",
+      "type": "string"
+    },
     "Selection": {
       "additionalProperties": false,
       "description": "Verdict of the selection rules (ADR-0004). The core sets is_active from it, once.",
+      "else": {
+        "properties": {
+          "action": {
+            "type": "null"
+          },
+          "rule_ids": {
+            "maxItems": 0
+          }
+        }
+      },
       "if": {
         "properties": {
           "passed": {
@@ -542,6 +576,26 @@
         ]
       },
       "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RejectAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "flagged_rule_ids": {
+          "default": [],
+          "description": "'flag' rules that matched",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Flagged Rule Ids",
+          "type": "array"
+        },
         "passed": {
           "title": "Passed",
           "type": "boolean"
@@ -559,6 +613,7 @@
         },
         "rule_ids": {
           "default": [],
+          "description": "Rules that rejected the lot",
           "items": {
             "type": "integer"
           },
@@ -571,12 +626,17 @@
       ],
       "then": {
         "properties": {
+          "action": {
+            "type": "string"
+          },
           "rule_ids": {
             "minItems": 1
           }
         },
         "required": [
-          "rule_ids"
+          "rule_ids",
+          "action",
+          "phase"
         ]
       },
       "title": "Selection",
@@ -891,6 +951,7 @@
         "has_accident": null,
         "insurance_count": null,
         "lien_status": null,
+        "observed_at": null,
         "owners_count": null,
         "repair_cost": null,
         "seizure_status": null,
@@ -933,6 +994,8 @@
     "selection": {
       "$ref": "#/$defs/Selection",
       "default": {
+        "action": null,
+        "flagged_rule_ids": [],
         "passed": true,
         "phase": null,
         "rule_ids": []
