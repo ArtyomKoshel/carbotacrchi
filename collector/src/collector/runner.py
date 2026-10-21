@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from collector import COLLECTOR_VERSION
 from collector.adapters.encar.api import EncarApi
 from collector.adapters.encar.pipeline import EncarPipeline, PageReport
 from collector.adapters.encar.replay import refresh_lots
@@ -27,7 +28,6 @@ from collector.runlog import RunLog
 from collector.selection import RuleEngine
 from collector.storage import Job, JobQueue, MySqlIngestSink
 
-COLLECTOR_VERSION = "collector/1"
 IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -124,6 +124,10 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         if job.checkpoint
         else SweepState(started_at=ctx.clock().isoformat(timespec="seconds"))
     )
+    # A resumed run already wrote some lots: they are neither counted nor fetched again.
+    seen = await ctx.sink.resume(job.id) if job.checkpoint else set()
+    if seen:
+        state.seen = len(seen)
     started = time.monotonic()
 
     async def on_progress(s: SweepState, message: str) -> None:
@@ -138,6 +142,7 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         on_progress=on_progress,
         should_stop=ctx.should_stop,
         current_year=current_year,
+        seen=seen,
     )
     maker = job.filters.get("maker") or None
     max_pages = job.filters.get("max_pages") or None

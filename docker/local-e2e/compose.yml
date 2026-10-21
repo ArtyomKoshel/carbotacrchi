@@ -1,0 +1,62 @@
+# Local end-to-end stand: the prod web image and the collector image against one MySQL,
+# collector in primary mode (docs/refactor/cutover.md). Proxy credentials come from the
+# environment (e.g. `railway run ... -- docker compose up`), never from this file.
+name: carbot-e2e
+
+services:
+  mysql:
+    image: mysql:9.1
+    environment:
+      MYSQL_ROOT_PASSWORD: root-local
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports: ["3320:3306"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot-local"]
+      interval: 5s
+      retries: 40
+
+  redis:
+    image: redis:7-alpine
+
+  web:
+    build: { context: ../.., dockerfile: Dockerfile }
+    depends_on: { mysql: { condition: service_healthy }, redis: { condition: service_started } }
+    ports: ["8090:8080"]
+    environment:
+      PORT: "8080"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8090
+      APP_KEY: base64:nGJgIZ2iQIJk0thB2b7thGAItcM/jSEpimGvJAxgGyc=  # throwaway key of this local stand only
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: carbot
+      DB_USERNAME: root
+      DB_PASSWORD: root-local
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CACHE_STORE: redis
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+      COLLECTOR_MODE: primary
+      COLLECTOR_DB_DATABASE: collector
+      PARSER_ENABLED: "false"
+      ENCAR_ENABLED: "false"
+      KBCHA_ENABLED: "false"
+
+  collector:
+    build: { context: ../../collector }
+    depends_on: { mysql: { condition: service_healthy } }
+    stop_grace_period: 40s  # as RAILWAY_DEPLOYMENT_DRAINING_SECONDS in prod
+    environment:
+      COLLECTOR_DATABASE_URL: mysql+aiomysql://collector:collector-local@mysql:3306/collector
+      COLLECTOR_CORE_SCHEMA: carbot
+      COLLECTOR_CLAIM: all
+      COLLECTOR_POLL_SECONDS: "5"
+      COLLECTOR_CONCURRENCY: "4"
+      COLLECTOR_PROXY_SESSIONS: "4"
+      LOG_LEVEL: INFO
+      FLOPPY_USERNAME: ${FLOPPY_USERNAME:-}
+      FLOPPY_PASSWORD: ${FLOPPY_PASSWORD:-}
+      FLOPPY_HOST: ${FLOPPY_HOST:-}

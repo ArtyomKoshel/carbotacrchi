@@ -38,9 +38,29 @@ final class CollectorModeTest extends TestCase
         return ParseJobFactory::new()->create(['filters' => ['engine' => 'collector'], ...$over]);
     }
 
+    /** An untagged job of the old parser (in primary: one left from before the switch). */
     private function parserJob(array $over = []): ParseJob
     {
-        return ParseJobFactory::new()->create($over);
+        return ParseJob::withoutEvents(fn () => ParseJobFactory::new()->create($over));
+    }
+
+    public function test_in_primary_every_new_job_belongs_to_the_collector(): void
+    {
+        $this->mode(CollectorMode::SHADOW);
+        $shadow = (new ParseRuns)->launch('encar', ParseRuns::MODE_FULL)[0];
+        $this->assertNull($shadow->filters, 'shadow: admin runs stay with the old parser');
+
+        $this->mode(CollectorMode::PRIMARY);
+        [$full] = (new ParseRuns)->launch('encar', ParseRuns::MODE_FULL);
+        [$test] = (new ParseRuns)->launch('encar', ParseRuns::MODE_TEST);
+        $reparse = ParseJob::create(['source' => 'encar', 'type' => 'reparse', 'status' => 'pending', 'target_lot_ids' => ['1']]);
+        $this->assertSame(['engine' => 'collector'], $full->fresh()->filters);
+        $this->assertSame('collector', $test->fresh()->filters['engine']);
+        $this->assertSame(ParseRuns::TEST_PAGES, $test->fresh()->filters['max_pages']);
+        $this->assertSame(['engine' => 'collector'], $reparse->fresh()->filters);
+
+        $full->update(['status' => 'running']);
+        $this->assertTrue(LotLifecycle::parseJobRunning(), 'lifecycle waits for an admin run of the collector');
     }
 
     public function test_mode_defaults_to_off_and_rejects_unknown_values(): void

@@ -25,6 +25,7 @@ from typing import Any, Final
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
+from collector import COLLECTOR_VERSION
 from collector.domain.carlot import CarLotV1
 from collector.ports import HistoryState, RawEntry
 
@@ -116,6 +117,20 @@ class MySqlIngestSink:
             last = (await conn.execute(text("SELECT MAX(id) FROM ingest_lots"))).scalar_one()
         self.last_id = max(self.last_id, int(last or 0))
         self.written += len(rows)
+
+    async def resume(self, run_id: int) -> set[str]:
+        """Lots the run wrote before it stopped; its last buffer id stays the run's ingest_last_id."""
+        async with self.db.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT DISTINCT source_id FROM ingest_lots WHERE run_id = :r"), {"r": run_id}
+                )
+            ).all()
+            last = (
+                await conn.execute(text("SELECT MAX(id) FROM ingest_lots WHERE run_id = :r"), {"r": run_id})
+            ).scalar_one()
+        self.last_id = max(self.last_id, int(last or 0))
+        return {r.source_id for r in rows}
 
 
 class MySqlHistoryStore:
@@ -244,6 +259,7 @@ class Job:
     filters: dict[str, Any]
     target_lot_ids: tuple[str, ...]
     checkpoint: dict[str, Any] | None
+    recovered: bool = False  # was left running by a collector that was killed
 
 
 class JobCancelledError(RuntimeError):
@@ -275,29 +291,43 @@ class JobQueue:
         *,
         types: Sequence[str] = ("full", "reparse"),
         tagged_only: bool = False,
+        stale_minutes: int = 0,
     ) -> Job | None:
-        """Oldest interrupted, then pending job of these sources; full jobs of a busy source wait.
+        """Oldest interrupted (or stale), then pending job of these sources; full jobs of a busy source wait.
 
         tagged_only: take only jobs with filters.engine = "collector" (shadow mode, docs/adr/0007),
         so the old parser and the collector never take each other's jobs.
+        stale_minutes: also take back a job the collector left `running` (it was killed before it
+        could hand the job back) once it has reported nothing for this long; it resumes from the
+        checkpoint of its last progress. Jobs of the old parser carry no collector mark and are
+        never taken this way. 0 = off.
         """
         busy = set(busy)
         tag = " AND JSON_UNQUOTE(JSON_EXTRACT(filters, '$.engine')) = 'collector'" if tagged_only else ""
+        stale = (
+            " OR (status = 'running' AND updated_at < UTC_TIMESTAMP() - INTERVAL :stale MINUTE"
+            f" AND JSON_UNQUOTE(JSON_EXTRACT(progress, '$.collector')) = '{COLLECTOR_VERSION}')"
+            if stale_minutes > 0
+            else ""
+        )
         sql = (
             "SELECT id, source, type, status, filters, target_lot_ids, progress"
             f" FROM {self.table}"
-            " WHERE status IN ('interrupted', 'pending') AND source IN :sources"
+            f" WHERE (status IN ('interrupted', 'pending'){stale}) AND source IN :sources"
             f" AND COALESCE(type, 'full') IN :types{tag}"
-            " ORDER BY FIELD(status, 'interrupted', 'pending'), created_at, id"
+            " ORDER BY FIELD(status, 'interrupted', 'running', 'pending'), created_at, id"
             " FOR UPDATE SKIP LOCKED"
         )
+        params: dict[str, Any] = {"sources": list(sources), "types": list(types)}
+        if stale_minutes > 0:
+            params["stale"] = stale_minutes
         async with self.db.begin() as conn:
             rows = (
                 await conn.execute(
                     text(sql).bindparams(
                         bindparam("sources", expanding=True), bindparam("types", expanding=True)
                     ),
-                    {"sources": list(sources), "types": list(types)},
+                    params,
                 )
             ).all()
             for r in rows:
@@ -305,8 +335,12 @@ class JobQueue:
                 if job_type == "full" and r.source in busy:
                     continue
                 progress = _json(r.progress) or {}
-                checkpoint = progress.get("checkpoint") if r.status == "interrupted" else None
-                starting = {"status": "resuming" if checkpoint else "starting", "page": 0}
+                checkpoint = progress.get("checkpoint") if r.status in ("interrupted", "running") else None
+                starting: dict[str, Any] = {
+                    "status": "resuming" if checkpoint else "starting",
+                    "page": 0,
+                    "collector": COLLECTOR_VERSION,
+                }
                 if checkpoint:
                     starting["checkpoint"] = checkpoint
                 claimed = await conn.execute(
@@ -325,6 +359,7 @@ class JobQueue:
                         filters=_json(r.filters) or {},
                         target_lot_ids=tuple(str(i) for i in (_json(r.target_lot_ids) or [])),
                         checkpoint=checkpoint,
+                        recovered=r.status == "running",
                     )
         return None
 
@@ -365,7 +400,25 @@ class JobQueue:
                     " updated_at = UTC_TIMESTAMP()"
                     " WHERE id = :id AND status = 'running'"
                 ),
-                {"p": json.dumps({"status": "interrupted", "checkpoint": checkpoint}), "id": job_id},
+                {
+                    "p": json.dumps(
+                        {"status": "interrupted", "collector": COLLECTOR_VERSION, "checkpoint": checkpoint}
+                    ),
+                    "id": job_id,
+                },
+            )
+
+    async def interrupt_at_last_progress(self, job_id: int) -> None:
+        """Hands back a job stopped mid-page: it resumes from the checkpoint of its last progress."""
+        async with self.db.begin() as conn:
+            await conn.execute(
+                text(
+                    f"UPDATE {self.table} SET status = 'interrupted', updated_at = UTC_TIMESTAMP(),"
+                    " progress = JSON_OBJECT('status', 'interrupted', 'collector', :v,"
+                    " 'checkpoint', JSON_EXTRACT(progress, '$.checkpoint'))"
+                    " WHERE id = :id AND status = 'running'"
+                ),
+                {"id": job_id, "v": COLLECTOR_VERSION},
             )
 
     async def _status(self, conn: AsyncConnection, job_id: int) -> str | None:

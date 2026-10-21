@@ -322,7 +322,7 @@ php artisan ingest:cutover                                   # один раз �
 ### Команды сборщика
 
 ```bash
-python -m collector serve     # брать задачи из parse_jobs до SIGTERM (прод)
+python -m collector serve     # брать задачи из parse_jobs до SIGTERM (прод); по SIGTERM — interrupted с чекпоинтом
 python -m collector migrate   # применить collector/migrations к COLLECTOR_DATABASE_URL
 python -m collector replay    # пересобрать все лоты из сырого слоя без запросов к бирже
 python -m collector.adapters.encar.golden parser/tests/golden   # сверка с эталоном старого парсера

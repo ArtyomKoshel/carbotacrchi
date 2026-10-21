@@ -2,7 +2,10 @@
 
 SIGTERM / SIGINT (a Railway redeploy) asks the running sweep to stop after the
 current page; the job is handed back as `interrupted` with its checkpoint and
-the next process resumes it (docs/refactor stage 4).
+the next process resumes it (docs/refactor stage 4). A page that runs past
+stop_grace_seconds is cancelled and the job resumes from the checkpoint of its
+last progress. If the process is killed before either, the next one takes the
+job back once it has reported nothing for stale_minutes.
 """
 
 from __future__ import annotations
@@ -12,7 +15,8 @@ import contextlib
 import logging
 import signal
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -70,7 +74,11 @@ class Service:
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
             with contextlib.suppress(NotImplementedError):  # Windows: no loop signal handlers
-                loop.add_signal_handler(sig, self.stop.set)
+                loop.add_signal_handler(sig, self._on_signal, sig)
+
+    def _on_signal(self, sig: signal.Signals) -> None:
+        log.info("%s received: stopping", sig.name)
+        self.stop.set()
 
     async def serve(self) -> None:
         applied = await storage.migrate(self.db)
@@ -84,12 +92,21 @@ class Service:
     async def run_once(self) -> bool:
         """Claim and run one job; False when there was none."""
         job = await self.queue.claim(
-            self.settings.sources, busy=self._busy, types=("full", "reparse"), tagged_only=self.tagged_only
+            self.settings.sources,
+            busy=self._busy,
+            types=("full", "reparse"),
+            tagged_only=self.tagged_only,
+            stale_minutes=self.settings.stale_minutes,
         )
         if job is None:
             return False
         log.info(
-            "job %s (%s %s) claimed%s", job.id, job.source, job.type, " — resuming" if job.checkpoint else ""
+            "job %s (%s %s) claimed%s%s",
+            job.id,
+            job.source,
+            job.type,
+            " — left running by a stopped collector" if job.recovered else "",
+            " — resuming" if job.checkpoint else "",
         )
         await self.execute(job)
         return True
@@ -111,30 +128,7 @@ class Service:
             f"{job.type} run of {job.source} started" + (" (resumed)" if job.checkpoint else "")
         )
         try:
-            rules = await load_rules(self.db, self.settings.core_schema)
-            pipeline = build_pipeline(
-                EncarApi(fetcher), rules, MySqlHistoryStore(self.db), sink,
-                history_concurrency=self.settings.history_concurrency,
-                raw=MySqlRawStore(self.db),
-            )  # fmt: skip
-            pipeline.clock = self.clock
-            now = self.clock()
-            cutoff = await history_cutoff(self.db, job.source, self.settings.history_every_runs, now)
-            ctx = RunContext(
-                job=job,
-                queue=self.queue,
-                pipeline=pipeline,
-                sink=sink,
-                min_coverage_pct=self.settings.min_coverage_pct,
-                should_stop=self.stop.is_set,
-                clock=self.clock,
-                proxy_bytes=lambda: fetcher.stats.proxy_bytes,
-                runlog=runlog,
-            )
-            if job.type == "reparse":
-                status = await run_reparse(ctx, MySqlRawStore(self.db))
-            else:
-                status = await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
+            status = await self._until_stopped(self._run(job, fetcher, sink, runlog), job, runlog)
         except JobCancelledError:
             await runlog.warning("cancelled by the admin")
             status = "cancelled"
@@ -156,3 +150,50 @@ class Service:
             await runlog.flush()
         log.info("job %s → %s", job.id, status)
         return status
+
+    async def _run(self, job: Job, fetcher: Fetcher, sink: MySqlIngestSink, runlog: RunLog) -> str:
+        rules = await load_rules(self.db, self.settings.core_schema)
+        pipeline = build_pipeline(
+            EncarApi(fetcher), rules, MySqlHistoryStore(self.db), sink,
+            history_concurrency=self.settings.history_concurrency,
+            raw=MySqlRawStore(self.db),
+        )  # fmt: skip
+        pipeline.clock = self.clock
+        now = self.clock()
+        cutoff = await history_cutoff(self.db, job.source, self.settings.history_every_runs, now)
+        ctx = RunContext(
+            job=job,
+            queue=self.queue,
+            pipeline=pipeline,
+            sink=sink,
+            min_coverage_pct=self.settings.min_coverage_pct,
+            should_stop=self.stop.is_set,
+            clock=self.clock,
+            proxy_bytes=lambda: fetcher.stats.proxy_bytes,
+            runlog=runlog,
+        )
+        if job.type == "reparse":
+            return await run_reparse(ctx, MySqlRawStore(self.db))
+        return await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
+
+    async def _until_stopped(self, work: Coroutine[Any, Any, str], job: Job, runlog: RunLog) -> str:
+        """Runs the job; after a stop request the current page gets stop_grace_seconds, then is cancelled."""
+        task = asyncio.ensure_future(work)
+        stopping = asyncio.ensure_future(self.stop.wait())
+        try:
+            await asyncio.wait({task, stopping}, return_when=asyncio.FIRST_COMPLETED)
+            if task.done():
+                return task.result()
+            grace = self.settings.stop_grace_seconds
+            await runlog.warning(f"stop requested: finishing the current page (up to {grace:g} s)")
+            done, _ = await asyncio.wait({task}, timeout=grace)
+            if done:
+                return task.result()
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            await self.queue.interrupt_at_last_progress(job.id)
+            await runlog.warning("stopped mid-page; resumes from the last checkpoint")
+            return "interrupted"
+        finally:
+            stopping.cancel()

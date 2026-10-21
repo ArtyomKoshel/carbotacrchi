@@ -5,7 +5,9 @@ catalogue: a global pass (which also discovers makers and models), then one
 query per maker, split by year above the cap, and by model inside a year above
 the cap. Same plan here, with one change: progress is checkpointed after every
 segment, so a run stopped by a deploy resumes where it stopped instead of
-starting over (the old run() ignored its checkpoint).
+starting over (the old run() ignored its checkpoint). Inside a segment the
+cursor keeps the next page, and the lots a run already wrote are not counted
+again when it resumes.
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ class SweepState:
     errors: int = 0
     error_log: list[str] = field(default_factory=list)
     report: dict[str, int] = field(default_factory=dict)
+    cursor: dict[str, int] = field(default_factory=dict)  # segment -> next page, for unfinished segments
 
     def to_json(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -68,6 +71,7 @@ class Sweeper:
         on_progress: Progress,
         should_stop: Callable[[], bool] = lambda: False,
         current_year: int,
+        seen: set[str] | None = None,
     ) -> None:
         self.pipeline = pipeline
         self.api: EncarApi = pipeline.api
@@ -76,7 +80,7 @@ class Sweeper:
         self.on_progress = on_progress
         self.should_stop = should_stop
         self.current_year = current_year
-        self._seen: set[str] = set()
+        self._seen: set[str] = set(seen or ())
         self.stopped = False
 
     async def run(
@@ -85,10 +89,14 @@ class Sweeper:
         """Sweep (or resume) a run. A maker or max_pages makes it a partial run."""
         if maker or max_pages:
             await self._segment(
-                state, f"q:{maker or 'all'}", maker_query(maker) if maker else DEFAULT_QUERY, max_pages
+                state,
+                f"q:{maker or 'all'}",
+                maker_query(maker) if maker else DEFAULT_QUERY,
+                max_pages,
+                total=True,
             )
             return state
-        await self._segment(state, "global", DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT, discover=True)
+        await self._segment(state, "global", DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT, discover=True, total=True)
         for mk in sorted(state.makers):
             if self.stopped:
                 break
@@ -139,13 +147,21 @@ class Sweeper:
         await self._segment(state, key, year_query(maker, year), MAX_PAGES_PER_SEGMENT)
 
     async def _segment(
-        self, state: SweepState, key: str, query: str, max_pages: int | None, *, discover: bool = False
+        self,
+        state: SweepState,
+        key: str,
+        query: str,
+        max_pages: int | None,
+        *,
+        discover: bool = False,
+        total: bool = False,
     ) -> None:
+        """discover: the global pass (records makers); total: its first page sets api_total."""
         if key in state.done_segments or self.stopped:
             return
         segment_seen: set[str] = set()
         overlap_pages = 0
-        for page in range(max_pages or MAX_PAGES_PER_SEGMENT):
+        for page in range(state.cursor.get(key, 0), max_pages or MAX_PAGES_PER_SEGMENT):
             if self.should_stop():
                 self.stopped = True
                 return  # not marked done: the resume repeats this segment
@@ -157,9 +173,9 @@ class Sweeper:
                 self._error(state, f"{key} p.{page + 1}: {getattr(outcome, 'reason', 'missing')}")
                 break
             data = outcome.data
-            total = int(data.get("Count") or 0)
-            if discover and page == 0:
-                state.api_total = total
+            count = int(data.get("Count") or 0)
+            if total and page == 0:
+                state.api_total = count
             items = data.get("SearchResults") or []
             if not items:
                 break
@@ -169,19 +185,21 @@ class Sweeper:
                 if all(str(i.get("Id", "")) in segment_seen for i in items):
                     break
                 overlap_pages += 1
-                if overlap_pages >= 5 or offset + PAGE_SIZE >= total:
+                if overlap_pages >= 5 or offset + PAGE_SIZE >= count:
                     break
                 continue
             overlap_pages = 0
             report = await self.pipeline.process(fresh, run_id=self.run_id, history_cutoff=self.cutoff)
             state.seen += len(fresh)
             state.pages += 1
+            state.cursor[key] = page + 1
             state.report = (
                 PageReport(**state.report).plus(report).__dict__ if state.report else report.__dict__
             )
             await self.on_progress(state, f"{key} p.{page + 1}")
-            if offset + PAGE_SIZE >= total:
+            if offset + PAGE_SIZE >= count:
                 break
+        state.cursor.pop(key, None)
         state.done_segments.append(key)
 
     def _take_new(

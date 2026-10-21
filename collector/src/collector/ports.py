@@ -56,6 +56,10 @@ class RawStore(Protocol):
 class IngestSink(Protocol):
     async def write(self, lots: Sequence[CarLotV1]) -> None: ...
 
+    async def resume(self, run_id: int) -> set[str]:
+        """Ids of the lots this run already wrote (a resumed run must not count them again)."""
+        ...
+
 
 class MemoryHistoryStore:
     def __init__(self) -> None:
@@ -90,6 +94,9 @@ class MemorySink:
 
     async def write(self, lots: Sequence[CarLotV1]) -> None:
         self.lots.extend(lots)
+
+    async def resume(self, run_id: int) -> set[str]:
+        return {lot.source_id for lot in self.lots if lot.run_id == run_id}
 
     def by_id(self) -> dict[str, CarLotV1]:
         return {lot.source_id: lot for lot in self.lots}

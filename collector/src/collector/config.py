@@ -29,6 +29,8 @@ class Settings:
     proxy_password: str = field(default="", repr=False)
     proxy_host: str = ""
     proxy_sessions: int = 20
+    stop_grace_seconds: float = 25.0  # after SIGTERM, how long the current page may run on
+    stale_minutes: int = 10  # a running job without progress this long was left by a killed collector
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -45,6 +47,8 @@ class Settings:
             proxy_password=_env("FLOPPY_PASSWORD"),
             proxy_host=_env("FLOPPY_HOST"),
             proxy_sessions=_int("COLLECTOR_PROXY_SESSIONS", 20),
+            stop_grace_seconds=float(_env("COLLECTOR_STOP_GRACE_SECONDS", "25")),
+            stale_minutes=_int("COLLECTOR_STALE_MINUTES", 10),
         )
 
     @property

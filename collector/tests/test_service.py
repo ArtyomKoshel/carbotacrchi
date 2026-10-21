@@ -5,6 +5,7 @@ Real MySQL (COLLECTOR_TEST_DB_URL), fake api.encar.com (tests/fakes.py).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from collections.abc import AsyncIterator
@@ -16,8 +17,10 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from collector import COLLECTOR_VERSION, storage
 from collector import __main__ as cli
-from collector import storage
+from collector.adapters.encar import sweep
+from collector.adapters.encar.pipeline import EncarPipeline
 from collector.config import Settings
 from collector.runner import history_cutoff, qualified
 from collector.service import Service
@@ -197,8 +200,88 @@ async def test_partial_run_is_not_a_full_run(db: AsyncEngine) -> None:
     jid = await add_job(db, filters={"maker": "기아"})
     await service(db, FakeEncar()).run_once()
     result = json.loads((await job_row(db, jid)).result)
-    assert result["total"] == len(INVENTORY["기아"]["K5"])
+    assert result["total"] == result["api_total"] == len(INVENTORY["기아"]["K5"])
+    assert result["coverage_pct"] == 100.0  # of the maker's lots: shown in the admin, not counted
     assert result["full_run"] is False
+
+
+async def test_a_page_past_the_stop_grace_is_cancelled_and_the_run_resumes_after_it(
+    db: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sweep, "PAGE_SIZE", 2)  # the global pass: 3 pages of 2 lots
+    jid = await add_job(db)
+    first = service(db, FakeEncar(), stop_grace_seconds=0.05)
+    original = EncarPipeline.process
+    calls = 0
+
+    async def hang_on_second_page(self: EncarPipeline, *args: Any, **kw: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            first.stop.set()  # SIGTERM while a slow page runs
+            await asyncio.Event().wait()
+        return await original(self, *args, **kw)
+
+    monkeypatch.setattr(EncarPipeline, "process", hang_on_second_page)
+    assert await first.execute(await first.queue.claim(["encar"])) == "interrupted"  # type: ignore[arg-type]
+
+    row = await job_row(db, jid)
+    assert row.status == "interrupted"
+    checkpoint = json.loads(row.progress)["checkpoint"]
+    assert checkpoint["cursor"] == {"global": 1}
+    assert checkpoint["seen"] == 2
+    async with db.connect() as conn:
+        messages = (await conn.execute(text("SELECT message FROM run_log ORDER BY id"))).scalars().all()
+    assert any(m.startswith("stop requested") for m in messages)
+    assert messages[-1] == "stopped mid-page; resumes from the last checkpoint"
+
+    monkeypatch.setattr(EncarPipeline, "process", original)
+    await service(db, FakeEncar()).run_once()
+    row = await job_row(db, jid)
+    result = json.loads(row.result)
+    assert row.status == "done"
+    assert result["total"] == result["api_total"] == N_LOTS, "the first page is not counted twice"
+    assert result["full_run"] is True
+    async with db.connect() as conn:
+        written = (
+            await conn.execute(
+                text("SELECT COUNT(*), MAX(id) FROM ingest_lots WHERE run_id = :j"), {"j": jid}
+            )
+        ).one()
+    assert written[0] == N_LOTS, "the resumed run starts at the second page"
+    assert result["ingest_last_id"] == written[1]
+
+
+async def _running_job(db: AsyncEngine, *, marked: bool, idle_minutes: int) -> int:
+    jid = await add_job(db)
+    progress: dict[str, Any] = {"checkpoint": {"started_at": NOW.isoformat()}}
+    if marked:
+        progress["collector"] = COLLECTOR_VERSION
+    async with db.begin() as conn:
+        await conn.execute(
+            text(
+                "UPDATE parse_jobs SET status = 'running', progress = :p,"
+                " updated_at = UTC_TIMESTAMP() - INTERVAL :m MINUTE WHERE id = :i"
+            ),
+            {"p": json.dumps(progress), "m": idle_minutes, "i": jid},
+        )
+    return jid
+
+
+async def test_a_job_left_running_by_a_killed_collector_is_taken_back(db: AsyncEngine) -> None:
+    stale = await _running_job(db, marked=True, idle_minutes=60)
+    old_parser = await _running_job(db, marked=False, idle_minutes=60)
+    busy = await _running_job(db, marked=True, idle_minutes=1)
+
+    svc = service(db, FakeEncar(), stale_minutes=10)
+    assert await svc.run_once()
+    row = await job_row(db, stale)
+    assert row.status == "done"
+    assert json.loads(row.result)["run_started_at"] == "2026-10-21 09:00:00", "resumed from its checkpoint"
+
+    assert not await svc.run_once()
+    assert (await job_row(db, old_parser)).status == "running", "the old parser's jobs are not ours"
+    assert (await job_row(db, busy)).status == "running", "still reporting: not stale"
 
 
 async def test_search_outage_ends_as_a_run_that_does_not_count(db: AsyncEngine) -> None:
