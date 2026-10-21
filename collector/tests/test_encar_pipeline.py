@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -16,50 +15,11 @@ from collector.domain.carlot import RejectAction, SelectionPhase
 from collector.http import Fetcher, ProxyPool
 from collector.ports import HistoryState, MemoryHistoryStore, MemorySink
 from collector.selection import Action, Rule, RuleEngine
+from tests.fakes import FakeEncar, detail, item
 from tests.test_encar_mapping import load
 
 NOW = datetime(2026, 10, 21, 9, 0, tzinfo=UTC)
 PROXY = ProxyPool(["http://u-session-a-country-KR:p@h:1"])
-
-
-def item(vid: int, **over: Any) -> dict[str, Any]:
-    return load("search_item") | {"Id": vid} | over
-
-
-def detail(vid: int) -> dict[str, Any]:
-    d = copy.deepcopy(load("detail"))
-    d["vehicleId"] = vid
-    for p in d["photos"]:
-        p["path"] = p["path"].replace("40011223", str(vid))
-    return d
-
-
-class FakeEncar:
-    """Answers like api.encar.com; records which calls were made."""
-
-    def __init__(self) -> None:
-        self.calls: list[str] = []
-        self.batch_fails = False
-        self.record_status = 200
-        self.record: dict[str, Any] = load("record")
-
-    def __call__(self, request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        self.calls.append(path)
-        if path == "/v1/readside/vehicles":
-            if self.batch_fails:
-                return httpx.Response(400)
-            ids = request.url.params["vehicleIds"].split(",")
-            return httpx.Response(200, json=[detail(int(i)) for i in ids])
-        if path.startswith("/v1/readside/vehicle/"):
-            return httpx.Response(200, json=detail(int(path.rsplit("/", 1)[1])))
-        if path.endswith("/open"):
-            return httpx.Response(self.record_status, json=self.record)
-        if path.startswith("/v1/readside/inspection/"):
-            return httpx.Response(200, json=load("inspection"))
-        if path.endswith("/sellingpoint"):
-            return httpx.Response(200, json=load("sellingpoint"))
-        return httpx.Response(404)
 
 
 async def _no_sleep(_: float) -> None:
