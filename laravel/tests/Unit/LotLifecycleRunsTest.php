@@ -193,4 +193,14 @@ class LotLifecycleRunsTest extends TestCase
         $runs = LotLifecycle::successfulRuns([$job], self::MIN, 0.5, $offset);
         $this->assertCount($reason === null ? 1 : 0, $runs);
     }
+
+    public function test_shadow_runs_never_count_after_the_cutover(): void
+    {
+        $shadow = self::job(1, '2026-10-21 08:00:00', null, ['result' => '{"coverage_pct": 97, "ingest_last_id": 500}']);
+        $primary = self::job(2, '2026-10-22 08:00:00', null, ['result' => '{"coverage_pct": 97, "ingest_last_id": 900}']);
+
+        $this->assertSame('recorded before the collector fed lots', LotLifecycle::runRejection($shadow, self::MIN, 0.5, 900, 500));
+        $this->assertNull(LotLifecycle::runRejection($primary, self::MIN, 0.5, 900, 500));
+        $this->assertSame([2], array_column(LotLifecycle::successfulRuns([$shadow, $primary], self::MIN, 0.5, 900, 500), 'id'));
+    }
 }

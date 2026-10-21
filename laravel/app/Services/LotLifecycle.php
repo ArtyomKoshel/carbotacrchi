@@ -42,7 +42,7 @@ class LotLifecycle
      *
      * @param array{type?:?string, status?:string, filters?:mixed, result?:mixed, created_at?:mixed} $job
      */
-    public static function runRejection(array $job, float $minCoverage, float $minWriteRatio = 0.5, ?int $ingestOffset = null): ?string
+    public static function runRejection(array $job, float $minCoverage, float $minWriteRatio = 0.5, ?int $ingestOffset = null, ?int $cutoverId = null): ?string
     {
         $type = ($job['type'] ?? null) ?: 'full';
         if ($type !== 'full') {
@@ -84,6 +84,10 @@ class LotLifecycle
         // until then its lots still carry an older parsed_at and would look unseen.
         if (isset($result['ingest_last_id']) && is_numeric($result['ingest_last_id'])) {
             $needed = (int) $result['ingest_last_id'];
+            // Recorded while the collector only shadowed: its records were never applied.
+            if ($cutoverId !== null && $needed <= $cutoverId) {
+                return 'recorded before the collector fed lots';
+            }
             if ($ingestOffset === null || $ingestOffset < $needed) {
                 return sprintf('ingest pending (%d of %d applied)', (int) $ingestOffset, $needed);
             }
@@ -120,12 +124,12 @@ class LotLifecycle
      * @param  iterable<array> $jobs parse_jobs rows of one source, any order
      * @return list<array{id:int, started_at:CarbonImmutable, coverage:float}>
      */
-    public static function successfulRuns(iterable $jobs, float $minCoverage, float $minWriteRatio = 0.5, ?int $ingestOffset = null): array
+    public static function successfulRuns(iterable $jobs, float $minCoverage, float $minWriteRatio = 0.5, ?int $ingestOffset = null, ?int $cutoverId = null): array
     {
         $runs = [];
         foreach ($jobs as $job) {
             $job = (array) $job;
-            if (self::runRejection($job, $minCoverage, $minWriteRatio, $ingestOffset) !== null) {
+            if (self::runRejection($job, $minCoverage, $minWriteRatio, $ingestOffset, $cutoverId) !== null) {
                 continue;
             }
             $result = self::decode($job['result'] ?? null);
@@ -196,10 +200,21 @@ class LotLifecycle
     /** How far the core has applied the collector buffer (null: never started). */
     public static function ingestOffset(): ?int
     {
+        return self::offset(IngestConsumer::CONSUMER);
+    }
+
+    /** Last buffer id recorded before the collector started to feed lots (ingest:cutover), or null. */
+    public static function cutoverId(): ?int
+    {
+        return self::offset(IngestConsumer::CUTOVER);
+    }
+
+    private static function offset(string $consumer): ?int
+    {
         if (!Schema::hasTable('ingest_offsets')) {
             return null;
         }
-        $id = DB::table('ingest_offsets')->where('consumer', IngestConsumer::CONSUMER)->value('last_id');
+        $id = DB::table('ingest_offsets')->where('consumer', $consumer)->value('last_id');
 
         return $id === null ? null : (int) $id;
     }

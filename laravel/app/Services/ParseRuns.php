@@ -72,6 +72,7 @@ class ParseRuns
             (float) config('lifecycle.min_coverage'),
             (float) config('lifecycle.min_write_ratio'),
             LotLifecycle::ingestOffset(),
+            LotLifecycle::cutoverId(),
         );
     }
 
@@ -91,6 +92,7 @@ class ParseRuns
             (float) config('lifecycle.min_coverage'),
             (float) config('lifecycle.min_write_ratio'),
             LotLifecycle::ingestOffset(),
+            LotLifecycle::cutoverId(),
         );
 
         return $runs ? ParseJob::find($runs[0]['id']) : null;

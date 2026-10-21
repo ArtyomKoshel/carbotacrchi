@@ -142,4 +142,10 @@ final class CollectorModeTest extends TestCase
         $this->artisan('collector:enqueue')->assertSuccessful();
         $this->assertEquals(['engine' => 'collector', 'maker' => '현대'], ParseJob::sole()->filters);
     }
+
+    public function test_cutover_refuses_outside_primary(): void
+    {
+        $this->mode(CollectorMode::SHADOW);
+        $this->artisan('ingest:cutover')->expectsOutputToContain('not primary')->assertFailed();
+    }
 }

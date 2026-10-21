@@ -20,6 +20,9 @@ final class IngestConsumer
 {
     public const CONSUMER = 'core';
 
+    /** ingest_offsets row holding the last buffer id recorded before the cutover (ingest:cutover). */
+    public const CUTOVER = 'cutover';
+
     private readonly ConnectionInterface $core;
 
     private readonly ConnectionInterface $collector;

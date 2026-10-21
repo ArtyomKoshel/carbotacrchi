@@ -255,4 +255,25 @@ final class IngestConsumerTest extends TestCase
         $total = (new IngestConsumer(CarLotContract::fromConfig()))->drain(batchSize: 1, maxBatches: 2);
         $this->assertSame(2, $total->consumed);
     }
+
+    public function test_cutover_skips_the_shadow_buffer_and_shadow_runs_stop_counting(): void
+    {
+        config(['ingest.mode' => 'primary']);
+        $this->buffer(self::lot()); // a shadow-period record
+        $shadowLast = (int) DB::connection('collector')->table('ingest_lots')->max('id');
+
+        $this->artisan('ingest:cutover')->expectsOutputToContain("up to id {$shadowLast}")->assertSuccessful();
+
+        $this->assertSame(0, $this->consume()->consumed, 'the shadow backlog is not applied');
+        $this->assertNull(DB::table('lots')->find('39847215'));
+        $this->assertSame($shadowLast, \App\Services\LotLifecycle::cutoverId());
+        $shadowRun = ['type' => 'full', 'status' => 'done', 'filters' => null, 'created_at' => '2026-10-21 08:00:00',
+            'result' => json_encode(['coverage_pct' => 97, 'ingest_last_id' => $shadowLast])];
+        $this->assertSame('recorded before the collector fed lots', \App\Services\LotLifecycle::runRejection(
+            $shadowRun, 85.0, 0.5, \App\Services\LotLifecycle::ingestOffset(), \App\Services\LotLifecycle::cutoverId(),
+        ));
+
+        $this->buffer(self::lot(['listing' => ['price' => ['amount' => 1_000_000]]])); // after the cutover
+        $this->assertSame(1, $this->consume()->inserted);
+    }
 }
