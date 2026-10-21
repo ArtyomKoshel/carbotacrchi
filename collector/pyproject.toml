@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "CarBot collector: fetches car listings from auction platforms and hands CarLot v1 records to the core"
 requires-python = ">=3.13"
 dependencies = [
+    "aiomysql>=0.2",
     "httpx>=0.28",
     "pydantic>=2.11",
+    "sqlalchemy[asyncio]>=2.0.40",
 ]
 
 [dependency-groups]
@@ -49,6 +51,7 @@ addopts = "-ra --strict-markers --cov=collector --cov-report=term-missing --cov-
 markers = [
     "live: calls a real external API; skipped unless selected with -m live",
     "legacy: compares with the old parser in ../parser (removed in refactor stage 7)",
+    "mysql: needs a MySQL server (COLLECTOR_TEST_DB_URL)",
 ]
 
 [tool.coverage.run]
@@ -72,6 +75,8 @@ max-positional-args = 5
 "tests/**" = ["S101", "PLR2004", "PLC0415", "PLR0911", "PLR0917"]
 # Field-by-field API mappers moved from the old parser: long by nature, flat, covered by golden tests.
 "src/collector/adapters/*/mapping.py" = ["PLR0912", "PLR0913", "PLR0915"]
+# parse_jobs table name is a validated identifier (JobQueue.__init__); values are always bound.
+"src/collector/storage.py" = ["S608"]
 
 [tool.mypy]
 strict = true
