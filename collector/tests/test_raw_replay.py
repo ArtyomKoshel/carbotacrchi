@@ -169,3 +169,29 @@ def test_cli_replay_writes_the_buffer(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COLLECTOR_CORE_SCHEMA", URL.rsplit("/", 1)[1])
     assert cli.main(["replay"]) == 0
     assert asyncio.run(_buffered()) == 2
+
+
+async def test_refresh_asks_only_history_again_and_keeps_listing_values() -> None:
+    from collector.adapters.encar.replay import refresh_lots
+
+    raw, live_sink = MemoryRawStore(), MemorySink()
+    fake = FakeEncar()
+    pipeline = live_pipeline(raw, live_sink, fake)
+    await pipeline.process([item(1)])
+    fake.calls.clear()
+    fake.record = fake.record | {"accidentCnt": 7}  # history changed on Encar since
+
+    sink = MemorySink()
+    pipeline.sink = sink
+    report, missing = await refresh_lots(raw, pipeline, ["1", "404"], run_id=3)
+
+    assert (report.listed, missing) == (1, ["404"])
+    lot = sink.lots[0]
+    assert lot.history.insurance_count == 7
+    assert lot.listing.price.amount == live_sink.lots[0].listing.price.amount
+    assert lot.run_id == 3
+    assert not any(
+        c.startswith(("/search", "/v1/readside/vehicles", "/v1/readside/vehicle/")) for c in fake.calls
+    )
+    assert any(c.endswith("/open") for c in fake.calls)
+    assert isinstance(pipeline.api, EncarApi), "the live API is restored"

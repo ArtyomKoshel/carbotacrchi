@@ -23,7 +23,15 @@ from collector.config import Settings
 from collector.http import Fetcher, ProxyBudgetError, ProxyPool
 from collector.ports import Clock, utc_now
 from collector.runlog import RunLog
-from collector.runner import RunContext, build_pipeline, history_cutoff, load_rules, qualified, run_full
+from collector.runner import (
+    RunContext,
+    build_pipeline,
+    history_cutoff,
+    load_rules,
+    qualified,
+    run_full,
+    run_reparse,
+)
 from collector.storage import (
     Job,
     JobCancelledError,
@@ -56,6 +64,7 @@ class Service:
         self.clock = clock
         self.queue = JobQueue(db, jobs_table or qualified(settings.core_schema, "parse_jobs"))
         self.stop = asyncio.Event()
+        self._busy: set[str] = set()  # one process runs one job at a time: nothing is busy in between
 
     def install_signal_handlers(self) -> None:
         loop = asyncio.get_running_loop()
@@ -74,7 +83,9 @@ class Service:
 
     async def run_once(self) -> bool:
         """Claim and run one job; False when there was none."""
-        job = await self.queue.claim(self.settings.sources, types=("full",), tagged_only=self.tagged_only)
+        job = await self.queue.claim(
+            self.settings.sources, busy=self._busy, types=("full", "reparse"), tagged_only=self.tagged_only
+        )
         if job is None:
             return False
         log.info(
@@ -120,7 +131,10 @@ class Service:
                 proxy_bytes=lambda: fetcher.stats.proxy_bytes,
                 runlog=runlog,
             )
-            status = await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
+            if job.type == "reparse":
+                status = await run_reparse(ctx, MySqlRawStore(self.db))
+            else:
+                status = await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
         except JobCancelledError:
             await runlog.warning("cancelled by the admin")
             status = "cancelled"

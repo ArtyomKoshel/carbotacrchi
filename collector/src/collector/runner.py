@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from collector.adapters.encar.api import EncarApi
 from collector.adapters.encar.pipeline import EncarPipeline, PageReport
+from collector.adapters.encar.replay import refresh_lots
 from collector.adapters.encar.sweep import Sweeper, SweepState
 from collector.ports import Clock, HistoryStore, IngestSink, RawStore, utc_now
 from collector.runlog import RunLog
@@ -183,6 +184,42 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
             f"done: {state.seen:,}/{state.api_total:,} lots ({coverage}%), full_run={result['full_run']},"
             f" rejected {result['rejected']:,}, history fetched {report.history_fetched:,}"
             f" / stored {report.history_stored:,}"
+        )
+    return "done"
+
+
+async def run_reparse(ctx: RunContext, raw: RawStore) -> str:
+    """Admin 'Перепарсить': fresh history and inspection for the job's lots (old reparse semantics)."""
+    job = ctx.job
+    ids = list(dict.fromkeys(job.target_lot_ids))
+    started = time.monotonic()
+    report = PageReport()
+    missing: list[str] = []
+    for i in range(0, len(ids), 20):
+        chunk_report, chunk_missing = await refresh_lots(raw, ctx.pipeline, ids[i : i + 20], run_id=job.id)
+        report = report.plus(chunk_report)
+        missing += chunk_missing
+        done = min(i + 20, len(ids))
+        await ctx.queue.progress(
+            job.id,
+            {"status": f"{round(done / len(ids) * 100, 1)}%", "phase": "reparse", "total": done,
+             "api_total": len(ids), "message": f"{done}/{len(ids)}", "collector": COLLECTOR_VERSION},
+        )  # fmt: skip
+    result = {
+        "type": "reparse",
+        "total": len(ids),
+        "refreshed": report.listed,
+        "history_failed": report.history_failed,
+        "rejected": report.rejected,
+        "not_in_raw_store": missing[:200],
+        "ingest_last_id": ctx.sink.last_id if isinstance(ctx.sink, MySqlIngestSink) else None,
+        "elapsed_s": round(time.monotonic() - started, 1),
+        "collector": COLLECTOR_VERSION,
+    }
+    await ctx.queue.finish(job.id, "done", result, progress={"status": "done", "phase": "reparse"})
+    if ctx.runlog:
+        await ctx.runlog.info(
+            f"reparse done: {report.listed}/{len(ids)} refreshed, {len(missing)} not in the raw store yet"
         )
     return "done"
 

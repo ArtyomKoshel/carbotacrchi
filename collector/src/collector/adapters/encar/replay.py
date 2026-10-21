@@ -72,3 +72,40 @@ async def replay_all(raw_store: RawStore, pipeline: EncarPipeline, *, batch: int
         report = report.plus(await replay_lots(raw_store, pipeline, ids))
         after = ids[-1]
     return report
+
+
+class RefreshApi(RawApi):
+    """Reparse: list and detail from the raw store (price and status stay as last seen, like the old
+    reparse), record / inspection / sellingpoint asked from Encar again."""
+
+    def __init__(self, raw: dict[str, dict[str, Any]], live: Any) -> None:
+        super().__init__(raw)
+        self.live = live
+
+    async def record(self, vehicle_id: str, plate_number: str | None = None) -> Outcome:
+        outcome: Outcome = await self.live.record(vehicle_id, plate_number)
+        return outcome
+
+    async def inspection(self, vehicle_id: str) -> Outcome:
+        outcome: Outcome = await self.live.inspection(vehicle_id)
+        return outcome
+
+    async def sellingpoint(self, vehicle_id: str) -> Outcome:
+        outcome: Outcome = await self.live.sellingpoint(vehicle_id)
+        return outcome
+
+
+async def refresh_lots(
+    raw_store: RawStore, pipeline: EncarPipeline, lot_ids: Sequence[str], *, run_id: int | None = None
+) -> tuple[PageReport, list[str]]:
+    """Fresh history for these lots; returns the report and the ids the raw store does not know yet."""
+    raw = await raw_store.load(m.SOURCE, lot_ids)
+    known = {i: kinds for i, kinds in raw.items() if "list" in kinds and "detail" in kinds}
+    missing = [i for i in lot_ids if i not in known]
+    live = pipeline.api
+    pipeline.api = RefreshApi(known, live)  # type: ignore[assignment]
+    try:
+        report = await pipeline.process([kinds["list"] for kinds in known.values()], run_id=run_id)
+    finally:
+        pipeline.api = live
+    return report, missing

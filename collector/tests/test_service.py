@@ -294,3 +294,37 @@ def test_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cli.main(["migrate"]) == 0
     if os.environ.get("CI_WRITE_SCHEMA"):
         assert cli.main(["schema"]) == 0
+
+
+async def test_reparse_job_refreshes_history_of_known_lots(db: AsyncEngine) -> None:
+    fake = FakeEncar()
+    full = await add_job(db)
+    await service(db, fake).run_once()
+    assert (await job_row(db, full)).status == "done"
+
+    async with db.begin() as conn:
+        res = await conn.execute(
+            text(
+                "INSERT INTO parse_jobs (source, type, status, filters, target_lot_ids, created_at)"
+                " VALUES ('encar', 'reparse', 'pending', :f, :ids, :t)"
+            ),
+            {
+                "f": json.dumps({"engine": "collector"}),
+                "ids": json.dumps(["101", "102", "999"]),
+                "t": NOW.replace(tzinfo=None),
+            },
+        )
+    rid = int(res.lastrowid)
+    fake.calls.clear()
+    await service(db, fake).run_once()
+
+    row = await job_row(db, rid)
+    result = json.loads(row.result)
+    assert row.status == "done"
+    assert (result["type"], result["total"], result["refreshed"], result["not_in_raw_store"]) == (
+        "reparse",
+        3,
+        2,
+        ["999"],
+    )
+    assert not any(c.startswith("/search") for c in fake.calls)
