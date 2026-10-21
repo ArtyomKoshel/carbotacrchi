@@ -7,26 +7,7 @@
         ->limit(200)
         ->get();
 
-    $money = ['price', 'retail_value', 'repair_cost'];
-    $value = function (string $field, mixed $v) use ($money): string {
-        if ($v === null || $v === '') {
-            return '—';
-        }
-        if (in_array($field, $money, true)) {
-            return LotFormat::won($v);
-        }
-        if ($field === 'mileage') {
-            return LotFormat::km($v);
-        }
-        if ($field === 'is_active') {
-            return $v ? 'активен' : 'снят';
-        }
-        if (is_bool($v)) {
-            return $v ? 'да' : 'нет';
-        }
-
-        return is_scalar($v) ? (string) $v : json_encode($v, JSON_UNESCAPED_UNICODE);
-    };
+    $value = fn (string $field, mixed $v) => LotFormat::changeValue($field, $v);
 @endphp
 
 <div class="lot-history">

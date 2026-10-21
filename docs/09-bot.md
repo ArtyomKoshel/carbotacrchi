@@ -71,7 +71,7 @@ sequenceDiagram
 
 ## `BotFilterSetting` — настройки полей
 
-Управляются через `/admin/bot-filters`.
+Управляются на странице «Настройки поиска» (`/admin/search-settings`).
 
 | Колонка | Описание |
 |---------|----------|

@@ -53,4 +53,18 @@ class LotFormat
     {
         return number_format($value, 0, ',', self::NBSP);
     }
+
+    /** A value from lot_changes.changes, as the History tab shows it. */
+    public static function changeValue(string $field, mixed $v): string
+    {
+        return match (true) {
+            $v === null, $v === ''                                         => '—',
+            in_array($field, ['price', 'retail_value', 'repair_cost'], true) => self::won($v),
+            $field === 'mileage'                                           => self::km($v),
+            $field === 'is_active'                                         => $v ? 'активен' : 'снят',
+            is_bool($v)                                                    => $v ? 'да' : 'нет',
+            is_scalar($v)                                                  => (string) $v,
+            default                                                        => json_encode($v, JSON_UNESCAPED_UNICODE),
+        };
+    }
 }

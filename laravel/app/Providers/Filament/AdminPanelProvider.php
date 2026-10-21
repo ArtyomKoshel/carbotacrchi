@@ -4,7 +4,6 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Overview;
-use App\Http\Middleware\Panel\ShareLegacyAdminSession;
 use App\Http\Middleware\Panel\UseRussianLocale;
 use App\Models\AdminUser;
 use Filament\FontProviders\LocalFontProvider;
@@ -13,26 +12,21 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
-use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Auth\Events\Login as LoginEvent;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Event;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
- * The new admin panel at /panel (Filament). It replaces the Blade pages under
- * /admin section by section; until a section moves, its menu item links to the
- * old page.
+ * The admin panel at /admin (Filament). It replaced the Blade admin in
+ * 2026-10; old bookmarks redirect from routes/web.php.
  */
 class AdminPanelProvider extends PanelProvider
 {
@@ -49,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('panel')
-            ->path('panel')
+            ->path('admin')
             ->authGuard('admin')
             ->login(Login::class)
             ->brandName('CarBot')
@@ -72,7 +66,6 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make(self::GROUP_SEARCH_TEAM),
                 NavigationGroup::make(self::GROUP_SYSTEM),
             ])
-            ->navigationItems($this->legacyNavigationItems())
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
@@ -82,7 +75,6 @@ class AdminPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
-                ShareLegacyAdminSession::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
@@ -98,51 +90,11 @@ class AdminPanelProvider extends PanelProvider
             ]);
     }
 
-    public function boot(): void
-    {
-        // A panel sign-in also signs in to the old /admin pages
-        Event::listen(LoginEvent::class, function (LoginEvent $event) {
-            if ($event->guard === 'admin' && $event->user instanceof AdminUser) {
-                ShareLegacyAdminSession::remember($event->user);
-            }
-        });
-    }
-
     private function themeUrl(): string
     {
         $mtime = @filemtime(public_path(self::THEME));
 
         return asset(self::THEME) . ($mtime ? "?v={$mtime}" : '');
-    }
-
-    /**
-     * Old /admin pages not moved to the panel yet. They open in a new tab and
-     * follow the same page permissions as the old menu.
-     *
-     * @return array<NavigationItem>
-     */
-    private function legacyNavigationItems(): array
-    {
-        $items = [
-            // [label, route, page key (null = super only), group]
-            ['Изменения лотов', 'admin.changes', 'changes', self::GROUP_DATA],
-            ['Настройки поиска', 'admin.bot-filters', 'bot-filters', self::GROUP_SEARCH_TEAM],
-            ['Пользователи админки', 'admin.users', null, self::GROUP_SEARCH_TEAM],
-            ['Уведомления', 'admin.notifications', null, self::GROUP_SYSTEM],
-            ['Логи', 'admin.logs', 'logs', self::GROUP_SYSTEM],
-            ['Старая админка', 'admin.dashboard', 'dashboard', self::GROUP_SYSTEM],
-        ];
-
-        return array_map(
-            fn (array $item, int $i) => NavigationItem::make($item[0])
-                ->url(fn () => route($item[1]), shouldOpenInNewTab: true)
-                ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
-                ->group($item[3])
-                ->sort(100 + $i)
-                ->visible(fn () => self::admin()?->canSeePage($item[2]) ?? false),
-            $items,
-            array_keys($items),
-        );
     }
 
     public static function admin(): ?AdminUser

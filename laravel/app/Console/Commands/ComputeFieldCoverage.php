@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  * Run hourly via the scheduler:
  *   $schedule->command('fields:compute-coverage')->hourly();
  *
- * The admin `/admin/fields` page reads from this table directly, keeping
+ * The admin (Покрытие полей, Площадка → Поля, Обзор) reads this table directly, keeping
  * pageload fast regardless of `lots` table size.
  */
 class ComputeFieldCoverage extends Command
