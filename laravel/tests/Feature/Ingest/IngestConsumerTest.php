@@ -16,12 +16,27 @@ use Tests\TestCase;
  */
 final class IngestConsumerTest extends TestCase
 {
-    use RefreshesDatabaseOnce;
+    use RefreshesDatabaseOnce {
+        beginDatabaseTransaction as beginTestTransactions;
+    }
 
     /** The buffer lives on the collector connection; roll it back too. */
     protected array $connectionsToTransact = ['mysql', 'collector'];
 
     private const NOW = '2026-10-21 10:00:00';
+
+    /**
+     * The buffer table belongs to the collector; its DDL comes from the file the
+     * collector applies. Created here — after migrations, before the test
+     * transactions open — because DDL would commit an open transaction.
+     */
+    public function beginDatabaseTransaction(): void
+    {
+        if (! DB::connection('collector')->getSchemaBuilder()->hasTable('ingest_lots')) {
+            DB::connection('collector')->unprepared((string) file_get_contents(base_path('../collector/migrations/001_ingest_lots.sql')));
+        }
+        $this->beginTestTransactions();
+    }
 
     /** @return array<string, mixed> */
     private static function lot(array $over = []): array
