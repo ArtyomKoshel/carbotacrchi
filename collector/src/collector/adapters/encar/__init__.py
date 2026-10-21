@@ -1,0 +1,1 @@
+"""Encar (encar.com) adapter."""

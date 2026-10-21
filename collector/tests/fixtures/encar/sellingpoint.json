@@ -1,0 +1,15 @@
+{
+  "uniqueOptionPhotos": [
+    {
+      "partCode": "OTHER",
+      "partName": "선루프"
+    },
+    {
+      "partCode": "SPEC_drivingMethodNm",
+      "partName": "구동방식(사륜)"
+    }
+  ],
+  "sellingPoint": {
+    "sentence": "무사고 1인 신조"
+  }
+}

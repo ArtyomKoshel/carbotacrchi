@@ -1,0 +1,76 @@
+{
+  "master": {
+    "accdient": false,
+    "supplyNum": "1234567890",
+    "registrationDate": "2026-09-10T09:00:00",
+    "simpleRepair": true,
+    "detail": {
+      "waterlog": false,
+      "tuning": false,
+      "vin": "KMHL341CBMA000001",
+      "validityStartDate": "20260910",
+      "validityEndDate": "20270909",
+      "firstRegistrationDate": "20210302",
+      "mileage": 45100,
+      "motorType": "G4NA",
+      "guarantyType": {
+        "title": "보험사보증"
+      },
+      "recall": true,
+      "recallFullFillTypes": [
+        {
+          "title": "이행"
+        }
+      ],
+      "carStateType": {
+        "title": "양호"
+      },
+      "engineCheck": "Y",
+      "trnsCheck": "Y",
+      "seriousTypes": [
+        {
+          "title": "없음"
+        }
+      ]
+    }
+  },
+  "outers": [
+    {
+      "type": {
+        "title": "후드"
+      },
+      "statusTypes": [
+        {
+          "title": "교환"
+        }
+      ]
+    },
+    {
+      "type": {
+        "title": "도어"
+      },
+      "statusTypes": []
+    }
+  ],
+  "inners": [
+    {
+      "type": {
+        "title": "엔진"
+      },
+      "statusType": {
+        "title": "양호"
+      },
+      "children": [
+        {
+          "type": {
+            "title": "오일"
+          },
+          "statusType": {
+            "title": "미세누유"
+          },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

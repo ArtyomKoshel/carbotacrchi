@@ -1,0 +1,55 @@
+{
+  "vehicleId": 40011223,
+  "vin": "KMHL341CBMA000001",
+  "vehicleNo": "00가0000",
+  "category": {
+    "originPrice": 3200,
+    "gradeDetailEnglishName": "Premium"
+  },
+  "spec": {
+    "transmissionName": "오토",
+    "fuelName": "가솔린",
+    "colorName": "흰색",
+    "bodyName": "중형차",
+    "displacement": 1999,
+    "drivingMethodName": "전륜",
+    "seatCount": 5
+  },
+  "advertisement": {
+    "status": "ADVERTISE"
+  },
+  "contact": {
+    "address": "경기 성남시"
+  },
+  "manage": {
+    "registDateTime": "2026-09-14T10:11:12",
+    "dummy": false
+  },
+  "photos": [
+    {
+      "type": "OUTER",
+      "path": "/carpicture08/pic4001/40011223_001.jpg"
+    },
+    {
+      "type": "OUTER",
+      "path": "/carpicture08/pic4001/40011223_002.jpg"
+    },
+    {
+      "type": "OUTER",
+      "path": "/carpicture08/pic4001/40011223_001.jpg"
+    }
+  ],
+  "options": {
+    "standard": [
+      "001",
+      "014",
+      "059"
+    ],
+    "choice": [
+      "C1"
+    ],
+    "package": [
+      "P9"
+    ]
+  }
+}

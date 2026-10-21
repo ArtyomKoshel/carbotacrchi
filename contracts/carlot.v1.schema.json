@@ -9,7 +9,10 @@
         "coupe",
         "convertible",
         "van",
+        "minivan",
+        "pickup",
         "truck",
+        "cargo",
         "kei",
         "other"
       ],
@@ -31,9 +34,11 @@
         "gasoline",
         "diesel",
         "hybrid",
+        "plugin_hybrid",
         "electric",
         "lpg",
         "hydrogen",
+        "cng",
         "other"
       ],
       "title": "Fuel",
@@ -502,7 +507,7 @@
         "sell_type_raw": {
           "anyOf": [
             {
-              "maxLength": 60,
+              "maxLength": 200,
               "type": "string"
             },
             {
@@ -913,16 +918,24 @@
           "title": "Vin"
         },
         "year": {
-          "maximum": 2100,
-          "minimum": 1950,
-          "title": "Year",
-          "type": "integer"
+          "anyOf": [
+            {
+              "maximum": 2100,
+              "minimum": 1950,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None when the source does not give it",
+          "title": "Year"
         }
       },
       "required": [
         "make",
-        "model",
-        "year"
+        "model"
       ],
       "title": "Vehicle",
       "type": "object"

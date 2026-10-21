@@ -29,6 +29,7 @@ CONTRACT: Final = "carlot/1"
 VIN_RE: Final = re.compile(r"^[A-HJ-NPR-Z0-9]{17}$")
 SOURCE_RE: Final = r"^[a-z][a-z0-9_]{1,31}$"
 CURRENCY_RE: Final = r"^[A-Z]{3}$"
+MONEY_MAX: Final = 10_000_000_000
 
 
 class _Model(BaseModel):
@@ -39,9 +40,11 @@ class Fuel(StrEnum):
     GASOLINE = "gasoline"
     DIESEL = "diesel"
     HYBRID = "hybrid"
+    PLUGIN_HYBRID = "plugin_hybrid"
     ELECTRIC = "electric"
     LPG = "lpg"
     HYDROGEN = "hydrogen"
+    CNG = "cng"
     OTHER = "other"
 
 
@@ -68,7 +71,10 @@ class BodyType(StrEnum):
     COUPE = "coupe"
     CONVERTIBLE = "convertible"
     VAN = "van"
+    MINIVAN = "minivan"
+    PICKUP = "pickup"
     TRUCK = "truck"
+    CARGO = "cargo"
     KEI = "kei"  # Korean light car (경차)
     OTHER = "other"
 
@@ -111,7 +117,7 @@ NonEmpty = Annotated[str, Field(min_length=1, max_length=200)]
 class Money(_Model):
     """Integer amount in the currency's smallest common unit (KRW has no minor unit)."""
 
-    amount: int = Field(ge=0, le=10_000_000_000)
+    amount: int = Field(ge=0, le=MONEY_MAX)
     currency: str = Field(default="KRW", pattern=CURRENCY_RE)
 
 
@@ -126,7 +132,9 @@ class Vehicle(_Model):
     badge: NonEmpty | None = None
     trim: NonEmpty | None = None
     trim_en: NonEmpty | None = None
-    year: int = Field(ge=1950, le=2100)
+    year: int | None = Field(
+        default=None, ge=1950, le=2100, description="None when the source does not give it"
+    )
     first_registration: date | None = None
     vin: Vin | None = None
     plate_number: str | None = Field(default=None, max_length=20)
@@ -148,7 +156,7 @@ class Listing(_Model):
     location: str | None = Field(default=None, max_length=100)
     listed_at: TzDatetime | None = None
     sell_type: SellType | None = None
-    sell_type_raw: str | None = Field(default=None, max_length=60)
+    sell_type_raw: str | None = Field(default=None, max_length=200)
     retail_value: Money | None = None
     image_url: HttpUrl | None = None
     photos: tuple[HttpUrl, ...] = ()
