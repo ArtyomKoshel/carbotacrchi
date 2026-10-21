@@ -9,6 +9,10 @@ from __future__ import annotations
 import pytest
 from parsers.kbcha.normalizer import KBChaNormalizer
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="KBChacha is disabled since 2026-04 and is removed in refactor stage 7")
+
 norm = KBChaNormalizer()
 
 

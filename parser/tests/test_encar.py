@@ -21,6 +21,11 @@ from parsers.encar import (
 )
 from models import InspectionRecord
 
+import pytest
+
+# Every test here calls the real Encar API (geo-blocked outside Korea).
+pytestmark = pytest.mark.live
+
 
 def test_search_returns_results():
     client = EncarClient()
