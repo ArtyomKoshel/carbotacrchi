@@ -13,8 +13,9 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "phpunit/phpunit": "^12.0",
-        "laravel/pint": "^1.13"
+        "laravel/pint": "^1.13",
+        "mockery/mockery": "^1.6",
+        "phpunit/phpunit": "^12.0"
     },
     "autoload": {
         "psr-4": {
@@ -33,6 +34,10 @@
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
             "@php artisan filament:upgrade"
+        ],
+        "test": [
+            "@php artisan config:clear --ansi",
+            "@php vendor/bin/phpunit"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
