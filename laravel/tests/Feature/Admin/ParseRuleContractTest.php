@@ -14,12 +14,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 /**
  * The rule builder must save exactly what the Python parser reads, and the
  * «сколько лотов попадёт» preview must agree with how the parser matches.
- * Both sides read parser/tests/fixtures/parse_filters_contract.json; the
+ * Both sides read contracts/fixtures/parse_filters.json; the
  * parser side is parser/tests/test_rule_contract.py.
  */
 class ParseRuleContractTest extends AdminTestCase
 {
-    private const FIXTURE = __DIR__ . '/../../../../parser/tests/fixtures/parse_filters_contract.json';
+    private const FIXTURE = __DIR__ . '/../../../../contracts/fixtures/parse_filters.json';
 
     private const ROW_KEYS = ['source', 'field', 'operator', 'value', 'action', 'phase', 'rule_group_id'];
 

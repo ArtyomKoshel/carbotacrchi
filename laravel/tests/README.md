@@ -41,7 +41,7 @@ is a fake one (tests check it never shows up in errors).
 |------|--------|
 | AccessTest | login, roles, page permissions (pages, menu, tab components), super-only actions, self/last-super delete, old-address redirects |
 | SmokeTest | every panel page and resource page (read from the panel) opens with data and on an empty DB; every widget renders |
-| ParseRuleContractTest | builder → parse_filters row and preview count, against `parser/tests/fixtures/parse_filters_contract.json` (pytest checks the same file through the parser's loader) |
+| ParseRuleContractTest | builder → parse_filters row and preview count, against `contracts/fixtures/parse_filters.json` (pytest checks the same file through the parser's loader) |
 | RulesTest | generated names, drag order → priority, scope, toggle/delete, hits, skip log link and cleanup |
 | RunsTest | launch modes → parse_jobs rows, proxy estimate, running job, cancel, lifecycle «засчитан» |
 | ReparseTest | LotReparseQueue row format, split by source, no duplicates, 500 cap, bulk action, permission |

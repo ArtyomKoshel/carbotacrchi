@@ -36,7 +36,7 @@ class CaptureRepository:
 
     Selection rules are not applied (prefilter = identity, no post filters):
     the golden master pins field mapping; rule evaluation has its own contract
-    fixtures (tests/fixtures/parse_filters_contract.json).
+    fixtures (contracts/fixtures/parse_filters.json).
     """
 
     def __init__(self) -> None:

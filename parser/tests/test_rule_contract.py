@@ -1,6 +1,6 @@
 """
 Selection-rule contract with the admin (laravel). The rows in
-fixtures/parse_filters_contract.json are what the admin's rule builder saves;
+contracts/fixtures/parse_filters.json are what the admin's rule builder saves;
 here they go through the parser's own loader (filters.config.load_db_rules)
 and must match exactly the lots the fixture says. The Laravel side checks the
 same file: tests/Feature/Admin/ParseRuleContractTest.php.
@@ -20,7 +20,7 @@ import pytest
 
 from filters.config import load_db_rules
 
-FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "parse_filters_contract.json")
+FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "contracts", "fixtures", "parse_filters.json")
 CASES = json.load(open(FIXTURE, encoding="utf-8"))["cases"]
 
 
