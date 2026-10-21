@@ -45,10 +45,12 @@ class FakeEncar:
         self.batch_fails = False
         self.record_status = 200
         self.record: dict[str, Any] = load("record")
+        self.search_status = 200
 
     def _search(self, request: httpx.Request) -> httpx.Response:
         q = unquote(request.url.params.get("q", ""))
-        count = int(request.url.params.get("sr", "|ModifiedDate|0|100").rsplit("|", 1)[1])
+        _, _, offset_s, count_s = request.url.params.get("sr", "|ModifiedDate|0|100").split("|")
+        offset, count = int(offset_s), int(count_s)
         results = []
         for maker, groups in INVENTORY.items():
             for group, ids in groups.items():
@@ -56,7 +58,11 @@ class FakeEncar:
                     f"Manufacturer.{maker}." in q and (f"ModelGroup.{group}." in q or "ModelGroup" not in q)
                 ) or "Manufacturer" not in q:
                     results += [item(i, Manufacturer=maker, ModelGroup=group) for i in ids]
-        return httpx.Response(200, json={"Count": len(results), "SearchResults": results[:count]})
+        if self.search_status != 200:
+            return httpx.Response(self.search_status)
+        return httpx.Response(
+            200, json={"Count": len(results), "SearchResults": results[offset : offset + count]}
+        )
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path

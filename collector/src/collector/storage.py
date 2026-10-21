@@ -204,20 +204,36 @@ class JobQueue:
         self.db = db
         self.table = table  # validated identifier: safe to format into SQL
 
-    async def claim(self, sources: Sequence[str], busy: Iterable[str] = ()) -> Job | None:
-        """Oldest interrupted, then pending job of these sources; full jobs of a busy source wait."""
+    async def claim(
+        self,
+        sources: Sequence[str],
+        busy: Iterable[str] = (),
+        *,
+        types: Sequence[str] = ("full", "reparse"),
+        tagged_only: bool = False,
+    ) -> Job | None:
+        """Oldest interrupted, then pending job of these sources; full jobs of a busy source wait.
+
+        tagged_only: take only jobs with filters.engine = "collector" (shadow mode, docs/adr/0007),
+        so the old parser and the collector never take each other's jobs.
+        """
         busy = set(busy)
+        tag = " AND JSON_UNQUOTE(JSON_EXTRACT(filters, '$.engine')) = 'collector'" if tagged_only else ""
+        sql = (
+            "SELECT id, source, type, status, filters, target_lot_ids, progress"
+            f" FROM {self.table}"
+            " WHERE status IN ('interrupted', 'pending') AND source IN :sources"
+            f" AND COALESCE(type, 'full') IN :types{tag}"
+            " ORDER BY FIELD(status, 'interrupted', 'pending'), created_at, id"
+            " FOR UPDATE SKIP LOCKED"
+        )
         async with self.db.begin() as conn:
             rows = (
                 await conn.execute(
-                    text(
-                        "SELECT id, source, type, status, filters, target_lot_ids, progress"
-                        f" FROM {self.table}"
-                        " WHERE status IN ('interrupted', 'pending') AND source IN :sources"
-                        " ORDER BY FIELD(status, 'interrupted', 'pending'), created_at, id"
-                        " FOR UPDATE SKIP LOCKED"
-                    ).bindparams(bindparam("sources", expanding=True)),
-                    {"sources": list(sources)},
+                    text(sql).bindparams(
+                        bindparam("sources", expanding=True), bindparam("types", expanding=True)
+                    ),
+                    {"sources": list(sources), "types": list(types)},
                 )
             ).all()
             for r in rows:
