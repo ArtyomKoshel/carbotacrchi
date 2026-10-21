@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Ingest\CollectorMode;
+use App\Ingest\IngestConsumer;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +42,7 @@ class LotLifecycle
      *
      * @param array{type?:?string, status?:string, filters?:mixed, result?:mixed, created_at?:mixed} $job
      */
-    public static function runRejection(array $job, float $minCoverage, float $minWriteRatio = 0.5): ?string
+    public static function runRejection(array $job, float $minCoverage, float $minWriteRatio = 0.5, ?int $ingestOffset = null): ?string
     {
         $type = ($job['type'] ?? null) ?: 'full';
         if ($type !== 'full') {
@@ -78,6 +80,14 @@ class LotLifecycle
         if (self::runStart($job) === null) {
             return 'no start time';
         }
+        // A collector run counts only once the core has applied its records:
+        // until then its lots still carry an older parsed_at and would look unseen.
+        if (isset($result['ingest_last_id']) && is_numeric($result['ingest_last_id'])) {
+            $needed = (int) $result['ingest_last_id'];
+            if ($ingestOffset === null || $ingestOffset < $needed) {
+                return sprintf('ingest pending (%d of %d applied)', (int) $ingestOffset, $needed);
+            }
+        }
 
         return null;
     }
@@ -110,12 +120,12 @@ class LotLifecycle
      * @param  iterable<array> $jobs parse_jobs rows of one source, any order
      * @return list<array{id:int, started_at:CarbonImmutable, coverage:float}>
      */
-    public static function successfulRuns(iterable $jobs, float $minCoverage, float $minWriteRatio = 0.5): array
+    public static function successfulRuns(iterable $jobs, float $minCoverage, float $minWriteRatio = 0.5, ?int $ingestOffset = null): array
     {
         $runs = [];
         foreach ($jobs as $job) {
             $job = (array) $job;
-            if (self::runRejection($job, $minCoverage, $minWriteRatio) !== null) {
+            if (self::runRejection($job, $minCoverage, $minWriteRatio, $ingestOffset) !== null) {
                 continue;
             }
             $result = self::decode($job['result'] ?? null);
@@ -165,10 +175,10 @@ class LotLifecycle
 
     // ── Database ────────────────────────────────────────────────────────────
 
-    /** parse_jobs rows of this source that could be full runs. */
+    /** parse_jobs rows of this source that could be full runs (of the engine that feeds lots). */
     public function loadJobs(): array
     {
-        return DB::table('parse_jobs')
+        return CollectorMode::onlyFeedingJobs(DB::table('parse_jobs'))
             ->where('source', $this->source)
             ->where(fn ($q) => $q->where('type', 'full')->orWhereNull('type'))
             ->where('status', 'done')
@@ -180,7 +190,18 @@ class LotLifecycle
 
     public static function parseJobRunning(): bool
     {
-        return DB::table('parse_jobs')->where('status', 'running')->exists();
+        return CollectorMode::onlyFeedingJobs(DB::table('parse_jobs'))->where('status', 'running')->exists();
+    }
+
+    /** How far the core has applied the collector buffer (null: never started). */
+    public static function ingestOffset(): ?int
+    {
+        if (!Schema::hasTable('ingest_offsets')) {
+            return null;
+        }
+        $id = DB::table('ingest_offsets')->where('consumer', IngestConsumer::CONSUMER)->value('last_id');
+
+        return $id === null ? null : (int) $id;
     }
 
     /** Lots of this source written since $since (parsed_at >= $since), any is_active. */

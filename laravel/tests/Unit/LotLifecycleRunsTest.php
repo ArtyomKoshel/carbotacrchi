@@ -170,4 +170,27 @@ class LotLifecycleRunsTest extends TestCase
         $this->assertSame([12], array_column($runs, 'id'));
         $this->assertSame(194436, $runs[0]['api_total']);
     }
+
+    /** A collector run counts only after the core applied its buffer records (docs/adr/0003). */
+    public static function ingestChecks(): array
+    {
+        $collectorRun = '{"coverage_pct": 97, "api_total": 1000, "run_started_at": "2026-10-21 09:00:00", "ingest_last_id": 500}';
+
+        return [
+            'never consumed' => [$collectorRun, null, 'ingest pending (0 of 500 applied)'],
+            'partly consumed' => [$collectorRun, 420, 'ingest pending (420 of 500 applied)'],
+            'fully consumed' => [$collectorRun, 500, null],
+            'consumed further' => [$collectorRun, 900, null],
+            'old parser run: no buffer' => ['{"coverage_pct": 97, "api_total": 1000}', null, null],
+        ];
+    }
+
+    #[DataProvider('ingestChecks')]
+    public function test_collector_runs_wait_for_ingest(string $result, ?int $offset, ?string $reason): void
+    {
+        $job = self::job(1, '2026-10-21 08:00:00', null, ['result' => $result]);
+        $this->assertSame($reason, LotLifecycle::runRejection($job, self::MIN, 0.5, $offset));
+        $runs = LotLifecycle::successfulRuns([$job], self::MIN, 0.5, $offset);
+        $this->assertCount($reason === null ? 1 : 0, $runs);
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Ingest\CollectorMode;
 use App\Models\ParseJob;
 use App\Services\Notifications\JobReport;
 use Illuminate\Support\Facades\DB;
@@ -70,13 +71,14 @@ class ParseRuns
             $job->getAttributes(),
             (float) config('lifecycle.min_coverage'),
             (float) config('lifecycle.min_write_ratio'),
+            LotLifecycle::ingestOffset(),
         );
     }
 
     /** The newest successful full run of a source (lots:lifecycle rules), or null. */
     public function lastSuccessful(string $source): ?ParseJob
     {
-        $rows = DB::table('parse_jobs')
+        $rows = CollectorMode::onlyFeedingJobs(DB::table('parse_jobs'))
             ->where('source', $source)
             ->where('type', 'full')
             ->where('status', 'done')
@@ -88,6 +90,7 @@ class ParseRuns
             $rows->map(fn ($r) => (array) $r),
             (float) config('lifecycle.min_coverage'),
             (float) config('lifecycle.min_write_ratio'),
+            LotLifecycle::ingestOffset(),
         );
 
         return $runs ? ParseJob::find($runs[0]['id']) : null;

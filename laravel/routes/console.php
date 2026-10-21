@@ -78,3 +78,9 @@ Schedule::command('ingest:consume')
     ->withoutOverlapping(30)
     ->runInBackground()
     ->when(fn () => (bool) config('ingest.enabled'));
+
+// The collector's scheduled full runs (parser_schedules), tagged for it. Off in mode off.
+Schedule::command('collector:enqueue')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->when(fn () => \App\Ingest\CollectorMode::collectorRuns());

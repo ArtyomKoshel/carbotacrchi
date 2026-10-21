@@ -38,7 +38,7 @@
         <env name="COLLECTOR_DB_PORT" value="3318" force="true"/>
         <env name="COLLECTOR_DB_USERNAME" value="carbot" force="true"/>
         <env name="COLLECTOR_DB_PASSWORD" value="carbot" force="true"/>
-        <env name="INGEST_ENABLED" value="false" force="true"/>
+        <env name="COLLECTOR_MODE" value="off" force="true"/>
         <env name="CACHE_STORE" value="array" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
