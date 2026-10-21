@@ -6,6 +6,8 @@ here every lot is judged on complete data and written once, ADR-0004):
 1. list items → drafts; PRE rules the list data can decide (early pass)
 2. details in batches of 20, concurrently (single-id fallback on failure)
 3. history plan from the collector's own HistoryStore: full / recheck / stored
+   (recheck when the history is old, the set of reports changed, or the listing
+   changed since the history was fetched: mileage, price or plate)
 4. record + inspection (+ sellingpoint for full) concurrently, explicit outcomes
 5. PRE and POST rules on the complete lot → Selection
 6. one write to the sink; history state saved for every fetched lot,
@@ -45,6 +47,23 @@ HISTORY_RAW_KEYS: Final = (
 DRIVE_FIELDS: Final = ("drive_type",)
 DRIVE_RAW_KEYS: Final = ("selling_point",)
 _HISTORY_BEARING: Final = ("owners_count", "insurance_count", "has_accident", "flood_history")
+# Listing facts kept with the history: when one changes, the seller updated the car and the
+# record or inspection may be new too (a claim, a repair), so the history is fetched again.
+LISTING_KEYS: Final = ("mileage", "price", "plate_number")
+
+
+def listing_changed(lot: m.EncarDraft, state: HistoryState) -> bool:
+    """True when a listing fact differs from the one seen with the stored history.
+
+    A history saved before these facts were kept has none: nothing to compare, no recheck."""
+    seen = state.fields.get("listing")
+    if not isinstance(seen, dict):
+        return False
+    for key in LISTING_KEYS:
+        old, new = seen.get(key), getattr(lot, key)
+        if old is not None and new is not None and old != new:
+            return True
+    return False
 
 
 @dataclass
@@ -55,6 +74,7 @@ class PageReport:
     history_fetched: int = 0
     history_stored: int = 0
     history_failed: int = 0
+    history_listing_changed: int = 0  # of history_fetched: rechecked because the listing changed
     rejected: int = 0
     emitted: int = 0
 
@@ -105,6 +125,7 @@ def apply_stored(
 def history_snapshot(lot: m.EncarDraft, checked_at: datetime) -> HistoryState:
     fields: dict[str, Any] = {f: getattr(lot, f) for f in (*HISTORY_FIELDS, *DRIVE_FIELDS)}
     fields |= {k: lot.raw_data[k] for k in (*HISTORY_RAW_KEYS, *DRIVE_RAW_KEYS) if k in lot.raw_data}
+    fields["listing"] = {k: v for k in LISTING_KEYS if (v := getattr(lot, k)) is not None}
     return HistoryState(
         lot_id=lot.id,
         checked_at=checked_at,
@@ -261,8 +282,11 @@ class EncarPipeline:
             missing = ("Record" in condition or "Inspection" in condition) and all(
                 state.fields.get(f) is None for f in _HISTORY_BEARING
             )
-            if state.checked_at < cutoff or state.condition != condition or missing:
+            changed = listing_changed(lot.draft, state)
+            if state.checked_at < cutoff or state.condition != condition or missing or changed:
                 lot.plan = "recheck"
+                if changed:
+                    report.history_listing_changed += 1
             else:
                 apply_stored(lot.draft, state, HISTORY_FIELDS, HISTORY_RAW_KEYS)
                 lot.plan = "stored"

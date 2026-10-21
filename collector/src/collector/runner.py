@@ -168,6 +168,7 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         "history_fetched": report.history_fetched,
         "history_stored": report.history_stored,
         "history_failed": report.history_failed,
+        "history_listing_changed": report.history_listing_changed,
         "detail_failed": report.detail_failed,
         "errors": state.errors,
         "error_log": state.error_log,

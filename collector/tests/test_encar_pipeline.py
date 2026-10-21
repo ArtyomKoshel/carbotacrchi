@@ -121,6 +121,42 @@ async def test_recent_history_is_taken_from_the_store() -> None:
     assert lot.vehicle.drive_type is not None
 
 
+def _fresh_history(vid: int, **listing: Any) -> HistoryState:
+    return HistoryState(str(vid), NOW, ("Inspection", "Record"), {"insurance_count": 1, "listing": listing})
+
+
+async def test_a_changed_listing_brings_a_fresh_history() -> None:
+    fake = FakeEncar()
+    pipe, sink, store = pipeline(fake)
+    lots = [m.from_search(item(i)) for i in (1, 2, 3, 4, 5)]
+    await store.save(
+        "encar",
+        [
+            _fresh_history(1, mileage=lots[0].mileage + 1500),  # the seller updated the odometer
+            _fresh_history(2, price=lots[1].price + 1_000_000),  # price cut
+            _fresh_history(3, plate_number="12가3456"),  # re-registered: another record
+            _fresh_history(4, mileage=lots[3].mileage, price=lots[3].price),  # unchanged
+            HistoryState(
+                "5", NOW, ("Inspection", "Record"), {"insurance_count": 1}
+            ),  # saved before this rule
+        ],
+    )
+
+    report = await pipe.process([item(i) for i in (1, 2, 3, 4, 5)], history_cutoff=NOW - timedelta(days=1))
+
+    assert report.history_listing_changed == 3
+    assert report.history_fetched == 3
+    assert report.history_stored == 2, "unchanged listing and a history without listing facts stay stored"
+    assert not any(c.endswith("/sellingpoint") for c in fake.calls), "a recheck skips sellingpoint"
+    by_id = sink.by_id()
+    assert by_id["1"].history.observed_at == NOW
+    assert by_id["4"].history.observed_at is None
+    saved = store.data[("encar", "1")].fields["listing"]
+    assert saved["mileage"] == lots[0].mileage
+    assert saved["price"] == lots[0].price
+    assert saved["plate_number"], "the plate from the detail is kept for the next comparison"
+
+
 async def test_old_or_changed_history_is_rechecked_without_sellingpoint() -> None:
     fake = FakeEncar()
     pipe, _, store = pipeline(fake)
