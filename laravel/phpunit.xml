@@ -32,6 +32,13 @@
         <env name="DB_DATABASE" value="carbot_test" force="true"/>
         <env name="DB_USERNAME" value="carbot" force="true"/>
         <env name="DB_PASSWORD" value="carbot" force="true"/>
+        <!-- The collector schema shares the throw-away test database. -->
+        <env name="COLLECTOR_DB_DATABASE" value="carbot_test" force="true"/>
+        <env name="COLLECTOR_DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="COLLECTOR_DB_PORT" value="3318" force="true"/>
+        <env name="COLLECTOR_DB_USERNAME" value="carbot" force="true"/>
+        <env name="COLLECTOR_DB_PASSWORD" value="carbot" force="true"/>
+        <env name="INGEST_ENABLED" value="false" force="true"/>
         <env name="CACHE_STORE" value="array" force="true"/>
         <env name="SESSION_DRIVER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>

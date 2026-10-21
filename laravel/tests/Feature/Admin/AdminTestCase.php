@@ -19,49 +19,20 @@ use Database\Factories\ParseJobFactory;
 use Database\Factories\TranslationFactory;
 use Database\Factories\AdminUserFactory;
 use Filament\Facades\Filament;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Once;
+use Tests\Concerns\RefreshesDatabaseOnce;
 use Tests\TestCase;
 
 /** Panel tests: migrated carbot_test, each test in a transaction, panel selected. */
 abstract class AdminTestCase extends TestCase
 {
-    use RefreshDatabase {
-        refreshTestDatabase as baseRefreshTestDatabase;
-    }
+    use RefreshesDatabaseOnce;
 
     protected function setUp(): void
     {
         parent::setUp();
         Filament::setCurrentPanel(Filament::getPanel('panel'));
-    }
-
-    /**
-     * RefreshDatabase, but migrate:fresh (≈100 s for 105 migrations) only when
-     * carbot_test does not already hold exactly the repo's migrations, or when
-     * TESTS_FRESH_DB=1. Every test still runs in a rolled-back transaction.
-     */
-    protected function refreshTestDatabase(): void
-    {
-        if (!RefreshDatabaseState::$migrated && !getenv('TESTS_FRESH_DB') && $this->schemaIsCurrent()) {
-            RefreshDatabaseState::$migrated = true;
-        }
-
-        $this->baseRefreshTestDatabase();
-    }
-
-    private function schemaIsCurrent(): bool
-    {
-        try {
-            $applied = DB::table('migrations')->pluck('migration')->sort()->values()->all();
-        } catch (\Throwable) {
-            return false;
-        }
-        $files = collect(glob(database_path('migrations/*.php')))->map(fn ($f) => basename($f, '.php'))->sort()->values()->all();
-
-        return $applied === $files;
     }
 
     protected function super(array $attributes = []): AdminUser

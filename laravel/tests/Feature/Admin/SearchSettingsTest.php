@@ -88,13 +88,16 @@ class SearchSettingsTest extends AdminTestCase
     public function test_reset_restores_the_defaults(): void
     {
         $this->signIn();
-        $year = $this->row('year');
-        $year->update(['tolerance_type' => 'absolute', 'tolerance_value' => 3, 'enabled' => false]);
-        $count = BotFilterSetting::count();
+        // The seeder rebuilds the default set from storage/app/fields.json whatever
+        // the table held before (a fresh migrate seeds fewer rows): resetting
+        // twice gives the same rows.
+        Livewire::test(SearchSettings::class)->callAction('reset');
+        $defaults = BotFilterSetting::orderBy('field_name')->pluck('field_name')->all();
+        $this->row('year')->update(['tolerance_type' => 'absolute', 'tolerance_value' => 3, 'enabled' => false]);
 
         Livewire::test(SearchSettings::class)->callAction('reset');
 
-        $this->assertSame($count, BotFilterSetting::count());
+        $this->assertSame($defaults, BotFilterSetting::orderBy('field_name')->pluck('field_name')->all());
         $fresh = $this->row('year');
         $this->assertTrue($fresh->enabled);
         // BotFilterSettingsSeeder::DEFAULTS: year ±1

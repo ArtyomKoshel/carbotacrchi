@@ -43,7 +43,8 @@
     },
     "image_url": "https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg",
     "photos": [
-      "https://ci.encar.com/carpicture/carpicture08/pic3984/39847215_001.jpg"
+      "https://ci.encar.com/carpicture08/pic3984/39847215_001.jpg?impolicy=heightRate&rh=480&cw=640&ch=480&cg=Center",
+      "https://ci.encar.com/carpicture08/pic3984/39847215_002.jpg?impolicy=heightRate&rh=480&cw=640&ch=480&cg=Center"
     ],
     "options": [
       "001",
