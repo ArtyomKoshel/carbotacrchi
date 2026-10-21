@@ -67,6 +67,20 @@ jobs:
     defaults:
       run:
         working-directory: collector
+    services:
+      mysql:
+        image: mysql:9.1
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: collector_test
+          MYSQL_USER: carbot
+          MYSQL_PASSWORD: carbot
+        ports: ["3318:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      COLLECTOR_TEST_DB_URL: mysql+aiomysql://carbot:carbot@127.0.0.1:3318/collector_test
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
