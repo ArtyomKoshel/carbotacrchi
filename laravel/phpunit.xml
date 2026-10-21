@@ -7,10 +7,55 @@
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
             <directory>app</directory>
         </include>
     </source>
+    <!--
+        Feature tests run against a throw-away local MySQL database only
+        (MySQL, not sqlite: the app relies on MySQL JSON functions and REGEXP).
+        force="true" wins over a real environment, and Tests\TestCase refuses
+        to start on any other database. See tests/README.md.
+    -->
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_DEBUG" value="true" force="true"/>
+        <env name="APP_KEY" value="base64:dGVzdC1rZXktZm9yLWNhcmJvdC10ZXN0cy0zMmJ5dGU=" force="true"/>
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="DB_PORT" value="3318" force="true"/>
+        <env name="DB_DATABASE" value="carbot_test" force="true"/>
+        <env name="DB_USERNAME" value="carbot" force="true"/>
+        <env name="DB_PASSWORD" value="carbot" force="true"/>
+        <!-- The collector schema shares the throw-away test database. -->
+        <env name="COLLECTOR_DB_DATABASE" value="carbot_test" force="true"/>
+        <env name="COLLECTOR_DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="COLLECTOR_DB_PORT" value="3318" force="true"/>
+        <env name="COLLECTOR_DB_USERNAME" value="carbot" force="true"/>
+        <env name="COLLECTOR_DB_PASSWORD" value="carbot" force="true"/>
+        <env name="COLLECTOR_MODE" value="off" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="NOTIFICATIONS_CACHE_STORE" value="array" force="true"/>
+        <env name="REDIS_HOST" value="" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="LOG_CHANNEL" value="null" force="true"/>
+        <env name="PARSER_SOURCES" value="encar" force="true"/>
+        <env name="PARSER_LOG_FILE" value="storage/framework/testing/parser-logs/parser.log" force="true"/>
+        <env name="TELEGRAM_BOT_TOKEN" value="123456:TEST-TOKEN-SECRET" force="true"/>
+        <env name="TELEGRAM_API_BASE" value="https://telegram.test/bot" force="true"/>
+        <env name="FLOPPYDATA_API_KEY" value="test-floppy-key" force="true"/>
+        <env name="FLOPPY_BASE_URL" value="https://floppy.test" force="true"/>
+        <env name="AI_API_KEY" value="test-ai-key" force="true"/>
+        <env name="AI_API_KEYS" value="" force="true"/>
+        <env name="AI_API_URL" value="https://api.deepseek.com/chat/completions" force="true"/>
+        <env name="DEEPSEEK_BASE_URL" value="https://deepseek.test" force="true"/>
+        <env name="SCOUT_DRIVER" value="null" force="true"/>
+    </php>
 </phpunit>

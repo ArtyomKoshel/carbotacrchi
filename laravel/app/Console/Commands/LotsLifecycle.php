@@ -50,7 +50,8 @@ class LotsLifecycle extends Command
         }
 
         $lc = new LotLifecycle($source, $batch, $pauseMs);
-        $runs = LotLifecycle::successfulRuns($lc->loadJobs(), $minCov, $minWrite);
+        $offset = LotLifecycle::ingestOffset();
+        $runs = LotLifecycle::successfulRuns($lc->loadJobs(), $minCov, $minWrite, $offset, LotLifecycle::cutoverId());
         $delistCutoff = LotLifecycle::delistCutoff($runs);
         $purgeCutoff = LotLifecycle::purgeCutoff($runs, $runsN);
 
@@ -160,7 +161,7 @@ class LotsLifecycle extends Command
         if ($this->output->isVerbose()) {
             $rejected = [];
             foreach ($lc->loadJobs() as $job) {
-                if ($why = LotLifecycle::runRejection($job, $minCov, $minWrite)) {
+                if ($why = LotLifecycle::runRejection($job, $minCov, $minWrite, LotLifecycle::ingestOffset(), LotLifecycle::cutoverId())) {
                     $rejected[] = [$job['id'], $job['created_at'], $why];
                 }
             }

@@ -104,7 +104,8 @@ def _enqueue_scheduled_job(
         )
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id FROM parse_jobs WHERE source=%s AND status IN ('pending','running') LIMIT 1",
+                "SELECT id FROM parse_jobs WHERE source=%s AND status IN ('pending','running') "
+                "AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(filters, '$.engine')), 'parser') <> 'collector' LIMIT 1",
                 (source_key,),
             )
             if cur.fetchone():

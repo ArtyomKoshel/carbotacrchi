@@ -1,0 +1,34 @@
+{
+  "openData": true,
+  "myAccidentCnt": 1,
+  "otherAccidentCnt": 1,
+  "accidentCnt": 2,
+  "ownerChangeCnt": 2,
+  "floodTotalLossCnt": 0,
+  "floodPartLossCnt": 0,
+  "totalLossCnt": 0,
+  "loan": 0,
+  "robberCnt": 0,
+  "myAccidentCost": 350000,
+  "otherAccidentCost": 100000,
+  "firstDate": "2021-03-02",
+  "accidents": [
+    {
+      "date": "2023-05-01",
+      "type": "1",
+      "insuranceBenefit": 350000
+    },
+    {
+      "date": "2024-01-10",
+      "type": "3",
+      "insuranceBenefit": 100000
+    }
+  ],
+  "ownerChanges": [
+    "2022-01-01"
+  ],
+  "carInfoChanges": [],
+  "carNoChangeCnt": 0,
+  "government": 0,
+  "business": 0
+}

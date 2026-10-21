@@ -228,23 +228,31 @@ class ParseFilterRules
             return null;
         }
         $q = DB::table('lots')->where('is_active', true)->when($source, fn ($q) => $q->where('source', $source));
-        $col = "`{$column}`";
+
+        // The parser compares strings case-sensitively (Python ==, in, re.search);
+        // the lots columns use a _ci collation, so text comparisons go through
+        // utf8mb4_bin and REGEXP_LIKE(…, 'c') to count what the parser would hit.
+        $text = in_array($this->dtype($field), ['string', 'enum'], true);
+        $col = $text ? "`{$column}` COLLATE utf8mb4_bin" : "`{$column}`";
+        $list = fn (array $v) => implode(',', array_fill(0, count($v), '?'));
+        $like = '%' . addcslashes((string) (is_scalar($value) ? $value : ''), '%_\\') . '%';
+        $values = array_values((array) $value);
 
         match ($operator) {
-            'eq'           => $value === null ? $q->whereNull($column) : $q->where($column, $value),
-            'ne'           => $q->where(fn ($w) => $w->where($column, '!=', $value)->orWhereNull($column)),
+            'eq'           => $value === null ? $q->whereNull($column) : $q->whereRaw("{$col} = ?", [$value]),
+            'ne'           => $q->where(fn ($w) => $w->whereRaw("{$col} <> ?", [$value])->orWhereNull($column)),
             'gt'           => $q->where($column, '>', $value),
             'gte'          => $q->where($column, '>=', $value),
             'lt'           => $q->where($column, '<', $value),
             'lte'          => $q->where($column, '<=', $value),
-            'between'      => $q->whereBetween($column, array_values((array) $value)),
-            'in'           => $q->whereIn($column, (array) $value),
-            'not_in'       => $q->where(fn ($w) => $w->whereNotIn($column, (array) $value)->orWhereNull($column)),
+            'between'      => $q->whereBetween($column, $values),
+            'in'           => $values === [] ? $q->whereRaw('1 = 0') : $q->whereRaw("{$col} IN ({$list($values)})", $values),
+            'not_in'       => $values === [] ? $q : $q->where(fn ($w) => $w->whereRaw("{$col} NOT IN ({$list($values)})", $values)->orWhereNull($column)),
             'is_null'      => $q->whereNull($column),
             'is_not_null'  => $q->whereNotNull($column),
-            'contains'     => $q->where($column, 'like', '%' . addcslashes((string) $value, '%_\\') . '%'),
-            'not_contains' => $q->where(fn ($w) => $w->where($column, 'not like', '%' . addcslashes((string) $value, '%_\\') . '%')->orWhereNull($column)),
-            'regex'        => $q->whereRaw("{$col} REGEXP ?", [(string) $value]),
+            'contains'     => $q->whereRaw("{$col} LIKE ?", [$like]),
+            'not_contains' => $q->where(fn ($w) => $w->whereRaw("{$col} NOT LIKE ?", [$like])->orWhereNull($column)),
+            'regex'        => $q->whereRaw("REGEXP_LIKE(`{$column}`, ?, 'c')", [(string) $value]),
             default        => null,
         };
 

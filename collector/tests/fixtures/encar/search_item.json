@@ -1,0 +1,30 @@
+{
+  "Id": 40011223,
+  "Manufacturer": "현대",
+  "ModelGroup": "쏘나타",
+  "Model": "더 뉴 쏘나타 (DN8) 가솔린 2000cc",
+  "BadgeGroup": "가솔린 2000cc",
+  "Badge": "가솔린 2000cc",
+  "BadgeDetail": "프리미엄",
+  "FormYear": "2021",
+  "Year": 202103.0,
+  "Price": 1890,
+  "Mileage": 45210.0,
+  "FuelType": "가솔린",
+  "Transmission": "오토",
+  "Color": "흰색",
+  "SeatColor": "검정",
+  "OfficeCityState": "경기",
+  "SellType": "일반",
+  "AdType": "일반",
+  "Condition": [
+    "Record",
+    "Inspection"
+  ],
+  "Photos": [
+    {
+      "type": "001",
+      "location": "/carpicture08/pic4001/40011223_001.jpg"
+    }
+  ]
+}

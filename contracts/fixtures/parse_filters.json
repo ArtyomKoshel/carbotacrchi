@@ -1,0 +1,184 @@
+{
+    "about": "Contract between the admin's rule builder (laravel: App\\Livewire\\Platform\\Rules, App\\Services\\ParseFilterRules) and the parser's rule loader (parser/filters/config.py, rules.py). 'form' is what a person enters in the builder; 'row' is the parse_filters row it must save (value = JSON text exactly as stored); 'lots' are field values with whether the rule matches. Checked by laravel/tests/Feature/Admin/ParseRuleContractTest.php and parser/tests/test_rule_contract.py. 'sql': false = the field is not a lots column, so the admin cannot preview it.",
+    "cases": [
+        {
+            "case": "int_gt",
+            "form": {"phase": "pre", "action": "skip", "field": "mileage", "operator": "gt", "value_number": "200000", "scope": "this"},
+            "row": {"source": "encar", "field": "mileage", "operator": "gt", "value": "200000", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"mileage": 250000}, "matches": true},
+                {"lot": {"mileage": 200000}, "matches": false},
+                {"lot": {"mileage": 150000}, "matches": false}
+            ]
+        },
+        {
+            "case": "int_between_inclusive",
+            "form": {"phase": "pre", "action": "skip", "field": "year", "operator": "between", "value_from": "2014", "value_to": "2018", "scope": "all"},
+            "row": {"source": null, "field": "year", "operator": "between", "value": "[2014,2018]", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"year": 2014}, "matches": true},
+                {"lot": {"year": 2016}, "matches": true},
+                {"lot": {"year": 2018}, "matches": true},
+                {"lot": {"year": 2020}, "matches": false}
+            ]
+        },
+        {
+            "case": "int_lte_zero",
+            "form": {"phase": "pre", "action": "skip", "field": "price", "operator": "lte", "value_number": "0", "scope": "all"},
+            "row": {"source": null, "field": "price", "operator": "lte", "value": "0", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"price": 0}, "matches": true},
+                {"lot": {"price": 1000}, "matches": false}
+            ]
+        },
+        {
+            "case": "int_in_from_tags",
+            "form": {"phase": "post", "action": "mark_inactive", "field": "insurance_count", "operator": "in", "value_list": ["4", "5"], "scope": "this"},
+            "row": {"source": "encar", "field": "insurance_count", "operator": "in", "value": "[4,5]", "action": "mark_inactive", "phase": "post", "rule_group_id": null},
+            "lots": [
+                {"lot": {"insurance_count": 4}, "matches": true},
+                {"lot": {"insurance_count": 3}, "matches": false},
+                {"lot": {"insurance_count": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "int_ne_counts_null",
+            "form": {"phase": "post", "action": "flag", "field": "owners_count", "operator": "ne", "value_number": "1", "scope": "this"},
+            "row": {"source": "encar", "field": "owners_count", "operator": "ne", "value": "1", "action": "flag", "phase": "post", "rule_group_id": null},
+            "lots": [
+                {"lot": {"owners_count": 2}, "matches": true},
+                {"lot": {"owners_count": 1}, "matches": false},
+                {"lot": {"owners_count": null}, "matches": true}
+            ]
+        },
+        {
+            "case": "float_gte",
+            "form": {"phase": "pre", "action": "skip", "field": "engine_volume", "operator": "gte", "value_number": "2.5", "scope": "this"},
+            "row": {"source": "encar", "field": "engine_volume", "operator": "gte", "value": "2.5", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"engine_volume": 3.0}, "matches": true},
+                {"lot": {"engine_volume": 2.5}, "matches": true},
+                {"lot": {"engine_volume": 1.6}, "matches": false},
+                {"lot": {"engine_volume": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "enum_eq_is_case_sensitive",
+            "form": {"phase": "pre", "action": "skip", "field": "sell_type", "operator": "eq", "value_enum": "rental", "scope": "all"},
+            "row": {"source": null, "field": "sell_type", "operator": "eq", "value": "\"rental\"", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"sell_type": "rental"}, "matches": true},
+                {"lot": {"sell_type": "RENTAL"}, "matches": false},
+                {"lot": {"sell_type": "lease"}, "matches": false},
+                {"lot": {"sell_type": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "enum_in",
+            "form": {"phase": "pre", "action": "skip", "field": "sell_type", "operator": "in", "value_enum_list": ["rental", "lease"], "scope": "all"},
+            "row": {"source": null, "field": "sell_type", "operator": "in", "value": "[\"rental\",\"lease\"]", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"sell_type": "lease"}, "matches": true},
+                {"lot": {"sell_type": "sale"}, "matches": false},
+                {"lot": {"sell_type": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "enum_not_in_counts_null",
+            "form": {"phase": "pre", "action": "skip", "field": "fuel", "operator": "not_in", "value_enum_list": ["gasoline", "diesel"], "scope": "this"},
+            "row": {"source": "encar", "field": "fuel", "operator": "not_in", "value": "[\"gasoline\",\"diesel\"]", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"fuel": "electric"}, "matches": true},
+                {"lot": {"fuel": "diesel"}, "matches": false},
+                {"lot": {"fuel": null}, "matches": true}
+            ]
+        },
+        {
+            "case": "bool_eq_true",
+            "form": {"phase": "post", "action": "mark_inactive", "field": "has_accident", "operator": "eq", "value_bool": "1", "scope": "this"},
+            "row": {"source": "encar", "field": "has_accident", "operator": "eq", "value": "true", "action": "mark_inactive", "phase": "post", "rule_group_id": null},
+            "lots": [
+                {"lot": {"has_accident": true}, "matches": true},
+                {"lot": {"has_accident": false}, "matches": false},
+                {"lot": {"has_accident": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "bool_eq_false",
+            "form": {"phase": "post", "action": "flag", "field": "flood_history", "operator": "eq", "value_bool": "0", "scope": "this"},
+            "row": {"source": "encar", "field": "flood_history", "operator": "eq", "value": "false", "action": "flag", "phase": "post", "rule_group_id": null},
+            "lots": [
+                {"lot": {"flood_history": false}, "matches": true},
+                {"lot": {"flood_history": true}, "matches": false},
+                {"lot": {"flood_history": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "string_is_null",
+            "form": {"phase": "pre", "action": "flag", "field": "trim", "operator": "is_null", "scope": "this"},
+            "row": {"source": "encar", "field": "trim", "operator": "is_null", "value": null, "action": "flag", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"trim": null}, "matches": true},
+                {"lot": {"trim": "Prestige"}, "matches": false}
+            ]
+        },
+        {
+            "case": "string_contains_is_case_sensitive",
+            "form": {"phase": "pre", "action": "skip", "field": "model", "operator": "contains", "value_text": "Turbo", "scope": "this"},
+            "row": {"source": "encar", "field": "model", "operator": "contains", "value": "\"Turbo\"", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"model": "Sonata Turbo"}, "matches": true},
+                {"lot": {"model": "Sonata turbo"}, "matches": false},
+                {"lot": {"model": "Sonata"}, "matches": false}
+            ]
+        },
+        {
+            "case": "string_not_contains",
+            "form": {"phase": "pre", "action": "skip", "field": "color", "operator": "not_contains", "value_text": "white", "scope": "this"},
+            "row": {"source": "encar", "field": "color", "operator": "not_contains", "value": "\"white\"", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"color": "black"}, "matches": true},
+                {"lot": {"color": "white two-tone"}, "matches": false},
+                {"lot": {"color": null}, "matches": true}
+            ]
+        },
+        {
+            "case": "string_regex_is_case_sensitive",
+            "form": {"phase": "pre", "action": "skip", "field": "trim", "operator": "regex", "value_text": "^Lux", "scope": "this"},
+            "row": {"source": "encar", "field": "trim", "operator": "regex", "value": "\"^Lux\"", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"trim": "Luxury"}, "matches": true},
+                {"lot": {"trim": "luxury"}, "matches": false},
+                {"lot": {"trim": "Premium Luxury"}, "matches": false},
+                {"lot": {"trim": null}, "matches": false}
+            ]
+        },
+        {
+            "case": "korean_string_eq",
+            "form": {"phase": "pre", "action": "skip", "field": "make", "operator": "eq", "value_text": "기타 제조사", "scope": "this"},
+            "row": {"source": "encar", "field": "make", "operator": "eq", "value": "\"기타 제조사\"", "action": "skip", "phase": "pre", "rule_group_id": null},
+            "lots": [
+                {"lot": {"make": "기타 제조사"}, "matches": true},
+                {"lot": {"make": "현대"}, "matches": false}
+            ]
+        },
+        {
+            "case": "and_group_member",
+            "form": {"phase": "pre", "action": "skip", "field": "mileage", "operator": "gt", "value_number": "100000", "rule_group_id": "old_and_far", "scope": "this"},
+            "row": {"source": "encar", "field": "mileage", "operator": "gt", "value": "100000", "action": "skip", "phase": "pre", "rule_group_id": "old_and_far"},
+            "lots": [
+                {"lot": {"mileage": 120000}, "matches": true}
+            ]
+        },
+        {
+            "case": "inspection_field_not_previewable",
+            "sql": false,
+            "form": {"phase": "post", "action": "mark_inactive", "field": "accident_max_cost", "operator": "gt", "value_number": "5000000", "scope": "this"},
+            "row": {"source": "encar", "field": "accident_max_cost", "operator": "gt", "value": "5000000", "action": "mark_inactive", "phase": "post", "rule_group_id": null},
+            "lots": [
+                {"lot": {"accident_max_cost": 6000000}, "matches": true},
+                {"lot": {"accident_max_cost": 100}, "matches": false}
+            ]
+        }
+    ]
+}

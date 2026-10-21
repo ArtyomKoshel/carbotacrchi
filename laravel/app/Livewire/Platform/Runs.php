@@ -130,9 +130,7 @@ class Runs extends PlatformComponent implements HasTable
                     ->required(fn (Get $get) => $get('mode') === ParseRuns::MODE_MAKERS)
                     ->live(),
                 Text::make(fn (Get $get) => $this->estimateText($get('mode'), (array) $get('makers'))),
-                Text::make(fn () => ($cur = $runs->current($this->source))
-                    ? "Сейчас идёт прогон #{$cur->id} (" . JobFormat::status($cur->status) . '). Новые задачи встанут в очередь за ним.'
-                    : null),
+                Text::make(fn () => $this->runningNotice()),
             ])
             ->action(function (array $data) use ($runs) {
                 $jobs = $runs->launch($this->source, $data['mode'], (array) ($data['makers'] ?? []), $this->adminName());
@@ -142,6 +140,16 @@ class Runs extends PlatformComponent implements HasTable
                     ->success()
                     ->send();
             });
+    }
+
+    /** Shown in the launch dialog: a new job waits for the one the parser is on. */
+    public function runningNotice(): ?string
+    {
+        $cur = app(ParseRuns::class)->current($this->source);
+
+        return $cur
+            ? "Сейчас идёт прогон #{$cur->id} (" . JobFormat::status($cur->status) . '). Новые задачи встанут в очередь за ним.'
+            : null;
     }
 
     public function cancelAction(): Action

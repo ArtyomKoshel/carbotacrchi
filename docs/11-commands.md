@@ -305,6 +305,31 @@ php artisan notifications:watch --only=proxy,ai
 
 ---
 
+## Сборщик (collector) и приём данных
+
+Сборщик — отдельный сервис (`collector/`, Python). Режим задаётся в ядре: `COLLECTOR_MODE=off|shadow|primary`
+(см. [refactor/cutover.md](./refactor/cutover.md)).
+
+### Команды ядра (Laravel)
+
+```bash
+php artisan ingest:consume [--batch=500] [--max-batches=0]   # применить записи буфера к lots (по расписанию в primary)
+php artisan collector:enqueue [--dry-run]                    # поставить сборщику прогоны по parser_schedules (shadow/primary)
+php artisan collector:compare [--job=ID] [--json]            # теневой режим: прогон сборщика против lots старого парсера
+php artisan ingest:cutover                                   # один раз при переходе в primary: пропустить теневой буфер
+```
+
+### Команды сборщика
+
+```bash
+python -m collector serve     # брать задачи из parse_jobs до SIGTERM (прод); по SIGTERM — interrupted с чекпоинтом
+python -m collector migrate   # применить collector/migrations к COLLECTOR_DATABASE_URL
+python -m collector replay    # пересобрать все лоты из сырого слоя без запросов к бирже
+python -m collector.adapters.encar.golden parser/tests/golden   # сверка с эталоном старого парсера
+```
+
+---
+
 ## Утилиты
 
 ### `lots:ai-model-en-backfill`

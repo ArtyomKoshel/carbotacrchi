@@ -71,3 +71,16 @@ Schedule::call(function () {
 Schedule::command('model:prune', ['--model' => [\App\Models\FilterSkipLog::class]])
     ->dailyAt('04:20')
     ->withoutOverlapping();
+
+// Collector ingest (docs/adr/0003). Off until the collector runs (stage 6 of docs/refactor).
+Schedule::command('ingest:consume')
+    ->everyMinute()
+    ->withoutOverlapping(30)
+    ->runInBackground()
+    ->when(fn () => (bool) config('ingest.enabled'));
+
+// The collector's scheduled full runs (parser_schedules), tagged for it. Off in mode off.
+Schedule::command('collector:enqueue')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->when(fn () => \App\Ingest\CollectorMode::collectorRuns());

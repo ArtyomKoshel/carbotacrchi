@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Ingest\CollectorMode;
 use Illuminate\Database\Eloquent\Model;
 
 class ParseJob extends Model
@@ -19,6 +20,20 @@ class ParseJob extends Model
         'progress'       => 'array',
         'result'         => 'array',
     ];
+
+    /**
+     * Once the collector feeds lots, every new job is the collector's: tagged,
+     * it counts for lots:lifecycle and for the "run in progress" checks
+     * (CollectorMode::onlyFeedingJobs). Admin runs and reparses included.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (ParseJob $job) {
+            if (CollectorMode::current() === CollectorMode::PRIMARY && ! isset($job->filters['engine'])) {
+                $job->filters = [...($job->filters ?? []), 'engine' => 'collector'];
+            }
+        });
+    }
 
     /** Statuses whose job log may still be written to or resumed. */
     public const ACTIVE_STATUSES = ['pending', 'running', 'interrupted'];

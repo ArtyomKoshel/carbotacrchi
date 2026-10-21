@@ -151,6 +151,8 @@ class AdminUserResource extends Resource
                 DeleteAction::make()
                     ->iconButton()
                     ->color('gray')
+                    // the table action does not ask canDelete() by itself
+                    ->visible(fn (AdminUser $r) => static::canDelete($r))
                     ->modalHeading(fn (AdminUser $r) => "Удалить {$r->username}?")
                     ->modalDescription('Администратор больше не сможет войти. Открытые сессии закончатся при следующем запросе.'),
             ])

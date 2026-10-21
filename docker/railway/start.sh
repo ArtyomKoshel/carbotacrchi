@@ -114,6 +114,13 @@ if [ "$APP_READONLY" = "true" ]; then
     sed -i '/\[program:scheduler\]/,/^\[/{s/autostart=true/autostart=false/}' /etc/supervisord.conf
 fi
 
+# Collector cutover (docs/refactor/cutover.md): the old in-container parser can be
+# switched off on its own; the scheduler keeps running.
+if [ "${PARSER_ENABLED:-true}" = "false" ]; then
+    echo "[start] PARSER_ENABLED=false: the old parser process is not started"
+    sed -i '/\[program:parser\]/,/^\[/{s/autostart=true/autostart=false/}' /etc/supervisord.conf
+fi
+
 # Start web server
 echo "[start] Starting nginx + php-fpm via supervisord..."
 /usr/bin/supervisord -c /etc/supervisord.conf &

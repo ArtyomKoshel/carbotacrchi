@@ -1,0 +1,1049 @@
+{
+  "$defs": {
+    "BodyType": {
+      "enum": [
+        "sedan",
+        "suv",
+        "hatchback",
+        "wagon",
+        "coupe",
+        "convertible",
+        "van",
+        "minivan",
+        "pickup",
+        "truck",
+        "cargo",
+        "kei",
+        "other"
+      ],
+      "title": "BodyType",
+      "type": "string"
+    },
+    "DriveType": {
+      "enum": [
+        "fwd",
+        "rwd",
+        "awd",
+        "4wd"
+      ],
+      "title": "DriveType",
+      "type": "string"
+    },
+    "Fuel": {
+      "enum": [
+        "gasoline",
+        "diesel",
+        "hybrid",
+        "plugin_hybrid",
+        "electric",
+        "lpg",
+        "hydrogen",
+        "cng",
+        "other"
+      ],
+      "title": "Fuel",
+      "type": "string"
+    },
+    "History": {
+      "additionalProperties": false,
+      "properties": {
+        "flood": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Flood"
+        },
+        "has_accident": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Accident"
+        },
+        "insurance_count": {
+          "anyOf": [
+            {
+              "maximum": 999,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Insurance Count"
+        },
+        "lien_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegalStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When this history was fetched from the source; None = not fetched in this run.",
+          "title": "Observed At"
+        },
+        "owners_count": {
+          "anyOf": [
+            {
+              "maximum": 99,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owners Count"
+        },
+        "repair_cost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seizure_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegalStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_loss": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Loss"
+        }
+      },
+      "title": "History",
+      "type": "object"
+    },
+    "Inspection": {
+      "additionalProperties": false,
+      "properties": {
+        "accident_detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accident Detail"
+        },
+        "cert_no": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cert No"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "first_registration": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Registration"
+        },
+        "has_accident": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Accident"
+        },
+        "has_fire": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Fire"
+        },
+        "has_flood": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Flood"
+        },
+        "has_outer_damage": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Outer Damage"
+        },
+        "has_recall": {
+          "default": false,
+          "title": "Has Recall",
+          "type": "boolean"
+        },
+        "has_tuning": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Tuning"
+        },
+        "inspected_on": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inspected On"
+        },
+        "insurance_fee": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mileage_km": {
+          "anyOf": [
+            {
+              "maximum": 2000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mileage Km"
+        },
+        "other_damage_cost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "outer_detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outer Detail"
+        },
+        "own_damage_cost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "report_url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Report Url"
+        },
+        "valid_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid From"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      "title": "Inspection",
+      "type": "object"
+    },
+    "LegalStatus": {
+      "enum": [
+        "clean",
+        "lien",
+        "seizure"
+      ],
+      "title": "LegalStatus",
+      "type": "string"
+    },
+    "Listing": {
+      "additionalProperties": false,
+      "description": "The offer on the platform.",
+      "properties": {
+        "image_url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Url"
+        },
+        "listed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(Z|[+-]\\d{2}:\\d{2})$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Listed At"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "mileage_km": {
+          "maximum": 2000000,
+          "minimum": 0,
+          "title": "Mileage Km",
+          "type": "integer"
+        },
+        "options": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Options",
+          "type": "array"
+        },
+        "paid_options": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Paid Options",
+          "type": "array"
+        },
+        "photos": {
+          "default": [],
+          "items": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Photos",
+          "type": "array"
+        },
+        "price": {
+          "$ref": "#/$defs/Money"
+        },
+        "retail_value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sell_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SellType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sell_type_raw": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sell Type Raw"
+        }
+      },
+      "required": [
+        "price",
+        "mileage_km"
+      ],
+      "title": "Listing",
+      "type": "object"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "description": "Integer amount in the currency's smallest common unit (KRW has no minor unit).",
+      "properties": {
+        "amount": {
+          "maximum": 10000000000,
+          "minimum": 0,
+          "title": "Amount",
+          "type": "integer"
+        },
+        "currency": {
+          "default": "KRW",
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "RejectAction": {
+      "description": "What the deciding rule asks for (parse_filters.action).",
+      "enum": [
+        "skip",
+        "mark_inactive"
+      ],
+      "title": "RejectAction",
+      "type": "string"
+    },
+    "Selection": {
+      "additionalProperties": false,
+      "description": "Verdict of the selection rules (ADR-0004). The core sets is_active from it, once.",
+      "else": {
+        "properties": {
+          "action": {
+            "type": "null"
+          },
+          "rule_ids": {
+            "maxItems": 0
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "passed": {
+            "const": false
+          }
+        },
+        "required": [
+          "passed"
+        ]
+      },
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RejectAction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "flagged_rule_ids": {
+          "default": [],
+          "description": "'flag' rules that matched",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Flagged Rule Ids",
+          "type": "array"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SelectionPhase"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule_ids": {
+          "default": [],
+          "description": "Rules that rejected the lot",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Rule Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "passed"
+      ],
+      "then": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "rule_ids": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "rule_ids",
+          "action",
+          "phase"
+        ]
+      },
+      "title": "Selection",
+      "type": "object"
+    },
+    "SelectionPhase": {
+      "enum": [
+        "pre",
+        "post"
+      ],
+      "title": "SelectionPhase",
+      "type": "string"
+    },
+    "SellType": {
+      "enum": [
+        "sale",
+        "lease",
+        "rental",
+        "business",
+        "under_contract",
+        "insurance_hide",
+        "auction"
+      ],
+      "title": "SellType",
+      "type": "string"
+    },
+    "Transmission": {
+      "enum": [
+        "automatic",
+        "manual",
+        "cvt",
+        "dct",
+        "other"
+      ],
+      "title": "Transmission",
+      "type": "string"
+    },
+    "Vehicle": {
+      "additionalProperties": false,
+      "description": "What the car is. Labels stay in the source's language; the core maps them to its catalog.",
+      "properties": {
+        "badge": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Badge"
+        },
+        "badge_group": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Badge Group"
+        },
+        "body_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BodyType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "color": {
+          "anyOf": [
+            {
+              "maxLength": 30,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "drive_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DriveType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "engine_volume_l": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Volume L"
+        },
+        "first_registration": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Registration"
+        },
+        "fuel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Fuel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "make": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Make",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "model_en": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model En"
+        },
+        "model_group": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Group"
+        },
+        "plate_number": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plate Number"
+        },
+        "seat_color": {
+          "anyOf": [
+            {
+              "maxLength": 30,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seat Color"
+        },
+        "seat_count": {
+          "anyOf": [
+            {
+              "maximum": 60,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seat Count"
+        },
+        "transmission": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Transmission"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "trim": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trim"
+        },
+        "trim_en": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trim En"
+        },
+        "vin": {
+          "anyOf": [
+            {
+              "description": "ISO 3779 VIN: 17 chars, no I/O/Q",
+              "pattern": "^[A-HJ-NPR-Z0-9]{17}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vin"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "maximum": 2100,
+              "minimum": 1950,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None when the source does not give it",
+          "title": "Year"
+        }
+      },
+      "required": [
+        "make",
+        "model"
+      ],
+      "title": "Vehicle",
+      "type": "object"
+    }
+  },
+  "$id": "https://carbot.local/contracts/carlot.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "const": "carlot/1",
+      "default": "carlot/1",
+      "title": "Contract",
+      "type": "string"
+    },
+    "extra": {
+      "additionalProperties": true,
+      "description": "Source-specific fields that have no column yet; the core keeps them in raw_data.",
+      "title": "Extra",
+      "type": "object"
+    },
+    "history": {
+      "$ref": "#/$defs/History",
+      "default": {
+        "flood": null,
+        "has_accident": null,
+        "insurance_count": null,
+        "lien_status": null,
+        "observed_at": null,
+        "owners_count": null,
+        "repair_cost": null,
+        "seizure_status": null,
+        "total_loss": null
+      }
+    },
+    "inspection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Inspection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "listing": {
+      "$ref": "#/$defs/Listing"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "pattern": "(Z|[+-]\\d{2}:\\d{2})$",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
+    },
+    "selection": {
+      "$ref": "#/$defs/Selection",
+      "default": {
+        "action": null,
+        "flagged_rule_ids": [],
+        "passed": true,
+        "phase": null,
+        "rule_ids": []
+      }
+    },
+    "source": {
+      "pattern": "^[a-z][a-z0-9_]{1,31}$",
+      "title": "Source",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Source Id",
+      "type": "string"
+    },
+    "url": {
+      "format": "uri",
+      "maxLength": 2083,
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+    },
+    "vehicle": {
+      "$ref": "#/$defs/Vehicle"
+    }
+  },
+  "required": [
+    "source",
+    "source_id",
+    "url",
+    "observed_at",
+    "vehicle",
+    "listing"
+  ],
+  "title": "CarLotV1",
+  "type": "object"
+}

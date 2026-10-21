@@ -27,3 +27,8 @@ analysis/trim_review.json
 analysis/classify_stats.json
 analysis/before_normalize.json
 analysis/after_normalize.json
+
+# Recorded Encar traffic contains third-party data (plates, VINs): never commit it
+parser/tests/golden/
+collector/tests/golden/
+laravel/storage/framework/testing/

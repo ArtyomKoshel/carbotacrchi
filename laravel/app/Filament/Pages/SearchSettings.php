@@ -199,7 +199,8 @@ class SearchSettings extends Page
                 ->modalDescription('Все поля, допуски и состав карточки лота вернутся к начальным значениям (BotFilterSettingsSeeder). Изменения подействуют на поиск бота и сайта сразу.')
                 ->modalSubmitAction(fn (Action $action) => $action->color('danger'))
                 ->action(function () {
-                    BotFilterSetting::truncate();
+                    // DELETE, not TRUNCATE: no implicit commit, and the table is ~50 rows
+                    BotFilterSetting::query()->delete();
                     Artisan::call('db:seed', ['--class' => 'BotFilterSettingsSeeder', '--force' => true]);
                     $this->loadRows();
                     Notification::make()->title('Настройки сброшены')->success()->send();

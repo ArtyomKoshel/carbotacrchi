@@ -1,0 +1,8 @@
+{
+  "source": "encar",
+  "source_id": "1",
+  "url": "https://fem.encar.com/cars/detail/1",
+  "observed_at": "2026-10-21T09:15:00+09:00",
+  "vehicle": {"make": "기아", "model": "K5", "year": 2014},
+  "listing": {"price": {"amount": 0}, "mileage_km": 0}
+}

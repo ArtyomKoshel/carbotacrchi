@@ -135,6 +135,13 @@ def release_parse_lock(r: redis.Redis, source: str) -> None:
     r.delete(f"parse_lock:{source}")
 
 
+# Jobs tagged filters.engine = "collector" belong to the new collector service
+# (docs/adr/0007, shadow mode); this worker never takes them.
+NOT_COLLECTOR_JOB = (
+    "AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(filters, '$.engine')), 'parser') <> 'collector'"
+)
+
+
 def _get_conn():
     return pymysql.connect(
         host=Config.DB_HOST, port=Config.DB_PORT,
@@ -336,7 +343,7 @@ def process_pending_job() -> None:
                 params = list(sorted(busy_sources))
             try:
                 cur.execute(
-                    f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') "
+                    f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') {NOT_COLLECTOR_JOB} "
                     f"{source_filter} "
                     f"ORDER BY FIELD(status, 'interrupted', 'pending'), created_at "
                     f"LIMIT 1 FOR UPDATE SKIP LOCKED",
@@ -351,7 +358,7 @@ def process_pending_job() -> None:
                     fallback_filter = f"AND source NOT IN ({placeholders})"
                     fallback_params = list(sorted(busy_sources))
                 cur.execute(
-                    f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') "
+                    f"SELECT * FROM parse_jobs WHERE status IN ('interrupted', 'pending') {NOT_COLLECTOR_JOB} "
                     f"{fallback_filter} "
                     f"ORDER BY FIELD(status, 'interrupted', 'pending'), created_at "
                     f"LIMIT 1 FOR UPDATE SKIP LOCKED",
