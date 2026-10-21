@@ -5,6 +5,7 @@ description = "CarBot collector: fetches car listings from auction platforms and
 requires-python = ">=3.13"
 dependencies = [
     "aiomysql>=0.2",
+    "cryptography>=44",
     "httpx>=0.28",
     "pydantic>=2.11",
     "pymysql>=1.1,<1.2",
