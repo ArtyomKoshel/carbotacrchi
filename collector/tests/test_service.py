@@ -118,6 +118,17 @@ async def test_full_run_fills_the_buffer_and_reports_for_lifecycle(db: AsyncEngi
     assert progress["status"] == "done"
     assert {"pct", "api_total", "found_total", "errors", "elapsed_s", "proxy_bytes"} <= progress.keys()
     assert await svc.run_once() is False
+    async with db.connect() as conn:
+        lines = [
+            r.message
+            for r in (
+                await conn.execute(
+                    text("SELECT message FROM run_log WHERE job_id = :i ORDER BY id"), {"i": jid}
+                )
+            )
+        ]
+    assert lines[0] == "full run of encar started"
+    assert lines[-1].startswith(f"done: {N_LOTS:,}/{N_LOTS:,} lots (100.0%), full_run=True")
 
 
 async def test_jobs_without_the_collector_tag_are_left_to_the_old_parser(db: AsyncEngine) -> None:
@@ -162,6 +173,10 @@ async def test_stop_hands_the_job_back_and_the_next_process_resumes_it(db: Async
 
     row = await job_row(db, jid)
     assert row.status == "interrupted"
+    async with db.connect() as conn:
+        last = (await conn.execute(text("SELECT level, message FROM run_log ORDER BY id DESC LIMIT 1"))).one()
+    assert last.level == "warning"
+    assert "resumes from the checkpoint" in last.message
     checkpoint = json.loads(row.progress)["checkpoint"]
     assert checkpoint["started_at"] == NOW.isoformat()
     assert "global" in checkpoint["done_segments"]

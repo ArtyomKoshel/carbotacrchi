@@ -22,6 +22,7 @@ from collector.adapters.encar.api import EncarApi
 from collector.adapters.encar.pipeline import EncarPipeline, PageReport
 from collector.adapters.encar.sweep import Sweeper, SweepState
 from collector.ports import Clock, HistoryStore, IngestSink, utc_now
+from collector.runlog import RunLog
 from collector.selection import RuleEngine
 from collector.storage import Job, JobQueue, MySqlIngestSink
 
@@ -81,6 +82,7 @@ class RunContext:
     should_stop: Callable[[], bool]
     clock: Clock = utc_now
     proxy_bytes: Callable[[], int] = lambda: 0
+    runlog: RunLog | None = None
 
 
 def coverage_pct(seen: int, api_total: int) -> float:
@@ -125,6 +127,8 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
 
     async def on_progress(s: SweepState, message: str) -> None:
         await ctx.queue.progress(job.id, progress_payload(s, message, started, ctx.proxy_bytes()))
+        if ctx.runlog:
+            await ctx.runlog.info(f"{message}: {s.seen:,}/{s.api_total:,} seen, errors {s.errors}")
 
     sweeper = Sweeper(
         ctx.pipeline,
@@ -140,6 +144,8 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
 
     if sweeper.stopped:
         await ctx.queue.interrupt(job.id, state.to_json())
+        if ctx.runlog:
+            await ctx.runlog.warning(f"stopped after {state.seen:,} lots; resumes from the checkpoint")
         return "interrupted"
 
     coverage = coverage_pct(state.seen, state.api_total)
@@ -170,6 +176,14 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         result,
         progress={**progress_payload(state, "done", started, ctx.proxy_bytes()), "status": "done"},
     )
+    if ctx.runlog:
+        for line in state.error_log:
+            await ctx.runlog.warning(line)
+        await ctx.runlog.info(
+            f"done: {state.seen:,}/{state.api_total:,} lots ({coverage}%), full_run={result['full_run']},"
+            f" rejected {result['rejected']:,}, history fetched {report.history_fetched:,}"
+            f" / stored {report.history_stored:,}"
+        )
     return "done"
 
 

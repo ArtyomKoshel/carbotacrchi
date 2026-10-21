@@ -22,6 +22,7 @@ from collector.adapters.encar.api import HEADERS, EncarApi
 from collector.config import Settings
 from collector.http import Fetcher, ProxyBudgetError, ProxyPool
 from collector.ports import Clock, utc_now
+from collector.runlog import RunLog
 from collector.runner import RunContext, build_pipeline, history_cutoff, load_rules, qualified, run_full
 from collector.storage import Job, JobCancelledError, JobQueue, MySqlHistoryStore, MySqlIngestSink
 
@@ -87,6 +88,10 @@ class Service:
     async def execute(self, job: Job) -> str:
         fetcher = self._fetcher()
         sink = MySqlIngestSink(self.db)
+        runlog = RunLog(self.db, job.id, clock=self.clock)
+        await runlog.info(
+            f"{job.type} run of {job.source} started" + (" (resumed)" if job.checkpoint else "")
+        )
         try:
             rules = await load_rules(self.db, self.settings.core_schema)
             pipeline = build_pipeline(
@@ -105,16 +110,19 @@ class Service:
                 should_stop=self.stop.is_set,
                 clock=self.clock,
                 proxy_bytes=lambda: fetcher.stats.proxy_bytes,
+                runlog=runlog,
             )
             status = await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
         except JobCancelledError:
-            log.info("job %s cancelled by the admin", job.id)
+            await runlog.warning("cancelled by the admin")
             status = "cancelled"
         except ProxyBudgetError as e:
+            await runlog.error(f"proxy budget exhausted: {e}")
             await self.queue.finish(job.id, "error", {"error": f"proxy budget exhausted: {e}"})
             status = "error"
         except Exception as e:
             log.exception("job %s failed", job.id)
+            await runlog.error(f"{type(e).__name__}: {e}")
             await self.queue.finish(
                 job.id,
                 "error",
@@ -123,5 +131,6 @@ class Service:
             status = "error"
         finally:
             await fetcher.aclose()
+            await runlog.flush()
         log.info("job %s → %s", job.id, status)
         return status
