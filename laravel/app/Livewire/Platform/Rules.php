@@ -244,10 +244,11 @@ class Rules extends PlatformComponent implements HasTable
     {
         $field = (string) $get('field');
         $operator = (string) $get('operator');
-        $value = $this->valueFromForm($field, $operator, fn (string $k) => $get($k));
-        if ($value === false) {
+        $typed = $this->valueFromForm($field, $operator, fn (string $k) => $get($k));
+        if ($typed === null) {
             return new HtmlString('<span class="text-gray-500">Укажите значение, чтобы увидеть, сколько лотов попадёт под правило.</span>');
         }
+        [$value] = $typed;
         $sentence = (ParseFilterRules::ACTIONS[$get('action')] ?? '') . ', если ' . $this->rules()->condition($field, $operator, $value);
 
         return new HtmlString('<strong>' . e($sentence) . '.</strong> ' . e($this->previewSentence($field, $operator, $value)));
@@ -264,7 +265,8 @@ class Rules extends PlatformComponent implements HasTable
     }
 
     /**
-     * Typed value from the form, or false while it is incomplete.
+     * Typed value from the form as [$value], or null while it is incomplete.
+     * (Wrapped: false and null are real rule values, «затопление = нет».)
      *
      * @param  \Closure(string): mixed  $get
      */
@@ -272,10 +274,10 @@ class Rules extends PlatformComponent implements HasTable
     {
         $r = $this->rules();
         if ($field === '' || $operator === '') {
-            return false;
+            return null;
         }
         if (!ParseFilterRules::needsValue($operator)) {
-            return null;
+            return [null];
         }
         $isEnum = $r->enumOptions($field) !== null;
         $dtype = $r->dtype($field);
@@ -289,17 +291,16 @@ class Rules extends PlatformComponent implements HasTable
             default                                    => $get('value_text'),
         };
         if ($raw === null || $raw === '' || $raw === [] || (is_array($raw) && in_array(null, array_map(fn ($v) => $v === '' ? null : $v, $raw), true) && $operator === 'between')) {
-            return false;
+            return null;
         }
 
-        return $r->castValue($field, $operator, $raw);
+        return [$r->castValue($field, $operator, $raw)];
     }
 
     /** Form state → parse_filters row. */
     private function toRow(array $data, ?ParseFilter $existing = null): array
     {
-        $value = $this->valueFromForm($data['field'], $data['operator'], fn (string $k) => $data[$k] ?? null);
-        $value = $value === false ? null : $value;
+        [$value] = $this->valueFromForm($data['field'], $data['operator'], fn (string $k) => $data[$k] ?? null) ?? [null];
 
         $row = [
             'source'        => ($data['scope'] ?? 'this') === 'all' ? null : $this->source,

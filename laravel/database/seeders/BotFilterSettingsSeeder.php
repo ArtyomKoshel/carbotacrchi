@@ -139,7 +139,9 @@ class BotFilterSettingsSeeder extends Seeder
         string $description,
         array $defaults
     ): void {
-        if (!$isEmpty && isset($existing[$name])) {
+        // Check the table, not the snapshot: on an empty table the loop above may
+        // already have created this field from the registry (location is filterable).
+        if (BotFilterSetting::where('field_name', $name)->exists()) {
             return;
         }
 
