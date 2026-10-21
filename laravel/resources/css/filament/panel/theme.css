@@ -236,3 +236,110 @@
 .balance dd {
     @apply flex flex-col items-start gap-1;
 }
+
+/* Translation review */
+.review {
+    @apply flex flex-col gap-4;
+}
+.review-toolbar {
+    @apply flex flex-wrap items-center gap-3;
+}
+.review-keys {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.review kbd,
+.review-kbd {
+    @apply rounded border border-gray-300 px-1 font-mono text-[0.7rem] text-gray-600 dark:border-white/20 dark:text-gray-300;
+}
+.review-grid {
+    @apply grid items-start gap-4 lg:grid-cols-[minmax(16rem,22rem)_1fr];
+}
+.review-list {
+    @apply flex max-h-[32rem] flex-col overflow-y-auto;
+}
+.review-item {
+    @apply flex w-full flex-col items-start rounded-md px-3 py-2 text-start hover:bg-gray-50 dark:hover:bg-white/5;
+}
+.review-item.is-current {
+    @apply bg-primary-50 ring-1 ring-primary-600/20 dark:bg-primary-500/10 dark:ring-primary-400/30;
+}
+.review-item-kr {
+    @apply text-sm text-gray-950 dark:text-white;
+}
+.review-item-en {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.review-item-cat {
+    @apply text-gray-400 dark:text-gray-500;
+}
+.review-card {
+    @apply grid gap-4 sm:grid-cols-2;
+}
+.review-card dt {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+}
+.review-card dd {
+    @apply text-sm text-gray-950 tabular-nums dark:text-white;
+}
+.review-big {
+    @apply text-xl! font-semibold;
+}
+.review-sub {
+    @apply mt-6 mb-2 text-xs font-medium text-gray-500 dark:text-gray-400;
+}
+.review-examples {
+    @apply flex flex-col gap-1 text-sm;
+}
+.review-examples a {
+    @apply text-primary-600 hover:underline dark:text-primary-400;
+}
+.review-examples span {
+    @apply ms-2 text-xs text-gray-500 dark:text-gray-400;
+}
+.review-actions {
+    @apply mt-6 flex flex-wrap items-center gap-2;
+}
+.review-spacer {
+    @apply flex-1;
+}
+
+/* Field coverage matrix */
+.matrix-wrap {
+    @apply overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10;
+}
+.matrix {
+    @apply w-full text-sm tabular-nums;
+}
+.matrix thead th {
+    @apply border-b border-gray-950/5 px-4 py-2 text-start text-xs font-medium text-gray-500 dark:border-white/10 dark:text-gray-400;
+}
+.matrix tbody th[scope='row'] {
+    @apply px-4 py-1.5 text-start font-normal text-gray-950 dark:text-white;
+}
+.matrix td {
+    @apply px-4 py-1.5;
+}
+.matrix .matrix-num {
+    @apply text-end;
+}
+.matrix-group th {
+    @apply bg-gray-50 px-4 py-1.5 text-start text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-gray-400;
+}
+.matrix-code {
+    @apply ms-2 font-mono text-xs text-gray-400 dark:text-gray-500;
+}
+.matrix-pct {
+    @apply text-gray-950 dark:text-white;
+}
+.matrix-pct.is-low {
+    @apply text-warning-600 dark:text-warning-400;
+}
+.matrix-bar {
+    @apply ms-2 inline-block h-1.5 w-20 overflow-hidden rounded-full bg-gray-100 align-middle dark:bg-white/10;
+}
+.matrix-bar span {
+    @apply block h-full bg-gray-400 dark:bg-gray-500;
+}
+.matrix-none {
+    @apply text-gray-400;
+}

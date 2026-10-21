@@ -24,6 +24,7 @@ class AdminPagePermission extends Model
         'filter-skip-log' => 'Лог пропусков',
         'fields'          => 'Поля',
         'lots'            => 'Репарсинг',
+        'taxonomy'        => 'Данные: переводы и каталог',
     ];
 
     /** Route name → page key */

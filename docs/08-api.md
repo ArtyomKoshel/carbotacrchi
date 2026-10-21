@@ -125,6 +125,15 @@ flowchart LR
     `priority`, группы И, значения по типу поля, имя генерируется, «сколько активных лотов попадёт», срабатывания из
     `filter_skip_log` по имени правила), «Лог пропусков», «Поля» (`field_coverage_stats`, «Пересчитать»).
   - Права вкладок: `jobs`, `schedules`, `filters`, `filter-skip-log`, `fields`.
+- **Данные**:
+  - «Проверка переводов»: очередь словаря KR→EN (`translations`). «Ждут проверки» — строки `translate:run` (`source=ai`),
+    «Проверены» — `source=manual`, «Без перевода» — корейские значения в лотах без строки в словаре. Клавиши J/K, A (принять),
+    E (исправить/перевести), D (отклонить). Исправление сразу пишется в лоты со старым переводом или пустым полем
+    (`App\Services\TranslationCatalog`, по PK пачками по 500); отклонение удаляет строку и очищает поле у таких лотов,
+    чтобы `translate:run` перевёл заново. Заменяет очередь аномалий старого regex-пайплайна (таблицы удалены 2026-06-01).
+  - «Переводы» — весь словарь с правкой; «Опции Encar» — названия опций (`encar_option_catalog`, после правки сбрасывается кэш);
+    «Покрытие полей» — матрица поле × площадка из `field_coverage_stats`.
+  - Права: `taxonomy` (переводы, опции), `fields` (покрытие).
 - **Тема** — `resources/css/filament/panel/theme.css` (Tailwind v4), шрифт Onest лежит на нашем сервере.
   Собирается `npm run build:panel` в `public/css/filament/panel/` (на деплое это делает стадия `panel-assets` в `Dockerfile`).
   Ассеты самого Filament публикует `php artisan filament:upgrade` (скрипт composer `post-autoload-dump`).
