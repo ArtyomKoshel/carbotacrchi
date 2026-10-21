@@ -36,6 +36,23 @@ class HistoryStore(Protocol):
     async def save(self, source: str, states: Iterable[HistoryState]) -> None: ...
 
 
+@dataclass(frozen=True, slots=True)
+class RawEntry:
+    """One raw source response for one lot (list item, detail, record, inspection, sellingpoint)."""
+
+    lot_id: str
+    kind: str
+    data: Any
+
+
+class RawStore(Protocol):
+    async def put_many(self, source: str, entries: Sequence[RawEntry], fetched_at: datetime) -> None: ...
+
+    async def load(self, source: str, lot_ids: Sequence[str]) -> dict[str, dict[str, Any]]: ...
+
+    async def lot_ids(self, source: str, *, after: str = "", limit: int = 500) -> list[str]: ...
+
+
 class IngestSink(Protocol):
     async def write(self, lots: Sequence[CarLotV1]) -> None: ...
 
@@ -50,6 +67,21 @@ class MemoryHistoryStore:
     async def save(self, source: str, states: Iterable[HistoryState]) -> None:
         for s in states:
             self.data[(source, s.lot_id)] = s
+
+
+class MemoryRawStore:
+    def __init__(self) -> None:
+        self.data: dict[tuple[str, str], dict[str, Any]] = {}
+
+    async def put_many(self, source: str, entries: Sequence[RawEntry], fetched_at: datetime) -> None:
+        for e in entries:
+            self.data.setdefault((source, e.lot_id), {})[e.kind] = e.data
+
+    async def load(self, source: str, lot_ids: Sequence[str]) -> dict[str, dict[str, Any]]:
+        return {i: dict(self.data[(source, i)]) for i in lot_ids if (source, i) in self.data}
+
+    async def lot_ids(self, source: str, *, after: str = "", limit: int = 500) -> list[str]:
+        return sorted(i for s, i in self.data if s == source and i > after)[:limit]
 
 
 class MemorySink:

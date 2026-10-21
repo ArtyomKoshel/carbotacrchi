@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import zlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -25,7 +26,7 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from collector.domain.carlot import CarLotV1
-from collector.ports import HistoryState
+from collector.ports import HistoryState, RawEntry
 
 _IDENTIFIER: Final = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$")
 MIGRATIONS_DIR: Final = Path(__file__).resolve().parents[2] / "migrations"
@@ -167,6 +168,69 @@ class MySqlHistoryStore:
                 ),
                 rows,
             )
+
+
+class MySqlRawStore:
+    """raw_responses: the latest response of each kind per lot, zlib; rewritten only when it changed."""
+
+    def __init__(self, db: AsyncEngine) -> None:
+        self.db = db
+
+    async def put_many(self, source: str, entries: Sequence[RawEntry], fetched_at: datetime) -> None:
+        rows = []
+        for e in entries:
+            body = json.dumps(e.data, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+            rows.append(
+                {
+                    "source": source,
+                    "lot_id": e.lot_id,
+                    "kind": e.kind,
+                    "hash": hashlib.sha256(body).hexdigest(),
+                    "body": zlib.compress(body, 6),
+                    "at": _naive_utc(fetched_at),
+                }
+            )
+        if not rows:
+            return
+        async with self.db.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO raw_responses (source, lot_id, kind, content_hash, body, fetched_at)"
+                    " VALUES (:source, :lot_id, :kind, :hash, :body, :at) AS new"
+                    " ON DUPLICATE KEY UPDATE fetched_at = new.fetched_at,"
+                    " body = IF(raw_responses.content_hash = new.content_hash, raw_responses.body, new.body),"
+                    " content_hash = new.content_hash"
+                ),
+                rows,
+            )
+
+    async def load(self, source: str, lot_ids: Sequence[str]) -> dict[str, dict[str, Any]]:
+        if not lot_ids:
+            return {}
+        async with self.db.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        "SELECT lot_id, kind, body FROM raw_responses WHERE source = :s AND lot_id IN :ids"
+                    ).bindparams(bindparam("ids", expanding=True)),
+                    {"s": source, "ids": list(lot_ids)},
+                )
+            ).all()
+        out: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            out.setdefault(r.lot_id, {})[r.kind] = json.loads(zlib.decompress(r.body))
+        return out
+
+    async def lot_ids(self, source: str, *, after: str = "", limit: int = 500) -> list[str]:
+        async with self.db.connect() as conn:
+            rows = await conn.execute(
+                text(
+                    "SELECT DISTINCT lot_id FROM raw_responses WHERE source = :s AND lot_id > :after"
+                    " ORDER BY lot_id LIMIT :limit"
+                ),
+                {"s": source, "after": after, "limit": limit},
+            )
+            return [r.lot_id for r in rows]
 
 
 # ── jobs (core table parse_jobs) ────────────────────────────────────────────

@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
 
@@ -25,7 +25,7 @@ from collector.adapters.encar import mapping as m
 from collector.adapters.encar.api import BATCH_SIZE, EncarApi
 from collector.domain.carlot import CarLotV1, SelectionPhase
 from collector.http import Failed, Ok
-from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, utc_now
+from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, RawEntry, RawStore, utc_now
 from collector.selection import RuleEngine, Verdict
 
 LIST_STAGE_FIELDS: Final = frozenset({"year", "price", "mileage", "sell_type"})
@@ -70,6 +70,7 @@ class _Lot:
     inspection: m.InspectionDraft | None = None
     plan: str = "full"  # full | recheck | stored
     history_ok: bool = False
+    raw: dict[str, Any] = field(default_factory=dict)  # kind → response, for the raw store
 
 
 def rule_values(lot: m.EncarDraft, inspection: m.InspectionDraft | None) -> dict[str, Any]:
@@ -122,7 +123,9 @@ class EncarPipeline:
         *,
         clock: Clock = utc_now,
         history_concurrency: int = 8,
+        raw: RawStore | None = None,
     ) -> None:
+        self.raw = raw
         self.api = api
         self.rules = rules
         self.history = history
@@ -142,12 +145,14 @@ class EncarPipeline:
         report = PageReport()
         lots: dict[str, _Lot] = {}
         out: list[CarLotV1] = []
+        raw: list[RawEntry] = []
 
         for item in items:
             draft = m.from_search(item)
             if draft.id in lots:
                 continue
             report.listed += 1
+            raw.append(RawEntry(draft.id, "list", item))
             early = self.rules.evaluate(
                 rule_values(draft, None),
                 source=m.SOURCE,
@@ -199,6 +204,11 @@ class EncarPipeline:
                 )
             )
 
+        raw += [
+            RawEntry(lot_id, kind, data) for lot_id, lot in lots.items() for kind, data in lot.raw.items()
+        ]
+        if self.raw is not None and raw:
+            await self.raw.put_many(m.SOURCE, raw, now)
         if fetched:
             await self.history.save(m.SOURCE, fetched)
         if out:
@@ -227,11 +237,13 @@ class EncarPipeline:
                     inner_id = str(detail.get("vehicleId", ""))
                     if inner_id and inner_id != listing_id:
                         lot.draft.raw_data["inspect_vehicle_id"] = inner_id
+                    lot.raw["detail"] = detail
                     m.apply_detail(lot.draft, detail)
                 continue
             for vid in chunk:  # batch failed: one by one, like the old parser
                 single = await self.api.detail(vid)
                 if isinstance(single, Ok):
+                    lots[vid].raw["detail"] = single.data
                     m.apply_detail(lots[vid].draft, single.data)
                 else:
                     report.detail_failed += 1
@@ -267,17 +279,20 @@ class EncarPipeline:
             if "Record" in condition:
                 rec = await self.api.record(inner_id, d.plate_number or None)
                 if isinstance(rec, Ok):
+                    lot.raw["record"] = rec.data
                     lot.inspection = m.apply_record(d, rec.data)
                 ok = ok and not isinstance(rec, Failed)
             if "Inspection" in condition:
                 insp = await self.api.inspection(inner_id)
                 if isinstance(insp, Ok):
+                    lot.raw["inspection"] = insp.data
                     lot.inspection = lot.inspection or m.InspectionDraft()
                     m.apply_inspection(d, insp.data, lot.inspection)
                 ok = ok and not isinstance(insp, Failed)
             if with_sellingpoint and lot.plan == "full" and not d.drive_type:
                 sp = await self.api.sellingpoint(d.id)
                 if isinstance(sp, Ok):
+                    lot.raw["sellingpoint"] = sp.data
                     m.apply_sellingpoint(d, sp.data)
                 ok = ok and not isinstance(sp, Failed)
         lot.history_ok = ok

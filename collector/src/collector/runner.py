@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from collector.adapters.encar.api import EncarApi
 from collector.adapters.encar.pipeline import EncarPipeline, PageReport
 from collector.adapters.encar.sweep import Sweeper, SweepState
-from collector.ports import Clock, HistoryStore, IngestSink, utc_now
+from collector.ports import Clock, HistoryStore, IngestSink, RawStore, utc_now
 from collector.runlog import RunLog
 from collector.selection import RuleEngine
 from collector.storage import Job, JobQueue, MySqlIngestSink
@@ -188,6 +188,12 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
 
 
 def build_pipeline(
-    api: EncarApi, rules: RuleEngine, history: HistoryStore, sink: IngestSink, *, history_concurrency: int
+    api: EncarApi,
+    rules: RuleEngine,
+    history: HistoryStore,
+    sink: IngestSink,
+    *,
+    history_concurrency: int,
+    raw: RawStore | None = None,
 ) -> EncarPipeline:
-    return EncarPipeline(api, rules, history, sink, history_concurrency=history_concurrency)
+    return EncarPipeline(api, rules, history, sink, history_concurrency=history_concurrency, raw=raw)

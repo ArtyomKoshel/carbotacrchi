@@ -24,7 +24,14 @@ from collector.http import Fetcher, ProxyBudgetError, ProxyPool
 from collector.ports import Clock, utc_now
 from collector.runlog import RunLog
 from collector.runner import RunContext, build_pipeline, history_cutoff, load_rules, qualified, run_full
-from collector.storage import Job, JobCancelledError, JobQueue, MySqlHistoryStore, MySqlIngestSink
+from collector.storage import (
+    Job,
+    JobCancelledError,
+    JobQueue,
+    MySqlHistoryStore,
+    MySqlIngestSink,
+    MySqlRawStore,
+)
 
 log = logging.getLogger("collector")
 
@@ -97,6 +104,7 @@ class Service:
             pipeline = build_pipeline(
                 EncarApi(fetcher), rules, MySqlHistoryStore(self.db), sink,
                 history_concurrency=self.settings.history_concurrency,
+                raw=MySqlRawStore(self.db),
             )  # fmt: skip
             pipeline.clock = self.clock
             now = self.clock()

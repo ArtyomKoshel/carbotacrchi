@@ -34,7 +34,15 @@ CREATE TABLE parse_jobs (
   created_at TIMESTAMP NULL, updated_at TIMESTAMP NULL
 )"""
 
-TABLES = ("ingest_lots", "lot_history", "run_checkpoints", "run_log", "schema_migrations", "parse_jobs")
+TABLES = (
+    "ingest_lots",
+    "lot_history",
+    "run_checkpoints",
+    "run_log",
+    "raw_responses",
+    "schema_migrations",
+    "parse_jobs",
+)
 
 pytestmark = pytest.mark.mysql
 
@@ -63,7 +71,7 @@ async def test_migrations_apply_once(db: AsyncEngine) -> None:
     assert await storage.migrate(db) == []
     async with db.connect() as conn:
         rows = (await conn.execute(text("SELECT version FROM schema_migrations ORDER BY 1"))).all()
-    assert [r[0] for r in rows] == ["001_ingest_lots", "002_lot_history", "003_runs"]
+    assert [r[0] for r in rows] == ["001_ingest_lots", "002_lot_history", "003_runs", "004_raw_responses"]
 
 
 def test_statement_splitter_ignores_comments() -> None:
