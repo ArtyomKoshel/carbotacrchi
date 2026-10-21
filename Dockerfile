@@ -16,6 +16,8 @@ WORKDIR /var/www/html
 COPY laravel/ /var/www/html/
 COPY miniapp/ /var/www/html/miniapp/
 COPY analysis/ /var/www/analysis/
+# CarLot contract the core validates collector records against (config/ingest.php)
+COPY contracts/ /var/www/contracts/
 
 RUN composer install --no-interaction --no-plugins --prefer-dist --no-dev --optimize-autoloader
 

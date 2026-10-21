@@ -80,3 +80,5 @@ jobs:
       - name: Contract schema is current
         run: uv run python -m collector.contracts check
       - run: uv run pytest
+      - name: Image builds
+        run: docker build -q -t carbot-collector:ci .
