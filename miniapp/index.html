@@ -27,8 +27,16 @@
     <form id="ask-form" class="ask" role="search" autocomplete="off">
       <svg class="ask__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <input id="ask-input" class="ask__input" type="search" enterkeyhint="search"
-             placeholder="Опишите машину или вставьте ссылку Encar" aria-label="Поиск: опишите машину или вставьте ссылку Encar">
+             placeholder="ИИ-поиск: Sonata до 20 млн без ДТП" aria-label="ИИ-поиск: опишите машину словами или вставьте ссылку Encar"
+             aria-controls="ask-hints" aria-autocomplete="list">
+      <span class="ask__ai" aria-hidden="true">ИИ</span>
       <kbd class="ask__kbd wide-only">/</kbd>
+      <div class="ask__hints" id="ask-hints" role="listbox" hidden>
+        <div class="ask__hints-title">Опишите машину своими словами — ИИ подберёт фильтры. Или вставьте ссылку Encar.</div>
+        <button type="button" role="option" class="ask__hint">Hyundai Sonata 2020–2022, до 15 млн, без ДТП</button>
+        <button type="button" role="option" class="ask__hint">Kia K5 не старше 2021 года, пробег до 60 000 км</button>
+        <button type="button" role="option" class="ask__hint">Genesis G80 полный привод, один владелец</button>
+      </div>
     </form>
     <nav class="topnav wide-only" aria-label="Разделы">
       <a href="#" data-nav="search" class="topnav__item">Поиск</a>

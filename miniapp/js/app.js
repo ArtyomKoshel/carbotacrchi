@@ -285,7 +285,12 @@ const App = (() => {
         $('ask-input').blur();
         go('#');
         await search(Filters.getQuery());
-        if (res.message) toast(res.message, 3200);
+        // what the AI understood stays above the results until the next search
+        const chips = Filters.activeChips().map(c => c.label).join(' · ');
+        const banner = $('results-banner');
+        banner.innerHTML = `<b>ИИ понял:</b> ${Fmt.esc(chips || res.message || 'без фильтров')}. Поправьте фильтры, если что-то не так.`;
+        banner.className = 'banner banner--ai';
+        banner.hidden = false;
       } else {
         toast(res?.message || 'Не понял запрос. Назовите марку, модель, год или бюджет.', 3600);
       }
@@ -473,7 +478,17 @@ const App = (() => {
     Filters.onChange(onFiltersChanged);
     Filters.onCount(n => { s.count = n; if (s.overlay === 'filters') syncTelegramButtons(); });
 
-    $('ask-form').addEventListener('submit', e => { e.preventDefault(); ask($('ask-input').value); });
+    $('ask-form').addEventListener('submit', e => { e.preventDefault(); hints(false); ask($('ask-input').value); });
+    const hints = on => { $('ask-hints').hidden = !on; };
+    $('ask-input').addEventListener('focus', () => hints(!$('ask-input').value.trim()));
+    $('ask-input').addEventListener('input', () => hints(!$('ask-input').value.trim()));
+    $('ask-input').addEventListener('blur', () => setTimeout(() => hints(false), 150));
+    document.querySelectorAll('.ask__hint').forEach(b => b.addEventListener('mousedown', e => {
+      e.preventDefault(); // keep the field focused until the request starts
+      $('ask-input').value = b.textContent;
+      hints(false);
+      ask(b.textContent);
+    }));
     $('open-filters').addEventListener('click', () => openOverlay('#filters'));
     $('filters-apply-btn').addEventListener('click', applyFilters);
     $('filters-reset-btn').addEventListener('click', resetFilters);
