@@ -38,6 +38,14 @@ class ValidateTelegramAuth
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
         }
 
+        // The user is the one Telegram signed, never a user_id the client sends alongside.
+        parse_str($initData, $params);
+        $user = json_decode((string) ($params['user'] ?? ''), true);
+        if (!is_array($user) || empty($user['id'])) {
+            return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
+        }
+        $request->merge(['user_id' => (int) $user['id']]);
+
         return $next($request);
     }
 

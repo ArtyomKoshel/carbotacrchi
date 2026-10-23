@@ -53,8 +53,13 @@ abstract class AbstractDbProvider extends AbstractProvider
         match ($sort) {
             'price_asc' => $builder->orderBy('price', 'asc'),
             'price_desc' => $builder->orderBy('price', 'desc'),
-            default => $builder->orderBy('listed_at', 'desc')->orderBy('id', 'desc'),
+            'mileage_asc' => $builder->orderBy('mileage', 'asc'),
+            'mileage_desc' => $builder->orderBy('mileage', 'desc'),
+            'year_desc' => $builder->orderBy('year', 'desc')->orderBy('mileage', 'asc'),
+            'year_asc' => $builder->orderBy('year', 'asc')->orderBy('mileage', 'asc'),
+            default => $builder->orderBy('listed_at', 'desc'),
         };
+        $builder->orderBy('id', 'desc'); // stable pages: equal keys keep one order
     }
 
     private function applyDbFilters(Builder $builder, SearchQuery $query): void

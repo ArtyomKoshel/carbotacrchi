@@ -58,6 +58,42 @@ class TelegramBot
         ]);
     }
 
+    /**
+     * A message the user then sends from the mini app with WebApp.shareMessage (Bot API 8.0):
+     * Telegram's own chat picker, the bot never learns who received it.
+     */
+    public function savePreparedInlineMessage(int $userId, string $photoUrl, string $caption): array
+    {
+        return $this->request('savePreparedInlineMessage', [
+            'user_id' => $userId,
+            'result' => json_encode([
+                'type' => 'photo',
+                'id' => substr(sha1($photoUrl.$caption), 0, 32),
+                'photo_url' => $photoUrl,
+                'thumbnail_url' => $photoUrl,
+                'caption' => $caption,
+                'parse_mode' => 'HTML',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'allow_user_chats' => true,
+            'allow_group_chats' => true,
+            'allow_channel_chats' => true,
+        ]);
+    }
+
+    /** Up to 10 photos as one album, the caption under the first. */
+    public function sendMediaGroup(int|string $chatId, array $photoUrls, string $caption): array
+    {
+        $media = [];
+        foreach (array_slice(array_values($photoUrls), 0, 10) as $i => $url) {
+            $media[] = ['type' => 'photo', 'media' => $url] + ($i === 0 ? ['caption' => $caption, 'parse_mode' => 'HTML'] : []);
+        }
+
+        return $this->request('sendMediaGroup', [
+            'chat_id' => $chatId,
+            'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
     public function sendPhoto(int|string $chatId, string $photoUrl, string $caption, array $extra = []): array
     {
         return $this->request('sendPhoto', array_merge([

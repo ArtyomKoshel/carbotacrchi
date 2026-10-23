@@ -50,6 +50,7 @@ readonly class LotDTO
         public ?int    $seatCount           = null,
         public ?string $firstRegDate        = null,
         public ?string $listedAt             = null,
+        public array   $photos               = [],   // every photo of the listing, in order
     ) {}
 
     public function toArray(): array
@@ -100,6 +101,8 @@ readonly class LotDTO
             'seatCount'        => $this->seatCount,
             'firstRegDate'     => $this->firstRegDate,
             'listedAt'         => $this->listedAt,
+            'photos'           => $this->photos,
+            'photoCount'       => count($this->photos),
         ];
     }
 }

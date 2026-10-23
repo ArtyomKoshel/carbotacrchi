@@ -3,6 +3,7 @@
 namespace App\AuctionProviders;
 
 use App\Dto\LotDTO;
+use App\Support\LotPhotos;
 
 class EncarProvider extends AbstractDbProvider
 {
@@ -53,6 +54,7 @@ class EncarProvider extends AbstractDbProvider
                 options:      isset($raw['options'])
                                   ? (is_string($raw['options']) ? json_decode($raw['options'], true) : $raw['options'])
                                   : null,
+                photos:       LotPhotos::urls($raw) ?: array_values(array_filter([$raw['image_url'] ?? null])),
         );
     }
 }

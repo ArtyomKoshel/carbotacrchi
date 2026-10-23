@@ -30,6 +30,11 @@ class ProviderAggregator
         return $this;
     }
 
+    public function provider(string $key): ?ProviderInterface
+    {
+        return $this->providers[$key] ?? null;
+    }
+
     public function count(SearchQuery $query): int
     {
         $activeSources = array_values(array_filter(

@@ -209,7 +209,21 @@ const API = (() => {
     return json?.data ?? null;
   }
 
+  // ── Lot by id, sending to a client ─────────────────────────────────────────
+
+  async function getLot(lotId) {
+    _requireAuth();
+    return request('GET', `/lots/${encodeURIComponent(lotId)}?${_authQuery()}`);
+  }
+
+  /** mode: 'prepare' (Telegram chat picker), 'chat' (to the picker's own chat), 'text' (copy). */
+  async function shareLot(lotId, mode) {
+    _requireAuth();
+    return request('POST', `/lots/${encodeURIComponent(lotId)}/share`, { ..._authBody(), mode });
+  }
+
   return {
+    getLot, shareLot,
     getFilters, invalidateFiltersCache, isFiltersCached,
     browserAuthInit, browserAuthStatus, isAuthError,
     search,

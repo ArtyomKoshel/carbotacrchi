@@ -67,6 +67,9 @@ class SearchQuery
     /** @var string[] */
     public array $sources = ['encar'];
     public string $sort = 'date';
+
+    /** Orders a picker can choose: newest, price, mileage, year. */
+    public const SORTS = ['date', 'price_asc', 'price_desc', 'mileage_asc', 'mileage_desc', 'year_desc', 'year_asc'];
     public int $limit = 20;
     public int $offset = 0;
 
@@ -117,7 +120,7 @@ class SearchQuery
             }
         }
 
-        $q->sort = in_array($data['sort'] ?? '', ['date', 'price_asc', 'price_desc'], true)
+        $q->sort = in_array($data['sort'] ?? '', self::SORTS, true)
             ? $data['sort']
             : 'date';
         $q->limit = min((int) ($data['limit'] ?? 20), 100);

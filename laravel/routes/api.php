@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BrowserAuthController;
 use App\Http\Controllers\Api\FavoritesController;
 use App\Http\Controllers\Api\FiltersController;
 use App\Http\Controllers\Api\InspectionsController;
+use App\Http\Controllers\Api\LotController;
 use App\Http\Controllers\Api\SearchChatController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SubscriptionsController;
@@ -18,6 +19,8 @@ Route::get('/auth/browser-status',         [BrowserAuthController::class, 'statu
 
 Route::middleware('telegram.auth')->group(function () {
     Route::post('/search',                    [SearchController::class,       'search']);
+    Route::get('/lots/{lotId}',               [LotController::class,          'show']);
+    Route::post('/lots/{lotId}/share',        [LotController::class,          'share']);
     Route::post('/search-chat',               [SearchChatController::class,   'chat']);
     Route::post('/search-chat/reset',         [SearchChatController::class,   'reset']);
     Route::get('/favorites',                  [FavoritesController::class,    'index']);
