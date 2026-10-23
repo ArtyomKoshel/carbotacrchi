@@ -1,0 +1,33 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "미니",
+  "names": {
+    "에이스맨": "Aceman",
+    "쿠퍼": "Cooper",
+    "쿠퍼 C": "Cooper C",
+    "쿠퍼 C 컨버터블": "Cooper C Convertible",
+    "쿠퍼 D": "Cooper D",
+    "쿠퍼 D 컨트리맨": "Cooper D Countryman",
+    "쿠퍼 D 클럽맨": "Cooper D Clubman",
+    "쿠퍼 S": "Cooper S",
+    "쿠퍼 S 로드스터": "Cooper S Roadster",
+    "쿠퍼 S 컨버터블": "Cooper S Convertible",
+    "쿠퍼 S 컨트리맨": "Cooper S Countryman",
+    "쿠퍼 S 쿠페": "Cooper S Coupe",
+    "쿠퍼 S 클럽맨": "Cooper S Clubman",
+    "쿠퍼 SD": "Cooper SD",
+    "쿠퍼 SD 컨트리맨": "Cooper SD Countryman",
+    "쿠퍼 SD 클럽맨": "Cooper SD Clubman",
+    "쿠퍼 일렉트릭": "Cooper Electric",
+    "쿠퍼 컨버터블": "Cooper Convertible",
+    "쿠퍼 컨트리맨": "Cooper Countryman",
+    "쿠퍼 컨트리맨 일렉트릭": "Cooper Countryman Electric",
+    "쿠퍼 클럽맨": "Cooper Clubman"
+  },
+  "engine_prefix": "Cooper(?: SD| S| D| C)?",
+  "engine_models": {
+    "": "Hatch",
+    "Electric": "Hatch",
+    "Countryman Electric": "Countryman"
+  }
+}

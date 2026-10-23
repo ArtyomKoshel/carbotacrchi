@@ -1,0 +1,45 @@
+{
+  "make": "Volkswagen",
+  "engine": {
+    "words": {
+      "TDI": "diesel", "TSI": "gasoline", "GTI": "gasoline", "GTD": "diesel", "R": "gasoline", "BlueMotion": null,
+      "Pro": {"fuel": "electric"}, "V6": {"code": false}
+    },
+    "drives": {"4MOTION": "awd"}
+  },
+  "complectations": ["Prestige", "Premium", "R-Line", "Comfort", "Style", "Exclusive"],
+  "editions": ["Xtreme Edition", "Final Edition"],
+  "models": [
+    {"name": "Arteon", "body": "liftback", "generations": [{"code": "3H", "number": 1, "years": [2017, 2024], "drive": "fwd"}]},
+    {"name": "Atlas", "body": "suv", "generations": [{"code": "CA1", "number": 1, "years": [2017, null], "drive": "awd"}]},
+    {"name": "CC", "body": "sedan", "generations": [{"code": "3C", "number": 1, "years": [2012, 2016], "drive": "fwd"}]},
+    {"name": "Golf", "body": "hatchback", "generations": [
+      {"code": "Mk7", "number": 7, "years": [2012, 2020], "drive": "fwd", "aliases": ["5G"]},
+      {"code": "Mk8", "number": 8, "years": [2019, null], "drive": "fwd", "aliases": ["CD"]}
+    ]},
+    {"name": "ID.4", "body": "suv", "fuel": "electric", "generations": [{"code": "E21", "number": 1, "years": [2020, null], "drive": "rwd"}]},
+    {"name": "ID.5", "body": "suv_coupe", "fuel": "electric", "generations": [{"code": "E39", "number": 1, "years": [2021, null], "drive": "rwd"}]},
+    {"name": "Jetta", "body": "sedan", "generations": [
+      {"code": "Mk6", "number": 6, "years": [2010, 2018], "drive": "fwd"},
+      {"code": "Mk7", "number": 7, "years": [2018, null], "drive": "fwd", "aliases": ["BU"]}
+    ]},
+    {"name": "Passat", "body": "sedan", "generations": [{"code": "B7", "number": 7, "years": [2010, 2015], "drive": "fwd"}]},
+    {"name": "Passat GT", "body": "sedan", "generations": [{"code": "B8", "number": 8, "years": [2015, 2023], "drive": "fwd"}]},
+    {"name": "Polo", "body": "hatchback", "generations": [
+      {"code": "9N", "number": 4, "years": [2001, 2009], "drive": "fwd"},
+      {"code": "6R", "number": 5, "years": [2009, 2017], "drive": "fwd"}
+    ]},
+    {"name": "Scirocco", "body": "coupe", "generations": [{"code": "13", "number": 3, "years": [2008, 2017], "drive": "fwd"}]},
+    {"name": "T-Roc", "body": "suv", "generations": [{"code": "A1", "number": 1, "years": [2017, null], "drive": "fwd"}]},
+    {"name": "The Beetle", "body": "hatchback", "generations": [{"code": "5C", "number": 3, "years": [2011, 2019], "drive": "fwd"}]},
+    {"name": "Tiguan", "body": "suv", "generations": [
+      {"code": "5N", "number": 1, "years": [2007, 2016], "drive": "fwd"},
+      {"code": "AD1", "number": 2, "years": [2016, 2024], "drive": "fwd"}
+    ]},
+    {"name": "Tiguan Allspace", "body": "suv", "generations": [{"code": "BW2", "number": 1, "years": [2017, 2024], "drive": "fwd"}]},
+    {"name": "Touareg", "body": "suv", "generations": [
+      {"code": "7P", "number": 2, "years": [2010, 2018], "drive": "awd", "aliases": ["7P5"]},
+      {"code": "CR", "number": 3, "years": [2018, null], "drive": "awd"}
+    ]}
+  ]
+}

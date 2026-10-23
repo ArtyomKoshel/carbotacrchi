@@ -1,0 +1,47 @@
+{
+  "make": "Mini",
+  "engine": {
+    "fuel": "gasoline",
+    "words": {
+      "Cooper": null, "S": "gasoline", "C": "gasoline", "D": "diesel", "SD": "diesel", "SE": "electric", "E": "electric",
+      "Electric": {"fuel": "electric", "code": false}
+    },
+    "drives": {"ALL4": "awd"}
+  },
+  "complectations": [
+    "Classic Plus Light", "Classic Plus", "Classic Light", "Classic", "Favoured", "Essential", "Basic", "High", "Mid",
+    "JCW", "Light", "Launch Pack"
+  ],
+  "editions": [
+    "Online Exclusive", "Gen ZE Edition", "Gen Z Edition", "Resolute Edition", "Brick Lane Edition", "Mayfield Edition",
+    "Pat Moss Edition", "Untamed Edition", "Uncharted Edition", "Highland Edition", "Savile Row Edition",
+    "Islington Edition", "Untold Edition", "Untied Suit Edition", "Dominique Edition", "Multitone Edition",
+    "Shadow Edition", "Seaside Edition", "Kings Road Edition", "Prologue Edition", "Park Lane", "Dealer Tailored Edition",
+    "Ocean Edition", "Paul Smith Edition", "Breeze Edition", "Fine Leather Edition", "T51 Edition", "First Edition",
+    "Rosewood Edition", "60th Anniversary Edition", "Piccadilly Edition", "Delaney Edition", "Rockingham GT Edition"
+  ],
+  "models": [
+    {"name": "Hatch", "body": "hatchback", "generations": [
+      {"code": "R56", "number": 2, "years": [2006, 2013], "drive": "fwd"},
+      {"code": "F56", "number": 3, "years": [2014, 2024], "drive": "fwd", "aliases": ["F55"]},
+      {"code": "F66", "number": 4, "years": [2024, null], "drive": "fwd", "aliases": ["F65", "J01"]}
+    ]},
+    {"name": "Convertible", "body": "convertible", "generations": [
+      {"code": "R57", "number": 2, "years": [2009, 2015], "drive": "fwd"},
+      {"code": "F57", "number": 3, "years": [2016, 2024], "drive": "fwd"},
+      {"code": "F67", "number": 4, "years": [2024, null], "drive": "fwd"}
+    ]},
+    {"name": "Clubman", "body": "wagon", "generations": [
+      {"code": "R55", "number": 1, "years": [2007, 2014], "drive": "fwd"},
+      {"code": "F54", "number": 2, "years": [2015, 2024], "drive": "fwd"}
+    ]},
+    {"name": "Countryman", "body": "suv", "generations": [
+      {"code": "R60", "number": 1, "years": [2010, 2016], "drive": "fwd"},
+      {"code": "F60", "number": 2, "years": [2017, 2024], "drive": "fwd"},
+      {"code": "U25", "number": 3, "years": [2024, null], "drive": "fwd"}
+    ]},
+    {"name": "Aceman", "body": "suv", "fuel": "electric", "generations": [{"code": "J05", "number": 1, "years": [2024, null], "drive": "fwd"}]},
+    {"name": "Coupe", "body": "coupe", "generations": [{"code": "R58", "number": 1, "years": [2011, 2015], "drive": "fwd"}]},
+    {"name": "Roadster", "body": "roadster", "generations": [{"code": "R59", "number": 1, "years": [2012, 2015], "drive": "fwd"}]}
+  ]
+}

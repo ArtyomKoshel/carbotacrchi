@@ -1,0 +1,47 @@
+{
+  "make": "Land Rover",
+  "engine": {
+    "codes": [
+      {"re": "^P\\d{3}e$", "i": true, "fuel": "hybrid"},
+      {"re": "^P\\d{3}$", "fuel": "gasoline"},
+      {"re": "^D\\d{3}$", "fuel": "diesel"},
+      {"re": "^(TD4|SD4|TD6|SD6|SDV6|SDV8|TDV6|TDV8)$", "fuel": "diesel"},
+      {"re": "^(Si4|SC|SVR|Octa)$", "fuel": "gasoline"},
+      {"re": "^(90|110|130)$"},
+      {"re": "^\\d+hp$"},
+      {"re": "^LWB$"}
+    ],
+    "words": {"Diesel": {"fuel": "diesel", "code": false}}
+  },
+  "complectations": [
+    "SV Autobiography Dynamic", "SV Autobiography", "Autobiography Dynamic", "Autobiography", "Vogue SE", "Vogue",
+    "HSE Dynamic", "Dynamic HSE", "Dynamic SE", "HSE Luxury", "R-Dynamic HSE", "R-Dynamic SE", "R-Dynamic S",
+    "X-Dynamic HSE", "X-Dynamic SE", "X-Dynamic", "SE Dynamic", "Dynamic", "HSE", "SE", "S", "X", "SV", "Landmark",
+    "Pure", "Prestige", "Outbound", "LE"
+  ],
+  "editions": ["Landmark Edition", "Launch Edition", "First Edition", "Edition Two", "Edition 1", "75th Edition", "Range Rover 50", "Black"],
+  "models": [
+    {"name": "Defender", "body": "suv", "generations": [{"code": "L663", "number": 2, "years": [2019, null], "drive": "awd"}]},
+    {"name": "Discovery", "body": "suv", "generations": [
+      {"code": "L319", "number": 4, "years": [2009, 2016], "drive": "awd"},
+      {"code": "L462", "number": 5, "years": [2016, null], "drive": "awd"}
+    ]},
+    {"name": "Discovery Sport", "body": "suv", "generations": [
+      {"code": "L550", "number": 1, "years": [2014, 2019], "drive": "awd"},
+      {"code": "L550 FL", "number": 2, "years": [2020, null], "drive": "awd"}
+    ]},
+    {"name": "Range Rover", "body": "suv", "generations": [
+      {"code": "L405", "number": 4, "years": [2012, 2021], "drive": "awd"},
+      {"code": "L460", "number": 5, "years": [2021, null], "drive": "awd"}
+    ]},
+    {"name": "Range Rover Evoque", "body": "suv", "generations": [
+      {"code": "L538", "number": 1, "years": [2011, 2018], "drive": "awd"},
+      {"code": "L551", "number": 2, "years": [2018, null], "drive": "awd"}
+    ]},
+    {"name": "Range Rover Sport", "body": "suv", "generations": [
+      {"code": "L494", "number": 2, "years": [2013, 2022], "drive": "awd"},
+      {"code": "L461", "number": 3, "years": [2022, null], "drive": "awd"}
+    ]},
+    {"name": "Range Rover Velar", "body": "suv", "generations": [{"code": "L560", "number": 1, "years": [2017, null], "drive": "awd"}]}
+  ]
+}

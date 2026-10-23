@@ -6,6 +6,7 @@ use App\Catalog\BadgeGrammar;
 use App\Catalog\Reference;
 use App\Catalog\Rules\AudiRules;
 use App\Catalog\Rules\BmwRules;
+use App\Catalog\Rules\GenericRules;
 use App\Catalog\Rules\MakeRules;
 use App\Catalog\Rules\MercedesRules;
 use App\Catalog\Rules\PorscheRules;
@@ -60,11 +61,19 @@ class EncarMatcher
         $year = isset($lot['year']) ? (int) $lot['year'] : null;
 
         [$modelName, $code] = $this->model($encar, trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? '')), (string) $badge);
+        // a make may name the engine before the model ("Cooper S Countryman"): it goes to the
+        // badge, and what is left names the model through "engine_models" ("" → "Hatch")
+        $engine = '';
+        if (isset($encar['engine_prefix']) && preg_match('/^(' . $encar['engine_prefix'] . ')(?:\s+(.*))?$/u', $modelName, $m)) {
+            $engine = $m[1];
+            $modelName = $encar['engine_models'][$m[2] ?? ''] ?? ($m[2] ?? '');
+        }
         $model = $this->reference->model($makeName, $modelName);
-        // some models carry the chassis in BadgeGroup or BadgeDetail ("A6" / "C7", "SL-Class" / "R231")
+        // some models carry the chassis in BadgeGroup or BadgeDetail ("A6" / "C7", "SL-Class" / "R231", "Cooper" / "3세대")
         foreach ([$lot['badge_group'] ?? null, $trim] as $level) {
-            if ($model && $code === null && trim((string) $level) !== '' && $this->reference->generation($model, trim($level))) {
-                $code = trim($level);
+            $key = self::generationKey((string) $level) ?? trim((string) $level);
+            if ($model && $code === null && $key !== '' && $this->reference->generation($model, $key)) {
+                $code = $key;
             }
         }
         $generation = $model ? $this->reference->generation($model, $code, $year) : null;
@@ -73,7 +82,11 @@ class EncarMatcher
                 reason: $model ? "generation {$code} not in reference" : "model {$modelName} not in reference");
         }
 
-        $english = $this->english(self::text($badge, $trim));
+        $english = trim($engine . ' ' . $this->english(self::text($badge, $trim)));
+        // the make's own spellings of the reference's words ("AB" → "Autobiography")
+        foreach ($encar['words'] ?? [] as $from => $to) {
+            $english = preg_replace('/(?<=^|\s)' . preg_quote($from, '/') . '(?=\s|$)/u', $to, $english);
+        }
         $read = BadgeGrammar::read($english, $ref, $model);
         $mod = $this->rules($ref)->modification($read['rest'], $model, $generation);
 
@@ -163,22 +176,36 @@ class EncarMatcher
                 return $rule['to'];
             }
         }
+        // a key without a chassis code stands for every generation of that name
         foreach ($encar['models'] ?? [] as $key => $to) {
-            if (self::split($key) === [$name, $code]) {
-                return $to;
+            [$keyName, $keyCode] = self::split($key);
+            if ($keyName === $name && ($keyCode === null || $keyCode === $code)) {
+                return [$to[0], $to[1] ?? $code];
             }
         }
         return [$name, $code];
     }
 
-    /** "5 Series (G60)" / "E-Class W213" / "A6" → [name, chassis code or null] */
+    /**
+     * "5 Series (G60)" / "E-Class W213" / "XC90 2세대" / "Tiguan Gen 2" / "A6" → [name, chassis
+     * code, "#2" for a generation number, or null]
+     */
     private static function split(string $model): array
     {
         $model = trim($model);
         if (preg_match('/^(.*?)\s*\(([A-Za-z0-9]+)\)$/u', $model, $m) || preg_match('/^(.*\S)\s+([A-Z]\d{3}[a-z]?)$/u', $model, $m)) {
-            return [$m[1], $m[2]];
+            return [$m[1], self::generationKey($m[2]) ?? $m[2]];
+        }
+        if (preg_match('/^(.*\S)\s+(\d세대|Gen \d)$/u', $model, $m)) {
+            return [$m[1], self::generationKey($m[2])];
         }
         return [$model, null];
+    }
+
+    /** "2세대" / "Gen 2" → "#2" */
+    private static function generationKey(string $level): ?string
+    {
+        return preg_match('/^(?:(\d)세대|Gen (\d))$/u', trim($level), $m) ? '#' . ($m[1] ?: $m[2]) : null;
     }
 
     /** The Encar file of a make, by Encar's Korean make or else by our English one. */
@@ -208,9 +235,13 @@ class EncarMatcher
         return null;
     }
 
+    /** The make's own rules, or GenericRules with the make's "engine". */
     private function rules(array $make): MakeRules
     {
-        $name = $make['rules'] ?? '';
+        $name = $make['rules'] ?? 'generic';
+        if ($name === 'generic') {
+            return $this->rules[$make['make']] ??= new GenericRules($make['engine'] ?? []);
+        }
         return $this->rules[$name] ??= new (self::RULES[$name] ?? throw new \RuntimeException("no rules '{$name}' for {$make['make']}"));
     }
 

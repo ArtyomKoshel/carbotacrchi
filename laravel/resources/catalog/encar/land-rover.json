@@ -1,0 +1,28 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "랜드로버",
+  "names": {
+    "디스커버리 4": "Discovery 4",
+    "디스커버리 5": "Discovery 5",
+    "디스커버리 스포츠": "Discovery Sport",
+    "디펜더": "Defender",
+    "레인지로버": "Range Rover",
+    "레인지로버 벨라": "Range Rover Velar",
+    "레인지로버 스포츠": "Range Rover Sport",
+    "레인지로버 이보크": "Range Rover Evoque",
+    "프리랜더2": "Freelander 2"
+  },
+  "models": {
+    "Discovery 4": [
+      "Discovery",
+      "L319"
+    ],
+    "Discovery 5": [
+      "Discovery",
+      "L462"
+    ]
+  },
+  "words": {
+    "AB": "Autobiography"
+  }
+}

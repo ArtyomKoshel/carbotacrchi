@@ -16,9 +16,15 @@ class Reference
 
     public function __construct(private readonly ?string $dir = null) {}
 
+    /** By name, any case, a space or a hyphen alike ("Land Rover", "land-rover"). */
     public function make(string $make): ?array
     {
-        return $this->makes()[mb_strtolower(trim($make))] ?? null;
+        return $this->makes()[self::key($make)] ?? null;
+    }
+
+    private static function key(string $make): string
+    {
+        return mb_strtolower(preg_replace('/[\s-]+/', '-', trim($make)));
     }
 
     /** @return list<string> */
@@ -38,15 +44,16 @@ class Reference
     }
 
     /**
-     * A model's generation by chassis code (or one of its aliases). Without a code: the
-     * only generation, else the one whose years hold $year.
+     * A model's generation by chassis code (or one of its aliases) or by number ("#2", the
+     * generation's "number"). Without either: the only generation, else the one whose years hold $year.
      */
     public function generation(array $model, ?string $code, ?int $year = null): ?array
     {
         $generations = $model['generations'] ?? [];
         if ($code !== null && $code !== '') {
             foreach ($generations as $g) {
-                if (strcasecmp($g['code'], $code) === 0 || in_array(strtoupper($code), $g['aliases'] ?? [], true)) {
+                if (strcasecmp($g['code'], $code) === 0 || in_array(strtoupper($code), $g['aliases'] ?? [], true)
+                    || (isset($g['number']) && $code === "#{$g['number']}")) {
                     return $g;
                 }
             }
@@ -76,7 +83,7 @@ class Reference
         $this->makes = [];
         foreach (glob(($this->dir ?? resource_path('catalog/reference')) . '/*.json') as $file) {
             $make = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
-            $this->makes[mb_strtolower($make['make'])] = $make;
+            $this->makes[self::key($make['make'])] = $make;
         }
         return $this->makes;
     }
