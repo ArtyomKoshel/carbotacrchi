@@ -129,6 +129,16 @@ class EncarMatcherTest extends TestCase
         $this->assertSame('L551', $matcher->match(['make' => '랜드로버', 'model' => '레인지로버 이보크 2세대', 'badge' => 'P250 SE'])->generation);
     }
 
+    /** Badge and BadgeDetail: an import's fuller name, an old copy, or a Korean engine + complectation. */
+    public function test_what_of_badge_and_trim_is_read(): void
+    {
+        $this->assertSame('530i xDrive M 스포츠 프로', EncarMatcher::text('530i xDrive M 스포츠', '530i xDrive M 스포츠 프로'));
+        $this->assertSame('530i xDrive M 스포츠', EncarMatcher::text('530i xDrive M 스포츠', '530i xDrive M 스포츠'));
+        $this->assertSame('520i 스페셜 에디션', EncarMatcher::text('520i 스페셜 에디션', '520i M 스포츠'), 'an old copy of an earlier badge');
+        $this->assertSame('2.0 LPI 시그니처', EncarMatcher::text('2.0 LPI', '시그니처'), 'Korean: engine + complectation');
+        $this->assertSame('2.0', EncarMatcher::text('2.0', '(세부등급 없음)'));
+    }
+
     public function test_the_year_never_picks_a_generation(): void
     {
         $match = self::matcher()->match(['make' => '아우디', 'model' => 'A5', 'badge' => '40 TFSI 콰트로 쿠페', 'year' => 2016]);

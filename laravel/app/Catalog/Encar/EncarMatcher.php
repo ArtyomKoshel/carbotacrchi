@@ -69,13 +69,20 @@ class EncarMatcher
         }
         $model = $this->reference->model($makeName, $modelName);
         // some models carry the chassis in BadgeGroup or BadgeDetail ("A6" / "C7", "SL-Class" / "R231", "Cooper" / "3세대")
-        foreach ([$lot['badge_group'] ?? null, $trim] as $level) {
-            $key = self::generationKey((string) $level) ?? trim((string) $level);
+        foreach (['badge_group' => $lot['badge_group'] ?? null, 'trim' => $trim] as $level => $value) {
+            $key = self::generationKey((string) $value) ?? trim((string) $value);
             if ($model && $code === null && $key !== '' && $this->reference->generation($model, $key)) {
                 $code = $key;
+                if ($level === 'trim') {
+                    $trim = null; // the BadgeDetail was the generation, not a complectation
+                }
             }
         }
         $generation = $model ? $this->reference->generation($model, $code) : null;
+        // a BadgeDetail that names a generation of the model ("A6" + "C7") is never a complectation
+        if ($model && $trim !== null && $this->reference->generation($model, self::generationKey($trim) ?? trim($trim))) {
+            $trim = null;
+        }
         if ($generation === null) {
             return new VariantMatch(VariantMatch::UNMATCHED, $makeName, $model['name'] ?? $modelName, reason: match (true) {
                 $model === null => "model {$modelName} not in reference",
@@ -150,7 +157,12 @@ class EncarMatcher
         return trim(preg_replace('/\s+/u', ' ', $text));
     }
 
-    /** Badge, or the trim when it holds every word of the badge and more. */
+    /**
+     * What to read of Badge and BadgeDetail (`trim`): the trim when it holds every word of the
+     * badge and more (an import's full name), the badge when the trim adds nothing (our old
+     * normalization's copy, or a stale shorter name), else both — a Korean make's badge is the
+     * engine ("2.0 LPI") and its BadgeDetail the complectation ("시그니처").
+     */
     public static function text(?string $badge, ?string $trim): string
     {
         $badge = trim((string) $badge);
@@ -159,7 +171,15 @@ class EncarMatcher
             return $badge !== '' ? $badge : $trim;
         }
         $words = fn (string $s) => preg_split('/\s+/u', $s, -1, PREG_SPLIT_NO_EMPTY);
-        return count($words($trim)) > count($words($badge)) && !array_diff($words($badge), $words($trim)) ? $trim : $badge;
+        $b = $words($badge);
+        $t = $words($trim);
+        return match (true) {
+            count($t) > count($b) && ! array_diff($b, $t) => $trim,
+            // sharing some words but not all: our old normalization's copy of an earlier badge
+            // ("520i M 스포츠" under "520i 스페셜 에디션"), not a BadgeDetail
+            (bool) array_intersect($t, $b) => $badge,
+            default => "{$badge} {$trim}",
+        };
     }
 
     /**
