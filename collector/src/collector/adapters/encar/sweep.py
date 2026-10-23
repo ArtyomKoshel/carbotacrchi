@@ -48,6 +48,7 @@ class SweepState:
     error_log: list[str] = field(default_factory=list)
     report: dict[str, int] = field(default_factory=dict)
     cursor: dict[str, int] = field(default_factory=dict)  # segment -> next page, for unfinished segments
+    proxy_bytes: int = 0  # traffic of the run so far, earlier processes included
 
     def to_json(self) -> dict[str, Any]:
         return self.__dict__.copy()

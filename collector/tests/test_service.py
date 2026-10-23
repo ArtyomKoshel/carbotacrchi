@@ -194,6 +194,7 @@ async def test_stop_hands_the_job_back_and_the_next_process_resumes_it(db: Async
     result = json.loads(row.result)
     assert row.status == "done"
     assert result["run_started_at"] == "2026-10-21 09:00:00", "a resumed run keeps its original start"
+    assert result["elapsed_s"] == 7200.0, "the duration is the run's, not the second process's"
     assert result["full_run"] is True
     assert json.loads(row.progress)["resumed"] is True
 
@@ -256,7 +257,7 @@ async def test_a_page_past_the_stop_grace_is_cancelled_and_the_run_resumes_after
 
 async def _running_job(db: AsyncEngine, *, marked: bool, idle_minutes: int) -> int:
     jid = await add_job(db)
-    progress: dict[str, Any] = {"checkpoint": {"started_at": NOW.isoformat()}}
+    progress: dict[str, Any] = {"checkpoint": {"started_at": NOW.isoformat(), "proxy_bytes": 5000}}
     if marked:
         progress["collector"] = COLLECTOR_VERSION
     async with db.begin() as conn:
@@ -280,6 +281,7 @@ async def test_a_job_left_running_by_a_killed_collector_is_taken_back(db: AsyncE
     row = await job_row(db, stale)
     assert row.status == "done"
     assert json.loads(row.result)["run_started_at"] == "2026-10-21 09:00:00", "resumed from its checkpoint"
+    assert json.loads(row.result)["proxy_bytes"] == 5000, "traffic of the killed process is kept"
 
     assert not await svc.run_once()
     assert (await job_row(db, old_parser)).status == "running", "the old parser's jobs are not ours"

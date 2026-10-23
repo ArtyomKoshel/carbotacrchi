@@ -91,13 +91,13 @@ def coverage_pct(seen: int, api_total: int) -> float:
 
 
 def progress_payload(
-    state: SweepState, message: str, started: float, proxy_bytes: int, *, resumed: bool = False
+    state: SweepState, message: str, elapsed_s: float, proxy_bytes: int, *, resumed: bool = False
 ) -> dict[str, Any]:
     """`checkpoint` is in every payload (the next process resumes from it); `resumed` says whether
     this process took the job over from an earlier one."""
     pct = min(coverage_pct(state.seen, state.api_total), 100.0)
     report = PageReport(**state.report) if state.report else PageReport()
-    elapsed = round(time.monotonic() - started, 1)
+    elapsed = round(elapsed_s, 1)
     return {
         "status": f"{pct}%",
         "pct": pct,
@@ -133,12 +133,22 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
     seen = await ctx.sink.resume(job.id) if job.checkpoint else set()
     if seen:
         state.seen = len(seen)
-    started = time.monotonic()
+    # Duration and proxy traffic are the run's, not this process's: a resumed run goes on counting
+    # from its start (the pause of a deploy included) and from the bytes of the earlier processes.
+    started_at = datetime.fromisoformat(state.started_at)
+    earlier_bytes = state.proxy_bytes
+
+    def elapsed() -> float:
+        return max(0.0, (ctx.clock() - started_at).total_seconds())
+
+    def proxy_bytes() -> int:
+        return earlier_bytes + ctx.proxy_bytes()
 
     async def on_progress(s: SweepState, message: str) -> None:
+        s.proxy_bytes = proxy_bytes()
         await ctx.queue.progress(
             job.id,
-            progress_payload(s, message, started, ctx.proxy_bytes(), resumed=job.checkpoint is not None),
+            progress_payload(s, message, elapsed(), s.proxy_bytes, resumed=job.checkpoint is not None),
         )
         if ctx.runlog:
             await ctx.runlog.info(f"{message}: {s.seen:,}/{s.api_total:,} seen, errors {s.errors}")
@@ -156,6 +166,7 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
     max_pages = job.filters.get("max_pages") or None
     await sweeper.run(state, maker=maker, max_pages=max_pages)
 
+    state.proxy_bytes = proxy_bytes()
     if sweeper.stopped:
         await ctx.queue.interrupt(job.id, state.to_json())
         if ctx.runlog:
@@ -181,8 +192,8 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         "errors": state.errors,
         "error_log": state.error_log,
         "pages": state.pages,
-        "proxy_bytes": ctx.proxy_bytes(),
-        "elapsed_s": round(time.monotonic() - started, 1),
+        "proxy_bytes": state.proxy_bytes,
+        "elapsed_s": round(elapsed(), 1),
         "collector": COLLECTOR_VERSION,
     }
     await ctx.queue.finish(
@@ -190,7 +201,9 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         "done",
         result,
         progress={
-            **progress_payload(state, "done", started, ctx.proxy_bytes(), resumed=job.checkpoint is not None),
+            **progress_payload(
+                state, "done", elapsed(), state.proxy_bytes, resumed=job.checkpoint is not None
+            ),
             "status": "done",
         },
     )
