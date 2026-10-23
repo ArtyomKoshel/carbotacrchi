@@ -76,35 +76,35 @@ class CatalogLinker
 
         $read = $changed = 0;
         $now = now()->toDateTimeString();
+        $this->store->preload();
         foreach ($bySource as $source => $rows) {
-            foreach (array_chunk($rows, 1000, true) as $chunk) {
+            foreach (array_chunk($rows, 500, true) as $chunk) {
                 $stored = $this->db->table('ref_variants')->where('source', $source)->whereIn('hash', array_keys($chunk))
                     ->get(['id', 'hash', 'manual', 'status', 'make_id', 'model_id', 'generation_id', 'modification_id', 'complectation_id'])
                     ->keyBy('hash');
-                $inserts = [];
+                // one upsert per chunk: the read rows whole, the kept ones (by hand, or not read again) only their lot count
+                $full = $counts = [];
                 foreach ($chunk as $hash => $v) {
                     $old = $stored->get($hash);
                     if ($old !== null && ($old->manual || ! $again)) {
                         if (isset($lots[$hash])) {
-                            $this->db->table('ref_variants')->where('id', $old->id)->update(['lots' => $lots[$hash]]);
+                            $counts[] = ['source' => $source, 'hash' => $hash, 'status' => $old->status, 'lots' => $lots[$hash], 'updated_at' => $now];
                         }
                         continue;
                     }
                     $row = $this->read($source, $v);
                     $read++;
-                    if ($old === null) {
-                        $inserts[] = [...$row, 'source' => $source, 'hash' => $hash, 'lots' => $lots[$hash] ?? 0,
-                            'created_at' => $now, 'updated_at' => $now];
-                        continue;
-                    }
-                    if (self::differs($old, $row)) {
+                    if ($old !== null && self::differs($old, $row)) {
                         $changed++;
                     }
-                    $this->db->table('ref_variants')->where('id', $old->id)
-                        ->update([...$row, 'lots' => $lots[$hash] ?? 0, 'updated_at' => $now]);
+                    $full[] = [...$row, 'source' => $source, 'hash' => $hash, 'lots' => $lots[$hash] ?? 0, 'created_at' => $now, 'updated_at' => $now];
                 }
-                if ($inserts) {
-                    $this->db->table('ref_variants')->insertOrIgnore($inserts);
+                if ($full) {
+                    $this->db->table('ref_variants')->upsert($full, ['source', 'hash'],
+                        array_values(array_diff(array_keys($full[0]), ['source', 'hash', 'created_at'])));
+                }
+                if ($counts) {
+                    $this->db->table('ref_variants')->upsert($counts, ['source', 'hash'], ['lots', 'updated_at']);
                 }
             }
         }

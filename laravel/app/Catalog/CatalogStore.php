@@ -55,6 +55,30 @@ class CatalogStore
         return $counts;
     }
 
+    /** Every stored id at once, so reading many variants asks the database nothing more. */
+    public function preload(): void
+    {
+        $makes = $this->db->table('ref_makes')->pluck('name', 'id');
+        foreach ($makes as $id => $name) {
+            $this->ids["make|{$name}"] = (int) $id;
+        }
+        $models = [];
+        foreach ($this->db->table('ref_models')->get(['id', 'make_id', 'name']) as $m) {
+            $models[$m->id] = [$makes[$m->make_id] ?? '', $m->name];
+            $this->ids["model|{$makes[$m->make_id]}|{$m->name}"] = (int) $m->id;
+        }
+        foreach ($this->db->table('ref_generations')->get(['id', 'model_id', 'code']) as $g) {
+            [$make, $model] = $models[$g->model_id] ?? ['', ''];
+            $this->ids["generation|{$make}|{$model}|{$g->code}"] = (int) $g->id;
+        }
+        foreach ($this->db->table('ref_modifications')->get(['id', 'generation_id', 'code']) as $d) {
+            $this->ids["modification|{$d->generation_id}|{$d->code}"] = (int) $d->id;
+        }
+        foreach ($this->db->table('ref_complectations')->get(['id', 'make_id', 'name']) as $c) {
+            $this->ids["complectation|{$c->make_id}|{$c->name}"] = (int) $c->id;
+        }
+    }
+
     public function makeId(string $make): int
     {
         return $this->id("make|{$make}", 'ref_makes', ['name' => $make]);
