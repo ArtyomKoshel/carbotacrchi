@@ -14,6 +14,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Theme;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -56,7 +57,9 @@ class AdminPanelProvider extends PanelProvider
                 'info'    => Color::Sky,
             ])
             ->font('Onest Variable', provider: LocalFontProvider::class)
-            ->theme($this->themeUrl())
+            // Resolved per request: at boot asset() does not yet know the request came over
+            // https through Railway's proxy, and an http stylesheet is blocked on an https page.
+            ->theme(Theme::make('app')->html(fn () => $this->themeUrl()))
             ->maxContentWidth(Width::Full)
             ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([

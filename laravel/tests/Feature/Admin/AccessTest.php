@@ -21,6 +21,16 @@ class AccessTest extends AdminTestCase
         $this->get('/admin/lots')->assertRedirect('/admin/login');
     }
 
+    public function test_panel_theme_follows_the_scheme_of_the_request_behind_a_proxy(): void
+    {
+        $html = $this->get('/admin/login', ['X-Forwarded-Proto' => 'https', 'X-Forwarded-Port' => '443'])
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('#href="https://[^"]+/css/filament/panel/theme\.css#', $html);
+        $this->assertStringNotContainsString('href="http://', $html, 'an http stylesheet is blocked on an https page');
+    }
+
     public function test_existing_admin_signs_in_with_username_and_password(): void
     {
         $admin = $this->super(['username' => 'boss']);
