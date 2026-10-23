@@ -3,292 +3,137 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#17212b">
-  <title>Поиск авто из Кореи</title>
+  <meta name="color-scheme" content="light dark">
+  <title>CarBot — подбор авто из Кореи</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="css/app.css?v=10">
-  <link rel="stylesheet" href="css/filters.css?v=10">
-  <link rel="stylesheet" href="css/cards.css?v=10">
-  <link rel="stylesheet" href="css/chat.css?v=10">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.min.css">
+  <link rel="stylesheet" href="css/app.css?v=20">
 </head>
 <body>
-<!-- Global loading overlay — shown during app init, hidden after filters load -->
-<div id="app-loading-overlay">
-  <div class="app-loading-spinner"></div>
-  <div class="app-loading-text">Загрузка…</div>
-</div>
+<!--
+  One page, two shells (docs: concept "CarBot: два интерфейса подборщика"):
+  body.tg   — opened inside Telegram: Telegram's theme, BackButton, MainButton, SecondaryButton;
+  body.web  — opened in a browser; body.wide adds the desktop work place (>= 900 px):
+              filters on the left, results in the middle, the lot on the right.
+  Views: search (results), favorites, compare, alerts. Overlays on narrow screens: filters, lot.
+-->
+<div id="boot" class="boot" aria-live="polite"><span class="spinner"></span><span>Загрузка…</span></div>
 
 <div id="app">
+  <header id="topbar" class="topbar">
+    <a class="brand" href="#" data-nav="search">CarBot</a>
+    <form id="ask-form" class="ask" role="search" autocomplete="off">
+      <svg class="ask__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="ask-input" class="ask__input" type="search" enterkeyhint="search"
+             placeholder="Опишите машину или вставьте ссылку Encar" aria-label="Поиск: опишите машину или вставьте ссылку Encar">
+      <kbd class="ask__kbd wide-only">/</kbd>
+    </form>
+    <nav class="topnav wide-only" aria-label="Разделы">
+      <a href="#" data-nav="search" class="topnav__item">Поиск</a>
+      <a href="#favorites" data-nav="favorites" class="topnav__item">Избранное <span class="count" id="fav-count"></span></a>
+      <a href="#compare" data-nav="compare" class="topnav__item">Сравнение <span class="count" id="cmp-count"></span></a>
+      <a href="#alerts" data-nav="alerts" class="topnav__item">Подписки <span class="count count--new" id="subs-badge"></span></a>
+    </nav>
+    <div id="account-slot" class="account-slot"></div>
+  </header>
 
-  <!-- ── SEARCH / FILTER SCREEN ── -->
-  <div id="screen-search" class="screen active">
-    <div id="search-top-bar">
-      <div class="header">
-        <span class="header-title">Поиск авто из Кореи</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="header-action filters-reset-btn" id="filters-reset-btn" onclick="App.resetSearch()">Очистить</button>
-          <button class="header-action" id="minimize-btn" style="display:none" onclick="TG.minimize()" title="Свернуть">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
-          </button>
-          <button class="header-action" onclick="App.switchTab('help')" title="Справка">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <circle cx="12" cy="17" r=".5" fill="currentColor"/>
-            </svg>
-          </button>
+  <aside id="filters-pane" class="filters-pane" aria-label="Фильтры">
+    <div class="pane-head">
+      <span class="pane-head__title">Фильтры</span>
+      <button class="link-btn" id="filters-reset-btn" type="button">Сбросить</button>
+    </div>
+    <div id="filters-container" class="filters"></div>
+    <div class="pane-foot web-narrow-only">
+      <button class="btn btn--primary btn--block" id="filters-apply-btn" type="button">Показать</button>
+    </div>
+  </aside>
+
+  <main id="main" class="main">
+    <!-- Search: applied filters, sorting, the results -->
+    <section id="view-search" class="view" aria-label="Результаты поиска">
+      <div class="toolbar">
+        <div class="toolbar__row">
+          <button class="chip chip--filters narrow-only" id="open-filters" type="button">Фильтры <span id="filters-count"></span></button>
+          <span class="toolbar__count num" id="results-count"></span>
+          <div class="chips" id="applied-chips"></div>
+        </div>
+        <div class="toolbar__row toolbar__row--end">
+          <button class="chip chip--follow" id="subscribe-btn" type="button" hidden>Следить</button>
+          <label class="sort">
+            <span class="visually-hidden">Сортировка</span>
+            <select id="sort-select" class="sort__select">
+              <option value="date">Сначала новые</option>
+              <option value="price_asc">Дешевле</option>
+              <option value="price_desc">Дороже</option>
+              <option value="mileage_asc">Меньше пробег</option>
+              <option value="year_desc">Новее год</option>
+              <option value="year_asc">Старше год</option>
+              <option value="mileage_desc">Больше пробег</option>
+            </select>
+          </label>
+          <div class="seg wide-only" role="group" aria-label="Вид">
+            <button type="button" class="seg__btn" data-view="table" aria-pressed="true">Таблица</button>
+            <button type="button" class="seg__btn" data-view="cards" aria-pressed="false">Карточки</button>
+          </div>
         </div>
       </div>
+      <div class="banner" id="results-banner" hidden></div>
+      <div id="results" class="results"></div>
+      <div id="results-more" class="results-more" hidden><span class="spinner"></span></div>
+      <div id="scroll-sentinel" class="sentinel"></div>
+    </section>
 
-      <!-- Mode toggle: Filters / AI-chat -->
-      <div class="search-mode-tabs">
-        <button class="search-mode-tab active" id="mode-tab-filters" onclick="App.setSearchMode('filters')">Фильтры</button>
-        <button class="search-mode-tab" id="mode-tab-chat" onclick="App.setSearchMode('chat')">✨ ИИ-поиск</button>
-      </div>
-    </div>
+    <section id="view-favorites" class="view" hidden aria-label="Избранное">
+      <h1 class="view__title">Избранное</h1>
+      <div id="favorites" class="results"></div>
+    </section>
 
-    <!-- Filters panel -->
-    <div class="filters-screen" id="mode-panel-filters">
-      <div id="filters-container"></div>
+    <section id="view-compare" class="view" hidden aria-label="Сравнение">
+      <h1 class="view__title">Сравнение</h1>
+      <div id="compare"></div>
+    </section>
 
-      <div class="search-btn-wrap">
-        <div class="search-count-hint" id="search-count-hint" style="display:none">
-          найдено <b id="search-count-value">0</b>
-        </div>
-        <button class="btn btn-primary" id="search-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <span id="search-btn-label">Найти</span>
-        </button>
-      </div>
-    </div>
+    <section id="view-alerts" class="view" hidden aria-label="Подписки">
+      <h1 class="view__title">Подписки</h1>
+      <p class="view__hint">Новые лоты по сохранённому поиску приходят в Telegram.</p>
+      <div id="subs-list"></div>
+    </section>
+  </main>
 
-    <!-- AI chat panel -->
-    <div class="chat-screen" id="mode-panel-chat" style="display:none">
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-intro" id="chat-intro">
-          <div class="chat-intro-icon">✨</div>
-          <div class="chat-intro-title">ИИ-поиск</div>
-          <div class="chat-intro-desc">Опишите автомобиль своими словами — ИИ подберёт нужные параметры</div>
-          <div class="chat-intro-example" id="chat-example-1">Хочу Hyundai Sonata 2020–2022, до 15 млн ₩, без аварий</div>
-          <div class="chat-intro-example" id="chat-example-2">Kia K5 до 2023 года, автомат, до 20 млн ₩</div>
-        </div>
-      </div>
-      <div class="chat-input-bar">
-        <textarea class="chat-input" id="chat-input"
-                  placeholder="Например: Hyundai Sonata 2020, до 15 млн ₩…"
-                  rows="1"></textarea>
-        <button class="chat-send-btn" id="chat-send-btn">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
-      </div>
-    </div>
-  </div>
+  <aside id="lot-pane" class="lot-pane" aria-label="Лот" hidden>
+    <div id="lot-view" class="lot"></div>
+  </aside>
 
-  <!-- ── RESULTS SCREEN ── -->
-  <div id="screen-results" class="screen">
-    <div class="header">
-      <button class="header-back" onclick="App.switchTab('search')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Назад
-      </button>
-      <span class="header-title">Результаты</span>
-      <button class="subscribe-btn" id="subscribe-btn" style="display:none"
-              onclick="Subscriptions.toggleSubscribe()">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-        </svg>
-        Подписаться
-      </button>
-    </div>
+  <!-- Narrow screens without Telegram's own buttons: the screen's actions -->
+  <div id="actionbar" class="actionbar" hidden></div>
 
-    <div id="results-loading" class="loading-overlay" style="display:none">
-      <div class="spinner"></div>
-      <span>Поиск…</span>
-    </div>
-
-    <div id="results-grid-wrap">
-      <div class="results-header">
-        <span class="results-count" id="results-count">0 лотов</span>
-        <div class="results-sort">
-          <select class="filter-select" id="sort-select" style="font-size:12px;padding:4px 22px 4px 8px">
-            <option value="date">По дате</option>
-            <option value="price_asc">Цена ↑</option>
-            <option value="price_desc">Цена ↓</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="errors-banner" id="errors-banner" style="display:none"></div>
-
-      <div class="cards-grid" id="cards-grid"></div>
-
-      <div id="load-more-wrap" style="display:none;text-align:center;padding:12px 0">
-        <button class="btn btn-secondary btn-sm" id="load-more-btn">Загрузить ещё</button>
-      </div>
-      <div id="scroll-sentinel" style="height:1px"></div>
-
-      <div id="results-empty" class="empty-state" style="display:none">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-        </svg>
-        <p>Ничего не найдено. Попробуйте изменить фильтры.</p>
-        <button class="btn btn-secondary btn-sm" onclick="App.switchTab('search')" style="width:auto;margin-top:4px">
-          Изменить фильтры
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── FAVORITES SCREEN ── -->
-  <div id="screen-favorites" class="screen">
-    <div class="header">
-      <span class="header-title">❤️ Избранное</span>
-    </div>
-    <div id="favorites-list">
-      <div id="favorites-grid" class="cards-grid"></div>
-      <div id="favorites-empty" class="empty-state" style="display:none">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-        </svg>
-        <p>Нет сохранённых лотов.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── SUBSCRIPTIONS SCREEN ── -->
-  <div id="screen-alerts" class="screen">
-    <div class="header">
-      <span class="header-title">🔔 Уведомления</span>
-    </div>
-    <div class="subs-hint">
-      Подпишитесь на поиск, чтобы получать уведомления в Telegram о новых лотах.
-    </div>
-    <div id="subs-list"></div>
-  </div>
-
-  <!-- ── HELP SCREEN ── -->
-  <div id="screen-help" class="screen">
-    <div class="header">
-      <button class="header-back" onclick="App.switchTab('search')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Назад
-      </button>
-      <span class="header-title">Справка</span>
-    </div>
-    <div class="help-content">
-
-      <div class="help-section">
-        <h3>Как открыть</h3>
-        <p>Через Telegram — нажмите <b>«Открыть каталог»</b> в боте.</p>
-        <p>Через браузер — откройте напрямую:<br>
-          <a href="https://carbotacrchi-production.up.railway.app/miniapp/" target="_blank" class="help-link">
-            carbotacrchi-production.up.railway.app/miniapp/
-          </a><br>
-          При первом входе в нижней панели появится кнопка <b>«Подключить»</b> — нажмите её, чтобы привязать Telegram-аккаунт.
-        </p>
-      </div>
-
-      <div class="help-section">
-        <h3>Поиск по фильтрам</h3>
-        <p>Главный экран открывается в режиме фильтров. Выберите марку, модель, год, пробег, цену и другие параметры — под кнопкой «Найти» отображается примерное количество совпадений. Нажмите <b>«Найти»</b> для перехода к результатам.</p>
-        <div class="help-filters-grid">
-          <div class="help-filter-chip">Марка / Модель</div>
-          <div class="help-filter-chip">Год</div>
-          <div class="help-filter-chip">Пробег</div>
-          <div class="help-filter-chip">Цена (₩)</div>
-          <div class="help-filter-chip">Топливо</div>
-          <div class="help-filter-chip">КПП</div>
-          <div class="help-filter-chip">Привод</div>
-          <div class="help-filter-chip">Кузов</div>
-          <div class="help-filter-chip">История аварий</div>
-          <div class="help-filter-chip">Опции</div>
-        </div>
-      </div>
-
-      <div class="help-section">
-        <h3>✨ ИИ-поиск</h3>
-        <p>Переключитесь на вкладку <b>«ИИ-поиск»</b> и опишите автомобиль свободным текстом:</p>
-        <div class="help-example">Хочу Hyundai Sonata 2020–2022, до 15 млн ₩, без аварий</div>
-        <p>ИИ распознаёт параметры и показывает карточку запроса. Нажмите <b>«Найти →»</b> для перехода к результатам.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>Результаты</h3>
-        <p>Карточки показывают фото, год, марку, модель, цену, пробег и характеристики. Сортировка — по дате, цене ↑ или ↓. Прокручивайте вниз для загрузки следующей страницы.</p>
-        <p>Нажмите на карточку, чтобы открыть <b>детальный лист</b> с полными характеристиками, историей, инспекцией и опциями. Кнопка <b>«Открыть лот»</b> ведёт на страницу объявления на Encar.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>Избранное</h3>
-        <p>Нажмите на сердечко на карточке или в детальном листе, чтобы сохранить лот. Все сохранённые лоты доступны на вкладке <b>«Избранное»</b>.</p>
-      </div>
-
-      <div class="help-section">
-        <h3>Уведомления</h3>
-        <p>На экране результатов нажмите <b>«Подписаться»</b> — при появлении новых лотов под ваш запрос придёт сообщение в Telegram. Управлять подписками можно на вкладке <b>«Уведомления»</b>.</p>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── BOTTOM NAV ── -->
-  <nav class="bottom-nav">
-    <button class="bottom-nav-item active" data-tab="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-      </svg>
-      Поиск
-    </button>
-    <button class="bottom-nav-item" data-tab="results">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-      </svg>
-      Результаты
-    </button>
-    <button class="bottom-nav-item" data-tab="favorites">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-      </svg>
-      Избранное
-    </button>
-    <button class="bottom-nav-item" data-tab="alerts" style="position:relative">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-      </svg>
-      <span class="nav-badge" id="subs-badge" style="display:none"></span>
-      Уведомления
-    </button>
+  <nav id="tabbar" class="tabbar" aria-label="Разделы">
+    <a href="#" data-nav="search" class="tabbar__item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Поиск</a>
+    <a href="#favorites" data-nav="favorites" class="tabbar__item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>Избранное</a>
+    <a href="#compare" data-nav="compare" class="tabbar__item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v18M16 3v18M3 8h5M16 16h5"/></svg>Сравнение<span class="dot-count" id="cmp-count-tab"></span></a>
+    <a href="#alerts" data-nav="alerts" class="tabbar__item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Подписки<span class="dot-count" id="subs-badge-tab"></span></a>
   </nav>
 
-  <!-- ── LOT DETAIL SHEET ── -->
-  <div class="sheet-overlay" id="sheet-overlay">
-    <div class="sheet" id="sheet-content"></div>
-  </div>
-
-  <!-- ── TOAST ── -->
-  <div class="toast" id="toast"></div>
-
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
-<script src="js/telegram.js?v=10"></script>
-<script src="js/browser-auth.js?v=10"></script>
-<script src="js/api.js?v=10"></script>
-<script src="js/taxonomy.js?v=10"></script>
+<script src="js/telegram.js?v=20"></script>
+<script src="js/browser-auth.js?v=20"></script>
+<script src="js/api.js?v=20"></script>
+<script src="js/taxonomy.js?v=20"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
-<script src="js/filters.js?v=10"></script>
-<script src="js/results.js?v=10"></script>
-<script src="js/subscriptions.js?v=10"></script>
-<script src="js/chat.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/format.js?v=20"></script>
+<script src="js/filters.js?v=20"></script>
+<script src="js/compare.js?v=20"></script>
+<script src="js/results.js?v=20"></script>
+<script src="js/lot.js?v=20"></script>
+<script src="js/subscriptions.js?v=20"></script>
+<script src="js/app.js?v=20"></script>
 </body>
 </html>

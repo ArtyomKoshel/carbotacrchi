@@ -1,472 +1,138 @@
+/**
+ * The results in three forms over one list of lots:
+ *  rows  — phone: photo, title, price, mileage, history flags;
+ *  table — desktop: sortable columns, compare checkbox, keyboard ↑ ↓ Enter;
+ *  cards — desktop: a photo grid.
+ */
 const Results = (() => {
-  let lots            = [];
-  let favorites       = new Set();
-  let activeLot       = null;
-  let searchedOptions = new Set(); // option codes from current search query
-  let currentQuery    = null;      // full query for field-level highlighting
-
-  const CATEGORY_EMOJI = {
-    exterior:    '🚗',
-    safety:      '🛡️',
-    convenience: '⭐',
-    interior:    '🪑',
+  // table column → sort key pair [asc, desc]; the first click picks the natural direction
+  const SORT_COLS = {
+    price: ['price_asc', 'price_desc'],
+    mileage: ['mileage_asc', 'mileage_desc'],
+    year: ['year_desc', 'year_asc'],
+    date: ['date', 'date'],
   };
 
-  function setFavorites(ids) {
-    favorites = new Set(ids);
+  function thumb(lot, eager) {
+    const n = Fmt.photoCount(lot);
+    return `<div class="thumb"><img src="${Fmt.esc(Fmt.cover(lot))}" alt="" ${eager ? '' : 'loading="lazy"'} decoding="async"
+      onerror="this.onerror=null;this.src='${Fmt.PLACEHOLDER}'">${n > 1 ? `<span class="thumb__n">${n}</span>` : ''}</div>`;
   }
 
-  function setSearchOptions(codes) {
-    searchedOptions = new Set(Array.isArray(codes) ? codes : []);
+  function flags(lot, query) {
+    const h = Fmt.history(lot);
+    const out = h.flags.map(f => `<span class="flag${f.cls ? ' flag--' + f.cls : ''}">${Fmt.esc(f.text)}</span>`);
+    if (query?.trim && lot.trim) out.push(`<span class="flag flag--match">${Fmt.esc(Fmt.label('trim', lot.trim))}</span>`);
+    return out.length ? `<div class="flags">${out.join('')}</div>` : '';
   }
 
-  function setSearchQuery(q) {
-    currentQuery = q ?? null;
+  function row(lot, i, ctx) {
+    const fav = ctx.favorites?.has(lot.id);
+    return `<div class="row" role="button" tabindex="0" data-i="${i}" aria-label="${Fmt.esc(Fmt.title(lot))}">
+      ${thumb(lot, i < 4)}
+      <div>
+        <div class="row__title">${Fmt.esc(Fmt.title(lot))}${Fmt.trim(lot) ? ` <span style="color:var(--muted);font-weight:500">${Fmt.esc(Fmt.trim(lot))}</span>` : ''}</div>
+        <div class="row__sub">${Fmt.esc(Fmt.sub(lot))}</div>
+        <div class="row__price">${Fmt.won(lot.price)}</div>
+        ${flags(lot, ctx.query)}
+      </div>
+      <button class="row__fav${fav ? ' on' : ''}" type="button" data-fav="${i}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}" aria-pressed="${fav}">${Fmt.icon.heart}</button>
+    </div>`;
   }
 
-  function _isQueried(field) {
-    if (!currentQuery) return false;
-    const q = currentQuery;
-    switch (field) {
-      case 'has_accident':    return q.hasAccident !== null && q.hasAccident !== undefined;
-      case 'flood_history':   return q.floodHistory !== null && q.floodHistory !== undefined;
-      case 'owners_count':    return (q.ownersCountMax ?? 0) > 0 || (q.ownersCountMin ?? 0) > 0;
-      case 'insurance_count': return (q.insuranceCountMax ?? 0) > 0 || (q.insuranceCountMin ?? 0) > 0;
-      case 'listed_at':       return !!(q.listedAfter || q.listedBefore);
-      case 'first_reg_date':  return !!(q.firstRegAfter || q.firstRegBefore);
-      case 'body_type':       return (q.bodyTypes?.length ?? 0) > 0;
-      case 'transmission':    return (q.transmissions?.length ?? 0) > 0;
-      case 'fuel':            return (q.fuelTypes?.length ?? 0) > 0;
-      case 'drive_type':      return (q.driveTypes?.length ?? 0) > 0;
-      case 'engine_volume':   return (q.engineMin ?? 0) > 0 || (q.engineMax ?? 0) > 0;
-      case 'color':           return (q.colors?.length ?? 0) > 0;
-      case 'trim':            return !!(q.trim);
-      case 'generation':      return !!(q.generation);
-      case 'mileage':         return (q.mileageMax ?? 0) > 0 || (q.mileageMin ?? 0) > 0;
-      case 'vin':             return !!(q.vin);
-      default:                return false;
-    }
+  function tableRow(lot, i, ctx) {
+    const h = Fmt.history(lot);
+    const sel = ctx.selectedId === lot.id;
+    return `<tr data-i="${i}" class="${sel ? 'sel' : ''}" aria-selected="${sel}">
+      <td class="t-chk"><button type="button" class="cbx${Compare.has(lot.id) ? ' on' : ''}" data-cmp="${i}" aria-label="Сравнить" aria-pressed="${Compare.has(lot.id)}"></button></td>
+      <td class="t-thumb">${thumb(lot, i < 12)}</td>
+      <td class="t-car"><b>${Fmt.esc([Fmt.make(lot), Fmt.model(lot)].filter(Boolean).join(' '))}${ctx.favorites?.has(lot.id) ? ' <span class="t-fav" title="В избранном">♥</span>' : ''}</b>
+        <small>${Fmt.esc([Fmt.trim(lot), Fmt.drive(lot)].filter(Boolean).join(' · '))}</small></td>
+      <td class="r t-num">${Fmt.num(lot.price)}</td>
+      <td class="r t-num">${Fmt.num(lot.mileage)}</td>
+      <td class="t-num">${Fmt.esc(lot.year || '—')}</td>
+      <td><span class="hist-dot hist-dot--${h.level}">${Fmt.esc(h.short)}</span></td>
+      <td class="r t-num">${Fmt.esc(lot.ownersCount ?? '—')}</td>
+      <td>${Fmt.esc(Fmt.city(lot) || '—')}</td>
+      <td class="t-num">${Fmt.esc(Fmt.shortDay(lot.listedAt))}</td>
+    </tr>`;
   }
 
-  function render(data, mount) {
-    lots = data.lots ?? [];
-    const total   = data.total  ?? 0;
-    const errors  = data.errors ?? [];
-    const relaxed = data.relaxed ?? false;
-    const relaxedMessage = data.relaxedMessage ?? '';
-    const isCustomMount = !!mount;
+  function card(lot, i, ctx) {
+    return `<div class="gc${ctx.selectedId === lot.id ? ' sel' : ''}" role="button" tabindex="0" data-i="${i}">
+      ${thumb(lot, i < 8)}
+      <div class="gc__body">
+        <div class="row__title">${Fmt.esc(Fmt.title(lot))}</div>
+        <div class="row__sub">${Fmt.esc(Fmt.sub(lot))}</div>
+        <div class="row__price">${Fmt.won(lot.price)}</div>
+        ${flags(lot, ctx.query)}
+      </div>
+    </div>`;
+  }
 
-    if (!isCustomMount) {
-      document.getElementById('results-count').textContent =
-        `${total} ${ruLots(total)}`;
-    }
+  function sortHead(col, label, cls, sort) {
+    const keys = SORT_COLS[col];
+    const on = keys && keys.includes(sort);
+    const arrow = on ? (sort.endsWith('_asc') ? ' ↑' : ' ↓') : '';
+    return `<th scope="col" class="${cls}${on ? ' sorted' : ''}" ${keys ? `data-sort="${col}"` : ''}>${label}${arrow}</th>`;
+  }
 
-    const banner = document.getElementById('errors-banner');
-    if (!isCustomMount) {
-      if (relaxed && relaxedMessage) {
-        banner.innerHTML = `ℹ️ ${relaxedMessage}`;
-        banner.className = 'errors-banner errors-banner--relaxed';
-        banner.style.display = 'block';
-      } else if (errors.length) {
-        banner.innerHTML = `⚠️ Ошибка источников: ${errors.join(', ')}`;
-        banner.className = 'errors-banner';
-        banner.style.display = 'block';
-      } else {
-        banner.style.display = 'none';
-      }
-    }
-
-    const grid = mount?.grid ?? document.getElementById('cards-grid');
-    const emptyState = mount?.empty ?? document.getElementById('results-empty');
-
-    if (!grid) return;
-
-    if (!lots.length) {
-      grid.innerHTML = '';
-      if (emptyState) emptyState.style.display = 'flex';
+  /**
+   * @param {HTMLElement} mount
+   * @param {object[]} lots
+   * @param {{mode: 'rows'|'table'|'cards', favorites?: Set, selectedId?: string, sort?: string, query?: object,
+   *          onOpen: Function, onFav?: Function, onCompare?: Function, onSort?: Function}} ctx
+   */
+  function render(mount, lots, ctx) {
+    if (ctx.mode === 'table') {
+      mount.innerHTML = `<div class="lt-wrap"><table class="lt"><thead><tr>
+          <th class="t-chk"></th><th class="t-thumb"></th><th scope="col">Авто</th>
+          ${sortHead('price', 'Цена, ₩', 'r', ctx.sort)}${sortHead('mileage', 'Пробег, км', 'r', ctx.sort)}${sortHead('year', 'Год', '', ctx.sort)}
+          <th scope="col">История</th><th scope="col" class="r" title="Смен владельца">Смен влад.</th><th scope="col">Город</th>${sortHead('date', 'Выставлен', '', ctx.sort)}
+        </tr></thead><tbody>${lots.map((l, i) => tableRow(l, i, ctx)).join('')}</tbody></table></div>`;
+      mount.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+        const [first, second] = SORT_COLS[th.dataset.sort];
+        ctx.onSort?.(ctx.sort === first && first !== second ? second : first);
+      }));
+      mount.querySelectorAll('[data-cmp]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        ctx.onCompare?.(lots[+b.dataset.cmp], b);
+      }));
+      mount.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', () => ctx.onOpen(lots[+tr.dataset.i])));
       return;
     }
-    if (emptyState) emptyState.style.display = 'none';
-    grid.innerHTML = lots.map((lot, i) => renderCard(lot, i)).join('');
-
-    grid.querySelectorAll('.lot-card').forEach((card, i) => {
-      card.addEventListener('click', e => {
-        if (e.target.closest('.lot-card__fav-btn')) return;
-        openSheet(lots[i]);
-      });
+    const tpl = ctx.mode === 'cards' ? card : row;
+    mount.innerHTML = ctx.mode === 'cards'
+      ? `<div class="grid">${lots.map((l, i) => tpl(l, i, ctx)).join('')}</div>`
+      : lots.map((l, i) => tpl(l, i, ctx)).join('');
+    mount.querySelectorAll('[data-i]').forEach(el => {
+      const open = e => { if (e.target.closest('[data-fav]')) return; ctx.onOpen(lots[+el.dataset.i]); };
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') open(e); });
     });
-
-    grid.querySelectorAll('.lot-card__fav-btn').forEach((btn, i) => {
-      btn.addEventListener('click', () => toggleFav(lots[i], btn));
-    });
+    mount.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      ctx.onFav?.(lots[+b.dataset.fav], b);
+    }));
   }
 
-  function showSkeletons(n = 6) {
-    const grid = document.getElementById('cards-grid');
-    const emptyState = document.getElementById('results-empty');
-    if (!grid) return;
-    if (emptyState) emptyState.style.display = 'none';
-    grid.innerHTML = Array.from({ length: n }, () => `
-      <div class="lot-card lot-card--skeleton">
-        <div class="lot-card__img"></div>
-        <div class="lot-card__body">
-          <div class="skeleton-line w80"></div>
-          <div class="skeleton-line w55"></div>
-          <div class="skeleton-line w35"></div>
-        </div>
-      </div>`).join('');
-  }
-
-  function appendCards(newLots) {
-    if (!newLots || !newLots.length) return;
-    const startIdx = lots.length;
-    lots = lots.concat(newLots);
-
-    const grid = document.getElementById('cards-grid');
-    if (!grid) return;
-
-    const fragment = document.createDocumentFragment();
-    const temp = document.createElement('div');
-    temp.innerHTML = newLots.map((lot, i) => renderCard(lot, startIdx + i)).join('');
-    while (temp.firstChild) fragment.appendChild(temp.firstChild);
-    grid.appendChild(fragment);
-
-    const newCards = grid.querySelectorAll('.lot-card');
-    for (let i = startIdx; i < newCards.length; i++) {
-      const card = newCards[i];
-      const lot = lots[i];
-      card.addEventListener('click', e => {
-        if (e.target.closest('.lot-card__fav-btn')) return;
-        openSheet(lot);
-      });
-      const favBtn = card.querySelector('.lot-card__fav-btn');
-      if (favBtn) favBtn.addEventListener('click', () => toggleFav(lot, favBtn));
+  function skeleton(mount, mode, n = 6) {
+    if (mode === 'table') {
+      mount.innerHTML = `<div class="lt-wrap"><table class="lt"><tbody>${Array.from({ length: 10 }, () =>
+        `<tr><td colspan="10"><div class="skeleton" style="height:28px"></div></td></tr>`).join('')}</tbody></table></div>`;
+      return;
     }
+    mount.innerHTML = Array.from({ length: n }, () => `<div class="row row--skeleton">
+      <div class="thumb skeleton"></div>
+      <div><div class="line skeleton" style="width:80%"></div><div class="line skeleton" style="width:55%"></div><div class="line skeleton" style="width:35%"></div></div>
+    </div>`).join('');
   }
 
-  function renderCard(lot, i) {
-    const price     = '₩' + Number(lot.price).toLocaleString();
-    const km        = Number(lot.mileage).toLocaleString() + ' км';
-    const isFav     = favorites.has(lot.id);
-    const imgSrc    = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const makeName  = lot.makeEn       || lot.make  || '';
-    const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
-    // When the search filters by trim, show each card's trim right after the name
-    const trimMapped = lot.trim ? Taxonomy.label('trim', lot.trim) : '';
-    const trimLabel = _isQueried('trim') && lot.trim
-      ? (trimMapped !== lot.trim ? trimMapped : (lot.trimEn || lot.trim))
-      : '';
-    const trimHtml  = trimLabel ? ` <span class="lot-card__trim">${escHtml(trimLabel)}</span>` : '';
-
-    // Drivetrain line: "Автомат · Бензин · AWD · 2.0л" — plain text, not tags
-    const drivelineParts = [
-      lot.transmission ? Taxonomy.label('transmission', lot.transmission) : null,
-      lot.fuel         ? Taxonomy.label('fuel',         lot.fuel)         : null,
-      lot.driveType    ? Taxonomy.label('drive_type',   lot.driveType)    : null,
-      lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume}л` : null,
-    ].filter(Boolean);
-    const drivelineHtml = drivelineParts.length
-      ? `<div class="lot-card__driveline">${drivelineParts.map(escHtml).join(' · ')}</div>`
-      : '';
-
-    // Tags: only for safety alerts and searched-field highlights
-    const tags = [];
-    if (lot.hasAccident)
-      tags.push({ label: '⚠ Авария', cls: 'lot-card__tag--danger' });
-    else if (_isQueried('has_accident') && lot.hasAccident === false)
-      tags.push({ label: '✓ Без аварий', cls: 'lot-card__tag--match' });
-
-    if (lot.floodHistory)
-      tags.push({ label: '💧 Затоплен', cls: 'lot-card__tag--danger' });
-
-    if (_isQueried('owners_count') && lot.ownersCount != null)
-      tags.push({ label: `${lot.ownersCount} влад.`, cls: 'lot-card__tag--match' });
-    if (_isQueried('drive_type') && lot.driveType)
-      tags.push({ label: Taxonomy.label('drive_type', lot.driveType), cls: 'lot-card__tag--match' });
-
-    const tagsHtml = tags.length
-      ? `<div class="lot-card__tags">${tags.map(t =>
-          `<span class="lot-card__tag${t.cls ? ' ' + t.cls : ''}">${escHtml(t.label)}</span>`
-        ).join('')}</div>`
-      : '';
-
-    // Calendar SVG for date
-    const calIcon = `<svg viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
-      <path d="M11 1v1H5V1H3v1H1.5A1.5 1.5 0 000 3.5v10A1.5 1.5 0 001.5 15h13A1.5 1.5 0 0016 13.5v-10A1.5 1.5 0 0014.5 2H13V1h-2zm3 5H2V4h12v2z"/>
-    </svg>`;
-
-    return `
-      <div class="lot-card" data-idx="${i}">
-        <img class="lot-card__img" src="${imgSrc}" alt="${escHtml(makeName)} ${escHtml(modelName)}"
-             onerror="this.src='/miniapp/img/placeholder.svg'">
-        <button class="lot-card__fav-btn${isFav?' saved':''}" data-id="${escHtml(lot.id)}"
-                aria-label="Сохранить">
-          ${isFav ? heartFilled() : heartOutline()}
-        </button>
-        <div class="lot-card__body">
-          <div class="lot-card__source">${escHtml(lot.sourceName)}</div>
-          <div class="lot-card__title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}${trimHtml}</div>
-          <div class="lot-card__price">${price}</div>
-          <div class="lot-card__meta">
-            <span class="lot-card__meta-item">${calIcon} ${escHtml(lot.listedAt ?? lot.auctionDate ?? '—')}</span>
-            <span class="lot-card__meta-item">${km}</span>
-          </div>
-          ${drivelineHtml}
-          ${tagsHtml}
-        </div>
-      </div>`;
+  function empty(mount, { title, text, action }) {
+    mount.innerHTML = `<div class="empty">${Fmt.icon.search}<b>${Fmt.esc(title)}</b>${text ? `<span>${Fmt.esc(text)}</span>` : ''}
+      ${action ? `<button class="btn btn--ghost" type="button" data-empty-action>${Fmt.esc(action.label)}</button>` : ''}</div>`;
+    if (action) mount.querySelector('[data-empty-action]').addEventListener('click', action.run);
   }
 
-  async function toggleFav(lot, btn) {
-    TG.haptic('impact', 'light');
-    try {
-      if (favorites.has(lot.id)) {
-        await API.removeFavorite(lot.id);
-        favorites.delete(lot.id);
-        btn.classList.remove('saved');
-        btn.innerHTML = heartOutline();
-        showToast('Удалено из избранного');
-      } else {
-        await API.addFavorite(lot.id, lot.source, lot);
-        favorites.add(lot.id);
-        btn.classList.add('saved');
-        btn.innerHTML = heartFilled();
-        showToast('Сохранено ❤️');
-      }
-    } catch (e) {
-      showToast('Ошибка: ' + e.message);
-    }
-  }
-
-  function fmtDate(raw) {
-    if (!raw) return null;
-    // ISO timestamp → only the date part: "2022-07-19T00:00:00Z" → "2022-07-19"
-    const m = String(raw).match(/^(\d{4}-\d{2}-\d{2})/);
-    return m ? m[1] : String(raw);
-  }
-
-  function openSheet(lot) {
-    activeLot = lot;
-    const overlay   = document.getElementById('sheet-overlay');
-    const makeName  = lot.makeEn       || lot.make  || '';
-    const modelName = lot.modelGroupEn || lot.modelEn || lot.model || '';
-    const price    = '₩' + Number(lot.price).toLocaleString();
-    const km       = Number(lot.mileage).toLocaleString() + ' км';
-    const imgSrc   = lot.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const isFav    = favorites.has(lot.id);
-    const d = (label, value, extra = '', hl = false) =>
-      value ? `<div class="sheet-detail-item${hl ? ' sheet-detail-item--match' : ''}"${extra}>
-        <span class="sheet-detail-label">${label}</span>
-        <span class="sheet-detail-value">${value}</span>
-      </div>` : '';
-
-    document.getElementById('sheet-content').innerHTML = `
-      <div class="sheet-header" id="sheet-drag-handle">
-        <div class="sheet-handle"></div>
-        <div class="sheet-header-row">
-          <span class="sheet-header-source">${escHtml(lot.sourceName)}</span>
-          <button class="sheet-close-btn" onclick="Results.closeSheet()">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <img class="sheet-img" src="${imgSrc}" alt="${escHtml(makeName)}"
-           onerror="this.src='/miniapp/img/placeholder.svg'">
-      <div class="sheet-body">
-        <div class="sheet-title">${escHtml(lot.year)} ${escHtml(makeName)} ${escHtml(modelName)}</div>
-        <div class="sheet-price">${price}</div>
-        <div class="sheet-section-title">Основное</div>
-        <div class="sheet-details">
-          ${d('Пробег', km, '', _isQueried('mileage'))}
-          ${d('Объявление', escHtml(lot.listedAt ?? lot.auctionDate ?? '—'), '', _isQueried('listed_at'))}
-          ${d('Местоположение', escHtml(lot.location ?? '—'))}
-        </div>
-
-        <div class="sheet-section-title">Характеристики</div>
-        <div class="sheet-details">
-          ${d('Кузов',        lot.bodyType     ? escHtml(Taxonomy.label('body_type',    lot.bodyType))    : '', '', _isQueried('body_type'))}
-          ${d('КПП',          lot.transmission ? escHtml(Taxonomy.label('transmission', lot.transmission)) : '', '', _isQueried('transmission'))}
-          ${d('Топливо',      lot.fuel         ? escHtml(Taxonomy.label('fuel',         lot.fuel))        : '', '', _isQueried('fuel'))}
-          ${d('Привод',       lot.driveType    ? escHtml(Taxonomy.label('drive_type',   lot.driveType))   : '', '', _isQueried('drive_type'))}
-          ${d('Двигатель',    lot.engineVolume && Number(lot.engineVolume) >= 0.5 ? `${lot.engineVolume} л` : '', '', _isQueried('engine_volume'))}
-          ${d('Цвет кузова',  lot.color        ? escHtml(Taxonomy.label('color', lot.color))           : '', '', _isQueried('color'))}
-          ${d('Цвет салона',  lot.seatColor    ? escHtml(Taxonomy.label('seat_color', lot.seatColor)) : '')}
-          ${d('Мест',         lot.seatCount    ? String(lot.seatCount)                                : '')}
-          ${d('Комплектация', lot.trim         ? escHtml(Taxonomy.label('trim', lot.trim))            : '', '', _isQueried('trim'))}
-          ${d('Поколение',    lot.generation   ? escHtml(lot.generation)                              : '', '', _isQueried('generation'))}
-        </div>
-
-        <div class="sheet-section-title">История</div>
-        <div class="sheet-details">
-          ${lot.hasAccident  !== null && lot.hasAccident  !== undefined ? d('Авария (офиц.)', `<span style="color:${lot.hasAccident  ? 'var(--danger)' : 'var(--success)'}">${lot.hasAccident  ? 'Да' : 'Нет'}</span>`, '', _isQueried('has_accident')) : ''}
-          ${lot.floodHistory !== null && lot.floodHistory !== undefined ? d('Затопление',     `<span style="color:${lot.floodHistory ? 'var(--danger)' : 'var(--success)'}">${lot.floodHistory ? 'Да' : 'Нет'}</span>`, '', _isQueried('flood_history')) : ''}
-          ${d('Владельцев',   lot.ownersCount    ? String(lot.ownersCount)    : '', '', _isQueried('owners_count'))}
-          ${d('Страховых',    lot.insuranceCount ? String(lot.insuranceCount) : '', '', _isQueried('insurance_count'))}
-          ${d('VIN', lot.vin ? `<span style="font-size:12px;font-family:monospace">${escHtml(lot.vin)}</span>` : '', ' style="grid-column:span 2"', _isQueried('vin'))}
-          ${d('Документ', lot.document ? `<span style="font-size:12px">${escHtml(lot.document)}</span>` : '', ' style="grid-column:span 2"')}
-          ${d('Рыночная цена',    lot.retailValue  ? `₩${Number(lot.retailValue).toLocaleString()}`  : '')}
-          ${d('Стоимость ремонта',lot.repairCost   ? `<span style="color:var(--danger)">₩${Number(lot.repairCost).toLocaleString()}</span>` : '')}
-          ${d('Номер',  lot.plateNumber ? `<span style="font-family:monospace">${escHtml(lot.plateNumber)}</span>` : '')}
-          ${lot.hasKeys !== null && lot.hasKeys !== undefined ? d('Ключи', lot.hasKeys ? 'Есть' : 'Нет') : ''}
-        </div>
-        ${Array.isArray(lot.options) && lot.options.length ? (() => {
-          // Searched options first, then the rest
-          const searched = lot.options.filter(o => searchedOptions.has(o.code));
-          const rest     = lot.options.filter(o => !searchedOptions.has(o.code));
-          const sorted   = [...searched, ...rest];
-          const id       = `opts-${lot.id}`;
-
-          const renderOpt = (o, highlight) => {
-            const name  = escHtml(o.name_ru || o.name_en || o.name_kr || o.code);
-            const emoji = CATEGORY_EMOJI[o.category] || '⚙️';
-            const bg    = highlight ? 'rgba(51,144,236,.22)' : 'rgba(255,255,255,.05)';
-            const ring  = highlight ? `border:1.5px solid var(--accent);` : 'border:1.5px solid transparent;';
-            return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;background:${bg};${ring}border-radius:10px;padding:6px 4px">
-              <span style="font-size:20px;line-height:1">${emoji}</span>
-              <span style="font-size:9px;color:${highlight ? 'var(--accent)' : 'var(--hint)'};line-height:1.2;font-weight:${highlight ? 600 : 400}">${name}</span>
-            </div>`;
-          };
-
-          const first10 = sorted.slice(0, 10);
-          const more    = sorted.slice(10);
-          const moreHtml = more.length ? `
-            <div id="${id}-more" style="display:none;grid-column:1/-1;display:none">
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-                ${more.map(o => renderOpt(o, searchedOptions.has(o.code))).join('')}
-              </div>
-            </div>
-            <button onclick="document.getElementById('${id}-more').style.display=document.getElementById('${id}-more').style.display==='none'?'block':'none';this.textContent=this.textContent.includes('▼')?'Скрыть ▲':'Ещё ${more.length} ▼'"
-              style="grid-column:1/-1;background:none;border:none;color:var(--hint);font-size:11px;cursor:pointer;padding:4px 0">
-              Ещё ${more.length} ▼
-            </button>` : '';
-
-          return `<div style="margin:12px 0 0">
-            <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 6px">Опции (${sorted.length})</div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 4px">
-              ${first10.map(o => renderOpt(o, searchedOptions.has(o.code))).join('')}
-              ${moreHtml}
-            </div>
-          </div>`;
-        })() : ''}
-        <div id="sheet-inspection" style="margin:12px 0 12px"></div>
-        <div class="sheet-actions">
-          <a href="${escHtml(lot.lotUrl)}" target="_blank" rel="noopener"
-             class="btn btn-primary" style="text-decoration:none;flex:1">Открыть лот</a>
-          <button class="btn btn-secondary btn-sm" style="flex:none;padding:12px 16px"
-                  onclick="Results.sheetToggleFav()"
-                  id="sheet-fav-btn">${isFav ? '❤️' : '🤍'}</button>
-        </div>
-      </div>`;
-
-    overlay.classList.add('open');
-    TG.haptic('impact', 'medium');
-
-    // Swipe-to-dismiss on the drag handle header
-    const sheetEl  = document.getElementById('sheet-content');
-    const dragArea = document.getElementById('sheet-drag-handle');
-    if (sheetEl && dragArea) {
-      let startY = 0;
-      const onStart = e => { startY = e.touches[0].clientY; sheetEl.style.transition = 'none'; };
-      const onMove  = e => {
-        const dy = e.touches[0].clientY - startY;
-        if (dy > 0) sheetEl.style.transform = `translateY(${dy}px)`;
-      };
-      const onEnd   = e => {
-        sheetEl.style.transition = '';
-        if (e.changedTouches[0].clientY - startY > 110) {
-          closeSheet();
-        } else {
-          sheetEl.style.transform = '';
-        }
-        dragArea.removeEventListener('touchstart', onStart);
-        dragArea.removeEventListener('touchmove',  onMove);
-        dragArea.removeEventListener('touchend',   onEnd);
-      };
-      dragArea.addEventListener('touchstart', onStart, { passive: true });
-      dragArea.addEventListener('touchmove',  onMove,  { passive: true });
-      dragArea.addEventListener('touchend',   onEnd);
-    }
-
-    API.getInspection(lot.id).then(insp => {
-      const el = document.getElementById('sheet-inspection');
-      if (!el || !insp) return;
-      const rows = [];
-      if (insp.valid_until) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Техосмотр до</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.valid_until))}</span></div>`);
-      if (insp.cert_no)     rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Номер акта</span><span class="sheet-detail-value" style="font-size:12px;font-family:monospace">${escHtml(insp.cert_no)}</span></div>`);
-      if (insp.first_registration) rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">1-я регистрация</span><span class="sheet-detail-value">${escHtml(fmtDate(insp.first_registration))}</span></div>`);
-      if (insp.inspection_mileage)  rows.push(`<div class="sheet-detail-item"><span class="sheet-detail-label">Пробег (акт)</span><span class="sheet-detail-value">${Number(insp.inspection_mileage).toLocaleString()} км</span></div>`);
-      if (insp.accident_detail) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Структурные повреждения</span><span class="sheet-detail-value" style="color:var(--danger)">${escHtml(insp.accident_detail)}</span></div>`);
-      if (insp.outer_detail)    rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Внешние ремонты</span><span class="sheet-detail-value">${escHtml(insp.outer_detail)}</span></div>`);
-      const note = insp.details?.inspector_note;
-      if (note) rows.push(`<div class="sheet-detail-item" style="grid-column:span 2"><span class="sheet-detail-label">Заметки инспектора</span><span class="sheet-detail-value" style="font-size:11px">${escHtml(note)}</span></div>`);
-      if (rows.length) {
-        el.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;padding:0 4px 4px">Инспекция</div><div class="sheet-details">${rows.join('')}</div>`;
-      }
-    }).catch(() => {});
-  }
-
-  function sheetToggleFav() {
-    if (!activeLot) return;
-    const btn = document.getElementById('sheet-fav-btn');
-    if (!btn) return;
-    if (favorites.has(activeLot.id)) {
-      API.removeFavorite(activeLot.id).then(() => {
-        favorites.delete(activeLot.id);
-        btn.textContent = '🤍';
-        showToast('Удалено из избранного');
-        syncCardFavBtn(activeLot.id, false);
-      });
-    } else {
-      API.addFavorite(activeLot.id, activeLot.source, activeLot).then(() => {
-        favorites.add(activeLot.id);
-        btn.textContent = '❤️';
-        showToast('Сохранено ❤️');
-        syncCardFavBtn(activeLot.id, true);
-      });
-    }
-  }
-
-  function syncCardFavBtn(id, saved) {
-    const btn = document.querySelector(`.lot-card__fav-btn[data-id="${CSS.escape(id)}"]`);
-    if (!btn) return;
-    btn.classList.toggle('saved', saved);
-    btn.innerHTML = saved ? heartFilled() : heartOutline();
-  }
-
-  function closeSheet() {
-    const sheetEl = document.getElementById('sheet-content');
-    if (sheetEl) sheetEl.style.transform = '';
-    document.getElementById('sheet-overlay').classList.remove('open');
-    activeLot = null;
-  }
-
-  function heartOutline() {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-  }
-  function heartFilled() {
-    return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-  }
-
-  function ruLots(n) {
-    const mod10 = n % 10, mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'лот';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'лота';
-    return 'лотов';
-  }
-
-  function escHtml(v) {
-    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
-  }
-
-  return { render, appendCards, showSkeletons, setFavorites, setSearchOptions, setSearchQuery, closeSheet, sheetToggleFav };
+  return { render, skeleton, empty };
 })();

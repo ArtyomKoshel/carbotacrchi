@@ -1,5 +1,6 @@
 const Taxonomy = (() => {
   const labels = {
+    make: {},
     body_type: {},
     transmission: {},
     fuel: {},
@@ -31,6 +32,7 @@ const Taxonomy = (() => {
   }
 
   function ingestFilters(data) {
+    indexField('make',         data?.makeOptions        ?? []);
     indexField('body_type',    data?.bodyTypeOptions    ?? data?.bodyTypes    ?? []);
     indexField('transmission', data?.transmissionOptions ?? data?.transmissions ?? []);
     indexField('fuel',         data?.fuelTypeOptions    ?? data?.fuelTypes     ?? []);

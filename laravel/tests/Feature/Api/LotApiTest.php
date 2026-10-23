@@ -102,7 +102,7 @@ final class LotApiTest extends TestCase
         $this->assertStringContainsString('2021 Hyundai Sonata (DN8) Premium', $text);
         $this->assertStringContainsString('₩18 900 000', $text);
         $this->assertStringContainsString('45 210 км · бензин', $text);
-        $this->assertStringContainsString('История: без ДТП · владельцев: 1 · страховых случаев: 0', $text);
+        $this->assertStringContainsString('История: без ДТП · смен владельца: 1 · страховых случаев: 0', $text);
         $this->assertStringContainsString('Осмотр 10.09.2026: окрас: бампер', $text);
         foreach (['encar', '41536978', 'KMHL341CBMA123456', '12가3456'] as $leak) {
             $this->assertStringNotContainsStringIgnoringCase($leak, $text);

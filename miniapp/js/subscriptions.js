@@ -63,16 +63,12 @@ const Subscriptions = (() => {
   function renderSubscribeBtn() {
     const btn = document.getElementById('subscribe-btn');
     if (!btn) return;
-    if (!currentQuery) {
-      btn.style.display = 'none';
-      return;
-    }
-    btn.style.display = 'flex';
+    btn.hidden = !currentQuery;
     const subscribed = isSubscribed();
-    btn.classList.toggle('subscribed', subscribed);
-    btn.innerHTML = subscribed
-      ? `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="18" cy="6" r="3" fill="var(--success)"/></svg>Подписан`
-      : `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Подписаться`;
+    btn.classList.toggle('on', subscribed);
+    btn.setAttribute('aria-pressed', String(subscribed));
+    btn.textContent = subscribed ? 'Слежу за поиском' : 'Следить за поиском';
+    btn.title = subscribed ? 'Новые лоты по этому поиску приходят в Telegram. Нажмите, чтобы перестать.' : 'Присылать новые лоты по этому поиску в Telegram';
   }
 
   async function toggleSubscribe() {
@@ -91,7 +87,7 @@ const Subscriptions = (() => {
       } else {
         const data = await API.subscribe(currentQuery);
         activeSubs.push({ id: data.id, query: currentQuery, label: data.label });
-        showToast('🔔 Подписка оформлена! Вы получите уведомление о новых лотах.');
+        showToast('Готово: новые лоты по этому поиску придут в Telegram');
         TG.haptic('notification', 'success');
       }
       renderSubscribeBtn();
@@ -113,12 +109,10 @@ const Subscriptions = (() => {
       renderBadge();
       if (!activeSubs.length) {
         container.innerHTML = `
-          <div class="empty-state">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <p>Нет активных подписок.<br>Найдите лоты и нажмите <b>Подписаться</b>.</p>
+          <div class="empty">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <b>Подписок пока нет</b>
+            <span>Найдите машины и нажмите «Следить за поиском» над результатами.</span>
           </div>`;
         return;
       }
@@ -137,16 +131,16 @@ const Subscriptions = (() => {
           viewResults(parseInt(btn.dataset.id), query);
         });
       });
-      container.querySelectorAll('.mini-lot[data-url]').forEach(card => {
+      container.querySelectorAll('.mini-lot[data-id]').forEach(card => {
         card.addEventListener('click', () => {
           TG.haptic('impact', 'light');
-          window.open(card.dataset.url, '_blank');
+          App.openLot(card.dataset.id);
         });
       });
     } catch (e) {
       container.innerHTML = API.isAuthError(e)
         ? BrowserAuth.authRequiredHtml()
-        : `<div class="empty-state"><p style="color:var(--danger)">${escHtml(e.message)}</p></div>`;
+        : `<div class="empty"><b>Не загрузилось</b><span>${escHtml(e.message)}</span></div>`;
     }
   }
 
@@ -158,7 +152,7 @@ const Subscriptions = (() => {
     const previews = (s.new_lot_previews ?? []);
     const previewStrip = previews.length ? `
       <div class="sub-previews">
-        <div class="sub-previews__label">🆕 Новые лоты</div>
+        <div class="sub-previews__label">Новые лоты</div>
         <div class="sub-previews__strip">
           ${previews.map(p => renderMiniLot(p)).join('')}
         </div>
@@ -168,7 +162,6 @@ const Subscriptions = (() => {
     return `
       <div class="sub-card">
         <div class="sub-card__top">
-          <div class="sub-card__icon">🔔</div>
           <div class="sub-card__body">
             <div class="sub-card__label">${escHtml(s.label)} ${newBadge}</div>
             <div class="sub-card__meta">Последняя проверка: ${escHtml(checked)}</div>
@@ -176,8 +169,8 @@ const Subscriptions = (() => {
           </div>
           <div class="sub-card__actions">
             <button class="sub-view-btn" data-id="${s.id}" data-query="${queryPayload}"
-                    title="Просмотреть результаты">🔍</button>
-            <button class="sub-remove-btn" data-id="${s.id}" title="Отписаться">✕</button>
+                    title="Показать результаты">Показать</button>
+            <button class="sub-remove-btn" data-id="${s.id}" title="Перестать следить">Удалить</button>
           </div>
         </div>
         ${previewStrip}
@@ -186,8 +179,8 @@ const Subscriptions = (() => {
 
   function renderMiniLot(p) {
     const img    = p.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const price  = '₩' + Number(p.price).toLocaleString();
-    const urlAttr = p.lotUrl ? ` data-url="${escHtml(p.lotUrl)}"` : '';
+    const price  = Fmt.won(p.price);
+    const urlAttr = p.id ? ` data-id="${escHtml(p.id)}"` : '';
     return `
       <div class="mini-lot"${urlAttr}>
         <img class="mini-lot__img" src="${escHtml(img)}"
@@ -216,11 +209,11 @@ const Subscriptions = (() => {
   }
 
   function renderBadge() {
-    const badge = document.getElementById('subs-badge');
-    if (!badge) return;
     const newCount = activeSubs.reduce((sum, s) => sum + (s.new_lots_count || 0), 0);
-    badge.textContent = newCount || '';
-    badge.style.display = newCount > 0 ? 'inline-block' : 'none';
+    for (const id of ['subs-badge', 'subs-badge-tab']) {
+      const badge = document.getElementById(id);
+      if (badge) badge.textContent = newCount || '';
+    }
   }
 
   function escHtml(v) {
@@ -231,13 +224,7 @@ const Subscriptions = (() => {
     return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2400);
-  }
+  function showToast(msg) { App.toast(msg, 3000); }
 
   async function viewResults(id, query) {
     TG.haptic('impact', 'light');

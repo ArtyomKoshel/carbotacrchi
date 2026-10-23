@@ -143,7 +143,7 @@ const BrowserAuth = (() => {
     bar.id        = 'browser-link-bar';
     bar.className = 'browser-link-bar';
     bar.innerHTML = _barHtml('idle');
-    document.body.appendChild(bar);
+    (document.getElementById('account-slot') || document.body).appendChild(bar);
 
     bar.addEventListener('click', e => {
       const btn = e.target.closest('[data-action]');
@@ -165,38 +165,38 @@ const BrowserAuth = (() => {
     switch (state) {
       case 'idle':
         return `
-          <span class="blb-icon">💬</span>
-          <span class="blb-text">Войдите через Telegram, чтобы искать лоты и получать уведомления</span>
-          <button class="blb-btn" data-action="link">Привязать</button>`;
+          
+          <span class="blb-text">Войдите через Telegram, чтобы искать и сохранять</span>
+          <button class="blb-btn" data-action="link">Войти через Telegram</button>`;
 
       case 'loading':
         return `
-          <span class="blb-icon">⏳</span>
+          
           <span class="blb-text">Получаем ссылку…</span>`;
 
       case 'waiting':
         return `
-          <span class="blb-icon">📲</span>
+          
           <span class="blb-text">Откройте Telegram и нажмите Start в боте</span>
           <span class="blb-dots"><span></span><span></span><span></span></span>`;
 
       case 'linked': {
         const name = _user?.first_name || _user?.username || 'Telegram';
         return `
-          <span class="blb-icon">✅</span>
-          <span class="blb-text">Привязан: <b>${_esc(name)}</b></span>
-          <button class="blb-btn blb-btn--unlink" data-action="unlink">Отвязать</button>`;
+          
+          <span class="blb-text">${_esc(name)}</span>
+          <button class="blb-btn blb-btn--unlink" data-action="unlink">Выйти</button>`;
       }
 
       case 'timeout':
         return `
-          <span class="blb-icon">⏱</span>
+          
           <span class="blb-text">Время ожидания истекло</span>
           <button class="blb-btn" data-action="retry">Повторить</button>`;
 
       case 'error':
         return `
-          <span class="blb-icon">⚠️</span>
+          
           <span class="blb-text">Ошибка привязки</span>
           <button class="blb-btn" data-action="retry">Повторить</button>`;
 
@@ -227,16 +227,14 @@ const BrowserAuth = (() => {
 
   /** Empty-state markup for a screen whose request got 401. */
   function authRequiredHtml() {
-    const lock = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
     if (!isBrowserMode()) {
-      return `<div class="empty-state auth-required">${lock}
-        <p><b>Сессия Telegram устарела</b><br>Закройте приложение и откройте его снова из бота.</p></div>`;
+      return `<div class="empty auth-required">${Fmt.icon.lock}
+        <b>Сессия Telegram устарела</b><span>Закройте приложение и откройте его снова из бота.</span></div>`;
     }
-    return `<div class="empty-state auth-required">${lock}
-      <p><b>Нужен вход через Telegram</b><br>Поиск, избранное и подписки доступны после привязки аккаунта.
-      Нажмите «Привязать», затем Start в боте — эта страница обновится сама.</p>
-      <button class="btn btn-primary btn-sm" style="width:auto" onclick="BrowserAuth.startLinking()">Привязать Telegram</button>
+    return `<div class="empty auth-required">${Fmt.icon.lock}
+      <b>Нужен вход через Telegram</b>
+      <span>Поиск, избранное и подписки открываются после входа. Нажмите кнопку, затем Start в боте — страница обновится сама.</span>
+      <button class="btn btn--primary" type="button" onclick="BrowserAuth.startLinking()">Войти через Telegram</button>
     </div>`;
   }
 

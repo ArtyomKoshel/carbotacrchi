@@ -69,7 +69,8 @@ final class ClientLotCard
 
         $history = array_filter([
             match ($lot['hasAccident'] ?? null) { true => 'было ДТП', false => 'без ДТП', default => null },
-            isset($lot['ownersCount']) ? 'владельцев: '.$lot['ownersCount'] : null,
+            // Encar counts changes of owner: 0 = still the first owner
+            isset($lot['ownersCount']) ? ((int) $lot['ownersCount'] === 0 ? 'первый владелец' : 'смен владельца: '.$lot['ownersCount']) : null,
             isset($lot['insuranceCount']) ? 'страховых случаев: '.$lot['insuranceCount'] : null,
             ($lot['floodHistory'] ?? null) === true ? 'было затопление' : null,
             ($lot['totalLossHistory'] ?? null) === true ? 'признан тотальным' : null,

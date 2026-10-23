@@ -8,6 +8,9 @@ const Filters = (() => {
   let trimSelectInstance     = null;
   let _countTimer = null;
   let _contextTimer = null;
+  let _onChange = null;   // the shell: re-run the search (desktop) or refresh the count (phone)
+  let _onCount  = null;   // (n | null) → shown on the "Показать N лотов" button
+  const SORTS = ['date', 'price_asc', 'price_desc', 'mileage_asc', 'mileage_desc', 'year_desc', 'year_asc'];
   const COUNT_DEBOUNCE_MS = 700;
   const CONTEXT_DEBOUNCE_MS = 400;
 
@@ -96,13 +99,13 @@ const Filters = (() => {
     body_type:          { type: 'chips',      stateKey: 'bodyTypes',     optionsKey: 'bodyTypeOptions',     fallbackKey: 'bodyTypes' },
     drive_type:         { type: 'chips',      stateKey: 'driveTypes',    optionsKey: 'driveTypeOptions',    fallbackKey: 'driveTypes' },
     color:              { type: 'chips',      stateKey: 'colors',        optionsKey: 'colorOptions',        fallbackKey: 'colors' },
-    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Любой'},{value:'false',label:'✅ Без ДТП'},{value:'true',label:'⚠️ Есть ДТП'}] },
-    flood_history:      { type: 'bool_chips', stateKey: 'floodHistory',       options: [{value:'',label:'Любой'},{value:'false',label:'✅ Без подтоплений'},{value:'true',label:'🌊 Было подтопление'}] },
-    total_loss_history: { type: 'bool_chips', stateKey: 'totalLossHistory',   options: [{value:'',label:'Любой'},{value:'false',label:'✅ Не тотал'},{value:'true',label:'❌ Тотальная потеря'}] },
+    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Любые'},{value:'false',label:'Без ДТП'},{value:'true',label:'Было ДТП'}] },
+    flood_history:      { type: 'bool_chips', stateKey: 'floodHistory',       options: [{value:'',label:'Любые'},{value:'false',label:'Не тонул'},{value:'true',label:'Было затопление'}] },
+    total_loss_history: { type: 'bool_chips', stateKey: 'totalLossHistory',   options: [{value:'',label:'Любые'},{value:'false',label:'Не тотал'},{value:'true',label:'Тотал'}] },
     insurance_count:    { type: 'range',      idMin: 'filter-insurance-min',   idMax: 'filter-insurance-max',  inputType: 'number', min: 0 },
     owners_count:       { type: 'range',      idMin: 'filter-owners-min',      idMax: 'filter-owners-max',     inputType: 'number', min: 0, max: 20 },
-    lien_status:        { type: 'chips',      stateKey: 'lienStatuses',   optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ Чистый'}] },
-    seizure_status:     { type: 'chips',      stateKey: 'seizureStatuses',optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'✅ Нет ареста'}] },
+    lien_status:        { type: 'chips',      stateKey: 'lienStatuses',   optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Без залога'}] },
+    seizure_status:     { type: 'chips',      stateKey: 'seizureStatuses',optionsKey: null, fallbackKey: null, staticOptions: [{value:'clean',label:'Без ареста'}] },
     options:            { type: 'options_select', id: 'filter-options' },
   };
 
@@ -361,6 +364,7 @@ const Filters = (() => {
         ...(hasGroups && item.category ? { optgroup: item.category } : {}),
       })),
       items: state.options,  // pre-select restored values
+      onChange(vals) { state.options = Array.isArray(vals) ? vals : (vals ? [vals] : []); _scheduleCountUpdate(); },
     });
   }
 
@@ -644,7 +648,7 @@ const Filters = (() => {
       maxItems: 1,
       options:  [{ value: '', text: 'Любая комплектация' }, ...opts],
       items:    state.trim ? [state.trim] : [''],
-      onChange(val) { state.trim = val || ''; },
+      onChange(val) { state.trim = val || ''; _scheduleCountUpdate(); },
     });
   }
 
@@ -747,7 +751,7 @@ const Filters = (() => {
       const kept = available.length ? q.sources.filter(k => available.includes(k)) : q.sources;
       if (kept.length) state.sources = kept;
     }
-    if (q.sort)             state.sort             = ['date', 'price_asc', 'price_desc'].includes(q.sort) ? q.sort : 'date';
+    if (q.sort)             state.sort             = SORTS.includes(q.sort) ? q.sort : 'date';
     if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
     if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');
     if (q.insuranceCountMin !== undefined) state.insuranceCountMin = String(q.insuranceCountMin ?? '');
@@ -794,13 +798,14 @@ const Filters = (() => {
   }
 
   function setSort(sort) {
-    state.sort = ['date', 'price_asc', 'price_desc'].includes(sort) ? sort : 'date';
+    state.sort = SORTS.includes(sort) ? sort : 'date';
   }
 
   // ── Live count ─────────────────────────────────────────────────────────────
 
   function _scheduleCountUpdate() {
     _updateResetBtn();
+    if (typeof _onChange === 'function') _onChange();
     clearTimeout(_countTimer);
     _countTimer = setTimeout(_updateCount, COUNT_DEBOUNCE_MS);
   }
@@ -845,31 +850,13 @@ const Filters = (() => {
   }
 
   async function _updateCount() {
-    const hint  = document.getElementById('search-count-hint');
-    const value = document.getElementById('search-count-value');
-    if (!hint || !value) return;
-
+    if (typeof _onCount !== 'function') return;
+    _onCount(undefined); // counting…
     try {
-      readFormState();
-      const q = getQuery();
-      // Don't bother counting when no meaningful filter is set
-      const hasFilter = q.make || q.model || q.badge || q.yearFrom || q.yearTo ||
-                        q.priceMin || q.priceMax || q.mileageMin || q.mileageMax ||
-                        (q.bodyTypes?.length) || (q.transmissions?.length) ||
-                        (q.fuelTypes?.length) || (q.driveTypes?.length) || q.trim;
-      if (!hasFilter) {
-        hint.style.display = 'none';
-        return;
-      }
-
-      hint.style.display = 'block';
-      value.textContent = '…';
-
-      const data = await API.getCount(q);
-      const n = data?.count ?? 0;
-      value.textContent = _ruLots(n);
+      const data = await API.getCount(getQuery());
+      _onCount(data?.count ?? 0);
     } catch (_) {
-      // Silently ignore count errors — not critical UX
+      _onCount(null); // not critical: the button keeps a plain label
     }
   }
 
@@ -927,5 +914,66 @@ const Filters = (() => {
     }
   }
 
-  return { init, getQuery, getCardFields, setSort, applyQuery, reset, hasActive, notifyChange: _scheduleCountUpdate };
+  const fmtNum = v => Number(v).toLocaleString('ru-RU').replace(/\s/g, '\u202f');
+  const range = (a, b, unit = '', f = fmtNum) => a && b ? `${f(a)}–${f(b)}${unit}` : a ? `от ${f(a)}${unit}` : `до ${f(b)}${unit}`;
+  const priceM = v => {
+    const n = Number(v);
+    return n >= 1e6 ? `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн` : fmtNum(n);
+  };
+
+  /** What is applied, one chip each: {key, label}. clear(key) removes just that one. */
+  function activeChips() {
+    readFormState();
+    const q = getQuery();
+    const chips = [];
+    const add = (key, label) => label && chips.push({ key, label });
+    if (q.make) add('make', [Taxonomy.label('make', q.make) || q.make, q.model].filter(Boolean).join(' '));
+    if (q.badge) add('badge', q.badge);
+    if (q.trim) add('trim', Taxonomy.label('trim', q.trim) || q.trim);
+    if (q.yearFrom || q.yearTo) add('year', range(q.yearFrom, q.yearTo, '', String));
+    if (q.priceMin || q.priceMax) add('price', '₩' + range(q.priceMin, q.priceMax, '', priceM));
+    if (q.mileageMin || q.mileageMax) add('mileage', range(q.mileageMin, q.mileageMax, ' км'));
+    if (q.engineMin || q.engineMax) add('engine', range(q.engineMin, q.engineMax, ' л', String));
+    if (q.seatCountMin || q.seatCountMax) add('seats', range(q.seatCountMin, q.seatCountMax, ' мест', String));
+    const many = (key, arr, field) => arr?.length && add(key,
+      [...new Set(arr.map(v => Taxonomy.label(field, v) || v))].slice(0, 2).join(', ') + (new Set(arr.map(v => Taxonomy.label(field, v) || v)).size > 2 ? ' …' : ''));
+    many('fuelTypes', q.fuelTypes, 'fuel');
+    many('transmissions', q.transmissions, 'transmission');
+    many('driveTypes', q.driveTypes, 'drive_type');
+    many('bodyTypes', q.bodyTypes, 'body_type');
+    many('colors', q.colors, 'color');
+    if (q.hasAccident !== undefined) add('hasAccident', q.hasAccident ? 'было ДТП' : 'без ДТП');
+    if (q.floodHistory !== undefined) add('floodHistory', q.floodHistory ? 'было затопление' : 'не тонул');
+    if (q.totalLossHistory !== undefined) add('totalLossHistory', q.totalLossHistory ? 'тотал' : 'не тотал');
+    if (q.lienStatuses?.length) add('lienStatuses', 'без залога');
+    if (q.seizureStatuses?.length) add('seizureStatuses', 'без ареста');
+    if (q.ownersCountMin || q.ownersCountMax) add('owners', 'владельцев ' + range(q.ownersCountMin, q.ownersCountMax, '', String));
+    if (q.insuranceCountMin || q.insuranceCountMax) add('insurance', 'страховых ' + range(q.insuranceCountMin, q.insuranceCountMax, '', String));
+    if (q.listedAfter || q.listedBefore) add('listed', 'выставлен ' + range(q.listedAfter, q.listedBefore, '', String));
+    if (q.firstRegAfter || q.firstRegBefore) add('firstReg', 'регистрация ' + range(q.firstRegAfter, q.firstRegBefore, '', String));
+    if (q.options?.length) add('options', `опции: ${q.options.length}`);
+    return chips;
+  }
+
+  const CLEAR = {
+    make: ['make', 'model', 'badge', 'trim'], badge: ['badge', 'trim'], trim: ['trim'],
+    year: ['yearFrom', 'yearTo'], price: ['priceMin', 'priceMax'], mileage: ['mileageMin', 'mileageMax'],
+    engine: ['engineMin', 'engineMax'], seats: ['seatCountMin', 'seatCountMax'],
+    owners: ['ownersCountMin', 'ownersCountMax'], insurance: ['insuranceCountMin', 'insuranceCountMax'],
+    listed: ['listedAfter', 'listedBefore'], firstReg: ['firstRegAfter', 'firstRegBefore'],
+  };
+
+  function clear(key) {
+    readFormState();
+    const q = getQuery();
+    for (const k of CLEAR[key] ?? [key]) delete q[k];
+    applyQuery(q);
+    _scheduleCountUpdate();
+  }
+
+  function onChange(fn) { _onChange = fn; }
+  function onCount(fn) { _onCount = fn; }
+  function refreshCount() { _updateCount(); }
+
+  return { init, getQuery, getCardFields, setSort, applyQuery, reset, hasActive, activeChips, clear, onChange, onCount, refreshCount, SORTS, notifyChange: _scheduleCountUpdate };
 })();

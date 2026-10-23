@@ -1,402 +1,528 @@
+/**
+ * The shell. Decides the interface (Telegram / browser / desktop work place), routes between
+ * views (#favorites, #compare, #alerts) and overlays (#filters, #lot-<id>), keeps the search
+ * in the URL (?q=…, a link to send or bookmark) and wires Telegram's own buttons.
+ */
 const App = (() => {
-  let currentTab = 'search';
-  let paginationState = { query: null, offset: 0, total: 0, loading: false, limit: 40 };
-  let scrollObserver = null;
-  const SEARCH_MODE_KEY = 'miniappSearchMode';
+  const WIDE = window.matchMedia('(min-width: 900px)');
+  const VIEW_KEY = 'carbot_results_view';
+  const LAST_KEY = 'lastSearch';
+  const PAGE = 40;
 
-  function hideLoadingOverlay() {
-    const el = document.getElementById('app-loading-overlay');
-    if (!el) return;
-    el.classList.add('hidden');
-    setTimeout(() => el.remove(), 300);
-  }
+  const s = {
+    tg: false,
+    wide: false,
+    view: 'search',
+    overlay: null,          // 'filters' | 'lot' | null
+    pushed: false,          // the overlay added a history entry (Back closes it)
+    query: null,
+    lots: [],
+    total: 0,
+    loading: false,
+    seq: 0,
+    resultsView: 'table',
+    favorites: new Set(),
+    favoriteLots: [],
+    lot: null,
+    inspection: null,
+    count: null,
+  };
+  const $ = id => document.getElementById(id);
 
-  function saveSearchMode(mode) {
-    try { localStorage.setItem(SEARCH_MODE_KEY, mode); } catch (_) {}
-  }
-
-  function loadSearchMode() {
-    try {
-      const mode = localStorage.getItem(SEARCH_MODE_KEY);
-      return mode === 'chat' ? 'chat' : 'filters';
-    } catch (_) {
-      return 'filters';
+  // ── shell ────────────────────────────────────────────────────────────────
+  function applyShell() {
+    const wasWide = s.wide;
+    s.wide = !s.tg && WIDE.matches;
+    document.body.classList.toggle('tg', s.tg);
+    document.body.classList.toggle('web', !s.tg);
+    document.body.classList.toggle('wide', s.wide);
+    document.body.classList.toggle('tg-nosecondary', s.tg && !TG.hasSecondary());
+    if (wasWide !== s.wide) {
+      if (io) observeMore();
+      if (s.wide && s.overlay === 'filters') closeOverlay();
+      renderResults();
+      if (s.overlay === 'lot' && s.lot) renderLot();
     }
   }
 
-  async function init() {
-    TG.init();
+  function toast(msg, ms = 2400) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), ms);
+  }
 
-    // Browser mode: initialize linking bar (no-op inside Telegram WebApp)
-    if (typeof BrowserAuth !== 'undefined') {
-      BrowserAuth.init((_chatId) => {
-        // Called when user completes linking — reload subscriptions and
-        // re-run whatever the current screen failed to load without auth
-        Subscriptions.loadSubs();
-        if (currentTab === 'results' && paginationState.query) searchWithQuery(paginationState.query);
-        if (currentTab === 'favorites') loadFavorites();
-        if (currentTab === 'alerts')    Subscriptions.loadAndRender();
-      });
+  // ── URL state ────────────────────────────────────────────────────────────
+  const b64 = {
+    enc: obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+    dec: str => { try { return JSON.parse(decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (_) { return null; } },
+  };
+  function cleanQuery(q) {
+    const out = {};
+    for (const [k, v] of Object.entries(q ?? {})) {
+      if (k === 'limit' || k === 'offset' || v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
+      if ((k === 'sort' && v === 'date') || k === 'sources') continue; // every platform is the default
+      out[k] = v;
     }
+    return out;
+  }
+  function writeUrl() {
+    const u = new URL(location.href);
+    u.hash = location.hash;
+    const q = cleanQuery(s.query);
+    if (Object.keys(q).length) u.searchParams.set('q', b64.enc(q)); else u.searchParams.delete('q');
+    u.searchParams.delete('search');
+    history.replaceState(history.state, '', u);
+  }
+  function readDeepLink() {
+    const u = new URL(location.href);
+    const fromHash = (location.hash.match(/^#lot-(.+)$/) || [])[1];
+    const start = TG.startParam();
+    const lotFromStart = (start.match(/^lot_(.+)$/) || [])[1];
+    let query = u.searchParams.get('q') ? b64.dec(u.searchParams.get('q')) : null;
+    if (!query && u.searchParams.get('search')) { try { query = JSON.parse(u.searchParams.get('search')); } catch (_) {} }
+    if (!query && start && !lotFromStart) query = b64.dec(start);
+    return { query, lotId: fromHash || lotFromStart || null };
+  }
 
-    if (TG.canMinimize()) {
-      const btn = document.getElementById('minimize-btn');
-      if (btn) btn.style.display = '';
-    }
+  // ── routing ──────────────────────────────────────────────────────────────
+  function route() {
+    const h = location.hash.replace(/^#/, '');
+    const lotId = (h.match(/^lot-(.+)$/) || [])[1];
+    if (lotId) { if (!s.lot || s.lot.id !== lotId) openLot(lotId, { fromRoute: true }); else setOverlay('lot'); return; }
+    if (h === 'filters' && !s.wide) { setOverlay('filters'); return; }
+    setOverlay(null);
+    const view = ['favorites', 'compare', 'alerts'].includes(h) ? h : 'search';
+    showView(view);
+  }
 
-    // If filters are already cached → hide overlay immediately (no visible flash)
-    if (API.isFiltersCached()) {
-      hideLoadingOverlay();
-    }
+  function go(hash) {
+    if (location.hash === hash || (!location.hash && hash === '#')) { route(); return; }
+    location.hash = hash;
+  }
 
-    await Filters.init();
+  function showView(view) {
+    if (view !== s.view) { if (s.wide) $('main').scrollTop = 0; else window.scrollTo(0, 0); }
+    s.view = view;
+    for (const v of ['search', 'favorites', 'compare', 'alerts']) $(`view-${v}`).hidden = v !== view;
+    document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === view));
+    if (view === 'favorites') loadFavorites();
+    if (view === 'compare') Compare.render($('compare'), { onOpen: lot => openLot(lot) });
+    if (view === 'alerts') Subscriptions.loadAndRender();
+    syncTelegramButtons();
+  }
 
-    // Hide overlay after init (covers the case when cache was empty)
-    hideLoadingOverlay();
+  function setOverlay(name) {
+    s.overlay = name;
+    if (name) document.body.dataset.overlay = name; else delete document.body.dataset.overlay;
+    $('lot-pane').hidden = name !== 'lot';
+    if (name !== 'lot') { s.lot = null; s.inspection = null; markSelected(); }
+    if (name === 'filters') Filters.refreshCount();
+    syncTelegramButtons();
+    if (!s.wide && name) window.scrollTo(0, 0);
+  }
 
-    Chat.init();
-    setSearchMode(loadSearchMode());
+  function openOverlay(hash) {
+    if (location.hash === hash) { route(); return; }
+    // on the desktop, moving from lot to lot replaces the entry: Back leaves the pane in one step
+    if (s.wide && s.overlay === 'lot' && hash.startsWith('#lot-')) { history.replaceState(history.state, '', hash); route(); return; }
+    s.pushed = true;
+    location.hash = hash;
+  }
 
-    document.getElementById('search-btn').addEventListener('click', runSearch);
-    document.getElementById('load-more-btn')?.addEventListener('click', loadMore);
-    document.getElementById('sort-select')?.addEventListener('change', async e => {
-      Filters.setSort(e.target.value);
-      if (currentTab === 'results') {
-        await runSearch();
-      }
-    });
+  function closeOverlay() {
+    if (s.pushed) { s.pushed = false; history.back(); return; }
+    history.replaceState(history.state, '', location.pathname + location.search + (s.view !== 'search' ? '#' + s.view : ''));
+    route();
+  }
 
-    document.getElementById('sheet-overlay').addEventListener('click', e => {
-      if (e.target === e.currentTarget) Results.closeSheet();
-    });
+  // ── Telegram's buttons follow the screen ─────────────────────────────────
+  function countLabel() {
+    if (s.count === undefined) return 'Показать…';
+    if (s.count === null) return 'Показать';
+    return s.count ? `Показать ${Fmt.lots(s.count)}` : 'Ничего не найдено';
+  }
 
-    document.querySelectorAll('.bottom-nav-item').forEach(btn => {
-      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    Subscriptions.loadSubs();
-
-    const deepQuery = parseDeepLink();
-    if (deepQuery) {
-      Filters.applyQuery(deepQuery);
-      await searchWithQuery(deepQuery);
+  function syncTelegramButtons() {
+    const actionbar = $('actionbar');
+    actionbar.hidden = true;
+    if (s.overlay) TG.setBack(closeOverlay); else TG.setBack(null);
+    if (s.overlay === 'filters') {
+      TG.setMain(countLabel(), applyFilters, { active: s.count !== 0, progress: s.count === undefined });
+      TG.setSecondary('Сбросить', resetFilters);
+      $('filters-apply-btn').textContent = countLabel();
+      $('filters-apply-btn').disabled = s.count === 0;
+    } else if (s.overlay === 'lot' && s.lot) {
+      TG.setMain('Отправить клиенту', shareLot);
+      TG.setSecondary(`Открыть на ${s.lot.sourceName || 'площадке'}`, openSource);
     } else {
-      const lastQuery = loadLastSearch();
-      if (lastQuery) {
-        Filters.applyQuery(lastQuery);
-        await searchWithQuery(lastQuery);
-      } else {
-        switchTab('search');
-      }
+      TG.setMain(null, null);
+      TG.setSecondary(null, null);
     }
   }
 
-  function saveLastSearch(query) {
-    try { localStorage.setItem('lastSearch', JSON.stringify(query)); } catch (_) {}
-  }
-
-  function loadLastSearch() {
-    try {
-      const raw = localStorage.getItem('lastSearch');
-      if (!raw) return null;
-      const q = JSON.parse(raw);
-      if (typeof q === 'object' && q !== null) return q;
-    } catch (_) {}
-    return null;
-  }
-
-  function parseDeepLink() {
-    try {
-      const parseJsonQuery = (raw) => {
-        if (!raw) return null;
-        try {
-          const q = JSON.parse(raw);
-          return (typeof q === 'object' && q !== null) ? q : null;
-        } catch (_) {
-          return null;
-        }
-      };
-
-      const parseBase64Query = (raw) => {
-        if (!raw) return null;
-        try {
-          const normalized = String(raw).replace(/-/g, '+').replace(/_/g, '/');
-          const pad = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
-          const decoded = atob(normalized + pad);
-          return parseJsonQuery(decoded);
-        } catch (_) {
-          return null;
-        }
-      };
-
-      const fromUrlParams = (params) => {
-        if (!params) return null;
-        const fromSearch = parseJsonQuery(params.get('search'));
-        if (fromSearch) return fromSearch;
-        return parseBase64Query(params.get('q'));
-      };
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const fromQuery = fromUrlParams(urlParams);
-      if (fromQuery) return fromQuery;
-
-      const hashRaw = String(window.location.hash || '').replace(/^#/, '');
-      if (hashRaw) {
-        const hashParams = new URLSearchParams(hashRaw);
-        const fromHash = fromUrlParams(hashParams);
-        if (fromHash) return fromHash;
-      }
-
-      const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-      const fromStartParam = parseBase64Query(startParam) ?? parseJsonQuery(startParam);
-      if (fromStartParam) return fromStartParam;
-    } catch (_) {}
-    return null;
-  }
-
-  function switchTab(tab) {
-    currentTab = tab;
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-
-    document.getElementById(`screen-${tab}`)?.classList.add('active');
-    document.querySelector(`.bottom-nav-item[data-tab="${tab}"]`)?.classList.add('active');
-
-    if (tab === 'favorites') loadFavorites();
-    if (tab === 'alerts')    Subscriptions.loadAndRender();
-    if (tab === 'results')   refreshFavState();
-  }
-
-  async function refreshFavState() {
-    try {
-      const favData = await API.getFavorites();
-      Results.setFavorites((favData ?? []).map(f => f.id));
-    } catch (_) {}
-  }
-
-  async function searchWithQuery(query) {
-    TG.haptic('impact', 'medium');
-    showScreen('results');
-    showLoading(true);
-    hideLoadMore();
-
-    paginationState = { query, offset: 0, total: 0, loading: true, limit: 40 };
-
-    try {
-      const data = await API.search(query, 0);
-      try {
-        const favData = await API.getFavorites();
-        Results.setFavorites((favData ?? []).map(f => f.id));
-      } catch (_) {}
-      Results.setSearchOptions(query.options ?? []);
-      Results.setSearchQuery(query);
-      Results.render(data);
-      paginationState.total = data.total ?? 0;
-      paginationState.offset = (data.lots ?? []).length;
+  // ── search ───────────────────────────────────────────────────────────────
+  async function search(query, { more = false } = {}) {
+    const seq = ++s.seq;
+    if (!more) {
+      s.query = query;
+      s.lots = [];
+      s.total = 0;
+      Results.skeleton($('results'), modeFor());
+      $('results-banner').hidden = true;
+      renderToolbar();
+      writeUrl();
+      try { localStorage.setItem(LAST_KEY, JSON.stringify(query)); } catch (_) {}
       Subscriptions.setCurrentQuery(query);
-      saveLastSearch(query);
-      updateLoadMoreUI();
-      setupScrollObserver();
-    } catch (e) {
-      showError(e);
-    } finally {
-      paginationState.loading = false;
-      showLoading(false);
     }
-  }
-
-  async function runSearch() {
-    const query = Filters.getQuery();
-    await searchWithQuery(query);
-  }
-
-  async function loadMore() {
-    if (paginationState.loading) return;
-    if (paginationState.offset >= paginationState.total) return;
-
-    paginationState.loading = true;
-    showLoadMoreLoading(true);
-
+    s.loading = true;
+    $('results-more').hidden = !more;
     try {
-      const data = await API.search(paginationState.query, paginationState.offset);
-      const newLots = data.lots ?? [];
-      if (newLots.length) {
-        Results.appendCards(newLots);
-        paginationState.offset += newLots.length;
-      }
-      updateLoadMoreUI();
+      const data = await API.search({ ...query, limit: PAGE }, more ? s.lots.length : 0);
+      if (seq !== s.seq) return;
+      const page = data.lots ?? [];
+      s.lots = more ? s.lots.concat(page) : page;
+      s.total = data.total ?? s.lots.length;
+      const banner = $('results-banner');
+      if (!more && data.relaxed && data.relaxedMessage) { banner.textContent = data.relaxedMessage; banner.className = 'banner banner--info'; banner.hidden = false; }
+      else if (!more && data.errors?.length) { banner.textContent = 'Часть площадок не ответила: ' + data.errors.join(', '); banner.className = 'banner'; banner.hidden = false; }
+      renderResults();
+      renderToolbar();
     } catch (e) {
-      showToast('Ошибка загрузки: ' + (e.message || 'network'));
+      if (seq !== s.seq) return;
+      if (API.isAuthError(e)) $('results').innerHTML = BrowserAuth.authRequiredHtml();
+      else Results.empty($('results'), { title: 'Не удалось загрузить лоты', text: e.message, action: { label: 'Повторить', run: () => search(s.query) } });
     } finally {
-      paginationState.loading = false;
-      showLoadMoreLoading(false);
+      if (seq === s.seq) { s.loading = false; $('results-more').hidden = true; }
+    }
+  }
+  const searchWithQuery = q => { go('#'); return search(q); };
+
+  function modeFor() { return s.wide ? s.resultsView : 'rows'; }
+
+  function renderResults() {
+    const mount = $('results');
+    if (!s.query) return;
+    if (!s.lots.length && !s.loading) {
+      Results.empty(mount, Filters.hasActive()
+        ? { title: 'Ничего не найдено', text: 'Снимите один из фильтров выше или расширьте диапазон.', action: { label: 'Сбросить фильтры', run: resetFilters } }
+        : { title: 'Лотов пока нет', text: 'Список появится после обхода площадки.' });
+      return;
+    }
+    if (!s.lots.length) return;
+    Results.render(mount, s.lots, {
+      mode: modeFor(),
+      favorites: s.favorites,
+      selectedId: s.lot?.id,
+      sort: s.query?.sort ?? 'date',
+      query: s.query,
+      onOpen: lot => openLot(lot),
+      onFav: (lot, btn) => toggleFavorite(lot, btn),
+      onCompare: lot => toggleCompare(lot),
+      onSort: sort => setSort(sort),
+    });
+  }
+
+  function renderToolbar() {
+    $('results-count').innerHTML = s.loading && !s.lots.length ? '' : `<b>${Fmt.num(s.total)}</b> ${Fmt.plural(s.total, 'лот', 'лота', 'лотов')}`;
+    const chips = Filters.activeChips();
+    $('applied-chips').innerHTML = chips.map(c => `<button class="chip chip--applied" type="button" data-clear="${c.key}" aria-label="Снять фильтр: ${Fmt.esc(c.label)}">${Fmt.esc(c.label)}</button>`).join('');
+    $('applied-chips').querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => {
+      TG.haptic('selection');
+      Filters.clear(b.dataset.clear);
+      search(Filters.getQuery());
+    }));
+    $('filters-count').textContent = chips.length || '';
+    $('sort-select').value = s.query?.sort ?? 'date';
+    document.querySelectorAll('.seg__btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === s.resultsView)));
+  }
+
+  function setSort(sort) {
+    Filters.setSort(sort);
+    search(Filters.getQuery());
+  }
+
+  let liveTimer = 0;
+  function onFiltersChanged() {
+    if (!s.wide) return; // on the phone the filters apply with "Показать N лотов"
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(() => search(Filters.getQuery()), 450);
+  }
+  function applyFilters() {
+    TG.haptic('impact', 'medium');
+    search(Filters.getQuery());
+    closeOverlay();
+  }
+  function resetFilters() {
+    Filters.reset();
+    if (s.wide || !s.overlay) search(Filters.getQuery());
+  }
+
+  // the next page loads near the end of the list; on the desktop the list scrolls inside <main>
+  let io = null;
+  function observeMore() {
+    io?.disconnect();
+    io = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !s.loading && s.query && s.lots.length < s.total && s.view === 'search') search(s.query, { more: true });
+    }, { root: s.wide ? $('main') : null, rootMargin: '600px' });
+    io.observe($('scroll-sentinel'));
+  }
+
+  // ── AI search line: words, an Encar link or a lot id ──────────────────────
+  async function ask(text) {
+    const t = text.trim();
+    if (!t) return;
+    const link = t.match(/encar\.com\/.*?(\d{7,9})/) || t.match(/^(\d{7,9})$/);
+    if (link) { openLot(link[1]); return; }
+    const form = $('ask-form');
+    form.classList.add('busy');
+    try {
+      const res = await API.searchChat(t);
+      if (res?.query) {
+        Filters.applyQuery({ ...res.query, sort: s.query?.sort });
+        $('ask-input').value = '';
+        $('ask-input').blur();
+        go('#');
+        await search(Filters.getQuery());
+        if (res.message) toast(res.message, 3200);
+      } else {
+        toast(res?.message || 'Не понял запрос. Назовите марку, модель, год или бюджет.', 3600);
+      }
+    } catch (e) {
+      toast(API.isAuthError(e) ? 'Нужен вход через Telegram' : 'ИИ-поиск не ответил: ' + e.message, 3600);
+    } finally {
+      form.classList.remove('busy');
     }
   }
 
-  function setupScrollObserver() {
-    if (scrollObserver) scrollObserver.disconnect();
+  // ── lot ──────────────────────────────────────────────────────────────────
+  async function openLot(lotOrId, { fromRoute = false } = {}) {
+    const id = typeof lotOrId === 'object' ? lotOrId.id : String(lotOrId);
+    const known = typeof lotOrId === 'object' ? lotOrId : (s.lots.find(l => l.id === id) || s.favoriteLots.find(l => l.id === id) || null);
+    TG.haptic('impact', 'light');
+    s.lot = known ?? { id };
+    s.inspection = null;
+    if (!fromRoute) openOverlay(`#lot-${encodeURIComponent(id)}`);
+    else setOverlay('lot');
+    markSelected();
+    const mount = $('lot-view');
+    if (known) renderLot(); else LotView.state(mount, '<span class="spinner"></span>', closable(), closeOverlay);
+    try {
+      const data = await API.getLot(id);
+      if (s.lot?.id !== id) return;
+      s.lot = data.lot;
+      s.inspection = data.inspection;
+      renderLot();
+    } catch (e) {
+      if (s.lot?.id !== id) return;
+      if (!known) LotView.state(mount, API.isAuthError(e) ? BrowserAuth.authRequiredHtml() : Fmt.esc(e.message || 'Лот не найден'), closable(), closeOverlay);
+    }
+  }
 
-    const sentinel = document.getElementById('scroll-sentinel');
-    if (!sentinel) return;
+  function closable() { return s.tg ? null : (s.wide ? 'close' : 'back'); }
 
-    scrollObserver = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting && !paginationState.loading && paginationState.offset < paginationState.total) {
-        loadMore();
+  function renderLot() {
+    if (!s.lot) return;
+    const mount = $('lot-view');
+    const keep = mount.querySelector('.gallery__track')?.scrollLeft ?? 0;
+    LotView.render(mount, s.lot, {
+      inspection: s.inspection,
+      query: s.query,
+      favorite: s.favorites.has(s.lot.id),
+      compared: Compare.has(s.lot.id),
+      closable: closable(),
+      onClose: closeOverlay,
+      onShare: shareLot,
+      onSource: openSource,
+      onFav: () => toggleFavorite(s.lot),
+      onCompare: () => toggleCompare(s.lot),
+    });
+    const track = mount.querySelector('.gallery__track');
+    if (track && keep) track.scrollLeft = keep;
+    if (s.wide) $('lot-pane').scrollTop = 0;
+    syncTelegramButtons();
+  }
+
+  function markSelected() {
+    if (!s.wide) return;
+    document.querySelectorAll('#results [data-i]').forEach(el => {
+      const lot = s.lots[+el.dataset.i];
+      el.classList.toggle('sel', !!lot && lot.id === s.lot?.id);
+    });
+  }
+
+  function openSource() {
+    if (s.lot?.lotUrl) TG.openLink(s.lot.lotUrl);
+  }
+
+  async function shareLot() {
+    const lot = s.lot;
+    if (!lot) return;
+    TG.haptic('impact', 'medium');
+    try {
+      if (s.tg) {
+        const res = await API.shareLot(lot.id, TG.canShare() ? 'prepare' : 'chat');
+        if (res.prepared_message_id && await TG.share(res.prepared_message_id)) { toast('Отправлено'); return; }
+        if (res.prepared_message_id) return; // the picker closed Telegram's chat list
+        toast(res.sent_to_chat ? 'Отправил карточку вам в чат — перешлите клиенту' : 'Не удалось отправить', 3200);
+        return;
       }
-    }, { rootMargin: '200px' });
-
-    scrollObserver.observe(sentinel);
+      const res = await API.shareLot(lot.id, BrowserAuth.isLinked() ? 'chat' : 'text');
+      let copied = false;
+      try { await navigator.clipboard.writeText(res.text); copied = true; } catch (_) {}
+      toast(res.sent_to_chat
+        ? `Карточка с фото — в вашем Telegram${copied ? ', текст скопирован' : ''}`
+        : (copied ? 'Описание для клиента скопировано' : res.text), 3600);
+    } catch (e) {
+      toast(API.isAuthError(e) ? 'Нужен вход через Telegram' : 'Не удалось подготовить карточку: ' + e.message, 3600);
+    }
   }
 
-  function updateLoadMoreUI() {
-    const wrap = document.getElementById('load-more-wrap');
-    if (!wrap) return;
-    const hasMore = paginationState.offset < paginationState.total;
-    wrap.style.display = hasMore ? 'block' : 'none';
-  }
-
-  function hideLoadMore() {
-    const wrap = document.getElementById('load-more-wrap');
-    if (wrap) wrap.style.display = 'none';
-  }
-
-  function showLoadMoreLoading(visible) {
-    const btn = document.getElementById('load-more-btn');
-    if (!btn) return;
-    btn.disabled = visible;
-    btn.textContent = visible ? 'Загрузка…' : 'Загрузить ещё';
+  // ── favorites, compare ───────────────────────────────────────────────────
+  async function loadFavoriteIds() {
+    try {
+      const favs = await API.getFavorites();
+      s.favoriteLots = favs ?? [];
+      s.favorites = new Set(s.favoriteLots.map(f => f.id));
+    } catch (_) { s.favorites = new Set(); }
+    $('fav-count').textContent = s.favorites.size || '';
   }
 
   async function loadFavorites() {
-    const container = document.getElementById('favorites-list');
-    if (!container) return;
-
-    const favGrid = document.getElementById('favorites-grid');
-    const favEmpty = document.getElementById('favorites-empty');
-
-    if (favGrid) {
-      favGrid.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span>Загрузка…</span></div>';
-    }
-    if (favEmpty) {
-      favEmpty.style.display = 'none';
-      const msg = favEmpty.querySelector('p');
-      if (msg) {
-        msg.textContent = 'Нет сохранённых лотов.';
-        msg.style.color = '';
-      }
-    }
-
+    const mount = $('favorites');
+    Results.skeleton(mount, 'rows', 3);
     try {
-      const favs = await API.getFavorites();
-
-      if (!favs || !favs.length) {
-        if (favEmpty) favEmpty.style.display = 'flex';
-        if (favGrid) favGrid.innerHTML = '';
+      await loadFavoriteIds();
+      if (!s.favoriteLots.length) {
+        Results.empty(mount, { title: 'В избранном пусто', text: 'Отмечайте машины сердечком в списке или в лоте.' });
         return;
       }
-      Results.setFavorites(favs.map(f => f.id));
-      Results.render(
-        { lots: favs, total: favs.length, errors: [] },
-        { grid: favGrid, empty: favEmpty }
-      );
+      Results.render(mount, s.favoriteLots, {
+        mode: s.wide ? 'cards' : 'rows', favorites: s.favorites, selectedId: s.lot?.id,
+        onOpen: lot => openLot(lot), onFav: (lot, btn) => toggleFavorite(lot, btn),
+      });
     } catch (e) {
-      if (API.isAuthError(e)) {
-        if (favEmpty) favEmpty.style.display = 'none';
-        if (favGrid) favGrid.innerHTML = `<div style="grid-column:span 2">${BrowserAuth.authRequiredHtml()}</div>`;
-        return;
-      }
-      if (favGrid) favGrid.innerHTML = '';
-      if (favEmpty) {
-        favEmpty.style.display = 'flex';
-        const msg = favEmpty.querySelector('p');
-        if (msg) {
-          msg.textContent = e?.message ? `Ошибка: ${e.message}` : 'Ошибка загрузки избранного.';
-          msg.style.color = 'var(--danger)';
-        }
-      } else {
-        container.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${e.message}</p></div>`;
-      }
+      mount.innerHTML = API.isAuthError(e) ? BrowserAuth.authRequiredHtml() : `<div class="empty"><b>Не загрузилось</b><span>${Fmt.esc(e.message)}</span></div>`;
     }
   }
 
-  function showScreen(name) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(`screen-${name}`)?.classList.add('active');
-    document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-    document.querySelector(`.bottom-nav-item[data-tab="${name}"]`)?.classList.add('active');
-    currentTab = name;
-  }
-
-  function showLoading(visible) {
-    const el = document.getElementById('results-loading');
-    const grid = document.getElementById('results-grid-wrap');
-    if (el) el.style.display = 'none'; // spinner hidden; skeletons used instead
-    if (grid) grid.style.display = 'block';
-    if (visible) Results.showSkeletons(6);
-  }
-
-  function setSearchMode(mode) {
-    const nextMode = mode === 'chat' ? 'chat' : 'filters';
-    const screen      = document.getElementById('screen-search');
-    const filterPanel = document.getElementById('mode-panel-filters');
-    const chatPanel   = document.getElementById('mode-panel-chat');
-    const tabFilters  = document.getElementById('mode-tab-filters');
-    const tabChat     = document.getElementById('mode-tab-chat');
-
-    if (nextMode === 'chat') {
-      screen?.classList.add('mode-chat');
-      if (filterPanel) filterPanel.style.display = 'none';
-      if (chatPanel)   chatPanel.style.display   = 'flex';
-      tabFilters?.classList.remove('active');
-      tabChat?.classList.add('active');
-      setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
-    } else {
-      screen?.classList.remove('mode-chat');
-      if (filterPanel) filterPanel.style.display = '';
-      if (chatPanel)   chatPanel.style.display   = 'none';
-      tabFilters?.classList.add('active');
-      tabChat?.classList.remove('active');
+  async function toggleFavorite(lot, btn) {
+    TG.haptic('impact', 'light');
+    const on = !s.favorites.has(lot.id);
+    try {
+      if (on) await API.addFavorite(lot.id, lot.source, lot); else await API.removeFavorite(lot.id);
+      if (on) { s.favorites.add(lot.id); s.favoriteLots = [lot, ...s.favoriteLots.filter(l => l.id !== lot.id)]; }
+      else { s.favorites.delete(lot.id); s.favoriteLots = s.favoriteLots.filter(l => l.id !== lot.id); }
+      $('fav-count').textContent = s.favorites.size || '';
+      if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', String(on)); }
+      if (s.lot?.id === lot.id) LotView.setFavorite($('lot-view'), on);
+      if (s.wide && s.view === 'search') renderResults();
+      if (s.view === 'favorites' && !on) loadFavorites();
+      toast(on ? 'В избранном' : 'Убрано из избранного');
+    } catch (e) {
+      toast(API.isAuthError(e) ? 'Избранное доступно после входа через Telegram' : 'Ошибка: ' + e.message, 3200);
     }
-
-    saveSearchMode(nextMode);
   }
 
-  function showError(e) {
-    const grid = document.getElementById('cards-grid');
-    if (grid && API.isAuthError(e)) {
-      document.getElementById('results-count').textContent = '';
-      grid.innerHTML = `<div style="grid-column:span 2">${BrowserAuth.authRequiredHtml()}</div>`;
-    } else if (grid) {
-      const escaped = String(e?.message ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      grid.innerHTML = `<div class="empty-state" style="grid-column:span 2"><p style="color:var(--danger)">${escaped}</p></div>`;
+  function toggleCompare(lot) {
+    const r = Compare.toggle(lot);
+    TG.haptic('selection');
+    if (r === 'full') { toast(`В сравнении уже ${Compare.MAX} машины — уберите одну`, 3000); return; }
+    toast(r === 'added' ? `В сравнении: ${Compare.count()} из ${Compare.MAX}` : 'Убрано из сравнения');
+    if (s.lot?.id === lot.id) LotView.setCompared($('lot-view'), Compare.has(lot.id));
+    if (s.wide && s.view === 'search') renderResults();
+    if (s.view === 'compare') Compare.render($('compare'), { onOpen: l => openLot(l) });
+  }
+  function renderCompareCount() {
+    const n = Compare.count() || '';
+    $('cmp-count').textContent = n;
+    $('cmp-count-tab').textContent = n;
+  }
+
+  // ── desktop keyboard ─────────────────────────────────────────────────────
+  function onKey(e) {
+    if (!s.wide) return;
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+    if (e.key === '/' && !typing) { e.preventDefault(); $('ask-input').focus(); return; }
+    if (e.key === 'Escape' && s.overlay === 'lot') { closeOverlay(); return; }
+    if (typing || s.view !== 'search' || !s.lots.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const i = s.lots.findIndex(l => l.id === s.lot?.id);
+      const next = Math.max(0, Math.min(s.lots.length - 1, i < 0 ? 0 : i + (e.key === 'ArrowDown' ? 1 : -1)));
+      openLot(s.lots[next]);
+      document.querySelector(`#results [data-i="${next}"]`)?.scrollIntoView({ block: 'nearest' });
     }
-    showLoading(false);
   }
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
-  }
+  // ── start ────────────────────────────────────────────────────────────────
+  async function init() {
+    s.tg = TG.init();
+    try { s.resultsView = localStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'table'; } catch (_) {}
+    applyShell();
+    WIDE.addEventListener('change', applyShell);
 
-  /** Called by the "Очистить" button — resets filters AND clears stale results. */
-  function resetSearch() {
-    Filters.reset();
+    BrowserAuth.init(() => {
+      loadFavoriteIds();
+      Subscriptions.loadSubs();
+      if (s.query) search(s.query);
+    });
 
-    // Clear results grid so stale cards don't show when user switches to Results tab
-    const grid = document.getElementById('cards-grid');
-    if (grid) grid.innerHTML = '';
-    const wrap = document.getElementById('load-more-wrap');
-    if (wrap) wrap.style.display = 'none';
-    paginationState = { query: null, offset: 0, total: 0, loading: false, limit: 40 };
+    await Filters.init();
+    Filters.onChange(onFiltersChanged);
+    Filters.onCount(n => { s.count = n; if (s.overlay === 'filters') syncTelegramButtons(); });
 
-    // Go back to search tab
-    switchTab('search');
+    $('ask-form').addEventListener('submit', e => { e.preventDefault(); ask($('ask-input').value); });
+    $('open-filters').addEventListener('click', () => openOverlay('#filters'));
+    $('filters-apply-btn').addEventListener('click', applyFilters);
+    $('filters-reset-btn').addEventListener('click', resetFilters);
+    $('sort-select').addEventListener('change', e => setSort(e.target.value));
+    $('subscribe-btn').addEventListener('click', () => Subscriptions.toggleSubscribe());
+    document.querySelectorAll('.seg__btn').forEach(b => b.addEventListener('click', () => {
+      s.resultsView = b.dataset.view;
+      try { localStorage.setItem(VIEW_KEY, s.resultsView); } catch (_) {}
+      renderToolbar();
+      renderResults();
+    }));
+    document.querySelectorAll('[data-nav]').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault();
+      TG.haptic('selection');
+      go(a.dataset.nav === 'search' ? '#' : '#' + a.dataset.nav);
+    }));
+    // Back from an overlay may change the query string as well as the hash: then the browser sends
+    // only popstate. Both lead here; the same URL twice is routed once.
+    let routed = '';
+    const onNav = () => {
+      if (location.href === routed) return;
+      if (!/^#(lot-|filters)/.test(location.hash)) s.pushed = false;
+      route();
+      if (s.query) writeUrl();
+      routed = location.href;
+    };
+    window.addEventListener('hashchange', onNav);
+    window.addEventListener('popstate', onNav);
+    document.addEventListener('keydown', onKey);
+    Compare.onChange(renderCompareCount);
+    renderCompareCount();
+    observeMore();
+
+    loadFavoriteIds();
+    Subscriptions.loadSubs();
+
+    const deep = readDeepLink();
+    let query = deep.query;
+    if (!query) { try { query = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch (_) {} }
+    if (query) Filters.applyQuery(query);
+    search(Filters.getQuery()); // with no filters: the newest lots — never an empty screen
+    route();
+
+    const boot = $('boot');
+    boot.classList.add('done');
+    setTimeout(() => boot.remove(), 250);
   }
 
   document.addEventListener('DOMContentLoaded', init);
 
-  return { switchTab, showToast, searchWithQuery, setSearchMode, resetSearch };
+  return { toast, searchWithQuery, openLot, showToast: toast };
 })();
