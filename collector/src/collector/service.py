@@ -166,7 +166,9 @@ class Service:
         )  # fmt: skip
         pipeline.clock = self.clock
         now = self.clock()
-        cutoff = await history_cutoff(self.db, job.source, self.settings.history_every_runs, now)
+        cutoff = await history_cutoff(
+            self.db, job.source, self.settings.history_every_runs, now, self.settings.history_max_age_hours
+        )
         ctx = RunContext(
             job=job,
             queue=self.queue,
@@ -177,6 +179,7 @@ class Service:
             clock=self.clock,
             proxy_bytes=lambda: fetcher.stats.proxy_bytes,
             runlog=runlog,
+            pipeline_depth=self.settings.pipeline_depth,
         )
         if job.type == "reparse":
             return await run_reparse(ctx, MySqlRawStore(self.db))

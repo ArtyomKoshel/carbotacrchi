@@ -162,7 +162,7 @@ async def test_selection_rules_come_from_parse_filters(db: AsyncEngine) -> None:
 async def test_stop_hands_the_job_back_and_the_next_process_resumes_it(db: AsyncEngine) -> None:
     jid = await add_job(db)
     fake = FakeEncar()
-    first = service(db, fake)
+    first = service(db, fake, pipeline_depth=1)  # one page in flight: "after the first page" is exact
     pages = 0
     original = first.queue.progress
 
@@ -213,7 +213,7 @@ async def test_a_page_past_the_stop_grace_is_cancelled_and_the_run_resumes_after
 ) -> None:
     monkeypatch.setattr(sweep, "PAGE_SIZE", 2)  # the global pass: 3 pages of 2 lots
     jid = await add_job(db)
-    first = service(db, FakeEncar(), stop_grace_seconds=0.05)
+    first = service(db, FakeEncar(), stop_grace_seconds=1.0)  # page 1 (in flight) finishes, page 2 hangs
     original = EncarPipeline.process
     calls = 0
 
@@ -371,7 +371,9 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     s = Settings.from_env()
     assert s.sources == ("encar", "kcar")
     assert s.http_timeout == 5.0
-    assert s.concurrency == s.history_concurrency == 15
+    assert s.concurrency == s.history_concurrency == 25
+    assert s.pipeline_depth == 3
+    assert s.history_max_age_hours == 48
     assert s.has_proxy
     assert "secret" not in repr(s)
     assert "u:p" not in repr(s)
@@ -425,3 +427,117 @@ async def test_reparse_job_refreshes_history_of_known_lots(db: AsyncEngine) -> N
         ["999"],
     )
     assert not any(c.startswith("/search") for c in fake.calls)
+
+
+async def ingested_ids(db: AsyncEngine, jid: int) -> set[str]:
+    async with db.connect() as conn:
+        rows = await conn.execute(text("SELECT source_id FROM ingest_lots WHERE run_id = :j"), {"j": jid})
+        return {r[0] for r in rows}
+
+
+async def test_pages_overlap_in_time_and_are_committed_in_order(
+    db: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sweep, "PAGE_SIZE", 2)
+    original = EncarPipeline.process
+    running = peak = 0
+    order: list[str] = []
+
+    async def slow(self: EncarPipeline, items: Any, **kw: Any) -> Any:
+        nonlocal running, peak
+        running += 1
+        peak = max(peak, running)
+        await asyncio.sleep(0.05)  # a page waiting for its slowest history request
+        try:
+            return await original(self, items, **kw)
+        finally:
+            running -= 1
+
+    monkeypatch.setattr(EncarPipeline, "process", slow)
+    jid = await add_job(db, filters={"max_pages": 3})
+    svc = service(db, FakeEncar(), pipeline_depth=3)
+    progress = svc.queue.progress
+
+    async def record(job_id: int, payload: dict[str, Any]) -> None:
+        order.append(payload["message"])
+        await progress(job_id, payload)
+
+    svc.queue.progress = record  # type: ignore[method-assign,assignment]
+    await svc.run_once()
+
+    assert peak >= 2, "the next page loads while the previous one still waits"
+    assert order == ["q:all p.1", "q:all p.2", "q:all p.3"], "committed in page order"
+    assert json.loads((await job_row(db, jid)).result)["total"] == N_LOTS
+
+
+async def test_a_lot_shifted_up_by_a_delisting_is_not_skipped(
+    db: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sweep, "PAGE_SIZE", 2)
+    monkeypatch.setattr(sweep, "PAGE_OVERLAP", 1)
+    fake = FakeEncar()
+
+    def delist_after_the_first_page(f: FakeEncar, q: str, offset: int) -> None:
+        if len(f.searches) == 2:
+            f.hidden.add(101)  # 103 moves from position 2 to 1, behind the next page's start
+
+    fake.on_search = delist_after_the_first_page
+    jid = await add_job(db, filters={"max_pages": 3})  # one segment, no catch-up: the overlap alone
+    await service(db, fake).run_once()
+
+    assert "103" in await ingested_ids(db, jid)
+    assert fake.searches[1][1:] == (1, 3), "page 2 starts one lot earlier"
+
+
+async def test_full_run_ends_with_a_catch_up_pass_for_lots_listed_meanwhile(db: AsyncEngine) -> None:
+    fake = FakeEncar()
+    default_searches = 0
+
+    def list_a_new_car_after_the_global_pass(f: FakeEncar, q: str, offset: int) -> None:
+        nonlocal default_searches
+        if "Manufacturer" not in q:
+            default_searches += 1
+            if default_searches == 2:  # the global pass is done, so are the makers
+                f.top.append((901, "기아", "K5"))
+
+    fake.on_search = list_a_new_car_after_the_global_pass
+    jid = await add_job(db)
+    await service(db, fake).run_once()
+
+    result = json.loads((await job_row(db, jid)).result)
+    assert "901" in await ingested_ids(db, jid)
+    assert result["total"] == N_LOTS + 1
+    assert result["full_run"] is True
+
+
+async def test_a_resumed_segment_starts_one_page_back(
+    db: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sweep, "PAGE_SIZE", 2)
+    monkeypatch.setattr(sweep, "PAGE_OVERLAP", 0)
+    jid = await _running_job(db, marked=True, idle_minutes=60)
+    async with db.begin() as conn:
+        checkpoint = {"started_at": NOW.isoformat(), "cursor": {"global": 2}, "api_total": N_LOTS}
+        await conn.execute(
+            text("UPDATE parse_jobs SET progress = :p WHERE id = :i"),
+            {"p": json.dumps({"collector": COLLECTOR_VERSION, "checkpoint": checkpoint}), "i": jid},
+        )
+    fake = FakeEncar()
+    await service(db, fake, stale_minutes=10).run_once()
+
+    global_offsets = [o for q, o, _ in fake.searches if "Manufacturer" not in q]
+    assert global_offsets[0] == 2, "cursor at page 3 (offset 4): the resume starts at page 2"
+    assert (await job_row(db, jid)).status == "done"
+
+
+async def test_history_older_than_the_max_age_is_rechecked_too(db: AsyncEngine) -> None:
+    async with db.begin() as conn:
+        for i in range(6):
+            await conn.execute(
+                text("INSERT INTO lot_history VALUES ('encar', :i, :t, '[]', '{}')"),
+                {"i": str(i), "t": (NOW - timedelta(days=i)).replace(tzinfo=None)},
+            )
+    # by runs: the oldest third (3 days); by age: anything over 48 h
+    assert await history_cutoff(db, "encar", 3, NOW, max_age_hours=48) == NOW - timedelta(hours=48)
+    assert await history_cutoff(db, "encar", 3, NOW, max_age_hours=24 * 10) == NOW - timedelta(days=3)
+    assert await history_cutoff(db, "encar", 3, NOW, max_age_hours=0) == NOW - timedelta(days=3)

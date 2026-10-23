@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
@@ -46,18 +47,37 @@ class FakeEncar:
         self.record_status = 200
         self.record: dict[str, Any] = load("record")
         self.search_status = 200
+        # The results move while a run goes (Encar sorts by modification date):
+        self.hidden: set[int] = set()  # delisted: gone, the rest shifts up
+        self.top: list[tuple[int, str, str]] = []  # (id, maker, group) changed or new: first in the results
+        self.on_search: Callable[[FakeEncar, str, int], None] | None = (
+            None  # (fake, q, offset), before answering
+        )
+        self.searches: list[tuple[str, int, int]] = []  # (q, offset, count)
 
     def _search(self, request: httpx.Request) -> httpx.Response:
         q = unquote(request.url.params.get("q", ""))
         _, _, offset_s, count_s = request.url.params.get("sr", "|ModifiedDate|0|100").split("|")
         offset, count = int(offset_s), int(count_s)
-        results = []
+        self.searches.append((q, offset, count))
+        if self.on_search:
+            self.on_search(self, q, offset)
+
+        def matches(maker: str, group: str) -> bool:
+            return (
+                f"Manufacturer.{maker}." in q and (f"ModelGroup.{group}." in q or "ModelGroup" not in q)
+            ) or "Manufacturer" not in q
+
+        results = [item(i, Manufacturer=mk, ModelGroup=g) for i, mk, g in self.top if matches(mk, g)]
+        on_top = {i for i, _, _ in self.top}
         for maker, groups in INVENTORY.items():
             for group, ids in groups.items():
-                if (
-                    f"Manufacturer.{maker}." in q and (f"ModelGroup.{group}." in q or "ModelGroup" not in q)
-                ) or "Manufacturer" not in q:
-                    results += [item(i, Manufacturer=maker, ModelGroup=group) for i in ids]
+                if matches(maker, group):
+                    results += [
+                        item(i, Manufacturer=maker, ModelGroup=group)
+                        for i in ids
+                        if i not in self.hidden and i not in on_top
+                    ]
         if self.search_status != 200:
             return httpx.Response(self.search_status)
         return httpx.Response(

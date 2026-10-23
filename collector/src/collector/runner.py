@@ -47,10 +47,23 @@ async def load_rules(db: AsyncEngine, core_schema: str) -> RuleEngine:
         return RuleEngine.from_rows([dict(r) for r in rows])
 
 
-async def history_cutoff(db: AsyncEngine, source: str, every_runs: int, now: datetime) -> datetime | None:
-    """Re-check the oldest 1/every_runs of the histories each run (old ENCAR_HISTORY_EVERY_RUNS)."""
+async def history_cutoff(
+    db: AsyncEngine, source: str, every_runs: int, now: datetime, max_age_hours: int = 0
+) -> datetime | None:
+    """Histories checked before this are fetched again: the oldest 1/every_runs of the store (the
+    old ENCAR_HISTORY_EVERY_RUNS), and every one older than max_age_hours, whichever is later.
+    None: fetch all (an empty store, or every_runs <= 1)."""
     if every_runs <= 1:
         return None
+    by_runs = await _oldest_share_cutoff(db, source, every_runs, now)
+    if by_runs is None:
+        return None
+    return max(by_runs, now - timedelta(hours=max_age_hours)) if max_age_hours > 0 else by_runs
+
+
+async def _oldest_share_cutoff(
+    db: AsyncEngine, source: str, every_runs: int, now: datetime
+) -> datetime | None:
     async with db.connect() as conn:
         since = (now - timedelta(days=30)).replace(tzinfo=None)
         n = (
@@ -83,6 +96,7 @@ class RunContext:
     should_stop: Callable[[], bool]
     clock: Clock = utc_now
     proxy_bytes: Callable[[], int] = lambda: 0
+    pipeline_depth: int = 3
     runlog: RunLog | None = None
 
 
@@ -161,6 +175,7 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         should_stop=ctx.should_stop,
         current_year=current_year,
         seen=seen,
+        depth=ctx.pipeline_depth,
     )
     maker = job.filters.get("maker") or None
     max_pages = job.filters.get("max_pages") or None

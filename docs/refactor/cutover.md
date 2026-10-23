@@ -47,7 +47,10 @@ FLUSH PRIVILEGES;
 | `COLLECTOR_CORE_SCHEMA` | `railway` |
 | `COLLECTOR_CLAIM` | `tagged` (теневой режим) |
 | `FLOPPY_USERNAME`, `FLOPPY_PASSWORD`, `FLOPPY_HOST` | ссылки на переменные веб-сервиса |
-| `COLLECTOR_CONCURRENCY`, `COLLECTOR_HISTORY_CONCURRENCY` | `15` по умолчанию (как `ENCAR_WORKERS` на проде) |
+| `COLLECTOR_CONCURRENCY`, `COLLECTOR_HISTORY_CONCURRENCY` | `25` по умолчанию (у старого парсера было `ENCAR_WORKERS=15`) |
+| `COLLECTOR_PROXY_SESSIONS` | `30` по умолчанию: сессий прокси больше, чем запросов в полёте |
+| `COLLECTOR_PIPELINE_DEPTH` | `3` по умолчанию: страниц в работе одновременно; следующая грузится, пока у предыдущих догружается история |
+| `COLLECTOR_HISTORY_MAX_AGE_HOURS` | `48` по умолчанию: история старше перекачивается, кроме старейшей трети (`ENCAR_HISTORY_EVERY_RUNS`); проверка 23.10.2026: до 3 дней расхождений не было, 3–7 дней — ~1 % |
 | `COLLECTOR_HTTP_TIMEOUT` | `12` с по умолчанию: дольше висит только «застрявший» выход прокси, запрос повторяется через другую сессию |
 | `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` | `40` — **обязательно**: по умолчанию Railway даёт 0 с между SIGTERM и SIGKILL |
 | `COLLECTOR_STOP_GRACE_SECONDS` | `25` (по умолчанию): сколько после SIGTERM дорабатывает текущая страница |

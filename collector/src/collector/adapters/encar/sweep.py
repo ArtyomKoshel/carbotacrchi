@@ -3,15 +3,27 @@
 Encar's search stops at ~10 000 results per query, so the old parser split the
 catalogue: a global pass (which also discovers makers and models), then one
 query per maker, split by year above the cap, and by model inside a year above
-the cap. Same plan here, with one change: progress is checkpointed after every
-segment, so a run stopped by a deploy resumes where it stopped instead of
-starting over (the old run() ignored its checkpoint). Inside a segment the
-cursor keeps the next page, and the lots a run already wrote are not counted
-again when it resumes.
+the cap. Same plan here, with these changes:
+
+- Progress is checkpointed after every page (segment and next page), so a run
+  stopped by a deploy resumes where it stopped; the lots a run already wrote are
+  not counted again (the old run() ignored its checkpoint).
+- Pages are pipelined: the next page's list and details are fetched while the
+  history of earlier pages is still loading, so a page no longer waits for its
+  slowest request. What a page did is committed (seen, cursor, progress) strictly
+  in page order, so the checkpoint never runs ahead of the work.
+- The results move while a run goes: Encar sorts by modification date, a lot
+  that changes jumps to the top and a delisted one shifts the rest up. Pages are
+  requested with an overlap, a resumed segment starts one page back, and a full
+  run ends with a catch-up pass from the top that takes the lots which moved
+  into the part already swept.
 """
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -23,6 +35,10 @@ from collector.http import Failed, Missing, Ok
 
 MAX_PAGES_PER_SEGMENT: Final = 100
 YEAR_FROM: Final = 1990
+# Lots a page re-reads from the end of the previous one: covers the delistings between two
+# requests (each shifts the rest up by one); a repeated lot costs nothing, it is already seen.
+PAGE_OVERLAP: Final = 10
+CATCH_UP: Final = "catchup"
 
 
 def year_query(maker: str, year: int, model: str | None = None) -> str:
@@ -62,6 +78,16 @@ class SweepState:
 Progress = Callable[[SweepState, str], Awaitable[None]]
 
 
+@dataclass
+class _Pending:
+    """A page in flight (task set) or a segment finished behind it (task None)."""
+
+    key: str
+    page: int = 0
+    fresh: int = 0
+    task: asyncio.Task[PageReport] | None = None
+
+
 class Sweeper:
     def __init__(
         self,
@@ -73,6 +99,7 @@ class Sweeper:
         should_stop: Callable[[], bool] = lambda: False,
         current_year: int,
         seen: set[str] | None = None,
+        depth: int = 3,
     ) -> None:
         self.pipeline = pipeline
         self.api: EncarApi = pipeline.api
@@ -82,12 +109,22 @@ class Sweeper:
         self.should_stop = should_stop
         self.current_year = current_year
         self._seen: set[str] = set(seen or ())
+        self.depth = max(1, depth)  # pages in flight
+        self._pending: deque[_Pending] = deque()
         self.stopped = False
 
     async def run(
         self, state: SweepState, *, maker: str | None = None, max_pages: int | None = None
     ) -> SweepState:
         """Sweep (or resume) a run. A maker or max_pages makes it a partial run."""
+        try:
+            await self._plan(state, maker, max_pages)
+            await self._drain(state)
+        finally:
+            await self._cancel_pending()
+        return state
+
+    async def _plan(self, state: SweepState, maker: str | None, max_pages: int | None) -> None:
         if maker or max_pages:
             await self._segment(
                 state,
@@ -96,13 +133,14 @@ class Sweeper:
                 max_pages,
                 total=True,
             )
-            return state
+            return
         await self._segment(state, "global", DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT, discover=True, total=True)
         for mk in sorted(state.makers):
             if self.stopped:
-                break
+                return
             await self._maker(state, mk)
-        return state
+        # Lots changed or listed while the run went float to the top: take those it passed.
+        await self._segment(state, CATCH_UP, DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT)
 
     async def _count(self, query: str) -> int | None:
         outcome = await self.api.search(query, 0, 1)
@@ -123,7 +161,7 @@ class Sweeper:
                     return
                 await self._year(state, maker, year)
         if not self.stopped:
-            state.done_segments.append(f"maker:{maker}")
+            await self._done(state, f"maker:{maker}")
 
     async def _year(self, state: SweepState, maker: str, year: int) -> None:
         key = f"year:{maker}:{year}"
@@ -133,7 +171,7 @@ class Sweeper:
         if not total:
             if total is None:
                 self._error(state, f"[{maker}/{year}] count failed")
-            state.done_segments.append(key)
+            await self._done(state, key)
             return
         if total <= MAX_SAFE_OFFSET:
             await self._segment(state, key, year_query(maker, year), MAX_PAGES_PER_SEGMENT)
@@ -162,14 +200,18 @@ class Sweeper:
             return
         segment_seen: set[str] = set()
         overlap_pages = 0
-        for page in range(state.cursor.get(key, 0), max_pages or MAX_PAGES_PER_SEGMENT):
+        # Resumed: one page back, for what moved up during the pause.
+        first = max(0, state.cursor[key] - 1) if key in state.cursor else 0
+        for page in range(first, max_pages or MAX_PAGES_PER_SEGMENT):
             if self.should_stop():
                 self.stopped = True
-                return  # not marked done: the resume repeats this segment
-            offset = page * PAGE_SIZE
-            if offset > MAX_SAFE_OFFSET:
+                return  # not marked done: the resume goes on from the cursor
+            start = page * PAGE_SIZE
+            if start > MAX_SAFE_OFFSET:
                 break
-            outcome = await self.api.search(query, offset, PAGE_SIZE)
+            offset = max(0, start - PAGE_OVERLAP) if page else 0
+            size = PAGE_SIZE + (start - offset)
+            outcome = await self.api.search(query, offset, size)
             if isinstance(outcome, Failed | Missing):
                 self._error(state, f"{key} p.{page + 1}: {getattr(outcome, 'reason', 'missing')}")
                 break
@@ -186,22 +228,60 @@ class Sweeper:
                 if all(str(i.get("Id", "")) in segment_seen for i in items):
                     break
                 overlap_pages += 1
-                if overlap_pages >= 5 or offset + PAGE_SIZE >= count:
+                if overlap_pages >= 5 or start + PAGE_SIZE >= count:
                     break
                 continue
             overlap_pages = 0
-            report = await self.pipeline.process(fresh, run_id=self.run_id, history_cutoff=self.cutoff)
-            state.seen += len(fresh)
-            state.pages += 1
-            state.cursor[key] = page + 1
-            state.report = (
-                PageReport(**state.report).plus(report).__dict__ if state.report else report.__dict__
-            )
-            await self.on_progress(state, f"{key} p.{page + 1}")
-            if offset + PAGE_SIZE >= count:
+            await self._launch(state, key, page, fresh)
+            if start + PAGE_SIZE >= count:
                 break
-        state.cursor.pop(key, None)
-        state.done_segments.append(key)
+        await self._done(state, key)
+
+    # ── pipeline: pages in flight, committed in order ──────────────────────
+
+    async def _launch(self, state: SweepState, key: str, page: int, fresh: list[dict[str, Any]]) -> None:
+        task = asyncio.ensure_future(
+            self.pipeline.process(fresh, run_id=self.run_id, history_cutoff=self.cutoff)
+        )
+        self._pending.append(_Pending(key, page, len(fresh), task))
+        # depth = pages in flight at most; 1 = one page at a time, committed right after it
+        while sum(1 for p in self._pending if p.task is not None) >= self.depth:
+            await self._commit_next(state)
+
+    async def _done(self, state: SweepState, key: str) -> None:
+        """A segment is done once every page before it is committed."""
+        self._pending.append(_Pending(key))
+        while self._pending and self._pending[0].task is None:
+            await self._commit_next(state)
+
+    async def _drain(self, state: SweepState) -> None:
+        while self._pending:
+            await self._commit_next(state)
+
+    async def _commit_next(self, state: SweepState) -> None:
+        p = self._pending[0]
+        if p.task is None:
+            self._pending.popleft()
+            state.cursor.pop(p.key, None)
+            if p.key not in state.done_segments:
+                state.done_segments.append(p.key)
+            return
+        report = await p.task
+        self._pending.popleft()
+        state.seen += p.fresh
+        state.pages += 1
+        state.cursor[p.key] = p.page + 1
+        state.report = PageReport(**state.report).plus(report).__dict__ if state.report else report.__dict__
+        await self.on_progress(state, f"{p.key} p.{p.page + 1}")
+
+    async def _cancel_pending(self) -> None:
+        tasks = [p.task for p in self._pending if p.task is not None and not p.task.done()]
+        for t in tasks:
+            t.cancel()
+        for t in tasks:
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await t
+        self._pending.clear()
 
     def _take_new(
         self, items: list[dict[str, Any]], segment_seen: set[str], makers: dict[str, list[str]] | None
