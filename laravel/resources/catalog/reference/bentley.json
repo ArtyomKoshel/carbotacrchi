@@ -18,8 +18,7 @@
     "code": false
    },
    "GTS": null
-  },
-  "fuel": "gasoline"
+  }
  },
  "complectations": [
   "Azure",
@@ -41,8 +40,7 @@
      "years": [
       2016,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -59,8 +57,7 @@
      "years": [
       2011,
       2018
-     ],
-     "drive": "awd"
+     ]
     },
     {
      "code": "3S",
@@ -68,8 +65,7 @@
      "years": [
       2018,
       2024
-     ],
-     "drive": "awd"
+     ]
     },
     {
      "code": "IV",
@@ -77,8 +73,7 @@
      "years": [
       2024,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -92,8 +87,7 @@
      "years": [
       2013,
       2019
-     ],
-     "drive": "awd"
+     ]
     },
     {
      "code": "3S",
@@ -101,8 +95,7 @@
      "years": [
       2019,
       2024
-     ],
-     "drive": "awd"
+     ]
     },
     {
      "code": "IV",
@@ -110,8 +103,7 @@
      "years": [
       2024,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -125,8 +117,7 @@
      "years": [
       2010,
       2020
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   }

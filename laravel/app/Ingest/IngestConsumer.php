@@ -2,8 +2,13 @@
 
 namespace App\Ingest;
 
+use App\Catalog\CatalogLinker;
+use App\Catalog\CatalogStore;
+use App\Catalog\Encar\EncarMatcher;
+use App\Catalog\Reference;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 
 /**
@@ -209,6 +214,23 @@ final class IngestConsumer
         }
         $this->writeSkipLog($skipLog);
         $result->changes += count($changes);
+        $this->linkCatalog(array_column($upserts, 'id'));
+    }
+
+    /**
+     * Written lots take their place in the reference catalog. A failure here must not hold
+     * the buffer back: the lots stay unlinked until the next catalog:remap.
+     *
+     * @param list<string> $ids
+     */
+    private function linkCatalog(array $ids): void
+    {
+        try {
+            $store = new CatalogStore(app(Reference::class), $this->core);
+            (new CatalogLinker(app(EncarMatcher::class), $store, $this->core))->link($ids);
+        } catch (\Throwable $e) {
+            Log::warning('[ingest] catalog link failed: ' . $e->getMessage(), ['lots' => count($ids)]);
+        }
     }
 
     /**

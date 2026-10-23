@@ -10,6 +10,16 @@ class SearchQuery
     public string $model = '';
     public string $badge = '';
     public string $generation = '';
+
+    /** The reference catalog (app/Catalog): ids of ref_makes … ref_complectations; a make set here replaces make / model. */
+    public int $refMakeId = 0;
+    public int $refModelId = 0;
+    /** @var int[] */
+    public array $refGenerationIds = [];
+    /** @var int[] */
+    public array $refModificationIds = [];
+    /** @var int[] */
+    public array $refComplectationIds = [];
     public int $yearFrom = 0;
     public int $yearTo = 0;
     public int $priceMax = 0;
@@ -81,6 +91,13 @@ class SearchQuery
         $q->model = trim((string) ($data['model'] ?? ''));
         $q->badge = trim((string) ($data['badge'] ?? ''));
         $q->generation = trim((string) ($data['generation'] ?? ''));
+        $q->refMakeId = (int) ($data['refMakeId'] ?? 0);
+        $q->refModelId = (int) ($data['refModelId'] ?? 0);
+        foreach (['refGenerationIds', 'refModificationIds', 'refComplectationIds'] as $key) {
+            if (!empty($data[$key]) && is_array($data[$key])) {
+                $q->$key = array_values(array_filter(array_map('intval', $data[$key])));
+            }
+        }
         $q->yearFrom = (int) ($data['yearFrom'] ?? 0);
         $q->yearTo = (int) ($data['yearTo'] ?? 0);
         $q->priceMax = (int) ($data['priceMax'] ?? 0);

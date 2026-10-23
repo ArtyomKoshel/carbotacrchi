@@ -11,7 +11,8 @@ namespace App\Catalog\Rules;
  *
  * The class letters must be the model's own ("E" in E-Class); a bare number takes them
  * ("200" of an SLK → "SLK200"). Fuel: d / CDI / BlueTEC diesel, e / Hybrid / E Performance
- * plug-in hybrid, EQ electric; 4MATIC all wheels, "+" on an EQ the rear ones.
+ * plug-in hybrid, EQ electric; all-wheel drive from 4MATIC. Nothing is assumed: no suffix
+ * and no 4MATIC leave fuel and drive "not stated" (the lot keeps Encar's own).
  */
 final class MercedesRules implements MakeRules
 {
@@ -21,7 +22,7 @@ final class MercedesRules implements MakeRules
     {
         $class = $model['class'] ?? null;
         $fuel = $generation['fuel'] ?? $model['fuel'] ?? null;
-        $drive = $generation['drive'] ?? null;
+        $drive = null;
 
         $text = ' ' . str_replace('4MAITC', '4MATIC', $rest) . ' ';
         $flag = function (string $pattern) use (&$text): ?string {
@@ -83,13 +84,9 @@ final class MercedesRules implements MakeRules
             str_starts_with($class, 'EQ') || $eq !== null => 'electric',
             in_array($suffix, ['e', 'eL', 'h'], true) || $hybrid !== null || $ePerf !== null => 'hybrid',
             in_array($suffix, ['d', 'Ld'], true) || $diesel !== null || $fuelWord === 'Diesel' => 'diesel',
-            default => $fuel ?? 'gasoline',
+            default => $fuel,
         };
-        $drive = match (true) {
-            $matic !== null => 'awd',
-            $plus === '+' => 'rwd',
-            default => $drive,
-        };
+        $drive = $matic !== null ? 'awd' : null;
 
         $code = implode(' ', array_filter([
             $maybach, $amg ? 'AMG' : null, "{$class}{$digits}{$suffix}{$plus}", $s,
@@ -114,7 +111,7 @@ final class MercedesRules implements MakeRules
             }
         }
         $code = implode(' ', array_filter(['AMG GT', $number, $s, ...$letters, $ePerf ? 'E Performance' : null, $matic]));
-        return self::result($code, $ePerf ? 'hybrid' : ($fuel ?? 'gasoline'), $matic ? 'awd' : $drive, $left);
+        return self::result($code, $ePerf ? 'hybrid' : $fuel, $matic ? 'awd' : $drive, $left);
     }
 
     private static function result(?string $code, ?string $fuel, ?string $drive, array $leftover): array

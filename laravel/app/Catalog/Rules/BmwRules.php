@@ -11,12 +11,13 @@ namespace App\Catalog\Rules;
  *   M cars                           "M3 Competition xDrive", "M4 CSL"
  *   M SUVs, XM                       "X5 M Competition", "XM Label"
  *
- * Fuel follows the suffix (i petrol, d diesel, e plug-in hybrid; none — petrol in the 2024+
- * naming), drive follows xDrive (all wheels), else the generation's own drive.
+ * Only what the designation says: fuel from the suffix (i petrol, d diesel, e plug-in hybrid)
+ * or the model (an i4 is electric), all-wheel drive from xDrive. Nothing else is assumed —
+ * no xDrive means "not stated", not rear-wheel drive; the lot keeps Encar's own fuel and drive.
  */
 final class BmwRules implements MakeRules
 {
-    private const SUFFIX_FUEL = ['i' => 'gasoline', 'is' => 'gasoline', 'li' => 'gasoline', 'd' => 'diesel', 'ld' => 'diesel', 'e' => 'hybrid', 'le' => 'hybrid', '' => 'gasoline'];
+    private const SUFFIX_FUEL = ['i' => 'gasoline', 'is' => 'gasoline', 'li' => 'gasoline', 'd' => 'diesel', 'ld' => 'diesel', 'e' => 'hybrid', 'le' => 'hybrid'];
 
     private const M_MODIFIERS = ['Competition', 'CS', 'CSL', 'GTS'];
 
@@ -24,7 +25,6 @@ final class BmwRules implements MakeRules
     {
         $name = $model['name'];
         $fuel = $generation['fuel'] ?? $model['fuel'] ?? null;
-        $defaultDrive = $generation['drive'] ?? null;
 
         // marketing words that name no engine of their own
         $rest = trim(preg_replace('/(^|\s)(iPerformance|V12)(?=\s|$)/', ' ', $rest));
@@ -38,11 +38,8 @@ final class BmwRules implements MakeRules
             return ' ';
         }, $rest));
         $rest = trim(preg_replace('/\s+/', ' ', $rest));
-        $drive = match ($driveLetter) {
-            'x' => 'awd',
-            's', 'e' => $defaultDrive === 'awd' ? 'rwd' : $defaultDrive,
-            default => $defaultDrive,
-        };
+        // sDrive / eDrive say "two-wheel" but not which axle
+        $drive = $driveLetter === 'x' ? 'awd' : null;
         $driveWord = $driveLetter === null ? '' : "{$driveLetter}Drive";
 
         // M cars: M2…M8
@@ -54,7 +51,7 @@ final class BmwRules implements MakeRules
             $modifiers = array_values(array_intersect($words, self::M_MODIFIERS));
             $unknown = array_values(array_diff($words, self::M_MODIFIERS));
             $code = trim(implode(' ', [$name, ...$modifiers, $driveLetter === 'x' ? 'xDrive' : '']));
-            return self::result($code, $fuel ?? 'gasoline', $drive, $unknown);
+            return self::result($code, $fuel, $drive, $unknown);
         }
 
         // M SUVs and XM: "3.0 Competition", "4.4 Label" — the displacement adds nothing
@@ -62,7 +59,7 @@ final class BmwRules implements MakeRules
             $words = array_values(array_filter(explode(' ', $rest), fn ($w) => $w !== '' && !preg_match('/^\d\.\d$/', $w)));
             $known = array_values(array_intersect($words, ['Competition', 'Label']));
             $code = trim($name . ' ' . implode(' ', $known));
-            return self::result($code, $fuel ?? 'gasoline', $drive, array_values(array_diff($words, $known)));
+            return self::result($code, $fuel, $drive, array_values(array_diff($words, $known)));
         }
 
         // electric: eDrive40, xDrive50, M60; i3 / iX3 name no engine
@@ -74,8 +71,8 @@ final class BmwRules implements MakeRules
                 return self::result(null, $fuel, $drive, [$rest]);
             }
             return $m[1] === 'M'
-                ? self::result("M{$m[2]}", $fuel, 'awd', [])
-                : self::result(($driveWord ?: 'eDrive') . $m[2], $fuel, $drive, []);
+                ? self::result("M{$m[2]}", $fuel, $drive, [])
+                : self::result($driveWord . $m[2], $fuel, $drive, []);
         }
         if ($name === 'i8') {
             return self::result($rest === '' ? 'i8' : null, $fuel, $drive, $rest === '' ? [] : [$rest]);
@@ -90,13 +87,12 @@ final class BmwRules implements MakeRules
         [, $mPerf, $digits, $suffix] = $m + [3 => ''];
         $fuel = self::SUFFIX_FUEL[strtolower($suffix)] ?? $fuel;
 
-        // X1…X7, Z4: xDrive20d / sDrive20i; M Performance M40i is all-wheel drive by itself
+        // X1…X7, Z4: xDrive20d / sDrive20i, as the badge writes it; M Performance: M40i
         if (preg_match('/^[XZ]\d$/', $name)) {
             if ($mPerf === 'M') {
-                return self::result("M{$digits}{$suffix}", $fuel, $name === 'Z4' ? 'rwd' : 'awd', []);
+                return self::result("M{$digits}{$suffix}", $fuel, $drive, []);
             }
-            $word = $driveWord !== '' ? $driveWord : ($defaultDrive === 'awd' ? 'xDrive' : 'sDrive');
-            return self::result("{$word}{$digits}{$suffix}", $fuel, $drive, []);
+            return self::result("{$driveWord}{$digits}{$suffix}", $fuel, $drive, []);
         }
 
         // numbered series; a GT badge may give only the last two digits ("GT 30d xDrive")

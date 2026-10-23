@@ -17,8 +17,7 @@
    "Evo": null,
    "Tecnica": null,
    "STO": null
-  },
-  "fuel": "gasoline"
+  }
  },
  "complectations": [],
  "editions": [],
@@ -33,8 +32,7 @@
      "years": [
       2018,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -48,8 +46,7 @@
      "years": [
       2014,
       2024
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -64,8 +61,7 @@
      "years": [
       2023,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   }

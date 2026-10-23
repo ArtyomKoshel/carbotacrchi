@@ -5,10 +5,9 @@ namespace App\Catalog\Rules;
 /**
  * Porsche designations, the model left out: "Carrera 4 GTS", "Turbo S", "GT3 RS", "Targa 4S",
  * "4 E-Hybrid", "S Diesel", "Turbo GT", "Base". Encar's "AWD" of a Panamera is Porsche's "4";
- * the displacement only names a 718 ("GTS 4.0" vs "GTS 2.5") or, alone, the base car.
+ * the displacement names a 718 ("GTS 4.0" vs "GTS 2.5") and a badge that has nothing else ("3.0").
  *
- * Drive: a "4" is all wheels; so are Turbo on a 911 and GTS / Turbo on the others, else the
- * generation's own. Fuel: E-Hybrid plug-in hybrid, Diesel diesel.
+ * Only what the badge says: all-wheel drive from a "4", fuel from E-Hybrid / Diesel or the model.
  */
 final class PorscheRules implements MakeRules
 {
@@ -19,7 +18,6 @@ final class PorscheRules implements MakeRules
     {
         $name = $model['name'];
         $fuel = $generation['fuel'] ?? $model['fuel'] ?? null;
-        $sports = preg_match('/^(911|718 |Boxster|Cayman)/', $name) === 1;
 
         $disp = null;
         $base = false;
@@ -43,20 +41,19 @@ final class PorscheRules implements MakeRules
         $designation = implode(' ', $words);
         $code = match (true) {
             $left !== [] => null,
-            str_starts_with($name, '718') && $disp !== null => trim("{$designation} {$disp}"),
+            (str_starts_with($name, '718') || $designation === '') && $disp !== null => trim("{$designation} {$disp}"),
             $designation !== '' => $designation,
-            $base || $disp !== null => 'Base',
+            $base => 'Base',
             default => null,
         };
 
-        $awd = array_intersect($words, ['4', '4S']) || in_array('Turbo', $words, true)
-            || (!$sports && in_array('GTS', $words, true));
+        $awd = (bool) array_intersect($words, ['4', '4S']);
         $fuel = match (true) {
             in_array('E-Hybrid', $words, true) => 'hybrid',
             in_array('Diesel', $words, true) => 'diesel',
-            default => $fuel ?? 'gasoline',
+            default => $fuel,
         };
 
-        return ['code' => $code, 'fuel' => $fuel, 'drive' => $awd ? 'awd' : ($generation['drive'] ?? null), 'leftover' => $left];
+        return ['code' => $code, 'fuel' => $fuel, 'drive' => $awd ? 'awd' : null, 'leftover' => $left];
     }
 }

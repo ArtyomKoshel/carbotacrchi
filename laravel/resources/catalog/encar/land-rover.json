@@ -1,5 +1,5 @@
 {
-  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words. A model name without a generation, where Encar labels only the later one (\"2세대\", \"(4S)\"), is the first.",
   "korean": "랜드로버",
   "names": {
     "디스커버리 4": "Discovery 4",
@@ -20,6 +20,14 @@
     "Discovery 5": [
       "Discovery",
       "L462"
+    ],
+    "Discovery Sport": [
+      "Discovery Sport",
+      "L550"
+    ],
+    "Range Rover Evoque": [
+      "Range Rover Evoque",
+      "L538"
     ]
   },
   "words": {

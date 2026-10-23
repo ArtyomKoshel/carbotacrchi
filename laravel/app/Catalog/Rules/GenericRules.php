@@ -13,6 +13,7 @@ namespace App\Catalog\Rules;
  * The modification is the displacement, the engine words and the drive word, in the
  * badge's order ("2.0 TDI 4MOTION", "B5 AWD", "110 D300"); a word that "code": false only
  * tells the fuel. First matching rule gives the fuel, else the model's; anything else is left over.
+ * Nothing is assumed: a badge without a drive word has no drive.
  */
 final class GenericRules implements MakeRules
 {
@@ -40,13 +41,13 @@ final class GenericRules implements MakeRules
             }
         }
 
-        $fuel ??= $generation['fuel'] ?? $model['fuel'] ?? $this->config['fuel'] ?? null;
+        $fuel ??= $generation['fuel'] ?? $model['fuel'] ?? null;
         $name = $code ? implode(' ', $code) : null;
         // an electric model whose badge names no motor is the model itself
         if ($name === null && $left === [] && $fuel === 'electric') {
             $name = $model['name'];
         }
-        return ['code' => $name, 'fuel' => $fuel, 'drive' => $drive ?? ($generation['drive'] ?? null), 'leftover' => $left];
+        return ['code' => $name, 'fuel' => $fuel, 'drive' => $drive, 'leftover' => $left];
     }
 
     /** @return array{fuel?: ?string, code?: bool}|null */

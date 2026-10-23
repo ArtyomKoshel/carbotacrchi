@@ -1,5 +1,5 @@
 {
-  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words. A model name without a generation, where Encar labels only the later one (\"2세대\", \"(4S)\"), is the first.",
   "korean": "볼보",
   "names": {
     "C40 리차지": "C40 Recharge",
@@ -9,5 +9,11 @@
     "V60 크로스컨트리": "V60 Cross Country",
     "V90 크로스컨트리": "V90 Cross Country",
     "XC40 리차지": "XC40 Recharge"
+  },
+  "models": {
+    "V60 Cross Country": [
+      "V60 Cross Country",
+      "I"
+    ]
   }
 }

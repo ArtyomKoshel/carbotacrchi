@@ -2,50 +2,342 @@
   "make": "Volvo",
   "engine": {
     "codes": [
-      {"re": "^T8$", "fuel": "hybrid"},
-      {"re": "^[TB]\\d$", "fuel": "gasoline"},
-      {"re": "^D\\d$", "fuel": "diesel"}
+      {
+        "re": "^T8$",
+        "fuel": "hybrid"
+      },
+      {
+        "re": "^D\\d$",
+        "fuel": "diesel"
+      },
+      {
+        "re": "^T\\d$",
+        "fuel": "gasoline"
+      },
+      {
+        "re": "^B\\d$"
+      }
     ],
-    "words": {"Twin": {"fuel": "electric"}, "Polestar": {"fuel": "gasoline"}, "Hybrid": {"fuel": "hybrid", "code": false}},
-    "drives": {"AWD": "awd"}
+    "words": {
+      "Twin": {
+        "fuel": "electric"
+      },
+      "Polestar": {
+        "fuel": "gasoline"
+      },
+      "Hybrid": {
+        "fuel": "hybrid",
+        "code": false
+      }
+    },
+    "drives": {
+      "AWD": "awd"
+    }
   },
   "complectations": [
-    "Ultimate Bright", "Ultimate Dark", "Ultra Bright", "Ultra Dark", "Plus Bright", "Plus Dark", "Ultimate", "Ultra",
-    "Inscription", "Momentum", "R-Design", "Excellence", "Plus", "Pro", "Core", "Performance", "Air Suspension"
+    "Ultimate Bright",
+    "Ultimate Dark",
+    "Ultra Bright",
+    "Ultra Dark",
+    "Plus Bright",
+    "Plus Dark",
+    "Ultimate",
+    "Ultra",
+    "Inscription",
+    "Momentum",
+    "R-Design",
+    "Excellence",
+    "Plus",
+    "Pro",
+    "Core",
+    "Performance",
+    "Air Suspension"
   ],
-  "editions": ["Black Edition"],
+  "editions": [
+    "Black Edition"
+  ],
   "models": [
-    {"name": "C40 Recharge", "body": "suv_coupe", "fuel": "electric", "generations": [{"code": "I", "number": 1, "years": [2021, 2025], "drive": "fwd"}]},
-    {"name": "EX30", "body": "suv", "fuel": "electric", "generations": [{"code": "I", "number": 1, "years": [2023, null], "drive": "rwd"}]},
-    {"name": "EX30 Cross Country", "body": "suv", "fuel": "electric", "generations": [{"code": "I", "number": 1, "years": [2024, null], "drive": "awd"}]},
-    {"name": "S60", "body": "sedan", "generations": [
-      {"code": "II", "number": 2, "years": [2010, 2018], "drive": "fwd"},
-      {"code": "III", "number": 3, "years": [2018, null], "drive": "fwd"}
-    ]},
-    {"name": "S60 Cross Country", "body": "sedan", "generations": [{"code": "I", "number": 1, "years": [2015, 2018], "drive": "awd"}]},
-    {"name": "S80", "body": "sedan", "generations": [{"code": "II", "number": 2, "years": [2006, 2016], "drive": "fwd"}]},
-    {"name": "S90", "body": "sedan", "generations": [{"code": "II", "number": 2, "years": [2016, null], "drive": "fwd"}]},
-    {"name": "V40", "body": "hatchback", "generations": [{"code": "II", "number": 2, "years": [2012, 2019], "drive": "fwd"}]},
-    {"name": "V40 Cross Country", "body": "hatchback", "generations": [{"code": "I", "number": 1, "years": [2012, 2019], "drive": "fwd"}]},
-    {"name": "V60", "body": "wagon", "generations": [
-      {"code": "I", "number": 1, "years": [2010, 2018], "drive": "fwd"},
-      {"code": "II", "number": 2, "years": [2018, null], "drive": "fwd"}
-    ]},
-    {"name": "V60 Cross Country", "body": "wagon", "generations": [
-      {"code": "I", "number": 1, "years": [2014, 2018], "drive": "fwd"},
-      {"code": "II", "number": 2, "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "V90 Cross Country", "body": "wagon", "generations": [{"code": "I", "number": 1, "years": [2016, null], "drive": "awd"}]},
-    {"name": "XC40", "body": "suv", "generations": [{"code": "I", "number": 1, "years": [2017, null], "drive": "fwd"}]},
-    {"name": "XC40 Recharge", "body": "suv", "fuel": "electric", "generations": [{"code": "I", "number": 1, "years": [2020, null], "drive": "fwd"}]},
-    {"name": "XC60", "body": "suv", "generations": [
-      {"code": "I", "number": 1, "years": [2008, 2017], "drive": "fwd"},
-      {"code": "II", "number": 2, "years": [2017, null], "drive": "awd"}
-    ]},
-    {"name": "XC70", "body": "wagon", "generations": [{"code": "III", "number": 3, "years": [2007, 2016], "drive": "awd"}]},
-    {"name": "XC90", "body": "suv", "generations": [
-      {"code": "I", "number": 1, "years": [2002, 2014], "drive": "awd"},
-      {"code": "II", "number": 2, "years": [2015, null], "drive": "awd"}
-    ]}
+    {
+      "name": "C40 Recharge",
+      "body": "suv_coupe",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2021,
+            2025
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EX30",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EX30 Cross Country",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S60",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2010,
+            2018
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S60 Cross Country",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2015,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S80",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2006,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S90",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2016,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "V40",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2012,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "V40 Cross Country",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2012,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "V60",
+      "body": "wagon",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2010,
+            2018
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "V60 Cross Country",
+      "body": "wagon",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2014,
+            2018
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "V90 Cross Country",
+      "body": "wagon",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2016,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XC40",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XC40 Recharge",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XC60",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2008,
+            2017
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XC70",
+      "body": "wagon",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2007,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XC90",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2002,
+            2014
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2015,
+            null
+          ]
+        }
+      ]
+    }
   ]
 }

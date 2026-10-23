@@ -2,128 +2,697 @@
   "make": "Mercedes-Benz",
   "rules": "mercedes",
   "complectations": [
-    "AMG Line", "AMG Package Plus", "AMG Package", "Avantgarde Sport", "Avantgarde", "Exclusive", "Elegance",
-    "Style", "Premium Package", "Premium", "Progressive", "Electric Art", "AMG Sport Package", "Sport Package", "Dynamic",
-    "Standard", "Intelligent Drive", "Manufaktur"
+    "AMG Line",
+    "AMG Package Plus",
+    "AMG Package",
+    "Avantgarde Sport",
+    "Avantgarde",
+    "Exclusive",
+    "Elegance",
+    "Style",
+    "Premium Package",
+    "Premium",
+    "Progressive",
+    "Electric Art",
+    "AMG Sport Package",
+    "Sport Package",
+    "Dynamic",
+    "Standard",
+    "Intelligent Drive",
+    "Manufaktur"
   ],
   "editions": [
-    "designo Exclusive Edition", "50th Anniversary Edition", "Haute Voiture Edition", "Virgil Abloh Edition",
-    "Magno Hero Edition", "Heritage Edition", "Activity Edition", "Performance Edition", "Launch Edition",
-    "Online Edition", "Edition 1886", "Edition 463", "Edition 100", "Edition 55", "Edition 1", "Edition C",
-    "K-Edition 20", "Golden Daylight", "Metropolitan Nightwork", "Monogram Series", "Nightfall", "Premier Special",
-    "Online Special", "Special Edition", "Performance", "Limited", "Brabus", "Edition"
+    "designo Exclusive Edition",
+    "50th Anniversary Edition",
+    "Haute Voiture Edition",
+    "Virgil Abloh Edition",
+    "Magno Hero Edition",
+    "Heritage Edition",
+    "Activity Edition",
+    "Performance Edition",
+    "Launch Edition",
+    "Online Edition",
+    "Edition 1886",
+    "Edition 463",
+    "Edition 100",
+    "Edition 55",
+    "Edition 1",
+    "Edition C",
+    "K-Edition 20",
+    "Golden Daylight",
+    "Metropolitan Nightwork",
+    "Monogram Series",
+    "Nightfall",
+    "Premier Special",
+    "Online Special",
+    "Special Edition",
+    "Performance",
+    "Limited",
+    "Brabus",
+    "Edition"
   ],
   "models": [
-    {"name": "A-Class", "class": "A", "body": "hatchback", "generations": [
-      {"code": "W176", "years": [2012, 2018], "drive": "fwd"},
-      {"code": "W177", "years": [2018, null], "drive": "fwd", "aliases": ["V177"]}
-    ]},
-    {"name": "AMG GT", "class": "GT", "body": "coupe", "generations": [
-      {"code": "C190", "years": [2014, 2021], "drive": "rwd", "aliases": ["R190"]},
-      {"code": "C192", "years": [2023, null], "drive": "awd"}
-    ]},
-    {"name": "AMG GT 4-Door", "class": "GT", "body": "liftback", "generations": [
-      {"code": "X290", "years": [2018, null], "drive": "awd"}
-    ]},
-    {"name": "B-Class", "class": "B", "body": "minivan", "generations": [
-      {"code": "W246", "years": [2011, 2018], "drive": "fwd"},
-      {"code": "W247", "years": [2018, null], "drive": "fwd"}
-    ]},
-    {"name": "C-Class", "class": "C", "body": "sedan", "generations": [
-      {"code": "W204", "years": [2007, 2014], "drive": "rwd", "aliases": ["S204", "C204"]},
-      {"code": "W205", "years": [2014, 2021], "drive": "rwd", "aliases": ["S205", "C205", "A205"]},
-      {"code": "W206", "years": [2021, null], "drive": "rwd", "aliases": ["S206"]}
-    ]},
-    {"name": "CLA-Class", "class": "CLA", "body": "sedan", "generations": [
-      {"code": "C117", "years": [2013, 2019], "drive": "fwd", "aliases": ["X117"]},
-      {"code": "C118", "years": [2019, null], "drive": "fwd", "aliases": ["X118"]}
-    ]},
-    {"name": "CLE-Class", "class": "CLE", "body": "coupe", "generations": [
-      {"code": "C236", "years": [2023, null], "drive": "rwd", "aliases": ["A236"]}
-    ]},
-    {"name": "CLS-Class", "class": "CLS", "body": "sedan", "generations": [
-      {"code": "W218", "years": [2011, 2018], "drive": "rwd", "aliases": ["C218", "X218"]},
-      {"code": "C257", "years": [2018, 2023], "drive": "rwd"}
-    ]},
-    {"name": "E-Class", "class": "E", "body": "sedan", "generations": [
-      {"code": "W212", "years": [2009, 2016], "drive": "rwd", "aliases": ["S212", "C207", "A207"]},
-      {"code": "W213", "years": [2016, 2023], "drive": "rwd", "aliases": ["S213", "C238", "A238"]},
-      {"code": "W214", "years": [2023, null], "drive": "rwd", "aliases": ["S214"]}
-    ]},
-    {"name": "EQA", "class": "EQA", "body": "suv", "fuel": "electric", "generations": [
-      {"code": "H243", "years": [2021, null], "drive": "fwd"}
-    ]},
-    {"name": "EQB", "class": "EQB", "body": "suv", "fuel": "electric", "generations": [
-      {"code": "X243", "years": [2021, null], "drive": "awd"}
-    ]},
-    {"name": "EQC", "class": "EQC", "body": "suv", "fuel": "electric", "generations": [
-      {"code": "N293", "years": [2019, 2023], "drive": "awd"}
-    ]},
-    {"name": "EQE", "class": "EQE", "body": "sedan", "fuel": "electric", "generations": [
-      {"code": "V295", "years": [2022, null], "drive": "rwd"}
-    ]},
-    {"name": "EQE SUV", "class": "EQE", "body": "suv", "fuel": "electric", "generations": [
-      {"code": "X294", "years": [2023, null], "drive": "awd"}
-    ]},
-    {"name": "EQS", "class": "EQS", "body": "liftback", "fuel": "electric", "generations": [
-      {"code": "V297", "years": [2021, null], "drive": "rwd"}
-    ]},
-    {"name": "EQS SUV", "class": "EQS", "body": "suv", "fuel": "electric", "generations": [
-      {"code": "X296", "years": [2022, null], "drive": "awd"}
-    ]},
-    {"name": "G-Class", "class": "G", "body": "suv", "generations": [
-      {"code": "W463", "years": [1990, 2018], "drive": "awd"},
-      {"code": "W463A", "years": [2018, 2024], "drive": "awd", "aliases": ["W463B"]},
-      {"code": "W465", "years": [2024, null], "drive": "awd"}
-    ]},
-    {"name": "GL-Class", "class": "GL", "body": "suv", "generations": [
-      {"code": "X166", "years": [2012, 2016], "drive": "awd"}
-    ]},
-    {"name": "GLA-Class", "class": "GLA", "body": "suv", "generations": [
-      {"code": "X156", "years": [2013, 2019], "drive": "fwd"},
-      {"code": "H247", "years": [2020, null], "drive": "fwd"}
-    ]},
-    {"name": "GLB-Class", "class": "GLB", "body": "suv", "generations": [
-      {"code": "X247", "years": [2019, null], "drive": "fwd"}
-    ]},
-    {"name": "GLC-Class", "class": "GLC", "body": "suv", "bodies": {"Coupe": "suv_coupe"}, "generations": [
-      {"code": "X253", "years": [2015, 2022], "drive": "awd", "aliases": ["C253"]},
-      {"code": "X254", "years": [2022, null], "drive": "awd", "aliases": ["C254"]}
-    ]},
-    {"name": "GLE-Class", "class": "GLE", "body": "suv", "bodies": {"Coupe": "suv_coupe"}, "generations": [
-      {"code": "W166", "years": [2015, 2019], "drive": "awd", "aliases": ["C292"]},
-      {"code": "W167", "years": [2019, null], "drive": "awd", "aliases": ["V167", "C167"]}
-    ]},
-    {"name": "GLK-Class", "class": "GLK", "body": "suv", "generations": [
-      {"code": "X204", "years": [2008, 2015], "drive": "awd"}
-    ]},
-    {"name": "GLS-Class", "class": "GLS", "body": "suv", "generations": [
-      {"code": "X166", "years": [2016, 2019], "drive": "awd"},
-      {"code": "X167", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "M-Class", "class": "ML", "body": "suv", "generations": [
-      {"code": "W166", "years": [2011, 2015], "drive": "awd"}
-    ]},
-    {"name": "S-Class", "class": "S", "body": "sedan", "generations": [
-      {"code": "W222", "years": [2013, 2020], "drive": "rwd", "aliases": ["V222", "X222", "C217", "A217"]},
-      {"code": "W223", "years": [2020, null], "drive": "rwd", "aliases": ["V223", "Z223"]}
-    ]},
-    {"name": "SL-Class", "class": "SL", "body": "roadster", "generations": [
-      {"code": "R231", "years": [2012, 2020], "drive": "rwd"},
-      {"code": "R232", "years": [2021, null], "drive": "awd"}
-    ]},
-    {"name": "SLC-Class", "class": "SLC", "body": "roadster", "generations": [
-      {"code": "R172", "years": [2016, 2020], "drive": "rwd"}
-    ]},
-    {"name": "SLK-Class", "class": "SLK", "body": "roadster", "generations": [
-      {"code": "R172", "years": [2011, 2016], "drive": "rwd"}
-    ]},
-    {"name": "Sprinter", "body": "van", "generations": [
-      {"code": "W906", "years": [2006, 2018], "drive": "rwd"},
-      {"code": "W907", "years": [2018, null], "drive": "rwd"}
-    ]},
-    {"name": "V-Class", "class": "V", "body": "minivan", "generations": [
-      {"code": "W447", "years": [2014, null], "drive": "rwd"}
-    ]}
+    {
+      "name": "A-Class",
+      "class": "A",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "W176",
+          "years": [
+            2012,
+            2018
+          ]
+        },
+        {
+          "code": "W177",
+          "years": [
+            2018,
+            null
+          ],
+          "aliases": [
+            "V177"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AMG GT",
+      "class": "GT",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "C190",
+          "years": [
+            2014,
+            2021
+          ],
+          "aliases": [
+            "R190"
+          ]
+        },
+        {
+          "code": "C192",
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "AMG GT 4-Door",
+      "class": "GT",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "X290",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "B-Class",
+      "class": "B",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "W246",
+          "years": [
+            2011,
+            2018
+          ]
+        },
+        {
+          "code": "W247",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C-Class",
+      "class": "C",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "W204",
+          "years": [
+            2007,
+            2014
+          ],
+          "aliases": [
+            "S204",
+            "C204"
+          ]
+        },
+        {
+          "code": "W205",
+          "years": [
+            2014,
+            2021
+          ],
+          "aliases": [
+            "S205",
+            "C205",
+            "A205"
+          ]
+        },
+        {
+          "code": "W206",
+          "years": [
+            2021,
+            null
+          ],
+          "aliases": [
+            "S206"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CLA-Class",
+      "class": "CLA",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "C117",
+          "years": [
+            2013,
+            2019
+          ],
+          "aliases": [
+            "X117"
+          ]
+        },
+        {
+          "code": "C118",
+          "years": [
+            2019,
+            null
+          ],
+          "aliases": [
+            "X118"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CLE-Class",
+      "class": "CLE",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "C236",
+          "years": [
+            2023,
+            null
+          ],
+          "aliases": [
+            "A236"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CLS-Class",
+      "class": "CLS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "W218",
+          "years": [
+            2011,
+            2018
+          ],
+          "aliases": [
+            "C218",
+            "X218"
+          ]
+        },
+        {
+          "code": "C257",
+          "years": [
+            2018,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "E-Class",
+      "class": "E",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "W212",
+          "years": [
+            2009,
+            2016
+          ],
+          "aliases": [
+            "S212",
+            "C207",
+            "A207"
+          ]
+        },
+        {
+          "code": "W213",
+          "years": [
+            2016,
+            2023
+          ],
+          "aliases": [
+            "S213",
+            "C238",
+            "A238"
+          ]
+        },
+        {
+          "code": "W214",
+          "years": [
+            2023,
+            null
+          ],
+          "aliases": [
+            "S214"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQA",
+      "class": "EQA",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "H243",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQB",
+      "class": "EQB",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "X243",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQC",
+      "class": "EQC",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "N293",
+          "years": [
+            2019,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQE",
+      "class": "EQE",
+      "body": "sedan",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "V295",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQE SUV",
+      "class": "EQE",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "X294",
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQS",
+      "class": "EQS",
+      "body": "liftback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "V297",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EQS SUV",
+      "class": "EQS",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "X296",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "G-Class",
+      "class": "G",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "W463",
+          "years": [
+            1990,
+            2018
+          ]
+        },
+        {
+          "code": "W463A",
+          "years": [
+            2018,
+            2024
+          ],
+          "aliases": [
+            "W463B"
+          ]
+        },
+        {
+          "code": "W465",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GL-Class",
+      "class": "GL",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "X166",
+          "years": [
+            2012,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GLA-Class",
+      "class": "GLA",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "X156",
+          "years": [
+            2013,
+            2019
+          ]
+        },
+        {
+          "code": "H247",
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GLB-Class",
+      "class": "GLB",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "X247",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GLC-Class",
+      "class": "GLC",
+      "body": "suv",
+      "bodies": {
+        "Coupe": "suv_coupe"
+      },
+      "generations": [
+        {
+          "code": "X253",
+          "years": [
+            2015,
+            2022
+          ],
+          "aliases": [
+            "C253"
+          ]
+        },
+        {
+          "code": "X254",
+          "years": [
+            2022,
+            null
+          ],
+          "aliases": [
+            "C254"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GLE-Class",
+      "class": "GLE",
+      "body": "suv",
+      "bodies": {
+        "Coupe": "suv_coupe"
+      },
+      "generations": [
+        {
+          "code": "W166",
+          "years": [
+            2015,
+            2019
+          ],
+          "aliases": [
+            "C292"
+          ]
+        },
+        {
+          "code": "W167",
+          "years": [
+            2019,
+            null
+          ],
+          "aliases": [
+            "V167",
+            "C167"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GLK-Class",
+      "class": "GLK",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "X204",
+          "years": [
+            2008,
+            2015
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GLS-Class",
+      "class": "GLS",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "X166",
+          "years": [
+            2016,
+            2019
+          ]
+        },
+        {
+          "code": "X167",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M-Class",
+      "class": "ML",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "W166",
+          "years": [
+            2011,
+            2015
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-Class",
+      "class": "S",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "W222",
+          "years": [
+            2013,
+            2020
+          ],
+          "aliases": [
+            "V222",
+            "X222",
+            "C217",
+            "A217"
+          ]
+        },
+        {
+          "code": "W223",
+          "years": [
+            2020,
+            null
+          ],
+          "aliases": [
+            "V223",
+            "Z223"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SL-Class",
+      "class": "SL",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "R231",
+          "years": [
+            2012,
+            2020
+          ]
+        },
+        {
+          "code": "R232",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SLC-Class",
+      "class": "SLC",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "R172",
+          "years": [
+            2016,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SLK-Class",
+      "class": "SLK",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "R172",
+          "years": [
+            2011,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprinter",
+      "body": "van",
+      "generations": [
+        {
+          "code": "W906",
+          "years": [
+            2006,
+            2018
+          ]
+        },
+        {
+          "code": "W907",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "V-Class",
+      "class": "V",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "W447",
+          "years": [
+            2014,
+            null
+          ]
+        }
+      ]
+    }
   ]
 }

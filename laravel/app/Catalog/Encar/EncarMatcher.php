@@ -45,7 +45,7 @@ class EncarMatcher
 
     /**
      * @param array{make: ?string, model: ?string, badge_group?: ?string, badge?: ?string, trim?: ?string,
-     *              year?: ?int, make_en?: ?string, model_en?: ?string} $lot a lots row or a variant of them;
+     *              make_en?: ?string, model_en?: ?string} $lot a lots row or a variant of them;
      *        make_en / model_en only stand in when the Korean field is empty
      */
     public function match(array $lot): VariantMatch
@@ -58,7 +58,6 @@ class EncarMatcher
         $makeName = $ref['make'];
         $badge = $lot['badge'] ?? null;
         $trim = $lot['trim'] ?? null;
-        $year = isset($lot['year']) ? (int) $lot['year'] : null;
 
         [$modelName, $code] = $this->model($encar, trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? '')), (string) $badge);
         // a make may name the engine before the model ("Cooper S Countryman"): it goes to the
@@ -76,10 +75,13 @@ class EncarMatcher
                 $code = $key;
             }
         }
-        $generation = $model ? $this->reference->generation($model, $code, $year) : null;
+        $generation = $model ? $this->reference->generation($model, $code) : null;
         if ($generation === null) {
-            return new VariantMatch(VariantMatch::UNMATCHED, $makeName, $model['name'] ?? $modelName,
-                reason: $model ? "generation {$code} not in reference" : "model {$modelName} not in reference");
+            return new VariantMatch(VariantMatch::UNMATCHED, $makeName, $model['name'] ?? $modelName, reason: match (true) {
+                $model === null => "model {$modelName} not in reference",
+                $code === null => 'Encar names no generation',
+                default => "generation {$code} not in reference",
+            });
         }
 
         $english = trim($engine . ' ' . $this->english(self::text($badge, $trim)));

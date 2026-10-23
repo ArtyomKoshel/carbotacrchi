@@ -1,8 +1,6 @@
 {
  "make": "McLaren",
- "engine": {
-  "fuel": "gasoline"
- },
+ "engine": {},
  "complectations": [],
  "editions": [],
  "models": [
@@ -16,8 +14,7 @@
      "years": [
       2015,
       2021
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -31,8 +28,7 @@
      "years": [
       2016,
       2021
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -46,8 +42,7 @@
      "years": [
       2018,
       2020
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -61,8 +56,7 @@
      "years": [
       2014,
       2017
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -76,8 +70,7 @@
      "years": [
       2017,
       2023
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -91,8 +84,7 @@
      "years": [
       2023,
       null
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -106,8 +98,7 @@
      "years": [
       2019,
       null
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -122,8 +113,7 @@
      "years": [
       2021,
       null
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   }

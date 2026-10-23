@@ -45,9 +45,10 @@ class Reference
 
     /**
      * A model's generation by chassis code (or one of its aliases) or by number ("#2", the
-     * generation's "number"). Without either: the only generation, else the one whose years hold $year.
+     * generation's "number"). Without either, only a model of one generation has an answer:
+     * the year is never used to guess one, the years of two generations overlap.
      */
-    public function generation(array $model, ?string $code, ?int $year = null): ?array
+    public function generation(array $model, ?string $code): ?array
     {
         $generations = $model['generations'] ?? [];
         if ($code !== null && $code !== '') {
@@ -59,20 +60,7 @@ class Reference
             }
             return null;
         }
-        if (count($generations) === 1) {
-            return $generations[0];
-        }
-        if ($year === null) {
-            return null;
-        }
-        $hits = array_values(array_filter($generations, fn (array $g) => self::covers($g, $year)));
-        return count($hits) === 1 ? $hits[0] : null;
-    }
-
-    public static function covers(array $generation, int $year, int $slack = 0): bool
-    {
-        [$from, $to] = $generation['years'] + [null, null];
-        return ($from === null || $year >= $from - $slack) && ($to === null || $year <= $to + $slack);
+        return count($generations) === 1 ? $generations[0] : null;
     }
 
     private function makes(): array

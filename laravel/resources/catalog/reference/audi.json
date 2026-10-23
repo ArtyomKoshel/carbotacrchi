@@ -2,143 +2,689 @@
   "make": "Audi",
   "rules": "audi",
   "complectations": [
-    "Premium Tech & Design", "Premium Tech", "Design Premium", "Premium", "Dynamic", "S Line", "Advanced",
-    "Sport", "Comfort", "Entry", "Prestige", "Off-road Style"
+    "Premium Tech & Design",
+    "Premium Tech",
+    "Design Premium",
+    "Premium",
+    "Dynamic",
+    "S Line",
+    "Advanced",
+    "Sport",
+    "Comfort",
+    "Entry",
+    "Prestige",
+    "Off-road Style"
   ],
   "editions": [
-    "Black Edition", "Limited Edition", "Comfort Edition", "Sport Edition", "Carbon Edition"
+    "Black Edition",
+    "Limited Edition",
+    "Comfort Edition",
+    "Sport Edition",
+    "Carbon Edition"
   ],
   "models": [
-    {"name": "A1", "body": "hatchback", "generations": [
-      {"code": "8X", "years": [2010, 2018], "drive": "fwd"}
-    ]},
-    {"name": "A3", "body": "sedan", "bodies": {"Sportback": "hatchback"}, "generations": [
-      {"code": "8V", "years": [2012, 2020], "drive": "fwd"},
-      {"code": "8Y", "years": [2020, null], "drive": "fwd"}
-    ]},
-    {"name": "A4", "body": "sedan", "generations": [
-      {"code": "B8", "years": [2007, 2015], "drive": "fwd"},
-      {"code": "B9", "years": [2015, 2024], "drive": "fwd"}
-    ]},
-    {"name": "A5", "body": "coupe", "generations": [
-      {"code": "8T", "years": [2007, 2016], "drive": "fwd", "aliases": ["8TA", "8F7"]},
-      {"code": "F5", "years": [2016, 2024], "drive": "fwd"},
-      {"code": "B10", "years": [2024, null], "drive": "fwd"}
-    ]},
-    {"name": "A6", "body": "sedan", "generations": [
-      {"code": "C7", "years": [2011, 2018], "drive": "fwd"},
-      {"code": "C8", "years": [2018, 2025], "drive": "fwd"},
-      {"code": "C9", "years": [2025, null], "drive": "fwd"}
-    ]},
-    {"name": "A6 e-tron", "body": "liftback", "fuel": "electric", "generations": [
-      {"code": "1st", "years": [2024, null], "drive": "rwd"}
-    ]},
-    {"name": "A7", "body": "liftback", "generations": [
-      {"code": "4G", "years": [2010, 2018], "drive": "fwd"},
-      {"code": "4K", "years": [2018, null], "drive": "fwd"}
-    ]},
-    {"name": "A8", "body": "sedan", "generations": [
-      {"code": "D4", "years": [2010, 2017], "drive": "awd"},
-      {"code": "D5", "years": [2017, null], "drive": "awd"}
-    ]},
-    {"name": "e-tron", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "fuel": "electric", "generations": [
-      {"code": "GE", "years": [2018, 2023], "drive": "awd"}
-    ]},
-    {"name": "e-tron GT", "body": "liftback", "fuel": "electric", "generations": [
-      {"code": "F8", "years": [2021, null], "drive": "awd"}
-    ]},
-    {"name": "RS e-tron GT", "body": "liftback", "fuel": "electric", "generations": [
-      {"code": "F8", "years": [2021, null], "drive": "awd"}
-    ]},
-    {"name": "Q2", "body": "suv", "generations": [
-      {"code": "GA", "years": [2016, null], "drive": "fwd"}
-    ]},
-    {"name": "Q3", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "generations": [
-      {"code": "8U", "years": [2011, 2018], "drive": "fwd"},
-      {"code": "F3", "years": [2018, 2025], "drive": "fwd"},
-      {"code": "FJ", "years": [2025, null], "drive": "fwd"}
-    ]},
-    {"name": "Q4 e-tron", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "fuel": "electric", "generations": [
-      {"code": "F4", "years": [2021, null], "drive": "rwd"}
-    ]},
-    {"name": "Q5", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "generations": [
-      {"code": "8R", "years": [2008, 2017], "drive": "awd"},
-      {"code": "FY", "years": [2017, 2024], "drive": "awd"},
-      {"code": "80A", "years": [2024, null], "drive": "awd", "aliases": ["GU"]}
-    ]},
-    {"name": "Q6 e-tron", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "fuel": "electric", "generations": [
-      {"code": "GF", "years": [2024, null], "drive": "rwd"}
-    ]},
-    {"name": "Q7", "body": "suv", "generations": [
-      {"code": "4L", "years": [2005, 2015], "drive": "awd"},
-      {"code": "4M", "years": [2015, null], "drive": "awd"}
-    ]},
-    {"name": "Q8", "body": "suv_coupe", "generations": [
-      {"code": "4M", "years": [2018, null], "drive": "awd"}
-    ]},
-    {"name": "Q8 e-tron", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "fuel": "electric", "generations": [
-      {"code": "GE", "years": [2023, 2025], "drive": "awd"}
-    ]},
-    {"name": "R8", "body": "coupe", "generations": [
-      {"code": "42", "years": [2006, 2015], "drive": "awd"},
-      {"code": "4S", "years": [2016, 2024], "drive": "awd"}
-    ]},
-    {"name": "RS3", "body": "sedan", "generations": [
-      {"code": "8Y", "years": [2021, null], "drive": "awd"}
-    ]},
-    {"name": "RS5", "body": "coupe", "generations": [
-      {"code": "8T", "years": [2010, 2015], "drive": "awd", "aliases": ["8T3"]},
-      {"code": "F5", "years": [2017, 2024], "drive": "awd"}
-    ]},
-    {"name": "RS6", "body": "wagon", "generations": [
-      {"code": "C8", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "RS7", "body": "liftback", "generations": [
-      {"code": "4G", "years": [2013, 2018], "drive": "awd"},
-      {"code": "4K", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "RSQ8", "body": "suv_coupe", "generations": [
-      {"code": "4M", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "S3", "body": "sedan", "generations": [
-      {"code": "8V", "years": [2013, 2020], "drive": "awd"}
-    ]},
-    {"name": "S4", "body": "sedan", "generations": [
-      {"code": "B9", "years": [2016, 2024], "drive": "awd"}
-    ]},
-    {"name": "S5", "body": "liftback", "generations": [
-      {"code": "F5", "years": [2016, 2024], "drive": "awd"}
-    ]},
-    {"name": "S6", "body": "sedan", "generations": [
-      {"code": "C8", "years": [2019, 2025], "drive": "awd"}
-    ]},
-    {"name": "S7", "body": "liftback", "generations": [
-      {"code": "4G", "years": [2012, 2018], "drive": "awd"},
-      {"code": "4K", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "S8", "body": "sedan", "generations": [
-      {"code": "D4", "years": [2012, 2017], "drive": "awd"},
-      {"code": "D5", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "SQ5", "body": "suv", "bodies": {"Sportback": "suv_coupe"}, "generations": [
-      {"code": "8R", "years": [2012, 2017], "drive": "awd"},
-      {"code": "FY", "years": [2017, 2024], "drive": "awd"}
-    ]},
-    {"name": "SQ6 e-tron", "body": "suv", "fuel": "electric", "generations": [
-      {"code": "GF", "years": [2024, null], "drive": "awd"}
-    ]},
-    {"name": "SQ7", "body": "suv", "generations": [
-      {"code": "4M", "years": [2016, null], "drive": "awd"}
-    ]},
-    {"name": "SQ8", "body": "suv_coupe", "generations": [
-      {"code": "4M", "years": [2019, null], "drive": "awd"}
-    ]},
-    {"name": "TT", "body": "coupe", "generations": [
-      {"code": "8S", "years": [2014, 2023], "drive": "fwd"}
-    ]},
-    {"name": "TTS", "body": "coupe", "generations": [
-      {"code": "8J", "years": [2008, 2014], "drive": "awd"},
-      {"code": "8S", "years": [2014, 2023], "drive": "awd"}
-    ]}
+    {
+      "name": "A1",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "8X",
+          "years": [
+            2010,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A3",
+      "body": "sedan",
+      "bodies": {
+        "Sportback": "hatchback"
+      },
+      "generations": [
+        {
+          "code": "8V",
+          "years": [
+            2012,
+            2020
+          ]
+        },
+        {
+          "code": "8Y",
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A4",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "B8",
+          "years": [
+            2007,
+            2015
+          ]
+        },
+        {
+          "code": "B9",
+          "years": [
+            2015,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A5",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "8T",
+          "years": [
+            2007,
+            2016
+          ],
+          "aliases": [
+            "8TA",
+            "8F7"
+          ]
+        },
+        {
+          "code": "F5",
+          "years": [
+            2016,
+            2024
+          ]
+        },
+        {
+          "code": "B10",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A6",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "C7",
+          "years": [
+            2011,
+            2018
+          ]
+        },
+        {
+          "code": "C8",
+          "years": [
+            2018,
+            2025
+          ]
+        },
+        {
+          "code": "C9",
+          "years": [
+            2025,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A6 e-tron",
+      "body": "liftback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "1st",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A7",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "4G",
+          "years": [
+            2010,
+            2018
+          ]
+        },
+        {
+          "code": "4K",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A8",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "D4",
+          "years": [
+            2010,
+            2017
+          ]
+        },
+        {
+          "code": "D5",
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "e-tron",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "GE",
+          "years": [
+            2018,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "e-tron GT",
+      "body": "liftback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "F8",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RS e-tron GT",
+      "body": "liftback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "F8",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q2",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "GA",
+          "years": [
+            2016,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q3",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "generations": [
+        {
+          "code": "8U",
+          "years": [
+            2011,
+            2018
+          ]
+        },
+        {
+          "code": "F3",
+          "years": [
+            2018,
+            2025
+          ]
+        },
+        {
+          "code": "FJ",
+          "years": [
+            2025,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q4 e-tron",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "F4",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q5",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "generations": [
+        {
+          "code": "8R",
+          "years": [
+            2008,
+            2017
+          ]
+        },
+        {
+          "code": "FY",
+          "years": [
+            2017,
+            2024
+          ]
+        },
+        {
+          "code": "80A",
+          "years": [
+            2024,
+            null
+          ],
+          "aliases": [
+            "GU"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q6 e-tron",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "GF",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q7",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "4L",
+          "years": [
+            2005,
+            2015
+          ]
+        },
+        {
+          "code": "4M",
+          "years": [
+            2015,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q8",
+      "body": "suv_coupe",
+      "generations": [
+        {
+          "code": "4M",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Q8 e-tron",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "GE",
+          "years": [
+            2023,
+            2025
+          ]
+        }
+      ]
+    },
+    {
+      "name": "R8",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "42",
+          "years": [
+            2006,
+            2015
+          ]
+        },
+        {
+          "code": "4S",
+          "years": [
+            2016,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RS3",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "8Y",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RS5",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "8T",
+          "years": [
+            2010,
+            2015
+          ],
+          "aliases": [
+            "8T3"
+          ]
+        },
+        {
+          "code": "F5",
+          "years": [
+            2017,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RS6",
+      "body": "wagon",
+      "generations": [
+        {
+          "code": "C8",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RS7",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "4G",
+          "years": [
+            2013,
+            2018
+          ]
+        },
+        {
+          "code": "4K",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RSQ8",
+      "body": "suv_coupe",
+      "generations": [
+        {
+          "code": "4M",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S3",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "8V",
+          "years": [
+            2013,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S4",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "B9",
+          "years": [
+            2016,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S5",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "F5",
+          "years": [
+            2016,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S6",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "C8",
+          "years": [
+            2019,
+            2025
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S7",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "4G",
+          "years": [
+            2012,
+            2018
+          ]
+        },
+        {
+          "code": "4K",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S8",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "D4",
+          "years": [
+            2012,
+            2017
+          ]
+        },
+        {
+          "code": "D5",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SQ5",
+      "body": "suv",
+      "bodies": {
+        "Sportback": "suv_coupe"
+      },
+      "generations": [
+        {
+          "code": "8R",
+          "years": [
+            2012,
+            2017
+          ]
+        },
+        {
+          "code": "FY",
+          "years": [
+            2017,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SQ6 e-tron",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "GF",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SQ7",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "4M",
+          "years": [
+            2016,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SQ8",
+      "body": "suv_coupe",
+      "generations": [
+        {
+          "code": "4M",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TT",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "8S",
+          "years": [
+            2014,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TTS",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "8J",
+          "years": [
+            2008,
+            2014
+          ]
+        },
+        {
+          "code": "8S",
+          "years": [
+            2014,
+            2023
+          ]
+        }
+      ]
+    }
   ]
 }

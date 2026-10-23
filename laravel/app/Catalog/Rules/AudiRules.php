@@ -8,8 +8,8 @@ namespace App\Catalog\Rules;
  *   "45 TFSI quattro", "40 TDI", "55 TFSI e quattro", "2.0 TDI" (before 2017), "50 TDI quattro L" (A8 LWB)
  *   e-tron: "55 quattro", "40", "S", "Performance"; R8: "V10 Performance"; TTS: "2.0 TFSI quattro Competition"
  *
- * Fuel: TDI diesel, TFSI e plug-in hybrid, TFSI / FSI petrol; quattro is all-wheel drive, else
- * the generation's own. A badge left with nothing (RS e-tron GT) is the model itself.
+ * Fuel: TDI diesel, TFSI e plug-in hybrid, TFSI / FSI petrol; all-wheel drive from quattro —
+ * nothing is assumed when the badge does not say. A badge left with nothing (RS e-tron GT) is the model itself.
  */
 final class AudiRules implements MakeRules
 {
@@ -19,7 +19,6 @@ final class AudiRules implements MakeRules
     {
         $name = $model['name'];
         $fuel = $generation['fuel'] ?? $model['fuel'] ?? null;
-        $drive = $generation['drive'] ?? null;
         $words = preg_split('/\s+/', trim(preg_replace('/\bTFSI e\b/', 'TFSIe', $rest)), -1, PREG_SPLIT_NO_EMPTY);
 
         $power = $engine = null;
@@ -42,11 +41,11 @@ final class AudiRules implements MakeRules
             'TDI' => 'diesel',
             'TFSIe' => 'hybrid',
             'TFSI', 'FSI' => 'gasoline',
-            default => $fuel ?? ($power !== null || $flags ? 'gasoline' : null),
+            default => $fuel,
         };
         $parts = array_filter([$power, $engine === 'TFSIe' ? 'TFSI e' : $engine, ...$flags, $quattro ? 'quattro' : null, $long ? 'L' : null]);
         $code = $parts ? implode(' ', $parts) : ($left ? null : $name);
 
-        return ['code' => $code, 'fuel' => $fuel, 'drive' => $quattro ? 'awd' : $drive, 'leftover' => $left];
+        return ['code' => $code, 'fuel' => $fuel, 'drive' => $quattro ? 'awd' : null, 'leftover' => $left];
     }
 }

@@ -9,7 +9,12 @@ use Monolog\Level;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        // the reference catalog's files are read once per process
+        $this->app->singleton(\App\Catalog\Reference::class);
+        $this->app->singleton(\App\Catalog\Encar\EncarMatcher::class);
+    }
 
     public function boot(): void
     {

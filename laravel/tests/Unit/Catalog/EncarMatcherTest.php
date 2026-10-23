@@ -103,6 +103,29 @@ class EncarMatcherTest extends TestCase
         $this->assertEquals($expected, array_intersect_key($match->toArray(), $expected));
     }
 
+    /** What the badge does not say stays unknown: no drive without xDrive / 4MATIC / "4", no default fuel. */
+    public function test_nothing_is_assumed(): void
+    {
+        $matcher = self::matcher();
+        $bmw = $matcher->match(['make' => 'BMW', 'model' => '5시리즈 (G30)', 'badge' => '520i 럭셔리']);
+        $benz = $matcher->match(['make' => '벤츠', 'model' => 'E-클래스 W213', 'badge' => 'E300 아방가르드']);
+        $porsche = $matcher->match(['make' => '포르쉐', 'model' => '911 (992)', 'badge' => '터보 S']);
+        $x7 = $matcher->match(['make' => 'BMW', 'model' => 'X7 (G07)', 'badge' => 'M50i 6인승']);
+
+        $this->assertSame(['520i', 'gasoline', null], [$bmw->modification, $bmw->fuel, $bmw->drive]);
+        $this->assertSame(['E300', null, null], [$benz->modification, $benz->fuel, $benz->drive]);
+        $this->assertSame(['Turbo S', null], [$porsche->modification, $porsche->drive]);
+        $this->assertSame(['M50i', null], [$x7->modification, $x7->drive]);
+    }
+
+    public function test_the_year_never_picks_a_generation(): void
+    {
+        $match = self::matcher()->match(['make' => '아우디', 'model' => 'A5', 'badge' => '40 TFSI 콰트로 쿠페', 'year' => 2016]);
+
+        $this->assertSame(VariantMatch::UNMATCHED, $match->status);
+        $this->assertSame('Encar names no generation', $match->reason);
+    }
+
     public function test_unknown_words_are_left_for_review(): void
     {
         $match = self::matcher()->match(['make' => '벤츠', 'model' => 'G-클래스 W465', 'badge' => 'AMG G63 지포스 에디션', 'year' => 2026]);

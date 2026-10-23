@@ -2,7 +2,7 @@
  "make": "Maserati",
  "engine": {
   "words": {
-   "S": "gasoline",
+   "S": null,
    "V6": null,
    "V8": null,
    "Diesel": "diesel",
@@ -14,8 +14,7 @@
   "drives": {
    "Q4": "awd",
    "AWD": "awd"
-  },
-  "fuel": "gasoline"
+  }
  },
  "complectations": [
   "GranSport",
@@ -42,8 +41,7 @@
      "years": [
       2013,
       2023
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -57,8 +55,7 @@
      "years": [
       2016,
       2024
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -72,8 +69,7 @@
      "years": [
       2013,
       2023
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   },
@@ -87,8 +83,7 @@
      "years": [
       2007,
       2019
-     ],
-     "drive": "rwd"
+     ]
     },
     {
      "code": "M189",
@@ -96,8 +91,7 @@
      "years": [
       2023,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -111,8 +105,7 @@
      "years": [
       2010,
       2019
-     ],
-     "drive": "rwd"
+     ]
     },
     {
      "code": "M189",
@@ -120,8 +113,7 @@
      "years": [
       2024,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -135,8 +127,7 @@
      "years": [
       2022,
       null
-     ],
-     "drive": "awd"
+     ]
     }
    ]
   },
@@ -153,8 +144,7 @@
      "years": [
       2020,
       null
-     ],
-     "drive": "rwd"
+     ]
     }
    ]
   }
