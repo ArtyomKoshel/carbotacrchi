@@ -47,7 +47,8 @@ FLUSH PRIVILEGES;
 | `COLLECTOR_CORE_SCHEMA` | `railway` |
 | `COLLECTOR_CLAIM` | `tagged` (теневой режим) |
 | `FLOPPY_USERNAME`, `FLOPPY_PASSWORD`, `FLOPPY_HOST` | ссылки на переменные веб-сервиса |
-| `COLLECTOR_CONCURRENCY` | `8` (как `ENCAR_WORKERS`) |
+| `COLLECTOR_CONCURRENCY`, `COLLECTOR_HISTORY_CONCURRENCY` | `15` по умолчанию (как `ENCAR_WORKERS` на проде) |
+| `COLLECTOR_HTTP_TIMEOUT` | `12` с по умолчанию: дольше висит только «застрявший» выход прокси, запрос повторяется через другую сессию |
 | `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` | `40` — **обязательно**: по умолчанию Railway даёт 0 с между SIGTERM и SIGKILL |
 | `COLLECTOR_STOP_GRACE_SECONDS` | `25` (по умолчанию): сколько после SIGTERM дорабатывает текущая страница |
 | `COLLECTOR_STALE_MINUTES` | `10` (по умолчанию): задачу, оставшуюся `running` без прогресса, сборщик забирает обратно |

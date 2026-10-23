@@ -21,8 +21,11 @@ class Settings:
     core_schema: str = "railway"  # where parse_jobs and parse_filters live
     sources: tuple[str, ...] = ("encar",)
     poll_seconds: int = 15
-    concurrency: int = 8
-    history_concurrency: int = 8
+    concurrency: int = 15  # requests in flight (the old parser ran ENCAR_WORKERS=15)
+    history_concurrency: int = 15
+    # Encar answers in under 2 s; a request still open after this is a stuck proxy exit, and the
+    # whole page waits for it. It is retried on a fresh proxy session instead.
+    http_timeout: float = 12.0
     history_every_runs: int = 3
     min_coverage_pct: float = 85.0
     proxy_username: str = field(default="", repr=False)
@@ -39,8 +42,9 @@ class Settings:
             core_schema=_env("COLLECTOR_CORE_SCHEMA", "railway"),
             sources=tuple(s for s in _env("COLLECTOR_SOURCES", "encar").split(",") if s),
             poll_seconds=_int("COLLECTOR_POLL_SECONDS", 15),
-            concurrency=_int("COLLECTOR_CONCURRENCY", 8),
-            history_concurrency=_int("COLLECTOR_HISTORY_CONCURRENCY", 8),
+            concurrency=_int("COLLECTOR_CONCURRENCY", 15),
+            history_concurrency=_int("COLLECTOR_HISTORY_CONCURRENCY", 15),
+            http_timeout=float(_env("COLLECTOR_HTTP_TIMEOUT", "12")),
             history_every_runs=_int("ENCAR_HISTORY_EVERY_RUNS", 3),
             min_coverage_pct=float(_env("LOTS_LIFECYCLE_MIN_COVERAGE", "85")),
             proxy_username=_env("FLOPPY_USERNAME"),

@@ -84,7 +84,7 @@ class Logs extends Page
     {
         $f = $this->current();
 
-        return $f ? $this->logs()->tail($f['path'], $this->limit, $this->level ?: null, $this->q ?: null) : [];
+        return $f ? $this->logs()->lines($f, $this->limit, $this->level ?: null, $this->q ?: null) : [];
     }
 
     protected function getHeaderActions(): array
@@ -134,10 +134,10 @@ class Logs extends Page
         if (!$f) {
             return null;
         }
-        if (!$this->level && !$this->q) {
+        if (!$this->level && !$this->q && !isset($f['job_id'])) {
             return response()->download($f['path'], $f['label']);
         }
-        $lines = array_reverse($this->logs()->tail($f['path'], 100000, $this->level ?: null, $this->q ?: null));
+        $lines = array_reverse($this->logs()->lines($f, 100000, $this->level ?: null, $this->q ?: null));
 
         return response()->streamDownload(function () use ($lines) {
             foreach ($lines as $line) {

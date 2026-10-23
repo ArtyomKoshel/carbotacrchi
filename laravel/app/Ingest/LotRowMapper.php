@@ -75,7 +75,7 @@ final class LotRowMapper
             'raw_data' => $extra === [] ? null : self::json($extra),
             'plate_number' => $v['plate_number'] ?? null,
             'first_reg_date' => $v['first_registration'] ?? null,
-            'listed_at' => self::utc($l['listed_at'] ?? null),
+            'listed_at' => self::korean($l['listed_at'] ?? null),
             'options' => $options === [] ? null : self::json(array_values($options)),
             'options_mask' => $optionsMask(array_values($options)),
             'paid_options' => $paidOptions === [] ? null : self::json(array_values($paidOptions)),
@@ -149,6 +149,19 @@ final class LotRowMapper
         }
 
         return (new DateTimeImmutable($timestamp))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * lots.listed_at holds the platform's listing time in Korea, as the old parser stored it
+     * (Encar's date at 00:00); converting it to UTC would move every date one day back.
+     */
+    private static function korean(?string $timestamp): ?string
+    {
+        if ($timestamp === null) {
+            return null;
+        }
+
+        return (new DateTimeImmutable($timestamp))->setTimezone(new DateTimeZone('Asia/Seoul'))->format('Y-m-d H:i:s');
     }
 
     private static function json(mixed $value): string

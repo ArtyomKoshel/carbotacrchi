@@ -22,12 +22,20 @@ final class LotUpsert
     /** Keep the stored value when the incoming one is null. */
     public const LOT_COALESCE = [
         'model_en', 'model_group', 'vin', 'body_type', 'transmission', 'fuel', 'drive_type', 'engine_volume',
-        'color', 'seat_color', 'badge_group', 'trim', 'trim_en', 'badge', 'options', 'options_mask',
+        'badge_group', 'trim_en', 'badge', 'options', 'options_mask',
         'paid_options', 'image_url', 'lien_status', 'seizure_status', 'has_accident', 'flood_history',
         'total_loss_history', 'owners_count', 'insurance_count', 'retail_value', 'repair_cost',
         'plate_number', 'first_reg_date', 'listed_at', 'sell_type', 'sell_type_raw', 'seat_count',
         'history_checked_at',
     ];
+
+    /**
+     * Filled from the source only while empty. Normalization rewrites them in place
+     * (lots:normalize-from-catalog translates the color, the grade extractor sets the trim);
+     * the old parser put the raw value back every run and normalization fixed it again an
+     * hour later: ~16 000 junk lot_changes per run and Korean values in the filters meanwhile.
+     */
+    public const LOT_KEEP = ['color', 'seat_color', 'trim'];
 
     /** photo_codes non-null = the gallery was seen: replace the whole group; otherwise keep it. */
     public const PHOTO_GROUP = ['photo_dir', 'photo_base_id', 'photo_ext_upper', 'photo_urls'];
@@ -52,6 +60,9 @@ final class LotUpsert
         }
         foreach (self::LOT_COALESCE as $c) {
             $updates[] = "`{$c}` = COALESCE(new.`{$c}`, lots.`{$c}`)";
+        }
+        foreach (self::LOT_KEEP as $c) {
+            $updates[] = "`{$c}` = COALESCE(lots.`{$c}`, new.`{$c}`)";
         }
         foreach (self::PHOTO_GROUP as $c) {
             $updates[] = "`{$c}` = IF(new.photo_codes IS NULL, lots.`{$c}`, new.`{$c}`)";

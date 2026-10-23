@@ -42,7 +42,7 @@ final class LotRowMapperTest extends TestCase
         $this->assertSame(450_000, $row['repair_cost']);
         $this->assertSame(32_000_000, $row['retail_value']);
         $this->assertSame('clean', $row['lien_status']);
-        $this->assertSame('2026-09-14 03:00:00', $row['listed_at']);
+        $this->assertSame('2026-09-14 12:00:00', $row['listed_at']);
         $this->assertSame('2021-03-02', $row['first_reg_date']);
         $this->assertSame('["001","014"]', $row['options']);
         $this->assertNull($row['paid_options']);
@@ -70,11 +70,14 @@ final class LotRowMapperTest extends TestCase
         $this->assertNull(LotRowMapper::inspectionRow(self::fixture('minimal')));
     }
 
-    public function test_offsets_are_converted_to_utc(): void
+    public function test_listing_time_is_kept_in_korean_time_as_the_old_parser_stored_it(): void
     {
         $lot = self::fixture('minimal');
-        $lot['listing']['listed_at'] = '2026-09-14T12:00:00+09:00';
-        $this->assertSame('2026-09-14 03:00:00', LotRowMapper::lotRow($lot, self::mask(...))['listed_at']);
+        foreach (['2026-09-14T00:00:00+09:00', '2026-09-13T15:00:00Z'] as $sameMoment) {
+            $lot['listing']['listed_at'] = $sameMoment;
+            // Encar gives the listing date only; in UTC its Korean midnight is the day before.
+            $this->assertSame('2026-09-14 00:00:00', LotRowMapper::lotRow($lot, self::mask(...))['listed_at']);
+        }
     }
 
     public function test_photos_outside_the_template_are_stored_verbatim(): void
@@ -108,7 +111,7 @@ final class LotRowMapperTest extends TestCase
     public function test_every_mapped_column_has_an_upsert_rule(): void
     {
         $insertOnly = ['id', 'source', 'photo_codes', 'created_at'];
-        $ruled = [...LotUpsert::LOT_OVERWRITE, ...LotUpsert::LOT_COALESCE, ...LotUpsert::PHOTO_GROUP, ...$insertOnly];
+        $ruled = [...LotUpsert::LOT_OVERWRITE, ...LotUpsert::LOT_COALESCE, ...LotUpsert::LOT_KEEP, ...LotUpsert::PHOTO_GROUP, ...$insertOnly];
         $columns = array_keys(LotRowMapper::lotRow(self::fixture(), self::mask(...)) + ['is_active' => 1, 'history_checked_at' => null, 'ingest_hash' => '']);
 
         $this->assertSame([], array_values(array_diff($columns, $ruled)), 'column without an ON DUPLICATE KEY rule');

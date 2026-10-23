@@ -90,7 +90,11 @@ def coverage_pct(seen: int, api_total: int) -> float:
     return round(seen / api_total * 100, 1) if api_total else 0.0
 
 
-def progress_payload(state: SweepState, message: str, started: float, proxy_bytes: int) -> dict[str, Any]:
+def progress_payload(
+    state: SweepState, message: str, started: float, proxy_bytes: int, *, resumed: bool = False
+) -> dict[str, Any]:
+    """`checkpoint` is in every payload (the next process resumes from it); `resumed` says whether
+    this process took the job over from an earlier one."""
     pct = min(coverage_pct(state.seen, state.api_total), 100.0)
     report = PageReport(**state.report) if state.report else PageReport()
     elapsed = round(time.monotonic() - started, 1)
@@ -112,6 +116,7 @@ def progress_payload(state: SweepState, message: str, started: float, proxy_byte
         "proxy_bytes": proxy_bytes,
         "message": message,
         "checkpoint": state.to_json(),
+        "resumed": resumed,
         "collector": COLLECTOR_VERSION,
     }
 
@@ -131,7 +136,10 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
     started = time.monotonic()
 
     async def on_progress(s: SweepState, message: str) -> None:
-        await ctx.queue.progress(job.id, progress_payload(s, message, started, ctx.proxy_bytes()))
+        await ctx.queue.progress(
+            job.id,
+            progress_payload(s, message, started, ctx.proxy_bytes(), resumed=job.checkpoint is not None),
+        )
         if ctx.runlog:
             await ctx.runlog.info(f"{message}: {s.seen:,}/{s.api_total:,} seen, errors {s.errors}")
 
@@ -181,7 +189,10 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         job.id,
         "done",
         result,
-        progress={**progress_payload(state, "done", started, ctx.proxy_bytes()), "status": "done"},
+        progress={
+            **progress_payload(state, "done", started, ctx.proxy_bytes(), resumed=job.checkpoint is not None),
+            "status": "done",
+        },
     )
     if ctx.runlog:
         for line in state.error_log:

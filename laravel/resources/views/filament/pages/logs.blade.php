@@ -12,7 +12,7 @@
                     @forelse ($this->files() as $group => $files)
                         <optgroup label="{{ $group }}">
                             @foreach ($files as $f)
-                                <option value="{{ $f['key'] }}">{{ $f['label'] }} · {{ \Illuminate\Support\Number::fileSize($f['size'], 1) }}</option>
+                                <option value="{{ $f['key'] }}">{{ $f['label'] }} · {{ isset($f['job_id']) ? $f['lines'] . ' стр.' : \Illuminate\Support\Number::fileSize($f['size'], 1) }}</option>
                             @endforeach
                         </optgroup>
                     @empty

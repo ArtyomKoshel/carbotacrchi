@@ -118,7 +118,13 @@ class Service:
             if s.has_proxy
             else ProxyPool([])
         )
-        return Fetcher(pool, headers=HEADERS, concurrency=s.concurrency, client_factory=self.client_factory)
+        return Fetcher(
+            pool,
+            headers=HEADERS,
+            concurrency=s.concurrency,
+            timeout=s.http_timeout,
+            client_factory=self.client_factory,
+        )
 
     async def execute(self, job: Job) -> str:
         fetcher = self._fetcher()

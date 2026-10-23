@@ -120,6 +120,7 @@ async def test_full_run_fills_the_buffer_and_reports_for_lifecycle(db: AsyncEngi
     progress = json.loads(row.progress)
     assert progress["status"] == "done"
     assert {"pct", "api_total", "found_total", "errors", "elapsed_s", "proxy_bytes"} <= progress.keys()
+    assert progress["resumed"] is False, "a checkpoint is in every progress, a resume is said explicitly"
     assert await svc.run_once() is False
     async with db.connect() as conn:
         lines = [
@@ -194,6 +195,7 @@ async def test_stop_hands_the_job_back_and_the_next_process_resumes_it(db: Async
     assert row.status == "done"
     assert result["run_started_at"] == "2026-10-21 09:00:00", "a resumed run keeps its original start"
     assert result["full_run"] is True
+    assert json.loads(row.progress)["resumed"] is True
 
 
 async def test_partial_run_is_not_a_full_run(db: AsyncEngine) -> None:
@@ -362,11 +364,21 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FLOPPY_USERNAME", "u")
     monkeypatch.setenv("FLOPPY_PASSWORD", "secret")
     monkeypatch.setenv("FLOPPY_HOST", "proxy:1")
+    monkeypatch.setenv("COLLECTOR_HTTP_TIMEOUT", "5")
+    monkeypatch.delenv("COLLECTOR_CONCURRENCY", raising=False)
     s = Settings.from_env()
     assert s.sources == ("encar", "kcar")
+    assert s.http_timeout == 5.0
+    assert s.concurrency == s.history_concurrency == 15
     assert s.has_proxy
     assert "secret" not in repr(s)
     assert "u:p" not in repr(s)
+
+
+def test_fetcher_gets_the_request_timeout(db: AsyncEngine) -> None:
+    svc = Service(settings(http_timeout=3.0, concurrency=4), db)
+    fetcher = svc._fetcher()
+    assert fetcher._timeout == 3.0
 
 
 def test_cli(monkeypatch: pytest.MonkeyPatch) -> None:

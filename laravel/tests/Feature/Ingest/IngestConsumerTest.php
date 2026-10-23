@@ -137,6 +137,28 @@ final class IngestConsumerTest extends TestCase
         $this->assertEquals(['old' => 19_500_000, 'new' => 18_900_000], json_decode($changes[0]->changes, true)['price']);
     }
 
+    public function test_normalized_color_and_trim_are_not_put_back_to_the_raw_value(): void
+    {
+        // As normalization left them: translated color, extracted trim.
+        LotFactory::new()->create([
+            'id' => '39847215', 'price' => 18_900_000, 'color' => 'Silver', 'seat_color' => 'Beige',
+            'trim' => '프리미엄', 'is_active' => true,
+        ]);
+        LotFactory::new()->create(['id' => '39847216', 'color' => null, 'seat_color' => null, 'trim' => null, 'is_active' => true]);
+        $this->buffer(self::lot(['vehicle' => ['color' => '은회색', 'seat_color' => '베이지', 'trim' => '(세부등급 없음)']]));
+        $this->buffer(self::lot(['source_id' => '39847216']));
+
+        $this->consume();
+
+        $kept = DB::table('lots')->find('39847215');
+        $this->assertSame(['Silver', 'Beige', '프리미엄'], [$kept->color, $kept->seat_color, $kept->trim]);
+        foreach ($this->changes('39847215') as $change) {
+            $this->assertEmpty(array_intersect_key(json_decode($change->changes, true), ['color' => 1, 'trim' => 1]), 'a kept value is not a change');
+        }
+        $filled = DB::table('lots')->find('39847216');
+        $this->assertSame(['white', 'black', '프레스티지'], [$filled->color, $filled->seat_color, $filled->trim], 'empty ones are filled');
+    }
+
     public function test_photos_are_kept_when_the_gallery_was_not_seen(): void
     {
         $this->buffer(self::lot());

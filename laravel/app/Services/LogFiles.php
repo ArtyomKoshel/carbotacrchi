@@ -37,6 +37,14 @@ class LogFiles
             }
         }
 
+        foreach (app(CollectorRunLog::class)->jobs() as $job) {
+            $files[] = [
+                'key' => 'collector:'.$job['job_id'], 'group' => 'Сборщик', 'label' => "job-{$job['job_id']}.log",
+                'path' => "collector.run_log · задача #{$job['job_id']}", 'size' => 0, 'lines' => $job['lines'],
+                'mtime' => (int) strtotime($job['last_at'].' UTC'), 'job_id' => $job['job_id'],
+            ];
+        }
+
         $app = array_merge(glob(storage_path('logs/laravel.log')) ?: [], glob(storage_path('logs/laravel-*.log')) ?: []);
         usort($app, fn ($a, $b) => filemtime($b) <=> filemtime($a));
         foreach ($app as $path) {
@@ -55,6 +63,21 @@ class LogFiles
         }
 
         return null;
+    }
+
+    /**
+     * Last matching lines of an entry from all(), newest first: a file, or a collector job's run_log.
+     *
+     * @param  array{path: string, job_id?: int}  $file
+     * @return list<string>
+     */
+    public function lines(array $file, int $limit, ?string $level = null, ?string $search = null): array
+    {
+        if (isset($file['job_id'])) {
+            return app(CollectorRunLog::class)->tail($file['job_id'], $limit, $level, $search, newestFirst: true)['lines'];
+        }
+
+        return $this->tail($file['path'], $limit, $level, $search);
     }
 
     /**

@@ -6,12 +6,18 @@ use App\Models\ParseJob;
 
 /**
  * The parser's per-job log (…/jobs/job-{id}.log next to PARSER_LOG_FILE),
- * the same file the old job page reads.
+ * the same file the old job page reads; for a collector job, collector.run_log.
  */
 class ParseJobLog
 {
     /** Bytes read from the end of the file; enough for a few thousand lines. */
     private const TAIL_BYTES = 512 * 1024;
+
+    /** Run by the collector: tagged for it, or it reported progress (COLLECTOR_CLAIM=all). */
+    public static function isCollectorJob(ParseJob $job): bool
+    {
+        return (($job->filters ?? [])['engine'] ?? null) === 'collector' || isset(($job->progress ?? [])['collector']);
+    }
 
     public static function path(ParseJob $job): ?string
     {
@@ -28,6 +34,11 @@ class ParseJobLog
      */
     public static function tail(ParseJob $job, int $limit = 300, ?string $level = null, ?string $search = null): array
     {
+        if (self::isCollectorJob($job)) {
+            $log = app(CollectorRunLog::class)->tail((int) $job->id, $limit, $level, $search);
+
+            return [...$log, 'error' => $log['error'] ?? ($log['lines'] === [] ? 'Сборщик ещё ничего не записал по этой задаче.' : null), 'size' => 0];
+        }
         $path = self::path($job);
         if ($path === null) {
             return ['lines' => [], 'error' => 'Путь к логам парсера не задан (PARSER_LOG_FILE).', 'size' => 0];

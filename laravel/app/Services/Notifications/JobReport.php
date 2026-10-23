@@ -11,7 +11,11 @@ class JobReport
     public static function started(ParseJob $job): string
     {
         $p       = $job->progress ?? [];
-        $resumed = !empty($p['checkpoint']) || ($p['status'] ?? '') === 'resuming';
+        // The collector keeps a checkpoint in every progress and says a resume explicitly;
+        // the old parser wrote a checkpoint only when it resumed.
+        $resumed = isset($p['collector'])
+            ? !empty($p['resumed']) || ($p['status'] ?? '') === 'resuming'
+            : !empty($p['checkpoint']) || ($p['status'] ?? '') === 'resuming';
 
         $lines = ['▶️ <b>Парсинг '.self::title($job).($resumed ? ' возобновлён' : ' запущен').'</b>'];
         $lines[] = 'Запустил: '.e($job->triggered_by ?? '—').self::filtersLine($job);
@@ -153,7 +157,11 @@ class JobReport
 
     private static function filtersLine(ParseJob $job): string
     {
-        $f = array_filter((array) ($job->filters ?? []), fn ($v) => $v !== null && $v !== '' && $v !== []);
+        // `engine` only says which parser runs the job (CollectorMode), it filters nothing.
+        $f = array_filter(
+            array_diff_key((array) ($job->filters ?? []), ['engine' => true]),
+            fn ($v) => $v !== null && $v !== '' && $v !== [],
+        );
         if (!$f) {
             return '';
         }

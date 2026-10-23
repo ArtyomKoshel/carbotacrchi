@@ -118,7 +118,8 @@ final class IngestConsumer
     private function apply(array $lots, string $now, IngestResult $result): void
     {
         $stored = $this->core->table('lots')->whereIn('id', array_keys($lots))
-            ->get(['id', 'ingest_hash', ...LotChangeDetector::TRACKED])->keyBy('id');
+            ->get(array_values(array_unique(['id', 'ingest_hash', ...LotChangeDetector::TRACKED, ...LotUpsert::LOT_KEEP])))
+            ->keyBy('id');
         $rules = $this->rules($lots);
 
         $upserts = $inspections = $changes = $skipLog = $seen = $deactivate = [];
@@ -151,6 +152,12 @@ final class IngestConsumer
                 continue;
             }
 
+            // What the upsert will keep, so lot_changes reports only what really changes.
+            foreach (LotUpsert::LOT_KEEP as $c) {
+                if ($old !== null && $old->{$c} !== null) {
+                    $row[$c] = $old->{$c};
+                }
+            }
             $row['is_active'] = $passed ? 1 : 0;
             $row['history_checked_at'] = LotRowMapper::historyCheckedAt($lot);
             $row['ingest_hash'] = $record->content_hash;
