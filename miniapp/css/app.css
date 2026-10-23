@@ -218,6 +218,9 @@ body.tg:not(.wide)[data-overlay="filters"] .filters-pane { padding-bottom: calc(
 .filter-body { padding-top: 8px; }
 .filter-body--hidden { display: none; }
 .filter-selects { display: grid; gap: 8px; }
+.filter-hint { color: var(--muted); font-size: 13px; padding: 6px 2px; }
+.cat-opt { display: flex; justify-content: space-between; gap: 10px; }
+.cat-opt__n { color: var(--muted); font: 12px/1.6 var(--f-data); }
 .filter-range-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .filter-range-row > *, .filter-input { min-width: 0; }
 .filter-input[type="date"] { font-size: 13px; padding-inline: 8px; }

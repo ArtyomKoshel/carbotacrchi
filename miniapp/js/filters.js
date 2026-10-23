@@ -10,6 +10,7 @@ const Filters = (() => {
   let _contextTimer = null;
   let _onChange = null;   // the shell: re-run the search (desktop) or refresh the count (phone)
   let _onCount  = null;   // (n | null) → shown on the "Показать N лотов" button
+  let _catalogRestore = null; // ref* fields of an applied query, picked once the make's catalog loads
   const SORTS = ['date', 'price_asc', 'price_desc', 'mileage_asc', 'mileage_desc', 'year_desc', 'year_asc'];
   const COUNT_DEBOUNCE_MS = 700;
   const CONTEXT_DEBOUNCE_MS = 400;
@@ -77,6 +78,7 @@ const Filters = (() => {
     state.listedAfter = ''; state.listedBefore = '';
     state.firstRegAfter = ''; state.firstRegBefore = '';
     state.sort = 'date'; state.options = [];
+    CatalogFilter.reset();
   }
 
   // ── Field metadata: maps field_name → UI render config ──
@@ -116,7 +118,7 @@ const Filters = (() => {
 
   async function init() {
     try {
-      filtersData = await API.getFilters('ru');
+      [filtersData] = await Promise.all([API.getFilters('ru'), CatalogFilter.load()]);
       Taxonomy.ingestFilters(filtersData ?? {});
       state.sources = _sourceKeys();
       render();
@@ -231,9 +233,10 @@ const Filters = (() => {
           <div class="filter-select-wrap">
             <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
           </div>
-          <div class="filter-select-wrap">
+          <div class="filter-select-wrap" id="filter-model-wrap">
             <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
           </div>
+          <div class="filter-selects" id="filter-catalog" hidden></div>
           <div class="filter-select-wrap" id="filter-badge-wrap" style="display:none">
             <select class="filter-select" id="filter-badge"><option value="">Любая серия</option></select>
           </div>
@@ -543,6 +546,20 @@ const Filters = (() => {
     const el = document.getElementById('filter-model');
     if (!el) return;
 
+    // a make of the reference catalog: model → generation → modification → complectation
+    const catalogEl = document.getElementById('filter-catalog');
+    const modelWrap = document.getElementById('filter-model-wrap');
+    if (CatalogFilter.covers(state.make)) {
+      if (modelWrap) modelWrap.hidden = true;
+      const restore = _catalogRestore;
+      _catalogRestore = null;
+      CatalogFilter.mount(catalogEl, state.make, () => { _updateResetBtn(); _scheduleCountUpdate(); }, restore)
+        .then(ok => { if (!ok && modelWrap) modelWrap.hidden = false; if (restore) _scheduleCountUpdate(); });
+      return;
+    }
+    CatalogFilter.reset();
+    if (modelWrap) modelWrap.hidden = false;
+
     // filtersData.makes[make] is now a flat array of English model names: ["Sonata", "Tucson", ...]
     // (was: {model_group_kr: [model_kr, ...]} — changed by FiltersController refactor)
     const raw = filtersData?.makes?.[state.make] ?? [];
@@ -680,10 +697,12 @@ const Filters = (() => {
     if (optionsSelectInstance) {
       state.options = [...optionsSelectInstance.items];
     }
+    const catalog = CatalogFilter.query();
     return {
+      ...catalog,
       make:             state.make              || undefined,
-      model:            state.model             || undefined,
-      badge:            state.badge             || undefined,
+      model:            catalog.refMakeId ? undefined : (state.model || undefined),
+      badge:            catalog.refMakeId ? undefined : (state.badge || undefined),
       yearFrom:         state.yearFrom          ? parseInt(state.yearFrom)          : undefined,
       yearTo:           state.yearTo            ? parseInt(state.yearTo)            : undefined,
       priceMin:         state.priceMin          ? parseInt(state.priceMin)          : undefined,
@@ -703,7 +722,7 @@ const Filters = (() => {
       titleTypes:       state.titleTypes.length       ? state.titleTypes       : undefined,
       lienStatuses:     state.lienStatuses.length     ? state.lienStatuses     : undefined,
       seizureStatuses:  state.seizureStatuses.length  ? state.seizureStatuses  : undefined,
-      trim:             state.trim              || undefined,
+      trim:             catalog.refMakeId ? undefined : (state.trim || undefined),
       hasAccident:      state.hasAccident !== null ? state.hasAccident     : undefined,
       floodHistory:     state.floodHistory !== null ? state.floodHistory   : undefined,
       totalLossHistory: state.totalLossHistory !== null ? state.totalLossHistory : undefined,
@@ -733,6 +752,7 @@ const Filters = (() => {
     };
 
     if (q.make)  { state.make  = q.make;  }
+    _catalogRestore = q.refMakeId ? q : null;
     if (q.model) { state.model = q.model; }
     if (q.badge) { state.badge = q.badge; }
     if (q.trim)  { state.trim  = q.trim;  }
@@ -819,7 +839,7 @@ const Filters = (() => {
 
   function hasActive() {
     return !!(
-      state.make || state.model || state.badge || state.trim ||
+      state.make || state.model || state.badge || state.trim || CatalogFilter.hasChoice() ||
       state.yearFrom || state.yearTo ||
       state.priceMin || state.priceMax ||
       state.mileageMin || state.mileageMax ||
@@ -902,7 +922,8 @@ const Filters = (() => {
         }
       }
 
-      // Update badge and trim options by context
+      // Update badge and trim options by context (the catalog's makes have their own cascade)
+      if (CatalogFilter.active()) return;
       if (Array.isArray(ctx.badgeOptions)) {
         renderBadgeSelect(ctx.badgeOptions);
       }
@@ -927,7 +948,7 @@ const Filters = (() => {
     const q = getQuery();
     const chips = [];
     const add = (key, label) => label && chips.push({ key, label });
-    if (q.make) add('make', [Taxonomy.label('make', q.make) || q.make, q.model].filter(Boolean).join(' '));
+    if (q.make) add('make', [Taxonomy.label('make', q.make) || q.make, q.refMakeId ? CatalogFilter.summary() : q.model].filter(Boolean).join(' '));
     if (q.badge) add('badge', q.badge);
     if (q.trim) add('trim', Taxonomy.label('trim', q.trim) || q.trim);
     if (q.yearFrom || q.yearTo) add('year', range(q.yearFrom, q.yearTo, '', String));
@@ -956,7 +977,8 @@ const Filters = (() => {
   }
 
   const CLEAR = {
-    make: ['make', 'model', 'badge', 'trim'], badge: ['badge', 'trim'], trim: ['trim'],
+    make: ['make', 'model', 'badge', 'trim', 'refMakeId', 'refModelId', 'refGenerationIds', 'refModificationIds', 'refComplectationIds'],
+    badge: ['badge', 'trim'], trim: ['trim'],
     year: ['yearFrom', 'yearTo'], price: ['priceMin', 'priceMax'], mileage: ['mileageMin', 'mileageMax'],
     engine: ['engineMin', 'engineMax'], seats: ['seatCountMin', 'seatCountMax'],
     owners: ['ownersCountMin', 'ownersCountMax'], insurance: ['insuranceCountMin', 'insuranceCountMax'],

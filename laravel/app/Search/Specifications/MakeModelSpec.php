@@ -9,6 +9,11 @@ class MakeModelSpec implements LotSpecification
 {
     public function apply(Builder $query, SearchQuery $search): void
     {
+        // a make picked from the reference catalog: CatalogSpec filters, these names only describe it
+        if ($search->refMakeId) {
+            return;
+        }
+
         // make → make_en (English brand, e.g. "Audi")
         // Legacy lots without make_en fall through to the make column (Korean).
         if ($search->make) {

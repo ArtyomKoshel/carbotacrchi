@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\AuctionProviders\ProviderInterface;
+use App\Search\Specifications\CatalogSpec;
 use App\Search\Specifications\ConditionSpec;
 use App\Search\Specifications\DateRangeSpec;
 use App\Search\Specifications\EngineRangeSpec;
@@ -117,11 +118,17 @@ class ProviderAggregator
 
     private function applyDbSort(Builder $builder, string $sort): void
     {
+        // every order the miniapp offers (SearchQuery::SORTS); id last keeps pages stable
         match ($sort) {
             'price_asc' => $builder->orderBy('price', 'asc'),
             'price_desc' => $builder->orderBy('price', 'desc'),
-            default => $builder->orderBy('listed_at', 'desc')->orderBy('id', 'desc'),
+            'mileage_asc' => $builder->orderBy('mileage', 'asc'),
+            'mileage_desc' => $builder->orderBy('mileage', 'desc'),
+            'year_desc' => $builder->orderBy('year', 'desc')->orderBy('mileage', 'asc'),
+            'year_asc' => $builder->orderBy('year', 'asc')->orderBy('mileage', 'asc'),
+            default => $builder->orderBy('listed_at', 'desc'),
         };
+        $builder->orderBy('id', 'desc');
     }
 
     /** @return LotSpecification[] */
@@ -129,6 +136,7 @@ class ProviderAggregator
     {
         return [
             new MakeModelSpec(),
+            new CatalogSpec(),
             new YearRangeSpec(),
             new PriceRangeSpec(),
             new MileageRangeSpec(),

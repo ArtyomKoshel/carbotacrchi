@@ -161,6 +161,16 @@ const API = (() => {
     return request('GET', `/filters/trims?${p}`);
   }
 
+  // ── Reference catalog (makes → models → generations → modifications) ──────
+
+  function getCatalogMakes() {
+    return request('GET', '/catalog');
+  }
+
+  function getCatalog(makeId) {
+    return request('GET', `/catalog/${encodeURIComponent(makeId)}`);
+  }
+
   // ── Favorites ──────────────────────────────────────────────────────────────
 
   async function getFavorites() {
@@ -229,6 +239,7 @@ const API = (() => {
     search,
     searchChat, resetChat,
     getCount, getContext, getTrims,
+    getCatalogMakes, getCatalog,
     getFavorites, addFavorite, removeFavorite,
     getSubscriptions, subscribe, unsubscribe, markSeen,
     getInspection,

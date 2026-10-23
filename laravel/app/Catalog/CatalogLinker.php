@@ -135,6 +135,57 @@ class CatalogLinker
         );
     }
 
+    /**
+     * Places a variant by hand (the admin's review queue): it is never read again, and its
+     * lots move at once. A modification is named by its code; fuel / drive only as stated.
+     *
+     * @return int lots moved
+     */
+    public function assign(int $variantId, int $generationId, ?string $modification, ?string $fuel, ?string $drive, ?string $complectation): int
+    {
+        $g = $this->db->table('ref_generations as g')->join('ref_models as m', 'm.id', '=', 'g.model_id')
+            ->where('g.id', $generationId)->first(['g.id', 'g.model_id', 'm.make_id']);
+        if ($g === null) {
+            throw new \InvalidArgumentException("no generation {$generationId}");
+        }
+        $modification = trim((string) $modification);
+        $complectation = trim((string) $complectation);
+        $this->db->table('ref_variants')->where('id', $variantId)->update([
+            'manual' => true,
+            'status' => $modification !== '' ? 'matched' : 'no_engine',
+            'make_id' => $g->make_id, 'model_id' => $g->model_id, 'generation_id' => $g->id,
+            'modification_id' => $modification !== '' ? $this->store->modificationId($g->id, $modification, $fuel ?: null, $drive ?: null) : null,
+            'complectation_id' => $complectation !== '' ? $this->store->complectationId((int) $g->make_id, $complectation) : null,
+            'leftover' => null, 'reason' => 'set by hand',
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+        return $this->moveLots($variantId);
+    }
+
+    /** Gives a hand-placed variant back to the rules. */
+    public function release(int $variantId): int
+    {
+        $v = $this->db->table('ref_variants')->where('id', $variantId)->first();
+        if ($v === null) {
+            return 0;
+        }
+        $this->db->table('ref_variants')->where('id', $variantId)->update(['manual' => false]);
+        $this->store([(array) $v], again: true, lots: [$v->hash => (int) $v->lots]);
+        return $this->moveLots($variantId);
+    }
+
+    /** The variant's lots take its current ids. */
+    private function moveLots(int $variantId): int
+    {
+        return $this->db->update(
+            'UPDATE lots l JOIN ref_variants v ON v.id = l.ref_variant_id
+             SET l.ref_make_id = v.make_id, l.ref_model_id = v.model_id, l.ref_generation_id = v.generation_id,
+                 l.ref_modification_id = v.modification_id, l.ref_complectation_id = v.complectation_id
+             WHERE v.id = ?',
+            [$variantId],
+        );
+    }
+
     /** A variant as the rules read it, with the catalog's ids. */
     private function read(string $source, array $v): array
     {
