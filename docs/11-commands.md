@@ -317,6 +317,7 @@ php artisan ingest:consume [--batch=500] [--max-batches=0]   # применит�
 php artisan collector:enqueue [--dry-run]                    # поставить сборщику прогоны по parser_schedules (shadow/primary)
 php artisan collector:compare [--job=ID] [--json]            # теневой режим: прогон сборщика против lots старого парсера
 php artisan ingest:cutover                                   # один раз при переходе в primary: пропустить теневой буфер
+php artisan collector:seed-history [--dry-run]               # один раз: история из lots → collector.lot_history, первый прогон без перекачки всей истории
 ```
 
 ### Команды сборщика

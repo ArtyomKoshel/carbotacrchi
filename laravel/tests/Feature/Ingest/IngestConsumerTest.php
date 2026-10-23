@@ -4,8 +4,10 @@ namespace Tests\Feature\Ingest;
 
 use App\Ingest\CarLotContract;
 use App\Ingest\IngestConsumer;
+use App\Services\Notifications\JobReport;
 use Database\Factories\LotFactory;
 use Database\Factories\ParseFilterFactory;
+use Database\Factories\ParseJobFactory;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\RefreshesDatabaseOnce;
 use Tests\TestCase;
@@ -157,6 +159,28 @@ final class IngestConsumerTest extends TestCase
         }
         $filled = DB::table('lots')->find('39847216');
         $this->assertSame(['white', 'black', '프레스티지'], [$filled->color, $filled->seat_color, $filled->trim], 'empty ones are filled');
+    }
+
+    public function test_each_run_counts_what_the_core_did_with_its_lots(): void
+    {
+        $rejected = json_decode((string) file_get_contents(base_path('../contracts/fixtures/carlot.v1/valid/rejected_by_rule.json')), true);
+        $same = json_encode(self::lot(), JSON_UNESCAPED_UNICODE);    // the collector's hash leaves run_id out
+        $this->buffer(self::lot(), $same);                           // run 17: new
+        $this->buffer([...$rejected, 'run_id' => 17]);              // run 17: a rule skips it
+        $this->buffer(self::lot(['run_id' => 18]), $same);           // run 18: the same lot, unchanged
+        $this->buffer(self::lot(['run_id' => 18, 'source_id' => '39847299']), '{"contract": "carlot/1", "run_id": 18}');  // refused by the contract
+
+        $this->consume(2);
+        $this->consume();
+
+        $stats = fn (int $run) => (array) DB::table('ingest_run_stats')->where('run_id', $run)->first(['inserted', 'updated', 'unchanged', 'filtered', 'rejected']);
+        $this->assertEquals(['inserted' => 1, 'updated' => 0, 'unchanged' => 0, 'filtered' => 1, 'rejected' => 0], $stats(17));
+        $this->assertEquals(['inserted' => 0, 'updated' => 0, 'unchanged' => 1, 'filtered' => 0, 'rejected' => 1], $stats(18));
+
+        $job = ParseJobFactory::new()->create(['progress' => ['collector' => 'collector/1']]);
+        DB::table('ingest_run_stats')->where('run_id', 17)->update(['run_id' => $job->id]);
+        $s = JobReport::stats($job->fresh());
+        $this->assertSame([1, 0, 1, 1], [$s['new'], $s['updated'], $s['filtered'], $s['written']]);
     }
 
     public function test_photos_are_kept_when_the_gallery_was_not_seen(): void

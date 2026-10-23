@@ -16,6 +16,7 @@ from collector import storage
 from collector.adapters.encar import mapping as m
 from collector.domain.carlot import CarLotV1
 from collector.ports import HistoryState
+from collector.runlog import RunLog
 from collector.storage import JobCancelledError, JobQueue, MySqlHistoryStore, MySqlIngestSink, content_hash
 from tests.fakes import item
 
@@ -195,3 +196,19 @@ async def test_progress_finish_interrupt_and_cancel(db: AsyncEngine) -> None:
         await conn.execute(text("UPDATE parse_jobs SET status = 'cancelled' WHERE id = :i"), {"i": cancelled})
     with pytest.raises(JobCancelledError):
         await queue.progress(cancelled, {"pct": 1})
+
+
+async def test_run_log_reaches_the_table_while_the_run_goes(db: AsyncEngine) -> None:
+    now = [0.0]
+    log = RunLog(db, 18, batch=50, flush_every_s=5.0, monotonic=lambda: now[0])
+
+    async def lines() -> list[str]:
+        async with db.connect() as conn:
+            rows = await conn.execute(text("SELECT message FROM run_log WHERE job_id = 18 ORDER BY id"))
+            return [r[0] for r in rows]
+
+    await log.info("full run of encar started")
+    assert await lines() == [], "batched while the lines come fast"
+    now[0] = 25.0  # the first page took 25 s
+    await log.info("global p.1: 100/201,287 seen, errors 0")
+    assert await lines() == ["full run of encar started", "global p.1: 100/201,287 seen, errors 0"]

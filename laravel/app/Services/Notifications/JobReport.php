@@ -2,6 +2,7 @@
 
 namespace App\Services\Notifications;
 
+use App\Ingest\IngestRunStats;
 use App\Models\NotificationEvent;
 use App\Models\ParseJob;
 
@@ -116,16 +117,19 @@ class JobReport
 
         $done  = (int) ($r['total'] ?? $p['found_total'] ?? $p['total'] ?? 0);
         $total = (int) ($r['api_total'] ?? $p['api_total'] ?? 0);
+        // A collector run: new / updated / filtered are what the core applied (ingest_run_stats).
+        $run = isset($p['collector']) ? IngestRunStats::of((int) $job->id) : null;
 
         return [
             'done'        => $done,
             'total'       => $total,
             'pct'         => $total > 0 ? min(100.0, $done / $total * 100) : null,
             'elapsed'     => (float) ($r['elapsed_s'] ?? $p['elapsed_s'] ?? 0),
-            'new'         => (int) ($r['new'] ?? $p['new'] ?? 0),
-            'updated'     => (int) ($r['updated'] ?? $p['updated'] ?? 0),
+            'new'         => $run ? $run['inserted'] : (int) ($r['new'] ?? $p['new'] ?? 0),
+            'updated'     => $run ? $run['updated'] : (int) ($r['updated'] ?? $p['updated'] ?? 0),
+            'written'     => $run ? $run['inserted'] + $run['updated'] + $run['unchanged'] : (isset($r['lots_written']) ? (int) $r['lots_written'] : null),
             'errors'      => (int) ($r['errors'] ?? $p['errors'] ?? 0),
-            'filtered'    => isset($r['filtered']) ? (int) $r['filtered'] : null,
+            'filtered'    => $run ? $run['filtered'] : (isset($r['filtered']) ? (int) $r['filtered'] : null),
             'stale'       => isset($r['stale']) ? (int) $r['stale'] : null,
             'proxy_bytes' => (int) ($r['proxy_bytes'] ?? $p['proxy_bytes'] ?? 0),
         ];

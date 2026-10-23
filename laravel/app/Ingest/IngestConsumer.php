@@ -27,6 +27,9 @@ final class IngestConsumer
 
     private readonly ConnectionInterface $collector;
 
+    /** @var array<int, array{source: string, inserted: int, updated: int, unchanged: int, filtered: int, rejected: int}> per run, this batch */
+    private array $runStats = [];
+
     public function __construct(
         private readonly CarLotContract $contract,
         ?ConnectionInterface $core = null,
@@ -45,16 +48,18 @@ final class IngestConsumer
             $offset = $this->lockOffset();
             $records = $this->collector->table('ingest_lots')
                 ->where('id', '>', $offset)->orderBy('id')->limit($limit)
-                ->get(['id', 'source', 'source_id', 'content_hash', 'payload']);
+                ->get(['id', 'run_id', 'source', 'source_id', 'content_hash', 'payload']);
             if ($records->isEmpty()) {
                 return new IngestResult;
             }
+            $this->runStats = [];
 
             $result = new IngestResult(consumed: $records->count());
             $lots = $this->decode($records, $result);
             if ($lots !== []) {
                 $this->apply($lots, $now, $result);
             }
+            $this->writeRunStats($now);
             $this->core->table('ingest_offsets')->where('consumer', self::CONSUMER)
                 ->update(['last_id' => $records->last()->id, 'updated_at' => $now]);
 
@@ -127,6 +132,9 @@ final class IngestConsumer
             $old = $stored->get($id);
             $selection = $lot['selection'] ?? ['passed' => true];
             $passed = (bool) $selection['passed'];
+            if (! $passed) {
+                $this->countRun($record, 'filtered');
+            }
 
             try {
                 $row = LotRowMapper::lotRow($lot);
@@ -165,6 +173,7 @@ final class IngestConsumer
             if ($old !== null && $old->ingest_hash === $record->content_hash && (int) $old->is_active === $row['is_active']) {
                 $seen[] = $id; // same content, same state: only "seen in this run"
                 $result->unchanged++;
+                $this->countRun($record, 'unchanged');
 
                 continue;
             }
@@ -175,6 +184,7 @@ final class IngestConsumer
             }
             $upserts[] = [...$row, 'parsed_at' => $now, 'updated_at' => $now, 'created_at' => $now];
             $old === null ? $result->inserted++ : $result->updated++;
+            $this->countRun($record, $old === null ? 'inserted' : 'updated');
 
             if (($inspection = LotRowMapper::inspectionRow($lot)) !== null) {
                 $inspections[] = [...$inspection, 'created_at' => $now, 'updated_at' => $now];
@@ -285,5 +295,32 @@ final class IngestConsumer
             'errors' => json_encode(array_values($errors), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
         ]);
         $result->rejected++;
+        $this->countRun($record, 'rejected');
+    }
+
+    /** What the core did with a run's records: the admin's "Новые / Обновлено / Отсеяно" for collector runs. */
+    private function countRun(object $record, string $key): void
+    {
+        if ($record->run_id === null) {
+            return;
+        }
+        $this->runStats[(int) $record->run_id] ??= ['source' => (string) $record->source, 'inserted' => 0, 'updated' => 0, 'unchanged' => 0, 'filtered' => 0, 'rejected' => 0];
+        $this->runStats[(int) $record->run_id][$key]++;
+    }
+
+    private function writeRunStats(string $now): void
+    {
+        foreach ($this->runStats as $runId => $s) {
+            $this->core->statement(
+                'INSERT INTO ingest_run_stats (run_id, source, inserted, updated, unchanged, filtered, rejected, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?) AS new
+                 ON DUPLICATE KEY UPDATE inserted = ingest_run_stats.inserted + new.inserted,
+                    updated = ingest_run_stats.updated + new.updated, unchanged = ingest_run_stats.unchanged + new.unchanged,
+                    filtered = ingest_run_stats.filtered + new.filtered, rejected = ingest_run_stats.rejected + new.rejected,
+                    updated_at = new.updated_at',
+                [$runId, $s['source'], $s['inserted'], $s['updated'], $s['unchanged'], $s['filtered'], $s['rejected'], $now],
+            );
+        }
+        $this->runStats = [];
     }
 }
