@@ -156,7 +156,8 @@ const App = (() => {
       $('filters-apply-btn').disabled = s.count === 0;
     } else if (s.overlay === 'lot' && s.lot) {
       TG.setMain('Отправить клиенту', shareLot);
-      TG.setSecondary(`Открыть на ${s.lot.sourceName || 'площадке'}`, openSource);
+      // above the main one, full width: side by side each got half and the link read small
+      TG.setSecondary(`Открыть на ${s.lot.sourceName || 'площадке'}`, openSource, { position: 'top' });
     } else {
       TG.setMain(null, null);
       TG.setSecondary(null, null);
