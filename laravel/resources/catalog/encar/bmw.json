@@ -1,0 +1,12 @@
+{
+  "_comment": "Encar model_en -> reference model and generation, only where 'Name (CODE)' does not already say it.",
+  "models": {
+    "X3M (G01)": ["X3 M", "F97"],
+    "X4M (G02)": ["X4 M", "F98"],
+    "X5M (F15)": ["X5 M", "F85"],
+    "X5M (G05)": ["X5 M", "F95"],
+    "X6M (F16)": ["X6 M", "F86"],
+    "X6M (G06)": ["X6 M", "F96"],
+    "M8 (G15)": ["M8", "F92"]
+  }
+}

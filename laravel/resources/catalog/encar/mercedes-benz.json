@@ -1,0 +1,10 @@
+{
+  "_comment": "Encar model_en -> reference model and generation where the name does not say it. 'badges': Encar keeps the AMG GT 4-Door under 'AMG GT' and tells it by the badge.",
+  "models": {
+    "AMG GT": ["AMG GT", "C190"],
+    "G-Class W463b": ["G-Class", "W463A"]
+  },
+  "badges": [
+    {"model_en": "AMG GT", "badge": "4도어", "to": ["AMG GT 4-Door", "X290"]}
+  ]
+}
