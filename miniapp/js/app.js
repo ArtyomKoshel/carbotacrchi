@@ -42,6 +42,7 @@ const App = (() => {
       if (s.wide && s.overlay === 'filters') closeOverlay();
       renderResults();
       if (s.overlay === 'lot' && s.lot) renderLot();
+      if (s.view === 'compare') Compare.render($('compare'), { onOpen: lot => openLot(lot) });
     }
   }
 

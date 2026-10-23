@@ -55,23 +55,15 @@ const Compare = (() => {
     ['Выставлен', l => Fmt.day(l.listedAt), null],
   ];
 
-  function render(mount, { onOpen } = {}) {
-    if (!items.length) {
-      mount.innerHTML = `<div class="empty">${Fmt.icon.compare}<b>Здесь пока пусто</b>
-        <span>Отметьте до ${MAX} машин кнопкой «Сравнить» в лоте или галочкой в таблице.</span></div>`;
-      return;
-    }
-    const head = items.map(l => `<th scope="col"><div class="cmp__car">
-        <img src="${Fmt.esc(Fmt.cover(l))}" alt="" loading="lazy" onerror="this.src='${Fmt.PLACEHOLDER}'">
-        <span class="cmp__name">${Fmt.esc(Fmt.title(l))}</span>
-        <span class="cmp__acts"><a href="#lot-${Fmt.esc(l.id)}" data-open="${Fmt.esc(l.id)}">Открыть</a>
-          <button class="link-btn" type="button" data-remove="${Fmt.esc(l.id)}">Убрать</button></span>
-      </div></th>`).join('');
-    const body = ROWS.map(([label, text, best, value]) => {
+  let onlyDiff = false;
+
+  /** Each row: its cells, whether the cars differ, and which cells hold the best value. */
+  function rows() {
+    return ROWS.map(([label, text, best, value]) => {
       const cells = items.map(text).map(String);
-      const same = cells.every(c => c === cells[0]);
-      let bestIdx = new Set();
-      if (best && items.length > 1) {
+      const differs = items.length > 1 && cells.some(c => c !== cells[0]);
+      const bestIdx = new Set();
+      if (best && differs) {
         const vals = items.map(value).map(v => (v === null || v === undefined || v === '' ? null : Number(v)));
         const known = vals.filter(v => v !== null && !isNaN(v));
         if (known.length > 1 && new Set(known).size > 1) {
@@ -79,19 +71,58 @@ const Compare = (() => {
           vals.forEach((v, i) => v === target && bestIdx.add(i));
         }
       }
-      return `<tr><th scope="row">${label}</th>${cells.map((c, i) =>
-        `<td class="${bestIdx.has(i) ? 'best' : ''}${!same && items.length > 1 ? ' diff' : ''}">${Fmt.esc(c)}</td>`).join('')}</tr>`;
-    }).join('');
-    mount.innerHTML = `<div class="cmp-wrap"><table class="cmp"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>
-      <p class="cmp-hint">Зелёным — лучшее значение, подсветкой — строки, где машины различаются.
+      return { label, cells, differs, bestIdx };
+    });
+  }
+
+  function carHead(l) {
+    return `<div class="cmp-car">
+      <img src="${Fmt.esc(Fmt.cover(l))}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${Fmt.PLACEHOLDER}'">
+      <span class="cmp-car__name">${Fmt.esc(Fmt.title(l))}</span>
+      <span class="cmp-car__acts">
+        <button type="button" class="cmp-act" data-open="${Fmt.esc(l.id)}">Открыть</button>
+        <button type="button" class="cmp-act cmp-act--muted" data-remove="${Fmt.esc(l.id)}">Убрать</button>
+      </span>
+    </div>`;
+  }
+
+  function render(mount, { onOpen } = {}) {
+    if (!items.length) {
+      mount.innerHTML = `<div class="empty">${Fmt.icon.compare}<b>Здесь пока пусто</b>
+        <span>Отметьте до ${MAX} машин кнопкой «Сравнить» в лоте или галочкой в таблице.</span></div>`;
+      return;
+    }
+    const all = rows();
+    const shown = onlyDiff ? all.filter(r => r.differs) : all;
+    const n = items.length;
+    const cell = (r, c, i) => `<span class="cmp-v${r.bestIdx.has(i) ? ' cmp-v--best' : ''}">${Fmt.esc(c)}</span>`;
+    const wide = document.body.classList.contains('wide');
+    const body = wide
+      // desktop: a table, labels on the left
+      ? `<div class="cmp-wrap"><table class="cmp"><thead><tr><th></th>${items.map(l => `<th scope="col">${carHead(l)}</th>`).join('')}</tr></thead>
+          <tbody>${shown.map(r => `<tr class="${r.differs ? 'differs' : 'same'}"><th scope="row">${r.label}</th>${r.cells.map((c, i) => `<td>${cell(r, c, i)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+      // phone: cars in even columns, each label above its values; the block scrolls sideways as a whole
+      : `<div class="cmpg" style="--n:${n}"><div class="cmpg__inner">
+          <div class="cmpg__cars">${items.map(carHead).join('')}</div>
+          ${shown.map(r => `<div class="cmpg__row ${r.differs ? 'differs' : 'same'}">
+            <div class="cmpg__label">${r.label}</div>
+            <div class="cmpg__vals">${r.cells.map((c, i) => cell(r, c, i)).join('')}</div>
+          </div>`).join('')}
+        </div></div>`;
+    const diffCount = all.filter(r => r.differs).length;
+    mount.innerHTML = `
+      <div class="cmp-bar">
+        <span class="cmp-bar__n">${Fmt.plural(n, 'машина', 'машины', 'машин').replace(/^/, n + ' ')} · ${diffCount} ${Fmt.plural(diffCount, 'отличие', 'отличия', 'отличий')}</span>
+        ${n > 1 ? `<button type="button" class="chip${onlyDiff ? ' chip--applied' : ''}" data-only-diff aria-pressed="${onlyDiff}">Только различия</button>` : ''}
+      </div>
+      ${body}
+      <p class="cmp-hint"><span class="cmp-v--best">Зелёным</span> — лучшее значение. Строки, где машины различаются, выделены.
         <button class="link-btn" type="button" data-clear>Очистить сравнение</button></p>`;
-    mount.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', () => { remove(b.dataset.remove); render(mount, { onOpen }); }));
-    mount.querySelector('[data-clear]')?.addEventListener('click', () => { clearAll(); render(mount, { onOpen }); });
-    mount.querySelectorAll('[data-open]').forEach(a => a.addEventListener('click', e => {
-      if (!onOpen) return;
-      e.preventDefault();
-      onOpen(items.find(l => l.id === a.dataset.open));
-    }));
+    const rerender = () => render(mount, { onOpen });
+    mount.querySelector('[data-only-diff]')?.addEventListener('click', () => { onlyDiff = !onlyDiff; rerender(); });
+    mount.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', () => { remove(b.dataset.remove); rerender(); }));
+    mount.querySelector('[data-clear]')?.addEventListener('click', () => { clearAll(); rerender(); });
+    mount.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => onOpen?.(items.find(l => l.id === b.dataset.open))));
   }
 
   return { has, count, toggle, remove, render, onChange, MAX };
