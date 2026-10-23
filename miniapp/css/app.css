@@ -267,6 +267,7 @@ body.wide .gallery__thumbs { display: flex; }
 .lot__trim { color: var(--muted); font-size: 14px; margin-top: 2px; }
 .lot__price { font: 600 22px/1.2 var(--f-data); margin-top: 6px; }
 .lot__meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.lot__source { min-height: 50px; font-size: 16px; }
 .lot__inactive { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-sm); padding: 8px 12px; font-size: 13px; }
 .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-radius: var(--r); overflow: hidden; }
 .facts > div { background: var(--surface); padding: 9px 6px; text-align: center; min-width: 0; }
