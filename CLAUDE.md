@@ -26,6 +26,7 @@ Full docs are in `docs/` — read them before touching unfamiliar areas:
 | [docs/10-filters.md](docs/10-filters.md) | PRE/POST filter phases, lot exclusion rules |
 | [docs/11-commands.md](docs/11-commands.md) | All artisan commands with options and examples |
 | [docs/12-field-map.md](docs/12-field-map.md) | Field reference: API paths, coverage, normalization |
+| [docs/13-catalog.md](docs/13-catalog.md) | Reference catalog: make → model → generation → modification → complectation, Encar matching, nothing assumed |
 
 @docs/01-overview.md
 

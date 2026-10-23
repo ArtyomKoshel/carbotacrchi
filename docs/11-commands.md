@@ -331,6 +331,33 @@ python -m collector.adapters.encar.golden parser/tests/golden   # сверка �
 
 ---
 
+## Справочник
+
+Подробно — [13-catalog](./13-catalog.md).
+
+### `catalog:remap`
+
+Пишет эталон (`resources/catalog/reference`) в `ref_*`, перечитывает все варианты Encar правилами
+(кроме размеченных вручную) и переставляет лоты (`lots.ref_*`) порциями по PK. Запускать после
+изменения эталона или правил; новые лоты связываются сами при приёме.
+
+```bash
+php artisan catalog:remap                 # всё заново
+php artisan catalog:remap --new-only      # только варианты, которых ещё нет в ref_variants
+php artisan catalog:remap --chunk=2000 --pause-ms=50
+```
+
+### `catalog:coverage`
+
+Только чтение: сколько вариантов и лотов марки правила понимают, что осталось непонятным.
+
+```bash
+php artisan catalog:coverage --make=BMW
+php artisan catalog:coverage --make=Mercedes-Benz --tree --limit=80
+```
+
+---
+
 ## Утилиты
 
 ### `lots:ai-model-en-backfill`
