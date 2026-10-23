@@ -1,0 +1,14 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis code cut off) -> Encar's English one, from lots that carry both. models: English model_en -> reference model and generation where the name does not say it. badges: a model whose badge names another model.",
+  "korean": "아우디",
+  "names": {
+    "A6 e-트론": "A6 e-tron",
+    "Q4 e-트론": "Q4 e-tron",
+    "Q6 e-트론": "Q6 e-tron",
+    "Q8 e-트론": "Q8 e-tron",
+    "RS e-트론 GT": "RS e-tron GT",
+    "SQ6 e-트론": "SQ6 e-tron",
+    "e-트론": "e-tron",
+    "e-트론 GT": "e-tron GT"
+  }
+}

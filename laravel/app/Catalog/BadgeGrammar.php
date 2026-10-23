@@ -15,9 +15,10 @@ final class BadgeGrammar
     /** body word → body type, unless the model overrides it ("bodies" in the reference) */
     public const BODIES = [
         'Gran Coupe' => 'liftback', 'Gran Turismo' => 'liftback', 'Touring' => 'wagon', 'Estate' => 'wagon',
-        'Shooting Brake' => 'wagon', '4-door' => 'liftback', 'Coupe' => 'coupe',
-        'Convertible' => 'convertible', 'Cabriolet' => 'convertible', 'Roadster' => 'roadster', 'Sedan' => 'sedan',
-        'Hatchback' => 'hatchback', '5-door' => 'hatchback', '3-door' => 'hatchback',
+        'Shooting Brake' => 'wagon', '4-door' => 'liftback', 'Coupe' => 'coupe', 'Avant' => 'wagon',
+        'Sportback' => 'liftback', 'Cross Turismo' => 'wagon', 'Sport Turismo' => 'wagon',
+        'Convertible' => 'convertible', 'Cabriolet' => 'convertible', 'Roadster' => 'roadster', 'Spyder' => 'convertible',
+        'Sedan' => 'sedan', 'Hatchback' => 'hatchback', '5-door' => 'hatchback', '3-door' => 'hatchback',
     ];
 
     /**
@@ -33,7 +34,9 @@ final class BadgeGrammar
             $text = str_replace($m[0], ' ', $text);
         }
 
-        $bodyWord = self::cut($text, array_keys(self::BODIES))[0] ?? null;
+        // a model maps a body word to "" where the word is a modification of its own (911 GT3 Touring)
+        $bodyWords = array_keys(array_filter(($model['bodies'] ?? []) + self::BODIES, fn ($type) => $type !== ''));
+        $bodyWord = self::cut($text, $bodyWords)[0] ?? null;
         $body = $bodyWord === null ? null : ($model['bodies'][$bodyWord] ?? self::BODIES[$bodyWord]);
 
         $editions = self::cut($text, $make['editions'] ?? []);

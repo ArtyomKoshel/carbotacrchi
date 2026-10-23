@@ -4,52 +4,69 @@ namespace App\Catalog\Encar;
 
 use App\Catalog\BadgeGrammar;
 use App\Catalog\Reference;
+use App\Catalog\Rules\AudiRules;
 use App\Catalog\Rules\BmwRules;
 use App\Catalog\Rules\MakeRules;
 use App\Catalog\Rules\MercedesRules;
+use App\Catalog\Rules\PorscheRules;
 use App\Catalog\VariantMatch;
 
 /**
- * Places an Encar variant (make_en, model_en, badge, trim) on the reference catalog.
+ * Places an Encar variant (make, model, badge, trim as Encar names them) on the reference catalog.
+ *
+ * Only Encar's own Korean fields are read, never our translations: those come hours late
+ * (normalization waits for a run to end) and go stale when a listing changes model.
+ * The Korean model holds the chassis ("5시리즈 (G30)", "E-클래스 W213"); its name becomes
+ * Encar's English one by the make's "names" (resources/catalog/encar/{make}.json, taken from
+ * lots that carry both), with per-make exceptions there too.
  *
  * Imports carry engine and equipment in the one Badge level ("530i xDrive M 스포츠");
  * BadgeDetail is mostly absent and our old normalization copied Badge into `trim`, so
  * the longer of the two is read when it holds all of the other's words.
- * Korean words become the reference's English ones by resources/catalog/encar/tokens.json;
- * model_en ("5 Series (G60)") gives model and generation, with per-make exceptions in
- * resources/catalog/encar/{make}.json.
+ * Korean words become the reference's English ones by resources/catalog/encar/tokens.json.
  */
 class EncarMatcher
 {
-    private const RULES = ['bmw' => BmwRules::class, 'mercedes' => MercedesRules::class];
+    private const RULES = [
+        'bmw' => BmwRules::class, 'mercedes' => MercedesRules::class, 'audi' => AudiRules::class, 'porsche' => PorscheRules::class,
+    ];
 
     /** @var array<string, string>|null regex → English */
     private ?array $tokens = null;
 
-    /** @var array<string, array> make (lower case) → Encar model map */
-    private array $models = [];
+    /** @var array<string, array>|null Encar's Korean make → that make's file, plus 'make' => reference name */
+    private ?array $makes = null;
 
     /** @var array<string, MakeRules> */
     private array $rules = [];
 
     public function __construct(private readonly Reference $reference, private readonly ?string $dir = null) {}
 
-    public function match(string $make, ?string $modelEn, ?string $badge, ?string $trim = null, ?int $year = null, ?string $badgeGroup = null): VariantMatch
+    /**
+     * @param array{make: ?string, model: ?string, badge_group?: ?string, badge?: ?string, trim?: ?string,
+     *              year?: ?int, make_en?: ?string, model_en?: ?string} $lot a lots row or a variant of them;
+     *        make_en / model_en only stand in when the Korean field is empty
+     */
+    public function match(array $lot): VariantMatch
     {
-        $ref = $this->reference->make($make);
+        $encar = $this->encarMake((string) ($lot['make'] ?? ''), (string) ($lot['make_en'] ?? ''));
+        $ref = $encar ? $this->reference->make($encar['make']) : null;
         if ($ref === null) {
             return new VariantMatch(VariantMatch::UNMATCHED, reason: 'make not in reference');
         }
         $makeName = $ref['make'];
+        $badge = $lot['badge'] ?? null;
+        $trim = $lot['trim'] ?? null;
+        $year = isset($lot['year']) ? (int) $lot['year'] : null;
 
-        [$modelName, $code] = $this->model($makeName, (string) $modelEn, (string) $badge);
-        // some models carry the chassis in BadgeGroup or BadgeDetail ("SL-Class" / "R231")
-        foreach ([$badgeGroup, $trim] as $level) {
-            if ($code === null && preg_match('/^[A-Z]\d{3}[a-z]?$/', trim((string) $level))) {
+        [$modelName, $code] = $this->model($encar, trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? '')), (string) $badge);
+        $model = $this->reference->model($makeName, $modelName);
+        // some models carry the chassis in BadgeGroup or BadgeDetail ("A6" / "C7", "SL-Class" / "R231")
+        foreach ([$lot['badge_group'] ?? null, $trim] as $level) {
+            if ($model && $code === null && trim((string) $level) !== '' && $this->reference->generation($model, trim($level))) {
                 $code = trim($level);
             }
         }
-        $model = $this->reference->model($makeName, $modelName);
         $generation = $model ? $this->reference->generation($model, $code, $year) : null;
         if ($generation === null) {
             return new VariantMatch(VariantMatch::UNMATCHED, $makeName, $model['name'] ?? $modelName,
@@ -131,29 +148,64 @@ class EncarMatcher
     }
 
     /**
-     * Reference model name and chassis code: the make's map first ("models", then "badges":
-     * a model_en whose badge starts with a word that names another model), then
-     * "5 Series (G60)" and "E-Class W213".
+     * Reference model name and chassis code of Encar's model ("5시리즈 (G30)", "E-클래스 W213",
+     * or the English model_en): the name through the make's "names", then its exceptions —
+     * "badges" (a model whose badge names another one: the AMG GT 4-Door) and "models".
      *
      * @return array{0: string, 1: ?string}
      */
-    private function model(string $make, string $modelEn, string $badge): array
+    private function model(array $encar, string $encarModel, string $badge): array
     {
-        $key = mb_strtolower($make);
-        $this->models[$key] ??= is_file($this->path("{$key}.json")) ? $this->json("{$key}.json") : [];
-        foreach ($this->models[$key]['badges'] ?? [] as $rule) {
-            if ($rule['model_en'] === $modelEn && preg_match('/^' . $rule['badge'] . '/u', $badge)) {
+        [$name, $code] = self::split($encarModel);
+        $name = $encar['names'][$name] ?? $name;
+        foreach ($encar['badges'] ?? [] as $rule) {
+            if (self::split($rule['model_en']) === [$name, $code] && preg_match('/^' . $rule['badge'] . '/u', $badge)) {
                 return $rule['to'];
             }
         }
-        if (isset($this->models[$key]['models'][$modelEn])) {
-            return $this->models[$key]['models'][$modelEn];
+        foreach ($encar['models'] ?? [] as $key => $to) {
+            if (self::split($key) === [$name, $code]) {
+                return $to;
+            }
         }
-        if (preg_match('/^(.*?)\s*\(([A-Za-z0-9]+)\)$/', trim($modelEn), $m)
-            || preg_match('/^(.*\S)\s+([A-Z]\d{3}[a-z]?)$/', trim($modelEn), $m)) {
+        return [$name, $code];
+    }
+
+    /** "5 Series (G60)" / "E-Class W213" / "A6" → [name, chassis code or null] */
+    private static function split(string $model): array
+    {
+        $model = trim($model);
+        if (preg_match('/^(.*?)\s*\(([A-Za-z0-9]+)\)$/u', $model, $m) || preg_match('/^(.*\S)\s+([A-Z]\d{3}[a-z]?)$/u', $model, $m)) {
             return [$m[1], $m[2]];
         }
-        return [trim($modelEn), null];
+        return [$model, null];
+    }
+
+    /** The Encar file of a make, by Encar's Korean make or else by our English one. */
+    private function encarMake(string $korean, string $english): ?array
+    {
+        if ($this->makes === null) {
+            $this->makes = [];
+            foreach (glob($this->path('*.json')) as $file) {
+                if (basename($file) === 'tokens.json') {
+                    continue;
+                }
+                $data = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+                $ref = $this->reference->make(basename($file, '.json'));
+                if ($ref !== null && isset($data['korean'])) {
+                    $this->makes[$data['korean']] = $data + ['make' => $ref['make']];
+                }
+            }
+        }
+        if (isset($this->makes[trim($korean)])) {
+            return $this->makes[trim($korean)];
+        }
+        foreach ($this->makes as $data) {
+            if (strcasecmp($data['make'], trim($english)) === 0) {
+                return $data;
+            }
+        }
+        return null;
     }
 
     private function rules(array $make): MakeRules

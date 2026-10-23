@@ -1,12 +1,49 @@
 {
-  "_comment": "Encar model_en -> reference model and generation, only where 'Name (CODE)' does not already say it.",
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis code cut off) -> Encar's English one, from lots that carry both. models: English model_en -> reference model and generation where the name does not say it. badges: a model whose badge names another model.",
+  "korean": "BMW",
+  "names": {
+    "1시리즈": "1 Series",
+    "2시리즈": "2 Series",
+    "2시리즈 그란쿠페": "2 Series Gran Coupe",
+    "2시리즈 액티브 투어러": "2 Series Active Tourer",
+    "3시리즈": "3 Series",
+    "3시리즈 GT": "3 Series GT",
+    "4시리즈": "4 Series",
+    "5시리즈": "5 Series",
+    "5시리즈 GT": "5 Series GT",
+    "6시리즈": "6 Series",
+    "6시리즈 GT": "6 Series GT",
+    "7시리즈": "7 Series",
+    "8시리즈": "8 Series"
+  },
   "models": {
-    "X3M (G01)": ["X3 M", "F97"],
-    "X4M (G02)": ["X4 M", "F98"],
-    "X5M (F15)": ["X5 M", "F85"],
-    "X5M (G05)": ["X5 M", "F95"],
-    "X6M (F16)": ["X6 M", "F86"],
-    "X6M (G06)": ["X6 M", "F96"],
-    "M8 (G15)": ["M8", "F92"]
+    "X3M (G01)": [
+      "X3 M",
+      "F97"
+    ],
+    "X4M (G02)": [
+      "X4 M",
+      "F98"
+    ],
+    "X5M (F15)": [
+      "X5 M",
+      "F85"
+    ],
+    "X5M (G05)": [
+      "X5 M",
+      "F95"
+    ],
+    "X6M (F16)": [
+      "X6 M",
+      "F86"
+    ],
+    "X6M (G06)": [
+      "X6 M",
+      "F96"
+    ],
+    "M8 (G15)": [
+      "M8",
+      "F92"
+    ]
   }
 }

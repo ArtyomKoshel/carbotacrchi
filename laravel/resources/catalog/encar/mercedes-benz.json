@@ -1,10 +1,48 @@
 {
-  "_comment": "Encar model_en -> reference model and generation where the name does not say it. 'badges': Encar keeps the AMG GT 4-Door under 'AMG GT' and tells it by the badge.",
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis code cut off) -> Encar's English one, from lots that carry both. models: English model_en -> reference model and generation where the name does not say it. badges: a model whose badge names another model.",
+  "korean": "벤츠",
+  "names": {
+    "A-클래스": "A-Class",
+    "B-클래스": "B-Class",
+    "C-클래스": "C-Class",
+    "CLA-클래스": "CLA-Class",
+    "CLE-클래스": "CLE-Class",
+    "CLS-클래스": "CLS-Class",
+    "E-클래스": "E-Class",
+    "G-클래스": "G-Class",
+    "GL-클래스": "GL-Class",
+    "GLA-클래스": "GLA-Class",
+    "GLB-클래스": "GLB-Class",
+    "GLC-클래스": "GLC-Class",
+    "GLE-클래스": "GLE-Class",
+    "GLK-클래스": "GLK-Class",
+    "GLS-클래스": "GLS-Class",
+    "M-클래스": "M-Class",
+    "S-클래스": "S-Class",
+    "SL-클래스": "SL-Class",
+    "SLC-클래스": "SLC-Class",
+    "SLK-클래스": "SLK-Class",
+    "V-클래스": "V-Class",
+    "스프린터": "Sprinter"
+  },
   "models": {
-    "AMG GT": ["AMG GT", "C190"],
-    "G-Class W463b": ["G-Class", "W463A"]
+    "AMG GT": [
+      "AMG GT",
+      "C190"
+    ],
+    "G-Class W463b": [
+      "G-Class",
+      "W463A"
+    ]
   },
   "badges": [
-    {"model_en": "AMG GT", "badge": "4도어", "to": ["AMG GT 4-Door", "X290"]}
+    {
+      "model_en": "AMG GT",
+      "badge": "4도어",
+      "to": [
+        "AMG GT 4-Door",
+        "X290"
+      ]
+    }
   ]
 }
