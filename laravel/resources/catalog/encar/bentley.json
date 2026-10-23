@@ -1,0 +1,10 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "벤틀리",
+  "names": {
+    "뮬산": "Mulsanne",
+    "벤테이가": "Bentayga",
+    "컨티넨탈 GT": "Continental GT",
+    "플라잉스퍼": "Flying Spur"
+  }
+}

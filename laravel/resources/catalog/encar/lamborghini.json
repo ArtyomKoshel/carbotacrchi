@@ -1,0 +1,10 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "람보르기니",
+  "names": {
+    "레부엘토": "Revuelto",
+    "아벤타도르": "Aventador",
+    "우라칸": "Huracán",
+    "우루스": "Urus"
+  }
+}

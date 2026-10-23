@@ -208,6 +208,12 @@ class EncarMatcher
         return preg_match('/^(?:(\d)세대|Gen (\d))$/u', trim($level), $m) ? '#' . ($m[1] ?: $m[2]) : null;
     }
 
+    /** Encar's Korean name of a reference make ("Mercedes-Benz" → "벤츠"). */
+    public function koreanMake(string $make): ?string
+    {
+        return $this->encarMake('', $make)['korean'] ?? null;
+    }
+
     /** The Encar file of a make, by Encar's Korean make or else by our English one. */
     private function encarMake(string $korean, string $english): ?array
     {

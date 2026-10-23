@@ -1,0 +1,19 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "재규어",
+  "names": {},
+  "words": {
+    "P 250": "P250",
+    "3.0SC": "3.0 SC"
+  },
+  "models": {
+    "New XF": [
+      "XF",
+      null
+    ],
+    "All New XJ": [
+      "XJ",
+      null
+    ]
+  }
+}

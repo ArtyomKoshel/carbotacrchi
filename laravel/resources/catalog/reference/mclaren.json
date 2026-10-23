@@ -1,0 +1,131 @@
+{
+ "make": "McLaren",
+ "engine": {
+  "fuel": "gasoline"
+ },
+ "complectations": [],
+ "editions": [],
+ "models": [
+  {
+   "name": "570S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2015,
+      2021
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "570GT",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2016,
+      2021
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "600LT",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2018,
+      2020
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "650S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2014,
+      2017
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "720S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2017,
+      2023
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "750S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2023,
+      null
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "GT",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      null
+     ],
+     "drive": "rwd"
+    }
+   ]
+  },
+  {
+   "name": "Artura",
+   "body": "coupe",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2021,
+      null
+     ],
+     "drive": "rwd"
+    }
+   ]
+  }
+ ]
+}

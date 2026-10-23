@@ -27,12 +27,17 @@ class CatalogCoverage extends Command
     public function handle(EncarMatcher $matcher): int
     {
         $make = (string) $this->option('make');
-        $rows = $this->option('input') ? $this->fromFile((string) $this->option('input')) : $this->fromDb($make);
+        $korean = $matcher->koreanMake($make);
+        if ($korean === null) {
+            $this->error("{$make}: not in the catalog (resources/catalog/encar)");
+            return self::FAILURE;
+        }
+        $rows = $this->option('input') ? $this->fromFile((string) $this->option('input'), $korean) : $this->fromDb($korean);
 
         $totals = [];
         $results = [];
         foreach ($rows as $row) {
-            $match = $matcher->match($make, $row['model'], $row['badge'], $row['trim'], $row['year']);
+            $match = $matcher->match($row);
             $results[] = ['row' => $row, 'match' => $match];
             $totals[$match->status]['variants'] = ($totals[$match->status]['variants'] ?? 0) + 1;
             $totals[$match->status]['lots'] = ($totals[$match->status]['lots'] ?? 0) + $row['n'];
@@ -124,22 +129,29 @@ class CatalogCoverage extends Command
         }
     }
 
-    /** @return list<array{model: string, badge: ?string, trim: ?string, n: int, year: ?int, fuel: ?string}> */
-    private function fromDb(string $make): array
+    /**
+     * Distinct Encar variants of the make's active lots, by Encar's own (Korean) fields.
+     *
+     * @return list<array{make: string, model: ?string, badge_group: ?string, badge: ?string, trim: ?string, n: int, year: ?int, fuel: ?string}>
+     */
+    private function fromDb(string $korean): array
     {
-        return DB::table('lots')->where('is_active', true)->where('source', 'encar')->where('make_en', $make)
-            ->groupBy('model_en', 'badge', 'trim')
-            ->selectRaw('model_en, badge, `trim`, COUNT(*) n, MIN(year) year, GROUP_CONCAT(DISTINCT fuel) fuel')
+        return DB::table('lots')->where('is_active', true)->where('source', 'encar')->where('make', $korean)
+            ->groupBy('make', 'model', 'badge_group', 'badge', 'trim')
+            ->selectRaw('make, model, badge_group, badge, `trim`, COUNT(*) n, MIN(year) year, GROUP_CONCAT(DISTINCT fuel) fuel')
             ->get()
-            ->map(fn ($r) => ['model' => (string) $r->model_en, 'badge' => $r->badge, 'trim' => $r->trim, 'n' => (int) $r->n,
-                'year' => $r->year === null ? null : (int) $r->year, 'fuel' => $r->fuel])
+            ->map(fn ($r) => ['make' => $r->make, 'model' => $r->model, 'badge_group' => $r->badge_group, 'badge' => $r->badge,
+                'trim' => $r->trim, 'n' => (int) $r->n, 'year' => $r->year === null ? null : (int) $r->year, 'fuel' => $r->fuel])
             ->all();
     }
 
-    private function fromFile(string $path): array
+    /** The same rows from a JSON export (Korean make and model in make / model, or kmake / kmodel). */
+    private function fromFile(string $path, string $korean): array
     {
         return array_map(fn (array $r) => [
-            'model' => (string) ($r['model_en'] ?? $r['model'] ?? ''),
+            'make' => $r['kmake'] ?? $r['make'] ?? $korean,
+            'model' => $r['kmodel'] ?? $r['model'] ?? null,
+            'badge_group' => $r['badge_group'] ?? $r['bg'] ?? null,
             'badge' => $r['badge'] ?? null,
             'trim' => $r['trim'] ?? null,
             'n' => (int) ($r['n'] ?? 1),

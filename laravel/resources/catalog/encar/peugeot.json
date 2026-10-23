@@ -1,0 +1,8 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "푸조",
+  "names": {},
+  "words": {
+    "Pure Tech": "PureTech"
+  }
+}

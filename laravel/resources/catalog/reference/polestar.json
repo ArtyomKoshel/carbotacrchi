@@ -1,0 +1,51 @@
+{
+ "make": "Polestar",
+ "engine": {
+  "words": {
+   "Long": null,
+   "Standard": null,
+   "Range": null,
+   "Single": null,
+   "Motor": null
+  },
+  "drives": {
+   "Dual": "awd"
+  }
+ },
+ "complectations": [],
+ "editions": [],
+ "models": [
+  {
+   "name": "Polestar 2",
+   "body": "liftback",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2020,
+      null
+     ],
+     "drive": "fwd"
+    }
+   ]
+  },
+  {
+   "name": "Polestar 4",
+   "body": "suv_coupe",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2024,
+      null
+     ],
+     "drive": "rwd"
+    }
+   ]
+  }
+ ]
+}

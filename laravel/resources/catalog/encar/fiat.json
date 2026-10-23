@@ -1,0 +1,8 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "피아트",
+  "names": {
+    "124 스파이더": "124 Spider",
+    "두카토": "Ducato"
+  }
+}
