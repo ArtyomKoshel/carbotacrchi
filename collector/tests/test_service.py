@@ -373,7 +373,7 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert s.http_timeout == 5.0
     assert s.concurrency == s.history_concurrency == 25
     assert s.pipeline_depth == 3
-    assert s.history_max_age_hours == 48
+    assert s.history_max_age_hours == 0
     assert s.has_proxy
     assert "secret" not in repr(s)
     assert "u:p" not in repr(s)
