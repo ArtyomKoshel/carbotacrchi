@@ -20,11 +20,12 @@ class CatalogController extends Controller
     /** GET /api/catalog — the makes with active lots on the catalog. */
     public function makes(): JsonResponse
     {
-        $makes = Cache::remember('api_catalog_makes', self::TTL, fn () => DB::table('lots as l')
-            ->join('ref_makes as m', 'm.id', '=', 'l.ref_make_id')
-            ->where('l.is_active', true)->whereNotNull('l.ref_model_id')
+        // which makes, by the variants (their active lots as of the last catalog:remap): no scan of lots
+        $makes = Cache::remember('api_catalog_makes', self::TTL, fn () => DB::table('ref_variants as v')
+            ->join('ref_makes as m', 'm.id', '=', 'v.make_id')
+            ->whereNotNull('v.model_id')
             ->groupBy('m.id', 'm.name')->orderBy('m.name')
-            ->selectRaw('m.id, m.name, COUNT(*) AS lots')->get()
+            ->selectRaw('m.id, m.name, SUM(v.lots) AS lots')->get()
             ->map(fn ($m) => ['id' => (int) $m->id, 'name' => $m->name, 'lots' => (int) $m->lots])->all());
 
         return response()->json(['ok' => true, 'data' => ['makes' => $makes]]);

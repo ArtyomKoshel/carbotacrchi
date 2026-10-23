@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Catalog\CatalogPlaces;
 use App\Http\Controllers\Controller;
 use App\Models\LotInspection;
 use App\Services\OptionEnricher;
@@ -74,37 +75,9 @@ class LotController extends Controller
         }
         $lot = $provider->normalize((array) $row)->toArray();
         $lot['isActive'] = (bool) $row->is_active;
-        $lot['catalog'] = $this->catalog($row);
+        $lot['catalog'] = app(CatalogPlaces::class)->of([$lotId])[$lotId] ?? null;
 
         return $this->enricher->enrichLots([$lot])[0];
-    }
-
-    /**
-     * The lot's place in the reference catalog (app/Catalog), null when it has none. Only what
-     * the platform stated: fuel / drive of the modification are null unless its badge said them.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function catalog(object $row): ?array
-    {
-        if (empty($row->ref_variant_id) || empty($row->ref_model_id)) {
-            return null;
-        }
-        $place = DB::table('ref_variants as v')
-            ->leftJoin('ref_models as m', 'm.id', '=', 'v.model_id')
-            ->leftJoin('ref_generations as g', 'g.id', '=', 'v.generation_id')
-            ->leftJoin('ref_modifications as d', 'd.id', '=', 'v.modification_id')
-            ->leftJoin('ref_complectations as c', 'c.id', '=', 'v.complectation_id')
-            ->where('v.id', $row->ref_variant_id)
-            ->first(['m.name as model', 'g.code as generation', 'g.year_from', 'g.year_to', 'd.code as modification',
-                'd.fuel', 'd.drive', 'c.name as complectation', 'v.editions', 'v.status']);
-        if ($place === null) {
-            return null;
-        }
-        $place = (array) $place;
-        $place['editions'] = $place['editions'] ? json_decode($place['editions'], true) : [];
-
-        return $place;
     }
 
     /** @return array<string, mixed>|null */

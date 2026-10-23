@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Catalog\CatalogPlaces;
 use App\Http\Controllers\Controller;
 use App\Models\Search;
 use App\Services\OptionEnricher;
@@ -17,6 +18,7 @@ class SearchController extends Controller
         private readonly ProviderAggregator    $aggregator,
         private readonly OptionEnricher        $enricher,
         private readonly QueryExpansionService $expander,
+        private readonly CatalogPlaces         $places,
     ) {}
 
     public function search(Request $request): JsonResponse
@@ -57,7 +59,7 @@ class SearchController extends Controller
         }
 
         $data                   = $result->toArray();
-        $data['lots']           = $this->enricher->enrichLots($data['lots']);
+        $data['lots']           = $this->places->attach($this->enricher->enrichLots($data['lots']));
         $data['relaxed']        = $relaxed;
         $data['relaxedNotes']   = $relaxedNotes;
         $data['relaxedMessage'] = $relaxedMessage;

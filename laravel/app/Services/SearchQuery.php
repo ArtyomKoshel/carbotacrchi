@@ -316,6 +316,11 @@ class SearchQuery
         if ($this->model)         $data['model']         = $this->model;
         if ($this->badge)         $data['badge']         = $this->badge;
         if ($this->generation)    $data['generation']    = $this->generation;
+        if ($this->refMakeId)     $data['refMakeId']     = $this->refMakeId;
+        if ($this->refModelId)    $data['refModelId']    = $this->refModelId;
+        if ($this->refGenerationIds)    $data['refGenerationIds']    = $this->refGenerationIds;
+        if ($this->refModificationIds)  $data['refModificationIds']  = $this->refModificationIds;
+        if ($this->refComplectationIds) $data['refComplectationIds'] = $this->refComplectationIds;
         if ($this->yearFrom)      $data['yearFrom']      = $this->yearFrom;
         if ($this->yearTo)        $data['yearTo']        = $this->yearTo;
         if ($this->priceMin)      $data['priceMin']      = $this->priceMin;
