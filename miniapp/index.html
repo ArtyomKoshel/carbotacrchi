@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.min.css">
-  <link rel="stylesheet" href="css/app.css?v=21">
+  <link rel="stylesheet" href="css/app.css?v=22">
 </head>
 <body>
 <!--
@@ -50,13 +50,14 @@
   <aside id="filters-pane" class="filters-pane" aria-label="Фильтры">
     <div class="pane-head">
       <span class="pane-head__title">Фильтры</span>
-      <button class="link-btn" id="filters-reset-btn" type="button">Сбросить</button>
+      <button class="reset-btn" id="filters-reset-btn" type="button">Сбросить</button>
     </div>
     <div id="filters-container" class="filters"></div>
     <div class="pane-foot web-narrow-only">
       <button class="btn btn--primary btn--block" id="filters-apply-btn" type="button">Показать</button>
     </div>
   </aside>
+  <div id="side-resize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Ширина фильтров" tabindex="0"></div>
 
   <main id="main" class="main">
     <!-- Search: applied filters, sorting, the results -->
@@ -95,12 +96,12 @@
 
     <section id="view-favorites" class="view" hidden aria-label="Избранное">
       <h1 class="view__title">Избранное</h1>
-      <div id="favorites" class="results"></div>
+      <div id="favorites-list" class="results"></div>
     </section>
 
     <section id="view-compare" class="view" hidden aria-label="Сравнение">
       <h1 class="view__title">Сравнение</h1>
-      <div id="compare"></div>
+      <div id="compare-table"></div>
     </section>
 
     <section id="view-alerts" class="view" hidden aria-label="Подписки">
@@ -131,17 +132,17 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
-<script src="js/telegram.js?v=21"></script>
-<script src="js/browser-auth.js?v=21"></script>
-<script src="js/api.js?v=21"></script>
-<script src="js/taxonomy.js?v=21"></script>
+<script src="js/telegram.js?v=22"></script>
+<script src="js/browser-auth.js?v=22"></script>
+<script src="js/api.js?v=22"></script>
+<script src="js/taxonomy.js?v=22"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
-<script src="js/format.js?v=21"></script>
-<script src="js/filters.js?v=21"></script>
-<script src="js/compare.js?v=21"></script>
-<script src="js/results.js?v=21"></script>
-<script src="js/lot.js?v=21"></script>
-<script src="js/subscriptions.js?v=21"></script>
-<script src="js/app.js?v=21"></script>
+<script src="js/format.js?v=22"></script>
+<script src="js/filters.js?v=22"></script>
+<script src="js/compare.js?v=22"></script>
+<script src="js/results.js?v=22"></script>
+<script src="js/lot.js?v=22"></script>
+<script src="js/subscriptions.js?v=22"></script>
+<script src="js/app.js?v=22"></script>
 </body>
 </html>

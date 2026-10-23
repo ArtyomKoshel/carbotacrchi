@@ -42,7 +42,7 @@ const App = (() => {
       if (s.wide && s.overlay === 'filters') closeOverlay();
       renderResults();
       if (s.overlay === 'lot' && s.lot) renderLot();
-      if (s.view === 'compare') Compare.render($('compare'), { onOpen: lot => openLot(lot) });
+      if (s.view === 'compare') Compare.render($('compare-table'), { onOpen: lot => openLot(lot) });
     }
   }
 
@@ -109,7 +109,7 @@ const App = (() => {
     for (const v of ['search', 'favorites', 'compare', 'alerts']) $(`view-${v}`).hidden = v !== view;
     document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === view));
     if (view === 'favorites') loadFavorites();
-    if (view === 'compare') Compare.render($('compare'), { onOpen: lot => openLot(lot) });
+    if (view === 'compare') Compare.render($('compare-table'), { onOpen: lot => openLot(lot) });
     if (view === 'alerts') Subscriptions.loadAndRender();
     syncTelegramButtons();
   }
@@ -151,7 +151,8 @@ const App = (() => {
     if (s.overlay) TG.setBack(closeOverlay); else TG.setBack(null);
     if (s.overlay === 'filters') {
       TG.setMain(countLabel(), applyFilters, { active: s.count !== 0, progress: s.count === undefined });
-      TG.setSecondary('Сбросить', resetFilters);
+      // red text: in Telegram's default colours the secondary button read as part of the bar
+      TG.setSecondary('Сбросить', resetFilters, { active: Filters.hasActive(), textColor: TG.theme('destructive_text_color') || '#e5484d' });
       $('filters-apply-btn').textContent = countLabel();
       $('filters-apply-btn').disabled = s.count === 0;
     } else if (s.overlay === 'lot' && s.lot) {
@@ -397,7 +398,7 @@ const App = (() => {
   }
 
   async function loadFavorites() {
-    const mount = $('favorites');
+    const mount = $('favorites-list');
     Results.skeleton(mount, 'rows', 3);
     try {
       await loadFavoriteIds();
@@ -439,12 +440,51 @@ const App = (() => {
     toast(r === 'added' ? `В сравнении: ${Compare.count()} из ${Compare.MAX}` : 'Убрано из сравнения');
     if (s.lot?.id === lot.id) LotView.setCompared($('lot-view'), Compare.has(lot.id));
     if (s.wide && s.view === 'search') renderResults();
-    if (s.view === 'compare') Compare.render($('compare'), { onOpen: l => openLot(l) });
+    if (s.view === 'compare') Compare.render($('compare-table'), { onOpen: l => openLot(l) });
   }
   function renderCompareCount() {
     const n = Compare.count() || '';
     $('cmp-count').textContent = n;
     $('cmp-count-tab').textContent = n;
+  }
+
+  // ── desktop: the filters column drags wider ──────────────────────────────
+  const SIDE_KEY = 'carbot_side_width';
+  const SIDE_MIN = 240, SIDE_MAX = 560;
+  function setSide(px) {
+    const w = Math.round(Math.max(SIDE_MIN, Math.min(SIDE_MAX, Math.min(px, window.innerWidth * 0.45))));
+    document.documentElement.style.setProperty('--side', w + 'px');
+    return w;
+  }
+  function initSideResize() {
+    const handle = $('side-resize');
+    try { const saved = +localStorage.getItem(SIDE_KEY); if (saved) setSide(saved); } catch (_) {}
+    const save = w => { try { localStorage.setItem(SIDE_KEY, String(w)); } catch (_) {} };
+    handle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      document.body.classList.add('resizing');
+      const left = $('filters-pane').getBoundingClientRect().left;
+      let w = 0;
+      const move = ev => { w = setSide(ev.clientX - left); };
+      const up = () => {
+        handle.removeEventListener('pointermove', move);
+        document.body.classList.remove('resizing');
+        if (w) save(w);
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up, { once: true });
+      handle.addEventListener('pointercancel', up, { once: true });
+    });
+    handle.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      save(setSide($('filters-pane').offsetWidth + (e.key === 'ArrowRight' ? 24 : -24)));
+    });
+    handle.addEventListener('dblclick', () => {
+      document.documentElement.style.removeProperty('--side');
+      try { localStorage.removeItem(SIDE_KEY); } catch (_) {}
+    });
   }
 
   // ── desktop keyboard ─────────────────────────────────────────────────────
@@ -469,6 +509,7 @@ const App = (() => {
     try { s.resultsView = localStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'table'; } catch (_) {}
     applyShell();
     WIDE.addEventListener('change', applyShell);
+    initSideResize();
 
     BrowserAuth.init(() => {
       loadFavoriteIds();

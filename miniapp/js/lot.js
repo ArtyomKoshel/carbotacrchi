@@ -138,7 +138,9 @@ const LotView = (() => {
       ${gallery(lot)}
       <div class="lot__body">
         <div>
-          <h2 class="lot__title">${Fmt.esc(Fmt.title(lot))}</h2>
+          <h2 class="lot__title">${lot.lotUrl
+            ? `<a href="${Fmt.esc(lot.lotUrl)}" target="_blank" rel="noopener" data-source-link title="Открыть на ${Fmt.esc(lot.sourceName || 'площадке')}">${Fmt.esc(Fmt.title(lot))}</a>`
+            : Fmt.esc(Fmt.title(lot))}</h2>
           ${Fmt.trim(lot) ? `<div class="lot__trim">${Fmt.esc(Fmt.trim(lot))}</div>` : ''}
           <div class="lot__price">${Fmt.won(lot.price)}</div>
           <div class="lot__meta">${Fmt.esc([lot.sourceName, Fmt.city(lot), lot.listedAt ? 'выставлен ' + Fmt.day(lot.listedAt) : ''].filter(Boolean).join(' · '))}</div>
@@ -165,6 +167,8 @@ const LotView = (() => {
     mount.querySelector('[data-compare]')?.addEventListener('click', e => ctx.onCompare(e.currentTarget));
     mount.querySelector('[data-share]')?.addEventListener('click', () => ctx.onShare());
     mount.querySelectorAll('[data-source]').forEach(b => b.addEventListener('click', () => ctx.onSource()));
+    // the car's name opens the listing too (Telegram needs openLink, not a plain link)
+    mount.querySelector('[data-source-link]')?.addEventListener('click', e => { e.preventDefault(); ctx.onSource(); });
     mount.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(b.dataset.copy); App.toast('Скопировано'); } catch (_) { App.toast(b.dataset.copy); }
     }));

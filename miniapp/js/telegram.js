@@ -50,7 +50,11 @@ const TG = (() => {
   function _button(b, text, fn, prev, opts = {}) {
     if (prev) b.offClick(prev);
     if (!fn) { b.hide(); return null; }
-    b.setParams({ text, is_active: opts.active !== false, is_visible: true, ...(opts.position ? { position: opts.position } : {}) });
+    b.setParams({
+      text, is_active: opts.active !== false, is_visible: true,
+      ...(opts.position ? { position: opts.position } : {}),
+      ...(opts.textColor ? { text_color: opts.textColor } : {}),
+    });
     b.onClick(fn);
     if (opts.progress) b.showProgress(false); else b.hideProgress();
     return fn;
@@ -66,9 +70,12 @@ const TG = (() => {
   function setSecondary(text, fn, opts) {
     const b = inside() && atLeast('7.10') ? twa()?.SecondaryButton : null;
     if (!b) return false;
-    secondHandler = _button(b, text, fn, secondHandler, { position: 'left', ...opts });
+    // text_color stays set until changed: back to Telegram's default unless asked
+    secondHandler = _button(b, text, fn, secondHandler, { position: 'left', textColor: theme('button_color'), ...opts });
     return true;
   }
+  /** A colour of Telegram's current theme ('destructive_text_color', …), or '' outside Telegram. */
+  const theme = key => (inside() ? twa()?.themeParams?.[key] ?? '' : '');
   const hasSecondary = () => inside() && atLeast('7.10') && !!twa()?.SecondaryButton;
 
   /** Telegram's chat picker for a message the bot prepared (Bot API 8.0). */
@@ -84,5 +91,5 @@ const TG = (() => {
     if (inside() && t.openLink) t.openLink(url); else window.open(url, '_blank', 'noopener');
   }
 
-  return { init, inside, getUserId, getInitData, startParam, haptic, setBack, setMain, setSecondary, hasSecondary, share, canShare, openLink };
+  return { init, inside, getUserId, getInitData, startParam, haptic, setBack, setMain, setSecondary, hasSecondary, theme, share, canShare, openLink };
 })();

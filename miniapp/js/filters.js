@@ -789,7 +789,9 @@ const Filters = (() => {
     setEl('sort-select', state.sort);
 
     // Keep reset button state in sync when query is applied from cache/deeplink
-    // (without user interaction events).
+    // (without user interaction events). The ranges live in the inputs: read them first,
+    // or a year/price from the link left the reset button disabled.
+    readFormState();
     _updateResetBtn();
   }
 
@@ -813,6 +815,7 @@ const Filters = (() => {
   function _updateResetBtn() {
     const btn = document.getElementById('filters-reset-btn');
     if (!btn) return;
+    readFormState(); // typed ranges reach state only on read
     const active = hasActive();
     btn.disabled = !active;
   }

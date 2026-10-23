@@ -63,6 +63,7 @@ const Results = (() => {
       ${thumb(lot, i < 8)}
       <div class="gc__body">
         <div class="row__title">${Fmt.esc(Fmt.title(lot))}</div>
+        ${Fmt.trim(lot) ? `<div class="gc__trim">${Fmt.esc(Fmt.trim(lot))}</div>` : ''}
         <div class="row__sub">${Fmt.esc(Fmt.sub(lot))}</div>
         <div class="row__price">${Fmt.won(lot.price)}</div>
         ${flags(lot, ctx.query)}
