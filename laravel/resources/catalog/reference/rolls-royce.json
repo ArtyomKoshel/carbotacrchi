@@ -52,8 +52,16 @@
    "body": "sedan",
    "generations": [
     {
+     "code": "RR1",
+     "number": 7,
+     "years": [
+      2003,
+      2016
+     ]
+    },
+    {
      "code": "RR11",
-     "number": 1,
+     "number": 8,
      "years": [
       2017,
       null

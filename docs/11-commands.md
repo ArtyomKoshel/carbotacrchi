@@ -347,6 +347,25 @@ php artisan catalog:remap --new-only      # только варианты, ко�
 php artisan catalog:remap --chunk=2000 --pause-ms=50
 ```
 
+### `catalog:validate`
+
+Только чтение: проверка файлов справочника и годов поколений против лотов. Код выхода 1 при ошибке в файлах.
+
+```bash
+php artisan catalog:validate
+php artisan catalog:validate --no-data
+```
+
+### `catalog:encar-names`
+
+Корейские названия моделей Encar → английские для `resources/catalog/encar/{make}.json` (`names`),
+по лотам, где у Encar есть оба и поколение совпадает. Без `--write` только показывает новые.
+
+```bash
+php artisan catalog:encar-names
+php artisan catalog:encar-names --make=BMW --write
+```
+
 ### `catalog:coverage`
 
 Только чтение: сколько вариантов и лотов марки правила понимают, что осталось непонятным.

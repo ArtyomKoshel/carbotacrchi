@@ -118,6 +118,17 @@ class EncarMatcherTest extends TestCase
         $this->assertSame(['M50i', null], [$x7->modification, $x7->drive]);
     }
 
+    /** "Q3" alone is the first Q3 (Encar labels the later ones), but a code Encar states always wins. */
+    public function test_a_stated_generation_beats_the_unnumbered_rule(): void
+    {
+        $matcher = self::matcher();
+
+        $this->assertSame('8U', $matcher->match(['make' => '아우디', 'model' => 'Q3', 'badge' => '2.0 TDI 콰트로 다이나믹'])->generation);
+        $this->assertSame('F3', $matcher->match(['make' => '아우디', 'model' => 'Q3 (F3)', 'badge' => '35 TDI 프리미엄'])->generation);
+        $this->assertSame('C192', $matcher->match(['make' => '벤츠', 'model' => 'AMG GT C192', 'badge' => 'AMG GT55 4MATIC+'])->generation);
+        $this->assertSame('L551', $matcher->match(['make' => '랜드로버', 'model' => '레인지로버 이보크 2세대', 'badge' => 'P250 SE'])->generation);
+    }
+
     public function test_the_year_never_picks_a_generation(): void
     {
         $match = self::matcher()->match(['make' => '아우디', 'model' => 'A5', 'badge' => '40 TFSI 콰트로 쿠페', 'year' => 2016]);

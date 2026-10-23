@@ -178,11 +178,18 @@ class EncarMatcher
                 return $rule['to'];
             }
         }
-        // a key without a chassis code stands for every generation of that name
+        // a key without a chassis code renames every generation of that name; its generation
+        // (an unnumbered first one) holds only where Encar named none — a stated code always wins
         foreach ($encar['models'] ?? [] as $key => $to) {
             [$keyName, $keyCode] = self::split($key);
-            if ($keyName === $name && ($keyCode === null || $keyCode === $code)) {
+            if ($keyName !== $name) {
+                continue;
+            }
+            if ($keyCode === $code) {
                 return [$to[0], $to[1] ?? $code];
+            }
+            if ($keyCode === null) {
+                return [$to[0], $code];
             }
         }
         return [$name, $code];

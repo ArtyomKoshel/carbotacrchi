@@ -67,8 +67,16 @@
    "fuel": "electric",
    "generations": [
     {
-     "code": "332",
+     "code": "312e",
      "number": 1,
+     "years": [
+      2013,
+      2019
+     ]
+    },
+    {
+     "code": "332",
+     "number": 2,
      "years": [
       2020,
       null
