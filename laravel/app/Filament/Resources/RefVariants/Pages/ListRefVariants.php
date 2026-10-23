@@ -24,11 +24,11 @@ class ListRefVariants extends ListRecords
         $tabs = [];
         foreach (RefVariantResource::STATUSES as $status => $label) {
             $tabs[$status] = Tab::make($label)
-                ->modifyQueryUsing(fn (Builder $q) => $q->where('status', $status))
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', $status))
                 ->badge(LotFormat::number((int) ($lots[$status] ?? 0)))
                 ->badgeColor($status === 'matched' ? 'gray' : 'warning');
         }
-        $tabs['manual'] = Tab::make('Вручную')->modifyQueryUsing(fn (Builder $q) => $q->where('manual', true))
+        $tabs['manual'] = Tab::make('Вручную')->modifyQueryUsing(fn (Builder $query) => $query->where('manual', true))
             ->badge(LotFormat::number($manual))->badgeColor('gray');
 
         return $tabs;
