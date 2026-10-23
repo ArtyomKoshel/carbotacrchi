@@ -230,7 +230,14 @@ const App = (() => {
   function renderToolbar() {
     $('results-count').innerHTML = s.loading && !s.lots.length ? '' : `<b>${Fmt.num(s.total)}</b> ${Fmt.plural(s.total, 'лот', 'лота', 'лотов')}`;
     const chips = Filters.activeChips();
-    $('applied-chips').innerHTML = chips.map(c => `<button class="chip chip--applied" type="button" data-clear="${c.key}" aria-label="Снять фильтр: ${Fmt.esc(c.label)}">${Fmt.esc(c.label)}</button>`).join('');
+    // "Сбросить" first: the row scrolls sideways on a phone, and a lone × on a chip was all there was
+    $('applied-chips').innerHTML = (chips.length ? '<button class="chip chip--reset" type="button" data-reset-all>Сбросить</button>' : '')
+      + chips.map(c => `<button class="chip chip--applied" type="button" data-clear="${c.key}" aria-label="Снять фильтр: ${Fmt.esc(c.label)}">${Fmt.esc(c.label)}</button>`).join('');
+    $('applied-chips').querySelector('[data-reset-all]')?.addEventListener('click', () => {
+      TG.haptic('selection');
+      Filters.reset();
+      search(Filters.getQuery());
+    });
     $('applied-chips').querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => {
       TG.haptic('selection');
       Filters.clear(b.dataset.clear);

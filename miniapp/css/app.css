@@ -127,6 +127,8 @@ body.tg .chip { border-color: transparent; }
 .chip--filters span:not(:empty) { background: var(--accent); color: var(--accent-text); border-radius: 99px; padding: 0 6px; font-size: 11px; line-height: 17px; }
 .chip--applied { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
 .chip--applied::after { content: "×"; font-size: 16px; line-height: 1; opacity: .7; }
+.chip--reset { background: var(--bad-soft); border-color: transparent; color: var(--bad); font-weight: 600; }
+.chip--reset::before { content: "×"; font-size: 16px; line-height: 1; }
 .chip--follow { color: var(--accent); }
 .chip--follow.on { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 .chip--follow.on::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }

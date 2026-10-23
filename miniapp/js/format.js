@@ -47,7 +47,13 @@ const Fmt = (() => {
   /** badge / trim line under the title: "2.0 Premium" */
   function trim(lot) {
     const t = lot.trim ? Taxonomy.label('trim', lot.trim) : '';
-    return [lot.badgeEn, (t && t !== lot.trim ? t : (lot.trimEn || lot.trim))].filter(Boolean).join(' · ');
+    const badge = String(lot.badgeEn ?? '').trim();
+    const detail = String((t && t !== lot.trim ? t : (lot.trimEn || lot.trim)) ?? '').trim();
+    // Encar often repeats the badge as the detail ("40 TFSI S Line · 40 TFSI S Line", "5.2 V10 Coupe · Coupe")
+    const norm = v => v.toLowerCase().replace(/\s+/g, ' ');
+    if (badge && detail && norm(badge).includes(norm(detail))) return badge;
+    if (badge && detail && norm(detail).includes(norm(badge))) return detail;
+    return [badge, detail].filter(Boolean).join(' · ');
   }
   function engine(lot) {
     const v = Number(lot.engineVolume);
