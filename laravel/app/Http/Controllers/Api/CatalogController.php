@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
  * The reference catalog for the filters (app/Catalog): which makes it covers, and a make's
  * models → generations → modifications and complectations with their active lots. The
  * miniapp cascades on the client from one make's `cells` — every (model, generation,
- * modification, complectation) that has lots, with how many.
+ * modification, complectation) that has lots, with how many. A null is "not stated": those
+ * lots are counted too and the miniapp offers them as «… не указано», so no lot drops out.
  */
 class CatalogController extends Controller
 {
@@ -35,7 +36,7 @@ class CatalogController extends Controller
     public function make(int $makeId): JsonResponse
     {
         $data = Cache::remember("api_catalog_make_{$makeId}", self::TTL, function () use ($makeId) {
-            $cells = DB::table('lots')->where('is_active', true)->where('ref_make_id', $makeId)->whereNotNull('ref_model_id')
+            $cells = DB::table('lots')->where('is_active', true)->where('ref_make_id', $makeId)
                 ->groupBy('ref_model_id', 'ref_generation_id', 'ref_modification_id', 'ref_complectation_id')
                 ->selectRaw('ref_model_id m, ref_generation_id g, ref_modification_id d, ref_complectation_id c, COUNT(*) n')
                 ->get();
@@ -54,7 +55,7 @@ class CatalogController extends Controller
                 'generations' => $generations,
                 'modifications' => $modifications,
                 'complectations' => $complectations,
-                'cells' => $cells->map(fn ($c) => [(int) $c->m, $c->g === null ? null : (int) $c->g,
+                'cells' => $cells->map(fn ($c) => [$c->m === null ? null : (int) $c->m, $c->g === null ? null : (int) $c->g,
                     $c->d === null ? null : (int) $c->d, $c->c === null ? null : (int) $c->c, (int) $c->n])->all(),
             ];
         });

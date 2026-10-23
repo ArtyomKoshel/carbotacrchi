@@ -95,7 +95,8 @@ class SearchQuery
         $q->refModelId = (int) ($data['refModelId'] ?? 0);
         foreach (['refGenerationIds', 'refModificationIds', 'refComplectationIds'] as $key) {
             if (!empty($data[$key]) && is_array($data[$key])) {
-                $q->$key = array_values(array_filter(array_map('intval', $data[$key])));
+                // 0 is "not stated" (CatalogSpec), so it stays; negative ids mean nothing
+                $q->$key = array_values(array_unique(array_filter(array_map('intval', $data[$key]), fn (int $id) => $id >= 0)));
             }
         }
         $q->yearFrom = (int) ($data['yearFrom'] ?? 0);

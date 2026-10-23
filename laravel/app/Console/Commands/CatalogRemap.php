@@ -29,13 +29,10 @@ class CatalogRemap extends Command
         $this->info(sprintf('Reference: %d makes, %d models, %d generations, %d complectations',
             $counts['makes'], $counts['models'], $counts['generations'], $counts['complectations']));
 
-        $variants = DB::table('lots')->whereIn('source', CatalogLinker::SOURCES)
-            ->groupBy('source', ...CatalogLinker::VARIANT_FIELDS)
-            ->select('source', ...CatalogLinker::VARIANT_FIELDS)->selectRaw('SUM(is_active) AS active')
-            ->get();
+        $variants = $linker->variants(fn ($q) => $q);
         $active = [];
         foreach ($variants as $v) {
-            $active[CatalogLinker::hash($v)] = (int) $v->active;
+            $active[$v->h] = (int) $v->active;
         }
         $stored = $linker->store($variants, again: ! $this->option('new-only'), lots: $active);
         $this->info(sprintf('Variants: %d in lots, %d read, %d placed differently than before (%.1f s)',

@@ -69,29 +69,45 @@ const CatalogFilter = (() => {
       sel.complectations = (restore.refComplectationIds ?? []).map(Number);
       const ids = new Set((restore.refModificationIds ?? []).map(Number));
       sel.modifications = [...new Set(tree.modifications.filter(m => ids.has(m.id)).map(m => m.code))];
+      if (ids.has(NONE)) sel.modifications.push(NONE_MOD);
     }
     skeleton();
     return true;
   }
 
   // ── the cascade ──────────────────────────────────────────────────────────
+  //
+  // Lots the catalog could not place all the way stay choosable: «Прочие модели» (model −1),
+  // «… не указано» (generation / complectation 0, modification NONE_MOD). A choice never hides
+  // a lot without saying so.
 
+  const OTHER_MODEL = -1;
+  const NONE = 0;
+  const NONE_MOD = '·none';
   const byId = list => new Map((list ?? []).map(x => [x.id, x]));
+
+  /** A cell's key at each level, with the "not stated" sentinels. */
+  const keyOf = {
+    model: c => c[0] ?? OTHER_MODEL,
+    gen: c => c[1] ?? NONE,
+    mod: (c, mods) => (c[2] ? mods.get(c[2])?.code ?? NONE_MOD : NONE_MOD),
+    comp: c => c[3] ?? NONE,
+  };
 
   /** Cells the choices above `level` leave: 0 model, 1 generation, 2 modification, 3 complectation. */
   function cells(level) {
     const mods = byId(tree.modifications);
-    return tree.cells.filter(([m, g, d]) =>
-      (level < 1 || !sel.model || m === sel.model)
-      && (level < 2 || !sel.generations.length || sel.generations.includes(g))
-      && (level < 3 || !sel.modifications.length || (d && sel.modifications.includes(mods.get(d)?.code))));
+    return tree.cells.filter(c =>
+      (level < 1 || !sel.model || keyOf.model(c) === sel.model)
+      && (level < 2 || !sel.generations.length || sel.generations.includes(keyOf.gen(c)))
+      && (level < 3 || !sel.modifications.length || sel.modifications.includes(keyOf.mod(c, mods))));
   }
 
   function counts(level, key) {
+    const mods = byId(tree.modifications);
     const out = new Map();
     for (const c of cells(level)) {
-      const k = key(c);
-      if (k === null || k === undefined) continue;
+      const k = key(c, mods);
       out.set(k, (out.get(k) ?? 0) + c[4]);
     }
     return out;
@@ -108,16 +124,19 @@ const CatalogFilter = (() => {
     render(0);
   }
 
+  // "not stated" last, the rest by its own order
+  const noneLast = (isNone, order) => (a, b) => (isNone(a) - isNone(b)) || order(a, b);
+
   /**
    * Rebuilds the selects from `from` down (0 model … 3 complectation); the ones above keep
    * their state, so a multi-select stays open while several are picked.
    */
   function render(from) {
-    const gens = byId(tree.generations), mods = byId(tree.modifications), models = byId(tree.models), comps = byId(tree.complectations);
-    const modelCounts = counts(0, c => c[0]);
-    const genCounts = counts(1, c => c[1]);
-    const modCounts = counts(2, c => (c[2] ? mods.get(c[2])?.code : null));
-    const compCounts = counts(3, c => c[3]);
+    const gens = byId(tree.generations), models = byId(tree.models), comps = byId(tree.complectations);
+    const modelCounts = counts(0, keyOf.model);
+    const genCounts = counts(1, keyOf.gen);
+    const modCounts = counts(2, keyOf.mod);
+    const compCounts = counts(3, keyOf.comp);
 
     // a choice the cascade no longer offers is dropped
     if (from <= 0 && sel.model && !modelCounts.has(sel.model)) sel.model = 0;
@@ -127,24 +146,26 @@ const CatalogFilter = (() => {
 
     const build = {
       model: () => select('model', [{ value: '', text: 'Любая модель' },
-        ...[...modelCounts].map(([id, k]) => ({ value: String(id), text: models.get(id)?.name ?? String(id), n: k }))
-          .sort((a, b) => a.text.localeCompare(b.text, 'en', { numeric: true }))],
+        ...[...modelCounts].map(([id, k]) => ({ id, value: String(id), text: id === OTHER_MODEL ? 'Прочие модели' : (models.get(id)?.name ?? String(id)), n: k }))
+          .sort(noneLast(o => o.id === OTHER_MODEL, (a, b) => a.text.localeCompare(b.text, 'en', { numeric: true })))],
         sel.model ? [String(sel.model)] : [''], 1, v => {
           sel.model = Number(v) || 0; sel.generations = []; sel.modifications = []; sel.complectations = [];
           render(1); changed();
         }),
-      gen: () => select('gen', [...genCounts].map(([id, k]) => ({ g: gens.get(id) ?? {}, id, k }))
-          .sort((a, b) => (a.g.year_from ?? 0) - (b.g.year_from ?? 0))
-          .map(({ g, id, k }) => ({ value: String(id), text: [g.code, years(g)].filter(Boolean).join(' · '), n: k })),
+      gen: () => select('gen', [...genCounts].map(([id, k]) => ({ id, g: gens.get(id) ?? {}, n: k }))
+          .sort(noneLast(o => o.id === NONE, (a, b) => (a.g.year_from ?? 0) - (b.g.year_from ?? 0)))
+          .map(({ id, g, n: k }) => ({ value: String(id), text: id === NONE ? 'Поколение не указано' : [g.code, years(g)].filter(Boolean).join(' · '), n: k })),
         sel.generations.map(String), null, v => { sel.generations = v.map(Number); render(2); changed(); }, 'Любое поколение'),
-      mod: () => select('mod', [...modCounts].map(([code, k]) => ({ value: code, text: code, n: k }))
-          .sort((a, b) => a.text.localeCompare(b.text, 'en', { numeric: true })),
+      mod: () => select('mod', [...modCounts].map(([code, k]) => ({ value: code, text: code === NONE_MOD ? 'Модификация не указана' : code, n: k }))
+          .sort(noneLast(o => o.value === NONE_MOD, (a, b) => a.text.localeCompare(b.text, 'en', { numeric: true }))),
         sel.modifications, null, v => { sel.modifications = v; render(3); changed(); }, 'Любая модификация'),
-      comp: () => select('comp', [...compCounts].map(([id, k]) => ({ value: String(id), text: comps.get(id)?.name ?? String(id), n: k }))
-          .sort((a, b) => b.n - a.n),
+      comp: () => select('comp', [...compCounts].map(([id, k]) => ({ id, value: String(id), text: id === NONE ? 'Комплектация не указана' : (comps.get(id)?.name ?? String(id)), n: k }))
+          .sort(noneLast(o => o.id === NONE, (a, b) => b.n - a.n)),
         sel.complectations.map(String), null, v => { sel.complectations = v.map(Number); changed(); }, 'Любая комплектация'),
     };
-    const shown = { model: true, gen: !!sel.model, mod: !!sel.model, comp: compCounts.size > 0 };
+    const placed = sel.model && sel.model !== OTHER_MODEL;
+    // complectations only when there is a real one to pick, not just "not stated"
+    const shown = { model: true, gen: placed, mod: placed, comp: [...compCounts.keys()].some(k => k !== NONE) };
 
     LEVELS.forEach((l, i) => {
       if (i < from) return;
@@ -184,11 +205,12 @@ const CatalogFilter = (() => {
     const mods = tree.modifications.filter(m => sel.modifications.includes(m.code)
       && (!sel.generations.length || sel.generations.includes(m.generation_id))
       && tree.generations.some(g => g.id === m.generation_id && g.model_id === sel.model));
+    const modIds = [...mods.map(m => m.id), ...(sel.modifications.includes(NONE_MOD) ? [NONE] : [])];
     return {
       refMakeId: tree.make.id,
       refModelId: sel.model || undefined,
       refGenerationIds: sel.generations.length ? sel.generations : undefined,
-      refModificationIds: mods.length ? mods.map(m => m.id) : undefined,
+      refModificationIds: modIds.length ? modIds : undefined,
       refComplectationIds: sel.complectations.length ? sel.complectations : undefined,
     };
   }
@@ -196,10 +218,11 @@ const CatalogFilter = (() => {
   /** Words for the applied-filter chip: "5 Series G60 · 530i xDrive · M Sport". */
   function summary() {
     if (!tree) return '';
-    const model = tree.models.find(m => m.id === sel.model)?.name;
-    const gens = tree.generations.filter(g => sel.generations.includes(g.id)).map(g => g.code);
-    const comps = tree.complectations.filter(c => sel.complectations.includes(c.id)).map(c => c.name);
-    return [[model, gens.join(', ')].filter(Boolean).join(' '), sel.modifications.join(', '), comps.join(', ')].filter(Boolean).join(' · ');
+    const model = sel.model === OTHER_MODEL ? 'прочие модели' : tree.models.find(m => m.id === sel.model)?.name;
+    const gens = sel.generations.map(id => (id === NONE ? 'поколение не указано' : tree.generations.find(g => g.id === id)?.code)).filter(Boolean);
+    const mods = sel.modifications.map(c => (c === NONE_MOD ? 'модификация не указана' : c));
+    const comps = sel.complectations.map(id => (id === NONE ? 'комплектация не указана' : tree.complectations.find(c => c.id === id)?.name)).filter(Boolean);
+    return [[model, gens.join(', ')].filter(Boolean).join(' '), mods.join(', '), comps.join(', ')].filter(Boolean).join(' · ');
   }
 
   const hasChoice = () => !!(sel.model || sel.complectations.length);

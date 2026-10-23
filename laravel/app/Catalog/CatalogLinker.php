@@ -52,10 +52,26 @@ class CatalogLinker
         if ($lotIds === []) {
             return 0;
         }
-        $variants = $this->db->table('lots')->whereIn('id', $lotIds)->whereIn('source', self::SOURCES)
-            ->distinct()->get(['source', ...self::VARIANT_FIELDS])->all();
-        $this->store($variants);
+        $this->store($this->variants(fn ($q) => $q->whereIn('l.id', $lotIds)));
         return $this->apply($lotIds);
+    }
+
+    /**
+     * Distinct variants of the lots $where picks, with their active lots. Grouped by the hash,
+     * not by the columns: the tables compare case-insensitively, and "2.0 LPI" / "2.0 LPi" are
+     * two variants of Encar's (two hashes), which a GROUP BY on the columns would fold into one.
+     *
+     * @param  callable(\Illuminate\Database\Query\Builder): mixed $where
+     * @return list<object> rows with source, VARIANT_FIELDS, active
+     */
+    public function variants(callable $where): array
+    {
+        $fields = implode(', ', array_map(fn ($f) => "ANY_VALUE(l.`{$f}`) AS `{$f}`", self::VARIANT_FIELDS));
+        $query = $this->db->table('lots as l')->whereIn('l.source', self::SOURCES)
+            ->selectRaw('l.source, ' . self::SQL_HASH . " AS h, {$fields}, SUM(l.is_active) AS active")
+            ->groupByRaw('l.source, h');
+        $where($query);
+        return $query->get()->all();
     }
 
     /**

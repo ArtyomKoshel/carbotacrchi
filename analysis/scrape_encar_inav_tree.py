@@ -230,9 +230,14 @@ def _process_model(
     model_act = model_f["Action"]
     model_rows: list[dict] = []
 
+    # Encar's own facts about the model: its code and production dates (yyyymm), for the catalog
     base = dict(
         car_type=ct_value, make_kr=make_kr, make_en=make_en,
         model_group_kr=mg_kr, model_kr=model_kr,
+        model_code=_facet_meta(model_f, "Code"),
+        model_start=_facet_meta(model_f, "ModelStartDate"),
+        model_end=_facet_meta(model_f, "ModelEndDate"),
+        model_count=model_f.get("Count", 0),
     )
 
     bg_facets = _get_next_level(model_act, "BadgeGroup")
@@ -257,12 +262,15 @@ def _process_model(
             bd_facets = _get_next_level(badge_act, "BadgeDetail")
             if not bd_facets:
                 model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
+                                   "badge_code": _facet_meta(badge_f, "Code"),
                                    "badge_detail_kr": None, "count": badge_f["Count"]})
                 continue
 
             for bd_f in bd_facets:
                 model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
-                                   "badge_detail_kr": bd_f["Value"], "count": bd_f["Count"]})
+                                   "badge_code": _facet_meta(badge_f, "Code"),
+                                   "badge_detail_kr": bd_f["Value"], "badge_detail_code": _facet_meta(bd_f, "Code"),
+                                   "count": bd_f["Count"]})
     return model_rows
 
 
@@ -394,12 +402,13 @@ def main():
     ap.add_argument("--sleep",    type=float, default=0.05, help="Sleep between API calls per thread (default 0.05)")
     ap.add_argument("--dry-run",  action="store_true")
     ap.add_argument("--resume",   action="store_true")
+    ap.add_argument("--out-name", default="encar_inav_tree.json", help="File name in --out-dir")
     args = ap.parse_args()
 
     global SLEEP
     SLEEP = args.sleep
 
-    out_path = os.path.join(args.out_dir, "encar_inav_tree.json")
+    out_path = os.path.join(args.out_dir, args.out_name)
     start    = datetime.now(timezone.utc)
 
     os.makedirs(args.out_dir, exist_ok=True)

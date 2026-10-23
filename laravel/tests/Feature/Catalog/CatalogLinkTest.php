@@ -53,6 +53,18 @@ final class CatalogLinkTest extends TestCase
         $this->assertCount(2, $tree['cells']);
     }
 
+    /** The tables compare case-insensitively; Encar's "LPI" and "LPi" are still two variants, both linked. */
+    public function test_variants_that_differ_only_in_case_are_both_linked(): void
+    {
+        $this->lot('9301', '기아', 'K5 3세대', '2.0 LPI');
+        $this->lot('9302', '기아', 'K5 3세대', '2.0 LPi');
+
+        Artisan::call('catalog:remap', ['--pause-ms' => 0]);
+
+        $variants = DB::table('lots')->whereIn('id', ['9301', '9302'])->pluck('ref_variant_id');
+        $this->assertCount(2, $variants->filter()->unique());
+    }
+
     public function test_php_and_mysql_hash_a_variant_alike(): void
     {
         $this->lot('9101', 'BMW', 'X7 (G07)', 'xDrive 40i M 스포츠 6인승', null);
