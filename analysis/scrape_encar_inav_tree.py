@@ -117,7 +117,10 @@ def _client() -> httpx.Client:
             idx = _worker_counter
             _worker_counter += 1
         _local.worker_idx = idx
-        _local.proxy_base = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else None
+        # every model group gets a new thread pool, so idx keeps growing past the pool size:
+        # a thread without a proxy of its own would go to Encar directly, and Encar answers
+        # 404 outside Korea (the October run lost every model after the first group that way)
+        _local.proxy_base = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else _make_proxy_url(idx)
         _local.client = _build_client(_local.proxy_base)
         if _local.proxy_base:
             with _print_lock:
@@ -127,7 +130,7 @@ def _client() -> httpx.Client:
 
 def _rotate_proxy() -> None:
     """Close current client and rebuild with a fresh proxy session (new IP)."""
-    if not hasattr(_local, "proxy_base") or not _local.proxy_base:
+    if not os.getenv("FLOPPY_USERNAME") or not os.getenv("FLOPPY_PASSWORD"):
         return
     username = os.getenv("FLOPPY_USERNAME", "")
     password = os.getenv("FLOPPY_PASSWORD", "")
@@ -152,8 +155,8 @@ def _get_inav(q: str, retries: int = 5, expected: int = 0) -> dict:
     """The iNav of a query; raises Failed when every retry fails (never an empty answer).
 
     expected: the listings Encar counted for this facet one level up. A 404 means "nothing
-    here" only when that is 0; a facet with listings that answers 404 was refused, so it
-    is retried like any block (the October run lost every badge that way).
+    here" only when that is 0; a facet with listings that answers 404 was refused (a request
+    that left Korea, see _client), so it is retried like any block, never saved as empty.
     """
     global _api_calls, _refused
     for attempt in range(retries):
@@ -176,7 +179,7 @@ def _get_inav(q: str, retries: int = 5, expected: int = 0) -> dict:
                     _refused += 1
             wait = min(2 ** attempt, 16)
             with _print_lock:
-                print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s")
+                print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s  ({expected} listings) {q}")
             _rotate_proxy()
             time.sleep(wait)
         except Exception as e:
