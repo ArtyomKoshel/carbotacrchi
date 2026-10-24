@@ -1,0 +1,887 @@
+{
+  "make": "KG Mobility",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "LPI": "lpg",
+      "LPe": "lpg",
+      "HEV": "hybrid",
+      "PHEV": "hybrid",
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "E-TECH": "hybrid",
+      "EV": "electric",
+      "Electric": "electric",
+      "Electrified": "electric",
+      "Turbo": null,
+      "GDI": null,
+      "GDi": null,
+      "T-GDI": null,
+      "T-GDi": null,
+      "MPI": null,
+      "MPi": null,
+      "CRDi": null,
+      "VGT": null,
+      "e-VGT": null,
+      "TCe": null,
+      "GDe": null,
+      "GTe": null,
+      "dCi": null,
+      "VVT": null,
+      "Long": null,
+      "Range": null,
+      "Standard": null,
+      "CVVL": null,
+      "Performance": null,
+      "Long Range": null,
+      "CVT": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dT$"
+      },
+      {
+        "re": "^[A-Z]{1,2}\\d{3}$"
+      },
+      {
+        "re": "^L\\d\\.\\d$",
+        "fuel": "lpg"
+      },
+      {
+        "re": "^[A-Z]\\d{2}$"
+      },
+      {
+        "re": "^\\d{3}$"
+      }
+    ],
+    "drives": {
+      "4WD": "4wd",
+      "AWD": "awd",
+      "e-AWD": "awd",
+      "HTRAC": "awd",
+      "2WD": null
+    }
+  },
+  "complectations": [
+    "Best Selection Ⅰ",
+    "Best Selection Ⅱ",
+    "Platinum Ⅱ",
+    "Signature X Line",
+    "Esprit Alpine",
+    "Safety Pack",
+    "Black Ink",
+    "Le Blanc",
+    "The Black",
+    "Value Plus",
+    "Premium Plus",
+    "X-Line",
+    "X Line",
+    "N Line",
+    "GT Line",
+    "Prestige",
+    "Modern",
+    "Noblesse",
+    "Signature",
+    "Exclusive",
+    "Premium",
+    "Calligraphy",
+    "Inspiration",
+    "Smart",
+    "Special",
+    "Luxury",
+    "Trendy",
+    "Plus",
+    "Masters",
+    "Gravity",
+    "Choice",
+    "Value",
+    "President",
+    "Style",
+    "Basic",
+    "Upper",
+    "Top",
+    "Earth",
+    "Air",
+    "Deluxe",
+    "Premier",
+    "Premiere",
+    "Platinum",
+    "Master",
+    "Best Selection",
+    "Adventure",
+    "Elite",
+    "Safety",
+    "Club",
+    "Coolmen",
+    "Core",
+    "Family",
+    "Expedition",
+    "Fashion",
+    "Supreme",
+    "Pop",
+    "Iconic",
+    "Intelligent",
+    "Wild",
+    "Flux",
+    "Inspire",
+    "Art",
+    "Tech",
+    "Prime",
+    "Professional",
+    "Dynamic",
+    "Extreme",
+    "Midnight",
+    "Redline",
+    "Millennial",
+    "Business",
+    "Mobility",
+    "Honors",
+    "Life",
+    "Black",
+    "Noble",
+    "Trend",
+    "Design",
+    "Cross",
+    "Grand",
+    "Active",
+    "Sport",
+    "High",
+    "RE",
+    "LE",
+    "SE",
+    "XE",
+    "PE",
+    "T5",
+    "T7",
+    "V1",
+    "V3",
+    "V5",
+    "V7",
+    "VX",
+    "IX",
+    "CVX",
+    "LT",
+    "LTZ",
+    "LS",
+    "RS",
+    "ACTIV",
+    "Z71-X",
+    "H Pick",
+    "Hi-pass",
+    "Navi",
+    "Navigation",
+    "Sunroof",
+    "Package",
+    "5-link",
+    "N",
+    "S",
+    "GT",
+    "The Essential",
+    "Essential",
+    "Tourer",
+    "Lounge",
+    "Limousine",
+    "High Limousine",
+    "The Iconic",
+    "VIP",
+    "E-Value+",
+    "Celebrity",
+    "Collection",
+    "The Spec",
+    "Spec",
+    "PYL",
+    "Business 1",
+    "Business 2",
+    "Q",
+    "Urban",
+    "Light",
+    "Avenue",
+    "Fever",
+    "Care Plus",
+    "Selection",
+    "Xtreme Selection",
+    "Wit",
+    "Blue Saver",
+    "Unique",
+    "GT-R",
+    "HVX",
+    "VXL",
+    "300VXL",
+    "VIP Pack",
+    "PACK",
+    "D Spec",
+    "Xtreme",
+    "X-Pro",
+    "High Roof",
+    "Executive",
+    "Minus",
+    "Heritage",
+    "Majesty",
+    "Gear",
+    "Gear Plus",
+    "Outdoor",
+    "C5",
+    "C7",
+    "CX5",
+    "CX7",
+    "TX",
+    "LX",
+    "RX",
+    "RX7",
+    "A3",
+    "S7",
+    "S9",
+    "E5",
+    "E7",
+    "MX",
+    "X"
+  ],
+  "editions": [
+    "White Edition",
+    "Outdoor Edition",
+    "Gear Edition",
+    "Limited",
+    "Special Vehicle",
+    "Other Special Vehicle",
+    "Iron Man Edition",
+    "Ten Million Limited",
+    "Dump",
+    "Box Truck",
+    "Wing Body",
+    "Refrigerated",
+    "1 Million",
+    "Deluxe Taxi",
+    "Coachbuilt",
+    "Ambulance",
+    "Camper",
+    "The Black Edition",
+    "School Bus",
+    "Rental",
+    "Disabled",
+    "Commercial",
+    "Taxi",
+    "Driving School",
+    "Eurasia Edition",
+    "Finest Edition",
+    "Dynamic Edition",
+    "Limited Edition",
+    "Design Edition",
+    "Black Edition",
+    "X Edition",
+    "Special Edition",
+    "First Edition",
+    "Edition"
+  ],
+  "models": [
+    {
+      "name": "Actyon",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Actyon Sports",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Chairman",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Chairman H",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New Classic",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Chairman W",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "G4 Rexton",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Istana",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Kallista",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Beautiful",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando C",
+      "generations": [
+        {
+          "code": "New Style",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando EV",
+      "generations": [
+        {
+          "code": "Emotion",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando Family",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando Jeep",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando Sports",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Korando Turismo",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Kyron",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Musso",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Q300",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Musso EV",
+      "generations": [
+        {
+          "code": "O100",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Musso Sports",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Q250",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Musso Sports Khan",
+      "generations": [
+        {
+          "code": "Q250",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "New Family",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Rexton",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New Arena",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Super",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Rexton Sports",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Rexton Sports Khan",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Rexton W",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Rodius",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Euro",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Tivoli",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Very New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Tivoli Air",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Tivoli Armour",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Torres",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Torres EVX",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    }
+  ]
+}

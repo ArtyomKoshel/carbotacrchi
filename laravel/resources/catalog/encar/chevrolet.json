@@ -2,15 +2,52 @@
   "_comment": "Chevrolet (GM Daewoo) on Encar. names: Encar's model group → our model (the Latin names they were sold under in Korea). encar_models: drafted by build_catalog_from_tree.py, read by a person.",
   "korean": "쉐보레(GM대우)",
   "names": {
-    "G2X": "G2X", "넥시아": "Nexia", "누비라": "Nubira", "다마스": "Damas", "라노스": "Lanos", "라보": "Labo",
-    "라세티": "Lacetti", "레간자": "Leganza", "레조": "Rezzo", "로얄살롱": "Royale Salon", "르망": "LeMans",
-    "마티즈": "Matiz", "말리부": "Malibu", "매그너스": "Magnus", "맵시": "Maepsy", "베리타스": "Veritas",
-    "볼트 EUV": "Bolt EUV", "볼트 EV": "Bolt EV", "볼트(Volt)": "Volt", "브로엄": "Brougham", "슈퍼살롱": "Super Salon",
-    "스테이츠맨": "Statesman", "스파크": "Spark", "씨에로": "Cielo", "아베오": "Aveo", "아카디아": "Arcadia",
-    "알페온": "Alpheon", "에스페로": "Espero", "올란도": "Orlando", "윈스톰": "Winstorm", "이쿼녹스": "Equinox",
-    "임팔라": "Impala", "임페리얼": "Imperial", "젠트라": "Gentra", "카마로": "Camaro", "칼로스": "Kalos",
-    "캡티바": "Captiva", "콜로라도": "Colorado", "콜벳": "Corvette", "크루즈": "Cruze", "타호": "Tahoe",
-    "토스카": "Tosca", "트래버스": "Traverse", "트랙스": "Trax", "트레일블레이저": "Trailblazer", "티코": "Tico",
+    "G2X": "G2X",
+    "넥시아": "Nexia",
+    "누비라": "Nubira",
+    "다마스": "Damas",
+    "라노스": "Lanos",
+    "라보": "Labo",
+    "라세티": "Lacetti",
+    "레간자": "Leganza",
+    "레조": "Rezzo",
+    "로얄살롱": "Royale Salon",
+    "르망": "LeMans",
+    "마티즈": "Matiz",
+    "말리부": "Malibu",
+    "매그너스": "Magnus",
+    "맵시": "Maepsy",
+    "베리타스": "Veritas",
+    "볼트 EUV": "Bolt EUV",
+    "볼트 EV": "Bolt EV",
+    "볼트(Volt)": "Volt",
+    "브로엄": "Brougham",
+    "슈퍼살롱": "Super Salon",
+    "스테이츠맨": "Statesman",
+    "스파크": "Spark",
+    "씨에로": "Cielo",
+    "아베오": "Aveo",
+    "아카디아": "Arcadia",
+    "알페온": "Alpheon",
+    "에스페로": "Espero",
+    "올란도": "Orlando",
+    "윈스톰": "Winstorm",
+    "이쿼녹스": "Equinox",
+    "임팔라": "Impala",
+    "임페리얼": "Imperial",
+    "젠트라": "Gentra",
+    "카마로": "Camaro",
+    "칼로스": "Kalos",
+    "캡티바": "Captiva",
+    "콜로라도": "Colorado",
+    "콜벳": "Corvette",
+    "크루즈": "Cruze",
+    "타호": "Tahoe",
+    "토스카": "Tosca",
+    "트래버스": "Traverse",
+    "트랙스": "Trax",
+    "트레일블레이저": "Trailblazer",
+    "티코": "Tico",
     "프린스": "Prince"
   },
   "model_splits": {
@@ -19,5 +56,344 @@
     "로얄 프린스": "Royale Prince",
     "크루즈5": "Cruze5",
     "토스카 프리미엄6": "Tosca Premium 6"
+  },
+  "encar_models": {
+    "All New 마티즈": {
+      "model": "Matiz",
+      "generation": "All New"
+    },
+    "G2X": {
+      "model": "G2X",
+      "generation": "I"
+    },
+    "넥시아": {
+      "model": "Nexia",
+      "generation": "I"
+    },
+    "누비라": {
+      "model": "Nubira",
+      "generation": "I"
+    },
+    "누비라 2": {
+      "model": "Nubira",
+      "generation": "Gen 2"
+    },
+    "뉴 다마스": {
+      "model": "Damas",
+      "generation": "New"
+    },
+    "뉴 라보": {
+      "model": "Labo",
+      "generation": "New"
+    },
+    "뉴 볼트 EV": {
+      "model": "Bolt EV",
+      "generation": "New"
+    },
+    "뉴프린스": {
+      "model": "Prince",
+      "generation": "New"
+    },
+    "다마스": {
+      "model": "Damas",
+      "generation": "I"
+    },
+    "다마스 II": {
+      "model": "Damas",
+      "generation": "Gen 2"
+    },
+    "더 넥스트 스파크": {
+      "model": "Spark",
+      "generation": "The Next"
+    },
+    "더 넥스트 이쿼녹스": {
+      "model": "Equinox",
+      "generation": "The Next"
+    },
+    "더 뉴 말리부": {
+      "model": "Malibu",
+      "generation": "The New"
+    },
+    "더 뉴 스파크": {
+      "model": "Spark",
+      "generation": "The New"
+    },
+    "더 뉴 아베오 세단": {
+      "model": "Aveo",
+      "generation": "The New",
+      "words": "Sedan"
+    },
+    "더 뉴 아베오 해치백": {
+      "model": "Aveo",
+      "generation": "The New",
+      "words": "Hatchback"
+    },
+    "더 뉴 카마로": {
+      "model": "Camaro",
+      "generation": "The New"
+    },
+    "더 뉴 트랙스": {
+      "model": "Trax",
+      "generation": "The New"
+    },
+    "더 뉴 트레일블레이저": {
+      "model": "Trailblazer",
+      "generation": "The New"
+    },
+    "라노스": {
+      "model": "Lanos",
+      "generation": "I"
+    },
+    "라노스 II": {
+      "model": "Lanos",
+      "generation": "Gen 2"
+    },
+    "라보": {
+      "model": "Labo",
+      "generation": "I"
+    },
+    "라세티": {
+      "model": "Lacetti",
+      "generation": "I"
+    },
+    "라세티 프리미어": {
+      "model": "Lacetti",
+      "generation": "Premier"
+    },
+    "레간자": {
+      "model": "Leganza",
+      "generation": "I"
+    },
+    "레조": {
+      "model": "Rezzo",
+      "generation": "I"
+    },
+    "로얄 프린스": {
+      "model": "Royale Prince",
+      "generation": "I"
+    },
+    "로얄살롱": {
+      "model": "Royale Salon",
+      "generation": "I"
+    },
+    "르망": {
+      "model": "LeMans",
+      "generation": "I"
+    },
+    "리얼 뉴 콜로라도": {
+      "model": "Colorado",
+      "generation": "Real New"
+    },
+    "마티즈": {
+      "model": "Matiz",
+      "generation": "I"
+    },
+    "마티즈 II": {
+      "model": "Matiz",
+      "generation": "Gen 2"
+    },
+    "마티즈 크리에이티브": {
+      "model": "Matiz",
+      "generation": "Creative"
+    },
+    "마티즈 클래식": {
+      "model": "Matiz",
+      "generation": "Classic"
+    },
+    "말리부": {
+      "model": "Malibu",
+      "generation": "I"
+    },
+    "매그너스": {
+      "model": "Magnus",
+      "generation": "I"
+    },
+    "맵시": {
+      "model": "Maepsy",
+      "generation": "I"
+    },
+    "베리타스": {
+      "model": "Veritas",
+      "generation": "I"
+    },
+    "볼트 EUV": {
+      "model": "Bolt EUV",
+      "generation": "I"
+    },
+    "볼트 EV": {
+      "model": "Bolt EV",
+      "generation": "I"
+    },
+    "볼트(Volt)": {
+      "model": "Volt",
+      "generation": "I"
+    },
+    "브로엄": {
+      "model": "Brougham",
+      "generation": "I"
+    },
+    "슈퍼살롱": {
+      "model": "Super Salon",
+      "generation": "I"
+    },
+    "스테이츠맨": {
+      "model": "Statesman",
+      "generation": "I"
+    },
+    "스파크": {
+      "model": "Spark",
+      "generation": "I"
+    },
+    "스파크 EV": {
+      "model": "Spark",
+      "generation": "I · EV",
+      "words": "EV"
+    },
+    "씨에로": {
+      "model": "Cielo",
+      "generation": "I"
+    },
+    "아베오 세단": {
+      "model": "Aveo",
+      "generation": "I",
+      "words": "Sedan"
+    },
+    "아베오 해치백": {
+      "model": "Aveo",
+      "generation": "I · Hatchback",
+      "words": "Hatchback"
+    },
+    "아카디아": {
+      "model": "Arcadia",
+      "generation": "I"
+    },
+    "알페온": {
+      "model": "Alpheon",
+      "generation": "I"
+    },
+    "어메이징 뉴 크루즈": {
+      "model": "Cruze",
+      "generation": "Amazing New"
+    },
+    "어메이징 뉴 크루즈5": {
+      "model": "Cruze5",
+      "generation": "Amazing New"
+    },
+    "에스페로": {
+      "model": "Espero",
+      "generation": "I"
+    },
+    "올 뉴 말리부": {
+      "model": "Malibu",
+      "generation": "All New"
+    },
+    "올 뉴 카마로": {
+      "model": "Camaro",
+      "generation": "All New"
+    },
+    "올 뉴 콜로라도": {
+      "model": "Colorado",
+      "generation": "All New"
+    },
+    "올 뉴 크루즈": {
+      "model": "Cruze",
+      "generation": "All New"
+    },
+    "올란도": {
+      "model": "Orlando",
+      "generation": "I"
+    },
+    "윈스톰": {
+      "model": "Winstorm",
+      "generation": "I"
+    },
+    "윈스톰 맥스": {
+      "model": "Winstorm MaXX",
+      "generation": "I"
+    },
+    "이쿼녹스": {
+      "model": "Equinox",
+      "generation": "I"
+    },
+    "임팔라": {
+      "model": "Impala",
+      "generation": "I"
+    },
+    "임페리얼": {
+      "model": "Imperial",
+      "generation": "I"
+    },
+    "젠트라": {
+      "model": "Gentra",
+      "generation": "I"
+    },
+    "젠트라 X": {
+      "model": "Gentra",
+      "generation": "X"
+    },
+    "카마로": {
+      "model": "Camaro",
+      "generation": "I"
+    },
+    "칼로스": {
+      "model": "Kalos",
+      "generation": "I"
+    },
+    "캡티바": {
+      "model": "Captiva",
+      "generation": "I"
+    },
+    "콜로라도": {
+      "model": "Colorado",
+      "generation": "I"
+    },
+    "콜벳": {
+      "model": "Corvette",
+      "generation": "I"
+    },
+    "크루즈": {
+      "model": "Cruze",
+      "generation": "I"
+    },
+    "크루즈5": {
+      "model": "Cruze5",
+      "generation": "I"
+    },
+    "타호": {
+      "model": "Tahoe",
+      "generation": "I"
+    },
+    "토스카": {
+      "model": "Tosca",
+      "generation": "I"
+    },
+    "토스카 프리미엄6": {
+      "model": "Tosca Premium 6",
+      "generation": "I"
+    },
+    "트래버스": {
+      "model": "Traverse",
+      "generation": "I"
+    },
+    "트랙스": {
+      "model": "Trax",
+      "generation": "I"
+    },
+    "트랙스 크로스오버": {
+      "model": "Trax Crossover",
+      "generation": "I"
+    },
+    "트레일블레이저": {
+      "model": "Trailblazer",
+      "generation": "I"
+    },
+    "티코": {
+      "model": "Tico",
+      "generation": "I"
+    },
+    "프린스": {
+      "model": "Prince",
+      "generation": "I"
+    }
   }
 }

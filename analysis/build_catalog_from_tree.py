@@ -171,14 +171,20 @@ def main() -> None:
         label = " · ".join(x for x in [read["code"], read["facelift"], read["rest"]] if x)
         # with a chassis, number or facelift, Encar models that differ only by powertrain or body
         # are one generation; without any, each stays apart (the 1985 Sonata is not the 2011 Hybrid)
-        code = label or read["words"] or "I"
+        code = label or "I"
         taken = reference[model]["generations"].get(code)
         start = ym(info["start"])
-        # one generation only when Encar's start dates agree (a powertrain added within a year);
-        # "더 뉴 레이" 2017 and "더 뉴 기아 레이" 2022 read alike and are two facelifts
-        apart = taken and taken["years"][0] and start and abs(taken["years"][0] - start) > 1
-        if taken and ((not label and taken["encar"]) or apart):
-            code = f"{code} ({start})" if start else f"{code} · {model_kr}"
+        # Encar models that read alike are one generation only when Encar's start dates agree (a
+        # powertrain or body added within a year: "K5 3세대" / "K5 하이브리드 3세대"); "더 뉴 레이" 2017
+        # and "더 뉴 기아 레이" 2022 read alike and are two facelifts. Without dates, unlabelled models
+        # stay apart (the 1985 Sonata is not the 2011 Sonata Hybrid).
+        if taken:
+            if taken["years"][0] and start:
+                together = abs(taken["years"][0] - start) <= 1
+            else:
+                together = bool(label)
+            if not together:
+                code = f"{code} ({start})" if start else f"{code} · {read['words'] or model_kr}"
         if HANGUL.search(model) or HANGUL.search(code):
             unknown.append((model_kr, model, code))
         g = reference[model]["generations"].setdefault(code, {"code": code, "years": [None, None], "encar": []})

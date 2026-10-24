@@ -2,9 +2,76 @@
   "_comment": "Genesis on Encar. names: Encar's model group → our model. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
   "korean": "제네시스",
   "names": {
-    "EQ900": "EQ900", "G70": "G70", "G80": "G80", "G90": "G90", "GV60": "GV60", "GV70": "GV70", "GV80": "GV80"
+    "EQ900": "EQ900",
+    "G70": "G70",
+    "G80": "G80",
+    "G90": "G90",
+    "GV60": "GV60",
+    "GV70": "GV70",
+    "GV80": "GV80"
   },
   "model_splits": {
     "GV80 쿠페": "GV80 Coupe"
+  },
+  "encar_models": {
+    "EQ900": {
+      "model": "EQ900",
+      "generation": "I"
+    },
+    "G70": {
+      "model": "G70",
+      "generation": "I"
+    },
+    "G80": {
+      "model": "G80",
+      "generation": "I"
+    },
+    "G80 (RG3)": {
+      "model": "G80",
+      "generation": "RG3"
+    },
+    "G90": {
+      "model": "G90",
+      "generation": "I"
+    },
+    "G90 (RS4)": {
+      "model": "G90",
+      "generation": "RS4"
+    },
+    "GV60": {
+      "model": "GV60",
+      "generation": "I"
+    },
+    "GV70": {
+      "model": "GV70",
+      "generation": "I"
+    },
+    "GV80": {
+      "model": "GV80",
+      "generation": "I"
+    },
+    "GV80 쿠페": {
+      "model": "GV80 Coupe",
+      "generation": "I"
+    },
+    "더 뉴 G70": {
+      "model": "G70",
+      "generation": "The New"
+    },
+    "더 뉴 G70 슈팅브레이크": {
+      "model": "G70",
+      "generation": "The New",
+      "words": "Shooting Brake"
+    },
+    "일렉트리파이드 G80 (RG3)": {
+      "model": "G80",
+      "generation": "RG3",
+      "words": "Electrified"
+    },
+    "일렉트리파이드 GV70": {
+      "model": "GV70",
+      "generation": "I · Electrified",
+      "words": "Electrified"
+    }
   }
 }

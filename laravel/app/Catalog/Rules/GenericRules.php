@@ -25,9 +25,12 @@ final class GenericRules implements MakeRules
         $drive = null;
         $code = $left = [];
         $text = preg_replace('/\(\s*(\d+)\s*hp\s*\)/i', '$1hp', $rest);
+        // Encar's brackets ("3.0 LPi (렌터카용)", "디젤(e-VGT)") hold words like any other
+        $text = str_replace(['(', ')'], ' ', $text);
+        $drives = $this->config['drives'] ?? [];
         foreach (preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY) as $w) {
-            if (($d = $this->lookup($this->config['drives'] ?? [], $w)) !== null) {
-                $drive = $d;
+            if (($key = $this->key($drives, $w)) !== null) {
+                $drive ??= $drives[$key]; // "2WD" is a drive word that names no axle: null
                 $code[] = $w;
             } elseif (preg_match('/^\d\.\d$/', $w)) {
                 $code[] = $w;
@@ -43,8 +46,8 @@ final class GenericRules implements MakeRules
 
         $fuel ??= $generation['fuel'] ?? $model['fuel'] ?? null;
         $name = $code ? implode(' ', $code) : null;
-        // an electric model whose badge names no motor is the model itself
-        if ($name === null && $left === [] && $fuel === 'electric') {
+        // an electric (or fuel-cell) model whose badge names no motor is the model itself
+        if ($name === null && $left === [] && in_array($fuel, ['electric', 'hydrogen'], true)) {
             $name = $model['name'];
         }
         return ['code' => $name, 'fuel' => $fuel, 'drive' => $drive, 'leftover' => $left];
@@ -64,12 +67,6 @@ final class GenericRules implements MakeRules
             }
         }
         return null;
-    }
-
-    private function lookup(array $map, string $word): mixed
-    {
-        $key = $this->key($map, $word);
-        return $key === null ? null : $map[$key];
     }
 
     /** The map's key that is $word, ignoring case. */

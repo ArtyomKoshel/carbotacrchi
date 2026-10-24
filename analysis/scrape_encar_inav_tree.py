@@ -161,6 +161,12 @@ def _get_inav(q: str, retries: int = 5) -> dict:
             return r.json().get("iNav", {})
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
+            # Encar answers 404 on a Korean proxy when the query has nothing (a model with no
+            # listings now): an empty answer, not a block (collector/src/collector/http.py)
+            if status == 404:
+                with _api_lock:
+                    _api_calls += 1
+                return {}
             wait = min(2 ** attempt, 16)
             with _print_lock:
                 print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s")

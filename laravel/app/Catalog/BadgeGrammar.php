@@ -19,6 +19,7 @@ final class BadgeGrammar
         'Sportback' => 'liftback', 'Cross Turismo' => 'wagon', 'Sport Turismo' => 'wagon',
         'Convertible' => 'convertible', 'Cabriolet' => 'convertible', 'Roadster' => 'roadster', 'Spyder' => 'convertible',
         'Sedan' => 'sedan', 'Hatchback' => 'hatchback', '5-door' => 'hatchback', '3-door' => 'hatchback',
+        'Van' => 'van', 'Cargo' => 'van', 'Wagon' => 'wagon', 'Saloon' => 'sedan',
     ];
 
     /**
@@ -29,7 +30,7 @@ final class BadgeGrammar
         $text = ' ' . preg_replace('/\s+/u', ' ', trim($badge)) . ' ';
 
         $seats = null;
-        if (preg_match('/ (\d)-seater /', $text, $m)) {
+        if (preg_match('/ (\d{1,2})-seater /', $text, $m)) {
             $seats = (int) $m[1];
             $text = str_replace($m[0], ' ', $text);
         }
@@ -64,9 +65,12 @@ final class BadgeGrammar
         $found = [];
         foreach ($phrases as $phrase) {
             $pattern = '/(?<=\s)' . str_replace('\ ', '\s+', preg_quote($phrase, '/')) . '(?=\s)/iu';
-            if (preg_match($pattern, $text, $m, PREG_OFFSET_CAPTURE)) {
-                $found[$m[0][1]] = $phrase;
-                $text = substr_replace($text, str_repeat(' ', strlen($m[0][0])), $m[0][1], strlen($m[0][0]));
+            // every occurrence goes (badge and BadgeDetail may both say "스타일"), the phrase counts once
+            if (preg_match_all($pattern, $text, $all, PREG_OFFSET_CAPTURE)) {
+                $found[$all[0][0][1]] = $phrase;
+                foreach ($all[0] as [$hit, $at]) {
+                    $text = substr_replace($text, str_repeat(' ', strlen($hit)), $at, strlen($hit));
+                }
             }
         }
         ksort($found);

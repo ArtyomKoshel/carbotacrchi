@@ -1,0 +1,420 @@
+{
+  "make": "Genesis",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "LPI": "lpg",
+      "LPe": "lpg",
+      "HEV": "hybrid",
+      "PHEV": "hybrid",
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "E-TECH": "hybrid",
+      "EV": "electric",
+      "Electric": "electric",
+      "Electrified": "electric",
+      "Turbo": null,
+      "GDI": null,
+      "GDi": null,
+      "T-GDI": null,
+      "T-GDi": null,
+      "MPI": null,
+      "MPi": null,
+      "CRDi": null,
+      "VGT": null,
+      "e-VGT": null,
+      "TCe": null,
+      "GDe": null,
+      "GTe": null,
+      "dCi": null,
+      "VVT": null,
+      "Long": null,
+      "Range": null,
+      "Standard": null,
+      "CVVL": null,
+      "Performance": null,
+      "Long Range": null,
+      "CVT": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dT$"
+      },
+      {
+        "re": "^[A-Z]{1,2}\\d{3}$"
+      },
+      {
+        "re": "^L\\d\\.\\d$",
+        "fuel": "lpg"
+      },
+      {
+        "re": "^[A-Z]\\d{2}$"
+      },
+      {
+        "re": "^\\d{3}$"
+      }
+    ],
+    "drives": {
+      "4WD": "4wd",
+      "AWD": "awd",
+      "e-AWD": "awd",
+      "HTRAC": "awd",
+      "2WD": null
+    }
+  },
+  "complectations": [
+    "Best Selection Ⅰ",
+    "Best Selection Ⅱ",
+    "Platinum Ⅱ",
+    "Signature X Line",
+    "Esprit Alpine",
+    "Safety Pack",
+    "Black Ink",
+    "Le Blanc",
+    "The Black",
+    "Value Plus",
+    "Premium Plus",
+    "X-Line",
+    "X Line",
+    "N Line",
+    "GT Line",
+    "Prestige",
+    "Modern",
+    "Noblesse",
+    "Signature",
+    "Exclusive",
+    "Premium",
+    "Calligraphy",
+    "Inspiration",
+    "Smart",
+    "Special",
+    "Luxury",
+    "Trendy",
+    "Plus",
+    "Masters",
+    "Gravity",
+    "Choice",
+    "Value",
+    "President",
+    "Style",
+    "Basic",
+    "Upper",
+    "Top",
+    "Earth",
+    "Air",
+    "Deluxe",
+    "Premier",
+    "Premiere",
+    "Platinum",
+    "Master",
+    "Best Selection",
+    "Adventure",
+    "Elite",
+    "Safety",
+    "Club",
+    "Coolmen",
+    "Core",
+    "Family",
+    "Expedition",
+    "Fashion",
+    "Supreme",
+    "Pop",
+    "Iconic",
+    "Intelligent",
+    "Wild",
+    "Flux",
+    "Inspire",
+    "Art",
+    "Tech",
+    "Prime",
+    "Professional",
+    "Dynamic",
+    "Extreme",
+    "Midnight",
+    "Redline",
+    "Millennial",
+    "Business",
+    "Mobility",
+    "Honors",
+    "Life",
+    "Black",
+    "Noble",
+    "Trend",
+    "Design",
+    "Cross",
+    "Grand",
+    "Active",
+    "Sport",
+    "High",
+    "RE",
+    "LE",
+    "SE",
+    "XE",
+    "PE",
+    "T5",
+    "T7",
+    "V1",
+    "V3",
+    "V5",
+    "V7",
+    "VX",
+    "IX",
+    "CVX",
+    "LT",
+    "LTZ",
+    "LS",
+    "RS",
+    "ACTIV",
+    "Z71-X",
+    "H Pick",
+    "Hi-pass",
+    "Navi",
+    "Navigation",
+    "Sunroof",
+    "Package",
+    "5-link",
+    "N",
+    "S",
+    "GT",
+    "The Essential",
+    "Essential",
+    "Tourer",
+    "Lounge",
+    "Limousine",
+    "High Limousine",
+    "The Iconic",
+    "VIP",
+    "E-Value+",
+    "Celebrity",
+    "Collection",
+    "The Spec",
+    "Spec",
+    "PYL",
+    "Business 1",
+    "Business 2",
+    "Q",
+    "Urban",
+    "Light",
+    "Avenue",
+    "Fever",
+    "Care Plus",
+    "Selection",
+    "Xtreme Selection",
+    "Wit",
+    "Blue Saver",
+    "Unique",
+    "GT-R",
+    "HVX",
+    "VXL",
+    "300VXL",
+    "VIP Pack",
+    "PACK",
+    "D Spec",
+    "Xtreme",
+    "X-Pro",
+    "High Roof",
+    "Executive",
+    "Minus",
+    "Heritage",
+    "Majesty",
+    "Gear",
+    "Gear Plus",
+    "Outdoor",
+    "C5",
+    "C7",
+    "CX5",
+    "CX7",
+    "TX",
+    "LX",
+    "RX",
+    "RX7",
+    "A3",
+    "S7",
+    "S9",
+    "E5",
+    "E7",
+    "MX",
+    "X"
+  ],
+  "editions": [
+    "White Edition",
+    "Outdoor Edition",
+    "Gear Edition",
+    "Limited",
+    "Special Vehicle",
+    "Other Special Vehicle",
+    "Iron Man Edition",
+    "Ten Million Limited",
+    "Dump",
+    "Box Truck",
+    "Wing Body",
+    "Refrigerated",
+    "1 Million",
+    "Deluxe Taxi",
+    "Coachbuilt",
+    "Ambulance",
+    "Camper",
+    "The Black Edition",
+    "School Bus",
+    "Rental",
+    "Disabled",
+    "Commercial",
+    "Taxi",
+    "Driving School",
+    "Eurasia Edition",
+    "Finest Edition",
+    "Dynamic Edition",
+    "Limited Edition",
+    "Design Edition",
+    "Black Edition",
+    "X Edition",
+    "Special Edition",
+    "First Edition",
+    "Edition"
+  ],
+  "models": [
+    {
+      "name": "EQ900",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "G70",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "G80",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "RG3",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "G90",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "RS4",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "GV60",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "GV70",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Electrified",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "GV80",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "GV80 Coupe",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    }
+  ]
+}

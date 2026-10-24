@@ -2,9 +2,162 @@
   "_comment": "Renault Korea (Samsung) on Encar. names: Encar's model group → our model. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
   "korean": "르노코리아(삼성)",
   "names": {
-    "QM3": "QM3", "QM5": "QM5", "QM6": "QM6", "SM3": "SM3", "SM5": "SM5", "SM6": "SM6", "SM7": "SM7", "XM3": "XM3",
-    "그랑 콜레오스": "Grand Koleos", "마스터": "Master", "세닉": "Scenic", "아르카나": "Arkana", "조에": "Zoe",
-    "캡처": "Captur", "클리오": "Clio", "트위지": "Twizy", "필랑트": "Filante"
+    "QM3": "QM3",
+    "QM5": "QM5",
+    "QM6": "QM6",
+    "SM3": "SM3",
+    "SM5": "SM5",
+    "SM6": "SM6",
+    "SM7": "SM7",
+    "XM3": "XM3",
+    "그랑 콜레오스": "Grand Koleos",
+    "마스터": "Master",
+    "세닉": "Scenic",
+    "아르카나": "Arkana",
+    "조에": "Zoe",
+    "캡처": "Captur",
+    "클리오": "Clio",
+    "트위지": "Twizy",
+    "필랑트": "Filante"
   },
-  "model_splits": {}
+  "model_splits": {},
+  "encar_models": {
+    "All New SM7": {
+      "model": "SM7",
+      "generation": "All New"
+    },
+    "QM3": {
+      "model": "QM3",
+      "generation": "I"
+    },
+    "QM5": {
+      "model": "QM5",
+      "generation": "I"
+    },
+    "QM5 네오": {
+      "model": "QM5",
+      "generation": "Neo"
+    },
+    "QM6": {
+      "model": "QM6",
+      "generation": "I"
+    },
+    "SM3": {
+      "model": "SM3",
+      "generation": "I"
+    },
+    "SM3 Z.E.": {
+      "model": "SM3",
+      "generation": "I · Z.E.",
+      "words": "Z.E."
+    },
+    "SM3 네오": {
+      "model": "SM3",
+      "generation": "Neo"
+    },
+    "SM3 뉴 제너레이션": {
+      "model": "SM3",
+      "generation": "New Generation"
+    },
+    "SM5": {
+      "model": "SM5",
+      "generation": "I"
+    },
+    "SM5 노바": {
+      "model": "SM5",
+      "generation": "Nova"
+    },
+    "SM5 뉴 임프레션": {
+      "model": "SM5",
+      "generation": "New Impression"
+    },
+    "SM6": {
+      "model": "SM6",
+      "generation": "I"
+    },
+    "SM7": {
+      "model": "SM7",
+      "generation": "I"
+    },
+    "SM7 New Art": {
+      "model": "SM7",
+      "generation": "New Art"
+    },
+    "SM7 노바": {
+      "model": "SM7",
+      "generation": "Nova"
+    },
+    "XM3": {
+      "model": "XM3",
+      "generation": "I"
+    },
+    "그랑 콜레오스": {
+      "model": "Grand Koleos",
+      "generation": "I"
+    },
+    "뉴QM3": {
+      "model": "QM3",
+      "generation": "New"
+    },
+    "뉴QM5": {
+      "model": "QM5",
+      "generation": "New"
+    },
+    "뉴SM3": {
+      "model": "SM3",
+      "generation": "New"
+    },
+    "뉴SM5": {
+      "model": "SM5",
+      "generation": "New"
+    },
+    "뉴SM5 플래티넘": {
+      "model": "SM5",
+      "generation": "New Platinum"
+    },
+    "뉴SM5(신형)": {
+      "model": "SM5",
+      "generation": "New (new)"
+    },
+    "더 뉴 QM6": {
+      "model": "QM6",
+      "generation": "The New"
+    },
+    "더 뉴 SM6": {
+      "model": "SM6",
+      "generation": "The New"
+    },
+    "마스터": {
+      "model": "Master",
+      "generation": "I"
+    },
+    "세닉": {
+      "model": "Scenic",
+      "generation": "I"
+    },
+    "아르카나": {
+      "model": "Arkana",
+      "generation": "I"
+    },
+    "조에": {
+      "model": "Zoe",
+      "generation": "I"
+    },
+    "캡처": {
+      "model": "Captur",
+      "generation": "I"
+    },
+    "클리오": {
+      "model": "Clio",
+      "generation": "I"
+    },
+    "트위지": {
+      "model": "Twizy",
+      "generation": "I"
+    },
+    "필랑트": {
+      "model": "Filante",
+      "generation": "I"
+    }
+  }
 }

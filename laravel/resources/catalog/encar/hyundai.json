@@ -2,20 +2,707 @@
   "_comment": "Hyundai on Encar. names: Encar's model group → our model (Hyundai's own Latin names for the Korean market). encar_models: each Encar model → model, generation and the words its name says (build_catalog_from_tree.py drafts them, a person reads them).",
   "korean": "현대",
   "names": {
-    "ST1": "ST1", "i30": "i30", "i40": "i40", "갤로퍼": "Galloper", "그라나다": "Granada", "그랜저": "Grandeur",
-    "그레이스": "Grace", "넥쏘": "Nexo", "다이너스티": "Dynasty", "라비타": "Lavita", "마르샤": "Marcia",
-    "맥스크루즈": "Maxcruz", "베뉴": "Venue", "베라크루즈": "Veracruz", "베르나": "Verna", "벨로스터": "Veloster",
-    "블루온": "BlueOn", "산타모": "Santamo", "스쿠프": "Scoupe", "스타렉스": "Starex", "스타리아": "Staria",
-    "스텔라": "Stellar", "싼타페": "Santa Fe", "쏘나타": "Sonata", "쏠라티": "Solati", "아반떼": "Avante",
-    "아슬란": "Aslan", "아이오닉": "Ioniq", "아이오닉5": "Ioniq 5", "아이오닉6": "Ioniq 6", "아이오닉9": "Ioniq 9",
-    "아토스": "Atos", "에쿠스": "Equus", "엑센트": "Accent", "엑셀": "Excel", "엘란트라": "Elantra",
-    "제네시스": "Genesis", "캐스퍼": "Casper", "코나": "Kona", "코티나": "Cortina", "클릭": "Click",
-    "테라칸": "Terracan", "투스카니": "Tuscani", "투싼": "Tucson", "트라제 XG": "Trajet XG", "티뷰론": "Tiburon",
-    "팰리세이드": "Palisade", "포니": "Pony", "프레스토": "Presto"
+    "ST1": "ST1",
+    "i30": "i30",
+    "i40": "i40",
+    "갤로퍼": "Galloper",
+    "그라나다": "Granada",
+    "그랜저": "Grandeur",
+    "그레이스": "Grace",
+    "넥쏘": "Nexo",
+    "다이너스티": "Dynasty",
+    "라비타": "Lavita",
+    "마르샤": "Marcia",
+    "맥스크루즈": "Maxcruz",
+    "베뉴": "Venue",
+    "베라크루즈": "Veracruz",
+    "베르나": "Verna",
+    "벨로스터": "Veloster",
+    "블루온": "BlueOn",
+    "산타모": "Santamo",
+    "스쿠프": "Scoupe",
+    "스타렉스": "Starex",
+    "스타리아": "Staria",
+    "스텔라": "Stellar",
+    "싼타페": "Santa Fe",
+    "쏘나타": "Sonata",
+    "쏠라티": "Solati",
+    "아반떼": "Avante",
+    "아슬란": "Aslan",
+    "아이오닉": "Ioniq",
+    "아이오닉5": "Ioniq 5",
+    "아이오닉6": "Ioniq 6",
+    "아이오닉9": "Ioniq 9",
+    "아토스": "Atos",
+    "에쿠스": "Equus",
+    "엑센트": "Accent",
+    "엑셀": "Excel",
+    "엘란트라": "Elantra",
+    "제네시스": "Genesis",
+    "캐스퍼": "Casper",
+    "코나": "Kona",
+    "코티나": "Cortina",
+    "클릭": "Click",
+    "테라칸": "Terracan",
+    "투스카니": "Tuscani",
+    "투싼": "Tucson",
+    "트라제 XG": "Trajet XG",
+    "티뷰론": "Tiburon",
+    "팰리세이드": "Palisade",
+    "포니": "Pony",
+    "프레스토": "Presto"
   },
   "model_splits": {
     "그랜드 스타렉스": "Grand Starex",
     "제네시스 쿠페": "Genesis Coupe",
     "포니투": "Pony 2"
+  },
+  "encar_models": {
+    "EF 쏘나타": {
+      "model": "Sonata",
+      "generation": "EF"
+    },
+    "LF 쏘나타": {
+      "model": "Sonata",
+      "generation": "LF"
+    },
+    "LF 쏘나타 하이브리드": {
+      "model": "Sonata",
+      "generation": "LF",
+      "words": "Hybrid"
+    },
+    "NF 쏘나타": {
+      "model": "Sonata",
+      "generation": "NF"
+    },
+    "NF 쏘나타 트랜스폼": {
+      "model": "Sonata",
+      "generation": "NF · Transform"
+    },
+    "New 베르나": {
+      "model": "Verna",
+      "generation": "New"
+    },
+    "ST1": {
+      "model": "ST1",
+      "generation": "I"
+    },
+    "YF 쏘나타": {
+      "model": "Sonata",
+      "generation": "YF"
+    },
+    "i30": {
+      "model": "i30",
+      "generation": "I"
+    },
+    "i30 (PD)": {
+      "model": "i30",
+      "generation": "PD"
+    },
+    "i30 cw": {
+      "model": "i30",
+      "generation": "I · Wagon",
+      "words": "Wagon"
+    },
+    "i30(신형)": {
+      "model": "i30",
+      "generation": "(new)"
+    },
+    "i40": {
+      "model": "i40",
+      "generation": "I"
+    },
+    "i40 살룬": {
+      "model": "i40",
+      "generation": "I · Saloon",
+      "words": "Saloon"
+    },
+    "갤로퍼": {
+      "model": "Galloper",
+      "generation": "I"
+    },
+    "갤로퍼 2": {
+      "model": "Galloper",
+      "generation": "Gen 2"
+    },
+    "그라나다": {
+      "model": "Granada",
+      "generation": "I"
+    },
+    "그랜드 스타렉스": {
+      "model": "Grand Starex",
+      "generation": "I"
+    },
+    "그랜저": {
+      "model": "Grandeur",
+      "generation": "I"
+    },
+    "그랜저 (GN7)": {
+      "model": "Grandeur",
+      "generation": "GN7"
+    },
+    "그랜저 HG": {
+      "model": "Grandeur",
+      "generation": "HG"
+    },
+    "그랜저 HG 하이브리드": {
+      "model": "Grandeur",
+      "generation": "HG",
+      "words": "Hybrid"
+    },
+    "그랜저 IG": {
+      "model": "Grandeur",
+      "generation": "IG"
+    },
+    "그랜저 IG 하이브리드": {
+      "model": "Grandeur",
+      "generation": "IG",
+      "words": "Hybrid"
+    },
+    "그랜저 TG": {
+      "model": "Grandeur",
+      "generation": "TG"
+    },
+    "그랜저 XG": {
+      "model": "Grandeur",
+      "generation": "XG"
+    },
+    "그랜저 뉴 럭셔리": {
+      "model": "Grandeur",
+      "generation": "New Luxury"
+    },
+    "그랜저 하이브리드 (GN7)": {
+      "model": "Grandeur",
+      "generation": "GN7",
+      "words": "Hybrid"
+    },
+    "그레이스": {
+      "model": "Grace",
+      "generation": "I"
+    },
+    "넥쏘": {
+      "model": "Nexo",
+      "generation": "I"
+    },
+    "넥쏘 (NH2)": {
+      "model": "Nexo",
+      "generation": "NH2"
+    },
+    "뉴 EF 쏘나타": {
+      "model": "Sonata",
+      "generation": "EF · New"
+    },
+    "뉴 그랜저": {
+      "model": "Grandeur",
+      "generation": "New"
+    },
+    "뉴 그랜저 XG": {
+      "model": "Grandeur",
+      "generation": "XG · New"
+    },
+    "뉴 아반떼 XD": {
+      "model": "Avante",
+      "generation": "XD · New"
+    },
+    "뉴 엑센트": {
+      "model": "Accent",
+      "generation": "New"
+    },
+    "뉴 클릭": {
+      "model": "Click",
+      "generation": "New"
+    },
+    "뉴 투싼 ix": {
+      "model": "Tucson",
+      "generation": "New · ix"
+    },
+    "뉴그레이스": {
+      "model": "Grace",
+      "generation": "New"
+    },
+    "뉴엘란트라": {
+      "model": "Elantra",
+      "generation": "New"
+    },
+    "다이너스티": {
+      "model": "Dynasty",
+      "generation": "I"
+    },
+    "더 뉴 i30": {
+      "model": "i30",
+      "generation": "The New"
+    },
+    "더 뉴 i40": {
+      "model": "i40",
+      "generation": "The New"
+    },
+    "더 뉴 i40 살룬": {
+      "model": "i40",
+      "generation": "The New",
+      "words": "Saloon"
+    },
+    "더 뉴 그랜드 스타렉스": {
+      "model": "Grand Starex",
+      "generation": "The New"
+    },
+    "더 뉴 그랜저 IG": {
+      "model": "Grandeur",
+      "generation": "IG · The New"
+    },
+    "더 뉴 그랜저 IG 하이브리드": {
+      "model": "Grandeur",
+      "generation": "IG · The New",
+      "words": "Hybrid"
+    },
+    "더 뉴 맥스크루즈": {
+      "model": "Maxcruz",
+      "generation": "The New"
+    },
+    "더 뉴 벨로스터": {
+      "model": "Veloster",
+      "generation": "The New"
+    },
+    "더 뉴 스타리아": {
+      "model": "Staria",
+      "generation": "The New"
+    },
+    "더 뉴 싼타페": {
+      "model": "Santa Fe",
+      "generation": "The New"
+    },
+    "더 뉴 아반떼": {
+      "model": "Avante",
+      "generation": "The New"
+    },
+    "더 뉴 아반떼 (CN7)": {
+      "model": "Avante",
+      "generation": "CN7 · The New"
+    },
+    "더 뉴 아반떼 AD": {
+      "model": "Avante",
+      "generation": "AD · The New"
+    },
+    "더 뉴 아반떼 하이브리드 (CN7)": {
+      "model": "Avante",
+      "generation": "CN7 · The New",
+      "words": "Hybrid"
+    },
+    "더 뉴 아이오닉 일렉트릭": {
+      "model": "Ioniq",
+      "generation": "The New",
+      "words": "Electric"
+    },
+    "더 뉴 아이오닉 하이브리드": {
+      "model": "Ioniq",
+      "generation": "The New",
+      "words": "Hybrid"
+    },
+    "더 뉴 아이오닉5": {
+      "model": "Ioniq 5",
+      "generation": "The New"
+    },
+    "더 뉴 아이오닉6": {
+      "model": "Ioniq 6",
+      "generation": "The New"
+    },
+    "더 뉴 제네시스 쿠페": {
+      "model": "Genesis Coupe",
+      "generation": "The New"
+    },
+    "더 뉴 캐스퍼": {
+      "model": "Casper",
+      "generation": "The New"
+    },
+    "더 뉴 코나": {
+      "model": "Kona",
+      "generation": "The New"
+    },
+    "더 뉴 코나 하이브리드": {
+      "model": "Kona",
+      "generation": "The New",
+      "words": "Hybrid"
+    },
+    "더 뉴 투싼 (NX4)": {
+      "model": "Tucson",
+      "generation": "NX4 · The New"
+    },
+    "더 뉴 투싼 하이브리드 (NX4)": {
+      "model": "Tucson",
+      "generation": "NX4 · The New",
+      "words": "Hybrid"
+    },
+    "더 뉴 팰리세이드": {
+      "model": "Palisade",
+      "generation": "The New"
+    },
+    "더 럭셔리 그랜저": {
+      "model": "Grandeur",
+      "generation": "The Luxury"
+    },
+    "라비타": {
+      "model": "Lavita",
+      "generation": "I"
+    },
+    "마르샤": {
+      "model": "Marcia",
+      "generation": "I"
+    },
+    "맥스크루즈": {
+      "model": "Maxcruz",
+      "generation": "I"
+    },
+    "베뉴": {
+      "model": "Venue",
+      "generation": "I"
+    },
+    "베라크루즈": {
+      "model": "Veracruz",
+      "generation": "I"
+    },
+    "베르나": {
+      "model": "Verna",
+      "generation": "I"
+    },
+    "베르나 트랜스폼": {
+      "model": "Verna",
+      "generation": "Transform"
+    },
+    "베르나(신형)": {
+      "model": "Verna",
+      "generation": "(new)"
+    },
+    "벨로스터": {
+      "model": "Veloster",
+      "generation": "I"
+    },
+    "벨로스터 (JS)": {
+      "model": "Veloster",
+      "generation": "JS"
+    },
+    "블루온": {
+      "model": "BlueOn",
+      "generation": "I"
+    },
+    "산타모": {
+      "model": "Santamo",
+      "generation": "I"
+    },
+    "스쿠프": {
+      "model": "Scoupe",
+      "generation": "I"
+    },
+    "스타렉스": {
+      "model": "Starex",
+      "generation": "I"
+    },
+    "스타렉스 점보": {
+      "model": "Starex",
+      "generation": "I · Jumbo",
+      "words": "Jumbo"
+    },
+    "스타리아": {
+      "model": "Staria",
+      "generation": "I"
+    },
+    "스텔라": {
+      "model": "Stellar",
+      "generation": "I"
+    },
+    "싼타페": {
+      "model": "Santa Fe",
+      "generation": "I"
+    },
+    "싼타페 (MX5)": {
+      "model": "Santa Fe",
+      "generation": "MX5"
+    },
+    "싼타페 CM": {
+      "model": "Santa Fe",
+      "generation": "CM"
+    },
+    "싼타페 DM": {
+      "model": "Santa Fe",
+      "generation": "DM"
+    },
+    "싼타페 TM": {
+      "model": "Santa Fe",
+      "generation": "TM"
+    },
+    "싼타페 더 프라임": {
+      "model": "Santa Fe",
+      "generation": "The Prime"
+    },
+    "쏘나타": {
+      "model": "Sonata",
+      "generation": "I"
+    },
+    "쏘나타 (DN8)": {
+      "model": "Sonata",
+      "generation": "DN8"
+    },
+    "쏘나타 II": {
+      "model": "Sonata",
+      "generation": "Gen 2"
+    },
+    "쏘나타 III": {
+      "model": "Sonata",
+      "generation": "Gen 3"
+    },
+    "쏘나타 뉴 라이즈": {
+      "model": "Sonata",
+      "generation": "New Rise"
+    },
+    "쏘나타 뉴 라이즈 하이브리드": {
+      "model": "Sonata",
+      "generation": "New Rise",
+      "words": "Hybrid"
+    },
+    "쏘나타 더 브릴리언트": {
+      "model": "Sonata",
+      "generation": "The Brilliant"
+    },
+    "쏘나타 디 엣지 하이브리드(DN8)": {
+      "model": "Sonata",
+      "generation": "DN8 · The Edge",
+      "words": "Hybrid"
+    },
+    "쏘나타 디 엣지(DN8)": {
+      "model": "Sonata",
+      "generation": "DN8 · The Edge"
+    },
+    "쏘나타 하이브리드": {
+      "model": "Sonata",
+      "generation": "I · Hybrid",
+      "words": "Hybrid"
+    },
+    "쏘나타 하이브리드 (DN8)": {
+      "model": "Sonata",
+      "generation": "DN8",
+      "words": "Hybrid"
+    },
+    "쏠라티": {
+      "model": "Solati",
+      "generation": "I"
+    },
+    "아반떼": {
+      "model": "Avante",
+      "generation": "I"
+    },
+    "아반떼 (CN7)": {
+      "model": "Avante",
+      "generation": "CN7"
+    },
+    "아반떼 AD": {
+      "model": "Avante",
+      "generation": "AD"
+    },
+    "아반떼 HD": {
+      "model": "Avante",
+      "generation": "HD"
+    },
+    "아반떼 MD": {
+      "model": "Avante",
+      "generation": "MD"
+    },
+    "아반떼 XD": {
+      "model": "Avante",
+      "generation": "XD"
+    },
+    "아반떼 쿠페": {
+      "model": "Avante",
+      "generation": "I · Coupe",
+      "words": "Coupe"
+    },
+    "아반떼 하이브리드": {
+      "model": "Avante",
+      "generation": "I · Hybrid",
+      "words": "Hybrid"
+    },
+    "아반떼 하이브리드 (CN7)": {
+      "model": "Avante",
+      "generation": "CN7",
+      "words": "Hybrid"
+    },
+    "아슬란": {
+      "model": "Aslan",
+      "generation": "I"
+    },
+    "아이오닉 일렉트릭": {
+      "model": "Ioniq",
+      "generation": "I",
+      "words": "Electric"
+    },
+    "아이오닉 하이브리드": {
+      "model": "Ioniq",
+      "generation": "I · Hybrid",
+      "words": "Hybrid"
+    },
+    "아이오닉5": {
+      "model": "Ioniq 5",
+      "generation": "I"
+    },
+    "아이오닉6": {
+      "model": "Ioniq 6",
+      "generation": "I"
+    },
+    "아이오닉9": {
+      "model": "Ioniq 9",
+      "generation": "I"
+    },
+    "아토스": {
+      "model": "Atos",
+      "generation": "I"
+    },
+    "에쿠스": {
+      "model": "Equus",
+      "generation": "I"
+    },
+    "에쿠스(신형)": {
+      "model": "Equus",
+      "generation": "(new)"
+    },
+    "엑센트": {
+      "model": "Accent",
+      "generation": "I"
+    },
+    "엑센트(신형)": {
+      "model": "Accent",
+      "generation": "(new)"
+    },
+    "엑셀": {
+      "model": "Excel",
+      "generation": "I"
+    },
+    "엘란트라": {
+      "model": "Elantra",
+      "generation": "I"
+    },
+    "올 뉴 아반떼": {
+      "model": "Avante",
+      "generation": "All New"
+    },
+    "올 뉴 투싼": {
+      "model": "Tucson",
+      "generation": "All New"
+    },
+    "제네시스": {
+      "model": "Genesis",
+      "generation": "I"
+    },
+    "제네시스 DH": {
+      "model": "Genesis",
+      "generation": "DH"
+    },
+    "제네시스 쿠페": {
+      "model": "Genesis Coupe",
+      "generation": "I"
+    },
+    "캐스퍼": {
+      "model": "Casper",
+      "generation": "I"
+    },
+    "캐스퍼 일렉트릭": {
+      "model": "Casper",
+      "generation": "I · Electric",
+      "words": "Electric"
+    },
+    "코나": {
+      "model": "Kona",
+      "generation": "I"
+    },
+    "코나 (SX2)": {
+      "model": "Kona",
+      "generation": "SX2"
+    },
+    "코나 일렉트릭": {
+      "model": "Kona",
+      "generation": "I · Electric",
+      "words": "Electric"
+    },
+    "코나 일렉트릭 (SX2)": {
+      "model": "Kona",
+      "generation": "SX2",
+      "words": "Electric"
+    },
+    "코나 하이브리드": {
+      "model": "Kona",
+      "generation": "I · Hybrid",
+      "words": "Hybrid"
+    },
+    "코나 하이브리드 (SX2)": {
+      "model": "Kona",
+      "generation": "SX2",
+      "words": "Hybrid"
+    },
+    "코티나": {
+      "model": "Cortina",
+      "generation": "I"
+    },
+    "클릭": {
+      "model": "Click",
+      "generation": "I"
+    },
+    "클릭 하이브리드": {
+      "model": "Click",
+      "generation": "I · Hybrid",
+      "words": "Hybrid"
+    },
+    "테라칸": {
+      "model": "Terracan",
+      "generation": "I"
+    },
+    "투스카니": {
+      "model": "Tuscani",
+      "generation": "I"
+    },
+    "투스카니(신형)": {
+      "model": "Tuscani",
+      "generation": "(new)"
+    },
+    "투싼": {
+      "model": "Tucson",
+      "generation": "I"
+    },
+    "투싼 (NX4)": {
+      "model": "Tucson",
+      "generation": "NX4"
+    },
+    "투싼 ix": {
+      "model": "Tucson",
+      "generation": "ix"
+    },
+    "투싼 하이브리드 (NX4)": {
+      "model": "Tucson",
+      "generation": "NX4",
+      "words": "Hybrid"
+    },
+    "트라제 XG": {
+      "model": "Trajet XG",
+      "generation": "I"
+    },
+    "티뷰론": {
+      "model": "Tiburon",
+      "generation": "I"
+    },
+    "팰리세이드": {
+      "model": "Palisade",
+      "generation": "I"
+    },
+    "팰리세이드 (LX3)": {
+      "model": "Palisade",
+      "generation": "LX3"
+    },
+    "포니": {
+      "model": "Pony",
+      "generation": "I"
+    },
+    "포니투": {
+      "model": "Pony 2",
+      "generation": "I"
+    },
+    "프레스토": {
+      "model": "Presto",
+      "generation": "I"
+    }
   }
 }

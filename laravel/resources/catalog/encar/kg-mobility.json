@@ -2,9 +2,18 @@
   "_comment": "KG Mobility (SsangYong) on Encar. names: Encar's model group → our model. model_splits: Encar keeps the pickups and long bodies under the SUV's group; they are models of their own. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
   "korean": "KG모빌리티(쌍용)",
   "names": {
-    "뉴훼미리": "New Family", "렉스턴": "Rexton", "로디우스": "Rodius", "무쏘": "Musso", "액티언": "Actyon",
-    "이스타나": "Istana", "체어맨": "Chairman", "카이런": "Kyron", "칼리스타": "Kallista", "코란도": "Korando",
-    "토레스": "Torres", "티볼리": "Tivoli"
+    "뉴훼미리": "New Family",
+    "렉스턴": "Rexton",
+    "로디우스": "Rodius",
+    "무쏘": "Musso",
+    "액티언": "Actyon",
+    "이스타나": "Istana",
+    "체어맨": "Chairman",
+    "카이런": "Kyron",
+    "칼리스타": "Kallista",
+    "코란도": "Korando",
+    "토레스": "Torres",
+    "티볼리": "Tivoli"
   },
   "model_splits": {
     "렉스턴 스포츠 칸": "Rexton Sports Khan",
@@ -26,5 +35,237 @@
     "체어맨 H": "Chairman H",
     "G4 렉스턴": "G4 Rexton",
     "렉스턴 W": "Rexton W"
+  },
+  "encar_models": {
+    "G4 렉스턴": {
+      "model": "G4 Rexton",
+      "generation": "I"
+    },
+    "뉴 스타일 코란도 C": {
+      "model": "Korando C",
+      "generation": "New Style"
+    },
+    "뉴렉스턴": {
+      "model": "Rexton",
+      "generation": "New"
+    },
+    "뉴로디우스": {
+      "model": "Rodius",
+      "generation": "New"
+    },
+    "뉴무쏘": {
+      "model": "Musso",
+      "generation": "New"
+    },
+    "뉴무쏘 밴": {
+      "model": "Musso",
+      "generation": "New",
+      "words": "Van"
+    },
+    "뉴체어맨": {
+      "model": "Chairman",
+      "generation": "New"
+    },
+    "뉴체어맨 W": {
+      "model": "Chairman W",
+      "generation": "New"
+    },
+    "뉴카이런": {
+      "model": "Kyron",
+      "generation": "New"
+    },
+    "뉴코란도": {
+      "model": "Korando",
+      "generation": "New"
+    },
+    "뉴코란도 C": {
+      "model": "Korando C",
+      "generation": "New"
+    },
+    "뉴훼미리": {
+      "model": "New Family",
+      "generation": "I"
+    },
+    "더 뉴 렉스턴 스포츠": {
+      "model": "Rexton Sports",
+      "generation": "The New"
+    },
+    "더 뉴 렉스턴 스포츠 칸": {
+      "model": "Rexton Sports Khan",
+      "generation": "The New"
+    },
+    "더 뉴 코란도 스포츠": {
+      "model": "Korando Sports",
+      "generation": "The New"
+    },
+    "더 뉴 토레스": {
+      "model": "Torres",
+      "generation": "The New"
+    },
+    "더 뉴 티볼리": {
+      "model": "Tivoli",
+      "generation": "The New"
+    },
+    "더 뉴 티볼리 에어": {
+      "model": "Tivoli Air",
+      "generation": "The New"
+    },
+    "렉스턴": {
+      "model": "Rexton",
+      "generation": "I"
+    },
+    "렉스턴 II": {
+      "model": "Rexton",
+      "generation": "Gen 2"
+    },
+    "렉스턴 W": {
+      "model": "Rexton W",
+      "generation": "I"
+    },
+    "렉스턴 뉴 아레나": {
+      "model": "Rexton",
+      "generation": "New Arena"
+    },
+    "렉스턴 스포츠": {
+      "model": "Rexton Sports",
+      "generation": "I"
+    },
+    "렉스턴 스포츠 칸": {
+      "model": "Rexton Sports Khan",
+      "generation": "I"
+    },
+    "로디우스": {
+      "model": "Rodius",
+      "generation": "I"
+    },
+    "로디우스 유로": {
+      "model": "Rodius",
+      "generation": "I · Euro",
+      "words": "Euro"
+    },
+    "무쏘": {
+      "model": "Musso",
+      "generation": "I"
+    },
+    "무쏘 (Q300)": {
+      "model": "Musso",
+      "generation": "Q300"
+    },
+    "무쏘 EV (O100)": {
+      "model": "Musso EV",
+      "generation": "O100"
+    },
+    "무쏘 스포츠": {
+      "model": "Musso Sports",
+      "generation": "I"
+    },
+    "무쏘 스포츠 (Q250)": {
+      "model": "Musso Sports",
+      "generation": "Q250"
+    },
+    "무쏘 스포츠 칸 (Q250)": {
+      "model": "Musso Sports Khan",
+      "generation": "Q250"
+    },
+    "베리 뉴 티볼리": {
+      "model": "Tivoli",
+      "generation": "Very New"
+    },
+    "뷰티풀 코란도": {
+      "model": "Korando",
+      "generation": "Beautiful"
+    },
+    "슈퍼 렉스턴": {
+      "model": "Rexton",
+      "generation": "Super"
+    },
+    "액티언": {
+      "model": "Actyon",
+      "generation": "I"
+    },
+    "액티언 2세대": {
+      "model": "Actyon",
+      "generation": "Gen 2"
+    },
+    "액티언 스포츠": {
+      "model": "Actyon Sports",
+      "generation": "I"
+    },
+    "올 뉴 렉스턴": {
+      "model": "Rexton",
+      "generation": "All New"
+    },
+    "이스타나": {
+      "model": "Istana",
+      "generation": "I"
+    },
+    "체어맨": {
+      "model": "Chairman",
+      "generation": "I"
+    },
+    "체어맨 H": {
+      "model": "Chairman H",
+      "generation": "I"
+    },
+    "체어맨 H 뉴 클래식": {
+      "model": "Chairman H",
+      "generation": "New Classic"
+    },
+    "체어맨 W": {
+      "model": "Chairman W",
+      "generation": "I"
+    },
+    "카이런": {
+      "model": "Kyron",
+      "generation": "I"
+    },
+    "칼리스타": {
+      "model": "Kallista",
+      "generation": "I"
+    },
+    "코란도 C": {
+      "model": "Korando C",
+      "generation": "I"
+    },
+    "코란도 EV (이모션)": {
+      "model": "Korando EV",
+      "generation": "Emotion"
+    },
+    "코란도 스포츠": {
+      "model": "Korando Sports",
+      "generation": "I"
+    },
+    "코란도 지프": {
+      "model": "Korando Jeep",
+      "generation": "I"
+    },
+    "코란도 투리스모": {
+      "model": "Korando Turismo",
+      "generation": "I"
+    },
+    "코란도 훼미리": {
+      "model": "Korando Family",
+      "generation": "I"
+    },
+    "토레스": {
+      "model": "Torres",
+      "generation": "I"
+    },
+    "토레스 EVX": {
+      "model": "Torres EVX",
+      "generation": "I"
+    },
+    "티볼리": {
+      "model": "Tivoli",
+      "generation": "I"
+    },
+    "티볼리 아머": {
+      "model": "Tivoli Armour",
+      "generation": "I"
+    },
+    "티볼리 에어": {
+      "model": "Tivoli Air",
+      "generation": "I"
+    }
   }
 }

@@ -1,0 +1,1641 @@
+{
+  "make": "Hyundai",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "LPI": "lpg",
+      "LPe": "lpg",
+      "HEV": "hybrid",
+      "PHEV": "hybrid",
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "E-TECH": "hybrid",
+      "EV": "electric",
+      "Electric": "electric",
+      "Electrified": "electric",
+      "Turbo": null,
+      "GDI": null,
+      "GDi": null,
+      "T-GDI": null,
+      "T-GDi": null,
+      "MPI": null,
+      "MPi": null,
+      "CRDi": null,
+      "VGT": null,
+      "e-VGT": null,
+      "TCe": null,
+      "GDe": null,
+      "GTe": null,
+      "dCi": null,
+      "VVT": null,
+      "Long": null,
+      "Range": null,
+      "Standard": null,
+      "CVVL": null,
+      "Performance": null,
+      "Long Range": null,
+      "CVT": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dT$"
+      },
+      {
+        "re": "^[A-Z]{1,2}\\d{3}$"
+      },
+      {
+        "re": "^L\\d\\.\\d$",
+        "fuel": "lpg"
+      },
+      {
+        "re": "^[A-Z]\\d{2}$"
+      },
+      {
+        "re": "^\\d{3}$"
+      }
+    ],
+    "drives": {
+      "4WD": "4wd",
+      "AWD": "awd",
+      "e-AWD": "awd",
+      "HTRAC": "awd",
+      "2WD": null
+    }
+  },
+  "complectations": [
+    "Best Selection Ⅰ",
+    "Best Selection Ⅱ",
+    "Platinum Ⅱ",
+    "Signature X Line",
+    "Esprit Alpine",
+    "Safety Pack",
+    "Black Ink",
+    "Le Blanc",
+    "The Black",
+    "Value Plus",
+    "Premium Plus",
+    "X-Line",
+    "X Line",
+    "N Line",
+    "GT Line",
+    "Prestige",
+    "Modern",
+    "Noblesse",
+    "Signature",
+    "Exclusive",
+    "Premium",
+    "Calligraphy",
+    "Inspiration",
+    "Smart",
+    "Special",
+    "Luxury",
+    "Trendy",
+    "Plus",
+    "Masters",
+    "Gravity",
+    "Choice",
+    "Value",
+    "President",
+    "Style",
+    "Basic",
+    "Upper",
+    "Top",
+    "Earth",
+    "Air",
+    "Deluxe",
+    "Premier",
+    "Premiere",
+    "Platinum",
+    "Master",
+    "Best Selection",
+    "Adventure",
+    "Elite",
+    "Safety",
+    "Club",
+    "Coolmen",
+    "Core",
+    "Family",
+    "Expedition",
+    "Fashion",
+    "Supreme",
+    "Pop",
+    "Iconic",
+    "Intelligent",
+    "Wild",
+    "Flux",
+    "Inspire",
+    "Art",
+    "Tech",
+    "Prime",
+    "Professional",
+    "Dynamic",
+    "Extreme",
+    "Midnight",
+    "Redline",
+    "Millennial",
+    "Business",
+    "Mobility",
+    "Honors",
+    "Life",
+    "Black",
+    "Noble",
+    "Trend",
+    "Design",
+    "Cross",
+    "Grand",
+    "Active",
+    "Sport",
+    "High",
+    "RE",
+    "LE",
+    "SE",
+    "XE",
+    "PE",
+    "T5",
+    "T7",
+    "V1",
+    "V3",
+    "V5",
+    "V7",
+    "VX",
+    "IX",
+    "CVX",
+    "LT",
+    "LTZ",
+    "LS",
+    "RS",
+    "ACTIV",
+    "Z71-X",
+    "H Pick",
+    "Hi-pass",
+    "Navi",
+    "Navigation",
+    "Sunroof",
+    "Package",
+    "5-link",
+    "N",
+    "S",
+    "GT",
+    "The Essential",
+    "Essential",
+    "Tourer",
+    "Lounge",
+    "Limousine",
+    "High Limousine",
+    "The Iconic",
+    "VIP",
+    "E-Value+",
+    "Celebrity",
+    "Collection",
+    "The Spec",
+    "Spec",
+    "PYL",
+    "Business 1",
+    "Business 2",
+    "Q",
+    "Urban",
+    "Light",
+    "Avenue",
+    "Fever",
+    "Care Plus",
+    "Selection",
+    "Xtreme Selection",
+    "Wit",
+    "Blue Saver",
+    "Unique",
+    "GT-R",
+    "HVX",
+    "VXL",
+    "300VXL",
+    "VIP Pack",
+    "PACK",
+    "D Spec",
+    "Xtreme",
+    "X-Pro",
+    "High Roof",
+    "Executive",
+    "Minus",
+    "Heritage",
+    "Majesty",
+    "Gear",
+    "Gear Plus",
+    "Outdoor",
+    "C5",
+    "C7",
+    "CX5",
+    "CX7",
+    "TX",
+    "LX",
+    "RX",
+    "RX7",
+    "A3",
+    "S7",
+    "S9",
+    "E5",
+    "E7",
+    "MX",
+    "X"
+  ],
+  "editions": [
+    "White Edition",
+    "Outdoor Edition",
+    "Gear Edition",
+    "Limited",
+    "Special Vehicle",
+    "Other Special Vehicle",
+    "Iron Man Edition",
+    "Ten Million Limited",
+    "Dump",
+    "Box Truck",
+    "Wing Body",
+    "Refrigerated",
+    "1 Million",
+    "Deluxe Taxi",
+    "Coachbuilt",
+    "Ambulance",
+    "Camper",
+    "The Black Edition",
+    "School Bus",
+    "Rental",
+    "Disabled",
+    "Commercial",
+    "Taxi",
+    "Driving School",
+    "Eurasia Edition",
+    "Finest Edition",
+    "Dynamic Edition",
+    "Limited Edition",
+    "Design Edition",
+    "Black Edition",
+    "X Edition",
+    "Special Edition",
+    "First Edition",
+    "Edition"
+  ],
+  "models": [
+    {
+      "name": "Accent",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "(new)",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Aslan",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Atos",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Avante",
+      "generations": [
+        {
+          "code": "XD · New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "CN7 · The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "AD · The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "CN7",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "AD",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "HD",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "MD",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "XD",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Coupe",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Hybrid",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "BlueOn",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Casper",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Electric",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Click",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Hybrid",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Cortina",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Dynasty",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Elantra",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Equus",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "(new)",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Excel",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Galloper",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Genesis",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "DH",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Genesis Coupe",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Grace",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Granada",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Grand Starex",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Grandeur",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "GN7",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "HG",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "IG",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "TG",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "XG",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New Luxury",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "XG · New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "IG · The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The Luxury",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Ioniq",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Hybrid",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Ioniq 5",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Ioniq 6",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Ioniq 9",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Kona",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "SX2",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Electric",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Hybrid",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Lavita",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Marcia",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Maxcruz",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Nexo",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "NH2",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ],
+      "fuel": "hydrogen"
+    },
+    {
+      "name": "Palisade",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "LX3",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Pony",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Pony 2",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Presto",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "ST1",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Santa Fe",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "MX5",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "CM",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "DM",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "TM",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The Prime",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Santamo",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Scoupe",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Solati",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Sonata",
+      "generations": [
+        {
+          "code": "EF",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "LF",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "NF",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "NF · Transform",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "YF",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "EF · New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "DN8",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 3",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New Rise",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The Brilliant",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "DN8 · The Edge",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Hybrid",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Starex",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Jumbo",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Staria",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Stellar",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Terracan",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Tiburon",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Trajet XG",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Tucson",
+      "generations": [
+        {
+          "code": "New · ix",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "NX4 · The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "NX4",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "ix",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Tuscani",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "(new)",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Veloster",
+      "generations": [
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "JS",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Venue",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Veracruz",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Verna",
+      "generations": [
+        {
+          "code": "New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Transform",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "(new)",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "i30",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "PD",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Wagon",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "(new)",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "i40",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Saloon",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The New",
+          "years": [
+            null,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    }
+  ]
+}
