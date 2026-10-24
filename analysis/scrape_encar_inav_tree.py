@@ -56,6 +56,7 @@ HEADERS = {
 
 _STOP       = False
 _api_calls  = 0
+_refused    = 0   # 404s on facets that have listings: retried, reported at the end
 _api_lock   = threading.Lock()
 _print_lock = threading.Lock()
 
@@ -147,9 +148,14 @@ class Failed(Exception):
     """A drill-down Encar did not answer after every retry: its model is fetched again on --resume."""
 
 
-def _get_inav(q: str, retries: int = 5) -> dict:
-    """The iNav of a query; raises Failed when every retry fails (never an empty answer)."""
-    global _api_calls
+def _get_inav(q: str, retries: int = 5, expected: int = 0) -> dict:
+    """The iNav of a query; raises Failed when every retry fails (never an empty answer).
+
+    expected: the listings Encar counted for this facet one level up. A 404 means "nothing
+    here" only when that is 0; a facet with listings that answers 404 was refused, so it
+    is retried like any block (the October run lost every badge that way).
+    """
+    global _api_calls, _refused
     for attempt in range(retries):
         client = _client()
         try:
@@ -161,12 +167,13 @@ def _get_inav(q: str, retries: int = 5) -> dict:
             return r.json().get("iNav", {})
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
-            # Encar answers 404 on a Korean proxy when the query has nothing (a model with no
-            # listings now): an empty answer, not a block (collector/src/collector/http.py)
+            with _api_lock:
+                _api_calls += 1
+            if status == 404 and not expected:
+                return {}
             if status == 404:
                 with _api_lock:
-                    _api_calls += 1
-                return {}
+                    _refused += 1
             wait = min(2 ** attempt, 16)
             with _print_lock:
                 print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s")
@@ -195,9 +202,8 @@ def _find_facets(container: dict, aspect_name: str, _depth: int = 0) -> list[dic
     return []
 
 
-def _get_next_level(action: str, aspect: str) -> list[dict]:
-    inav = _get_inav(action)
-    return _find_facets(inav, aspect)
+def _get_next_level(action: str, aspect: str, expected: int = 0) -> list[dict]:
+    return _find_facets(_get_inav(action, expected=expected), aspect)
 
 
 def _facet_meta(f: dict, key: str) -> str | None:
@@ -252,7 +258,7 @@ def _process_model(
         model_count=model_f.get("Count", 0),
     )
 
-    bg_facets = _get_next_level(model_act, "BadgeGroup")
+    bg_facets = _get_next_level(model_act, "BadgeGroup", model_f.get("Count", 0))
     if not bg_facets:
         model_rows.append({**base, "badge_group_kr": None, "badge_kr": None,
                            "badge_detail_kr": None, "count": model_f["Count"]})
@@ -264,14 +270,14 @@ def _process_model(
         bg_kr  = bg_f["Value"]
         bg_act = bg_f["Action"]
 
-        badge_facets = _get_next_level(bg_act, "Badge")
+        badge_facets = _get_next_level(bg_act, "Badge", bg_f.get("Count", 0))
         for badge_f in badge_facets:
             if _STOP:
                 break
             badge_kr  = badge_f["Value"]
             badge_act = badge_f["Action"]
 
-            bd_facets = _get_next_level(badge_act, "BadgeDetail")
+            bd_facets = _get_next_level(badge_act, "BadgeDetail", badge_f.get("Count", 0))
             if not bd_facets:
                 model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
                                    "badge_code": _facet_meta(badge_f, "Code"),
@@ -326,7 +332,7 @@ def scrape(
         print(f"\n  CarType={ct_value}  ({ct_facet['Count']:,})")
 
         # Step 2: Manufacturers
-        make_facets = _get_next_level(ct_action, "Manufacturer")  # Failed here ends the run: nothing to resume from
+        make_facets = _get_next_level(ct_action, "Manufacturer", ct_facet.get("Count", 0))  # Failed here ends the run: nothing to resume from
         print(f"    Manufacturers: {len(make_facets)}")
         if dry_run:
             make_facets = make_facets[:2]
@@ -343,7 +349,7 @@ def scrape(
 
             # Step 3: ModelGroups
             try:
-                mg_facets = _get_next_level(make_act, "ModelGroup")
+                mg_facets = _get_next_level(make_act, "ModelGroup", make_f.get("Count", 0))
             except Failed:
                 failed.append(f"{make_kr} (model groups)")
                 continue
@@ -359,7 +365,7 @@ def scrape(
 
                 # Step 4: Models
                 try:
-                    model_facets = _get_next_level(mg_act, "Model")
+                    model_facets = _get_next_level(mg_act, "Model", mg_f.get("Count", 0))
                 except Failed:
                     failed.append(f"{make_kr} {mg_kr} (models)")
                     continue
@@ -447,9 +453,13 @@ def main():
         print(f"[resume] Loading {out_path} ...")
         with open(out_path, encoding="utf-8") as f:
             prev = json.load(f)
-        existing_rows = prev.get("taxonomy", [])
         existing_flat = prev.get("flat", {})
-        print(f"[resume] Loaded {len(existing_rows):,} existing rows")
+        # a model with listings saved without its badges was cut short (a refused 404 before
+        # the fix above): it is fetched again, not skipped
+        existing_rows = [r for r in prev.get("taxonomy", [])
+                         if r.get("badge_group_kr") is not None or not r.get("model_count")]
+        print(f"[resume] Loaded {len(existing_rows):,} existing rows "
+              f"({len(prev.get('taxonomy', [])) - len(existing_rows):,} cut-short models dropped)")
 
     # Build proxy pool — one unique session per worker
     global _WORKER_PROXIES
@@ -483,6 +493,7 @@ def main():
     print(f"  Models     : {models}")
     print(f"  Trim names : {trims}")
     print(f"  API calls  : {_api_calls:,}")
+    print(f"  Refused 404: {_refused:,}  (facets with listings that answered 404, retried)")
 
 
 if __name__ == "__main__":
