@@ -41,4 +41,17 @@ class JobReportTest extends TestCase
         $this->assertStringContainsString('возобновлён', $text);
         $this->assertStringContainsString('фильтр: maker=BMW, max_pages=2', $text);
     }
+
+    public function test_errors_of_a_collector_run_include_cards_and_histories_by_kind(): void
+    {
+        $running = self::job(['progress' => ['collector' => 'collector/1', 'errors' => 9, 'checkpoint' => [
+            'report' => ['detail_failed' => 6, 'history_failed' => 0], 'error_log' => ['year:기아:2019 p.5: missing'],
+        ]]]);
+        $this->assertSame(['Страницы поиска' => 9, 'Карточки лотов' => 6], JobReport::errorTypes($running));
+        $this->assertSame(['year:기아:2019 p.5: missing'], JobReport::errorLog($running), 'shown while the run goes');
+
+        $done = self::job(['result' => ['errors' => 1, 'detail_failed' => 2, 'history_failed' => 3, 'error_log' => ['x']]]);
+        $this->assertSame(['Страницы поиска' => 1, 'Карточки лотов' => 2, 'История лотов' => 3], JobReport::errorTypes($done));
+        $this->assertSame(['x'], JobReport::errorLog($done));
+    }
 }

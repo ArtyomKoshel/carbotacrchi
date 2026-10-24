@@ -14,10 +14,17 @@ class LogFiles
 {
     private const CHUNK = 65536;
 
-    /** @return list<array{key: string, group: string, label: string, path: string, size: int, mtime: int}> */
+    /**
+     * Newest source first: with the collector on (COLLECTOR_MODE=primary) its job logs lead and
+     * the old parser's files, which nothing writes any more, go last, so the page opens on a live log.
+     *
+     * @return list<array{key: string, group: string, label: string, path: string, size: int, mtime: int}>
+     */
     public function all(): array
     {
-        $files = [];
+        $collectorOn = (bool) config('ingest.enabled');
+        $stale = $collectorOn ? ' · до сборщика' : '';
+        $parser = [];
         $base = (string) config('admin.log_file', '');
 
         if ($base !== '') {
@@ -28,30 +35,32 @@ class LogFiles
                     }
                     continue;
                 }
-                $files[] = $this->entry("parser:{$i}", 'Парсер', basename($path), $path);
+                $parser[] = $this->entry("parser:{$i}", 'Парсер' . $stale, basename($path), $path);
             }
             $jobs = glob(dirname($base) . '/jobs/job-*.log') ?: [];
             usort($jobs, fn ($a, $b) => filemtime($b) <=> filemtime($a));
             foreach (array_slice($jobs, 0, 50) as $path) {
-                $files[] = $this->entry('job:' . basename($path), 'Задачи парсинга', basename($path), $path);
+                $parser[] = $this->entry('job:' . basename($path), 'Задачи парсинга' . $stale, basename($path), $path);
             }
         }
 
+        $collector = [];
         foreach (app(CollectorRunLog::class)->jobs() as $job) {
-            $files[] = [
+            $collector[] = [
                 'key' => 'collector:'.$job['job_id'], 'group' => 'Сборщик', 'label' => "job-{$job['job_id']}.log",
                 'path' => "collector.run_log · задача #{$job['job_id']}", 'size' => 0, 'lines' => $job['lines'],
                 'mtime' => (int) strtotime($job['last_at'].' UTC'), 'job_id' => $job['job_id'],
             ];
         }
 
-        $app = array_merge(glob(storage_path('logs/laravel.log')) ?: [], glob(storage_path('logs/laravel-*.log')) ?: []);
-        usort($app, fn ($a, $b) => filemtime($b) <=> filemtime($a));
-        foreach ($app as $path) {
-            $files[] = $this->entry('app:' . basename($path), 'Приложение (Laravel)', basename($path), $path);
+        $app = [];
+        $paths = array_merge(glob(storage_path('logs/laravel.log')) ?: [], glob(storage_path('logs/laravel-*.log')) ?: []);
+        usort($paths, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+        foreach ($paths as $path) {
+            $app[] = $this->entry('app:' . basename($path), 'Приложение (Laravel)', basename($path), $path);
         }
 
-        return $files;
+        return $collectorOn ? [...$collector, ...$app, ...$parser] : [...$parser, ...$collector, ...$app];
     }
 
     public function find(?string $key): ?array

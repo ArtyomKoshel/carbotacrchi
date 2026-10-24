@@ -172,6 +172,7 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         run_id=job.id,
         history_cutoff=history_cutoff_at,
         on_progress=on_progress,
+        on_error=ctx.runlog.error if ctx.runlog else None,
         should_stop=ctx.should_stop,
         current_year=current_year,
         seen=seen,
@@ -223,10 +224,10 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         },
     )
     if ctx.runlog:
-        for line in state.error_log:
-            await ctx.runlog.warning(line)
+        # Each error went to the log as it happened (Sweeper.on_error); here only their count.
         await ctx.runlog.info(
             f"done: {state.seen:,}/{state.api_total:,} lots ({coverage}%), full_run={result['full_run']},"
+            f" errors {state.errors},"
             f" rejected {result['rejected']:,}, history fetched {report.history_fetched:,}"
             f" / stored {report.history_stored:,}"
         )
