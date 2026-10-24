@@ -71,9 +71,10 @@ class BotUserResource extends Resource
         return $table
             ->defaultSort('last_seen', 'desc')
             ->columns([
+                // No @username → the name goes on the main line; a blank state would hide the description too.
                 TextColumn::make('username')->label('Telegram')
-                    ->formatStateUsing(fn (?string $state) => $state ? '@' . $state : '—')
-                    ->description(fn (User $r) => $r->first_name)
+                    ->state(fn (User $r) => $r->username ? '@' . $r->username : ($r->first_name ?: (string) $r->id))
+                    ->description(fn (User $r) => $r->username ? $r->first_name : null)
                     ->searchable(['username', 'first_name']),
                 TextColumn::make('id')->label('Telegram id')->fontFamily('mono')->copyable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('last_seen')->label('Был')->since()->dateTimeTooltip('d.m.Y H:i')->sortable(),
