@@ -117,9 +117,9 @@ def _client() -> httpx.Client:
             idx = _worker_counter
             _worker_counter += 1
         _local.worker_idx = idx
-        # every model group gets a new thread pool, so idx keeps growing past the pool size:
-        # a thread without a proxy of its own would go to Encar directly, and Encar answers
-        # 404 outside Korea (the October run lost every model after the first group that way)
+        # a thread past the prepared proxies would go to Encar directly, and Encar answers 404
+        # outside Korea (the October run, with a pool per model group, lost every model after
+        # the first group that way)
         _local.proxy_base = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else _make_proxy_url(idx)
         _local.client = _build_client(_local.proxy_base)
         if _local.proxy_base:
@@ -327,6 +327,8 @@ def scrape(
     target_car_types = [f for f in car_type_facets if f.get("Value") in ("Y", "N")]
     print(f"\n[1] CarTypes: {[f['Value'] for f in target_car_types]}")
 
+    # one pool for the run: its threads keep their proxy sessions from make to make
+    pool = ThreadPoolExecutor(max_workers=workers)
     for ct_facet in target_car_types:
         if _STOP:
             break
@@ -360,51 +362,45 @@ def scrape(
             if dry_run:
                 mg_facets = mg_facets[:2]
 
-            for mg_f in mg_facets:
-                if _STOP:
-                    break
-                mg_kr  = mg_f["Value"]
-                mg_act = mg_f["Action"]
-
-                # Step 4: Models
+            # Step 4: Models of every group, then their badges, all in one pool: the threads
+            # stay busy across groups (most groups hold 1-4 models)
+            def models_of(mg_f: dict) -> tuple[dict, list[dict] | None]:
                 try:
-                    model_facets = _get_next_level(mg_act, "Model", mg_f.get("Count", 0))
+                    return mg_f, _get_next_level(mg_f["Action"], "Model", mg_f.get("Count", 0))
                 except Failed:
+                    return mg_f, None
+
+            pending: list[tuple[str, dict]] = []
+            for mg_f, model_facets in pool.map(models_of, mg_facets):
+                mg_kr = mg_f["Value"]
+                if model_facets is None:
                     failed.append(f"{make_kr} {mg_kr} (models)")
                     continue
-                print(f"        {mg_kr}: {len(model_facets)} models", flush=True)
                 if dry_run:
                     model_facets = model_facets[:1]
+                pending += [(mg_kr, m) for m in model_facets
+                            if (make_kr, mg_kr, m["Value"]) not in scraped_models]
+            print(f"      Models to fetch: {len(pending)}", flush=True)
 
-                # Filter already-scraped
-                pending = [
-                    m for m in model_facets
-                    if (make_kr, mg_kr, m["Value"]) not in scraped_models
-                ]
-                if not pending:
+            futures = {
+                pool.submit(_process_model, ct_value, make_kr, make_en, mg_kr, m): (mg_kr, m)
+                for mg_kr, m in pending
+            }
+            for fut in as_completed(futures):
+                if _STOP:
+                    break
+                try:
+                    model_rows = fut.result()
+                except Failed:
+                    mg_kr, m = futures[fut]
+                    failed.append(f"{make_kr} {mg_kr} {m['Value']}")
                     continue
-
-                # ── Concurrent badge fetch ──────────────────────────────────
-                with ThreadPoolExecutor(max_workers=workers) as pool:
-                    futures = {
-                        pool.submit(_process_model, ct_value, make_kr, make_en, mg_kr, m): m
-                        for m in pending
-                    }
-                    for fut in as_completed(futures):
-                        if _STOP:
-                            break
-                        try:
-                            model_rows = fut.result()
-                        except Failed:
-                            failed.append(f"{make_kr} {mg_kr} {futures[fut]['Value']}")
-                            continue
-                        with rows_lock:
-                            rows.extend(model_rows)
-                            if len(rows) % 500 < len(model_rows):
-                                with _api_lock:
-                                    calls = _api_calls
-                                print(f"      rows so far: {len(rows):,}  api_calls: {calls:,}",
-                                      flush=True)
+                with rows_lock:
+                    rows.extend(model_rows)
+                    if len(rows) % 500 < len(model_rows):
+                        with _api_lock:
+                            calls = _api_calls
+                        print(f"      rows so far: {len(rows):,}  api_calls: {calls:,}", flush=True)
 
             # Autosave after each make: a crash loses one make at most (--resume)
             if len(rows) > make_rows_before and on_save is not None:
@@ -413,6 +409,7 @@ def scrape(
                     calls = _api_calls
                 print(f"      [autosave] {len(rows):,} rows  api_calls: {calls:,}  failed: {len(failed)}", flush=True)
 
+    pool.shutdown(wait=False, cancel_futures=True)
     return flat, rows, failed
 
 
