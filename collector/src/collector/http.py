@@ -171,7 +171,12 @@ class Fetcher:
     async def __aexit__(self, *exc: object) -> None:
         await self.aclose()
 
-    async def get_json(self, url: str, params: Mapping[str, str] | None = None) -> Outcome:
+    async def get_json(
+        self, url: str, params: Mapping[str, str] | None = None, *, missing_ok: bool = True
+    ) -> Outcome:
+        """missing_ok=False: this endpoint never answers "nothing there" with a missing status
+        (a search answers Count 0), so such a status is a refused request and retried."""
+        missing = self._missing if missing_ok else frozenset()
         async with self._sem:
             proxy = self._proxies.take()
             reason = ""
@@ -196,11 +201,11 @@ class Fetcher:
                 self.stats.by_status[status] = self.stats.by_status.get(status, 0) + 1
                 if proxy is not None:
                     self.stats.proxy_bytes += len(response.content)
-                if status in self._missing:
+                if status in missing:
                     return Missing(status)
                 if status == 402:
                     raise ProxyBudgetError("402 Payment Required")
-                if status in RETRY_STATUSES or (status == 404 and not self._missing):
+                if status in RETRY_STATUSES or status == 404 or status in self._missing:
                     reason = f"HTTP {status}"
                     continue
                 if status >= 400:

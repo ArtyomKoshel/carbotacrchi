@@ -6,6 +6,7 @@ Real MySQL (COLLECTOR_TEST_DB_URL), fake api.encar.com (tests/fakes.py).
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import os
 from collections.abc import AsyncIterator
@@ -22,7 +23,8 @@ from collector import __main__ as cli
 from collector.adapters.encar import sweep
 from collector.adapters.encar.pipeline import EncarPipeline
 from collector.config import Settings
-from collector.runner import history_cutoff, qualified
+from collector.http import Fetcher
+from collector.runner import history_cutoff, known_makers, qualified
 from collector.service import Service
 from tests.fakes import INVENTORY, FakeEncar
 from tests.test_storage import PARSE_JOBS, TABLES, URL
@@ -42,6 +44,12 @@ CREATE TABLE parse_filters (
 )"""
 
 pytestmark = pytest.mark.mysql
+
+
+@pytest.fixture(autouse=True)
+def _no_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Retries without the real backoff, so a refused or failing request costs no seconds here."""
+    monkeypatch.setattr("collector.service.Fetcher", functools.partial(Fetcher, backoff=0.0))
 
 
 @pytest.fixture
@@ -565,3 +573,139 @@ async def test_history_older_than_the_max_age_is_rechecked_too(db: AsyncEngine) 
     assert await history_cutoff(db, "encar", 3, NOW, max_age_hours=48) == NOW - timedelta(hours=48)
     assert await history_cutoff(db, "encar", 3, NOW, max_age_hours=24 * 10) == NOW - timedelta(days=3)
     assert await history_cutoff(db, "encar", 3, NOW, max_age_hours=0) == NOW - timedelta(days=3)
+
+
+# ── failures that must not end a segment, makers the global pass misses ─────
+
+PROXY = {"proxy_username": "u", "proxy_password": "p", "proxy_host": "h:1"}  # 404 means "nothing there"
+
+
+def kia_page(q: str, count: int) -> bool:
+    return "Manufacturer.기아." in q and count > 1  # a page, not the Count request
+
+
+async def run_result(db: AsyncEngine, jid: int) -> dict[str, Any]:
+    result: dict[str, Any] = json.loads((await job_row(db, jid)).result)
+    return result
+
+
+async def test_a_refused_search_page_is_retried_not_taken_for_the_end(db: AsyncEngine) -> None:
+    fake = FakeEncar()
+    fake.global_makers = {"현대"}  # 기아 only through its own segment
+    refused: list[int] = []
+
+    def refuse_once(q: str, offset: int, count: int) -> int:
+        if kia_page(q, count) and not refused:
+            refused.append(offset)
+            return 404  # what nine Hyundai years of run 19 got through the Korean proxy
+        return 200
+
+    fake.search_status_for = refuse_once
+    jid = await add_job(db)
+    await service(db, fake, **PROXY).run_once()
+
+    result = await run_result(db, jid)
+    assert {"201", "202"} <= await ingested_ids(db, jid)
+    assert refused == [0]
+    assert (result["full_run"], result["errors"], result["incomplete"]) == (True, 0, [])
+
+
+async def test_a_segment_cut_by_a_failure_is_finished_by_the_retry_at_the_end(db: AsyncEngine) -> None:
+    fake = FakeEncar()
+    fake.global_makers = {"현대"}
+    failures = 0
+
+    def fail_four_times(q: str, offset: int, count: int) -> int:
+        nonlocal failures
+        if kia_page(q, count) and failures < 4:  # the fetcher's first try and its three retries
+            failures += 1
+            return 503
+        return 200
+
+    fake.search_status_for = fail_four_times
+    jid = await add_job(db)
+    await service(db, fake, **PROXY).run_once()
+
+    result = await run_result(db, jid)
+    assert {"201", "202"} <= await ingested_ids(db, jid)
+    assert result["errors"] == 1
+    assert result["error_log"] == ["maker:기아 p.1: HTTP 503"]
+    assert (result["full_run"], result["incomplete"]) == (True, [])
+
+
+async def test_a_maker_still_failing_after_the_retry_keeps_the_run_from_counting(db: AsyncEngine) -> None:
+    fake = FakeEncar()  # the global pass sees every lot: coverage alone would call it a full run
+    fake.search_status_for = lambda q, offset, count: 404 if "Manufacturer.기아." in q else 200
+    jid = await add_job(db)
+    await service(db, fake, **PROXY).run_once()
+
+    result = await run_result(db, jid)
+    assert result["coverage_pct"] == 100.0
+    assert result["full_run"] is False
+    assert result["incomplete"] == ["maker:기아"]
+    assert result["error_log"] == ["[기아] count failed", "[기아] count failed"], "cut, then the retry"
+    checkpoint = json.loads((await job_row(db, jid)).progress)["checkpoint"]
+    assert "maker:기아" not in checkpoint["done_segments"]
+    async with db.connect() as conn:
+        rows = await conn.execute(text("SELECT level, message FROM run_log WHERE job_id = :j"), {"j": jid})
+        warnings = [r.message for r in rows if r.level == "warning"]
+    assert "not a full run: 1 cut short after a retry: maker:기아" in warnings
+
+
+async def test_makers_the_global_pass_misses_come_from_the_navigation(db: AsyncEngine) -> None:
+    fake = FakeEncar()
+    fake.global_makers = {"현대"}  # run 19: the global pass stopped before 14 makers
+    jid = await add_job(db)
+    await service(db, fake).run_once()
+
+    assert {"201", "202"} <= await ingested_ids(db, jid)
+    checkpoint = json.loads((await job_row(db, jid)).progress)["checkpoint"]
+    assert checkpoint["counts"]["nav:makers"] == 2
+    assert checkpoint["counts"]["maker:기아"] == 2
+
+
+async def test_makers_of_earlier_runs_are_swept_when_the_navigation_fails(db: AsyncEngine) -> None:
+    earlier = await add_job(db)
+    async with db.begin() as conn:
+        await conn.execute(
+            text("UPDATE parse_jobs SET status = 'cancelled', progress = :p WHERE id = :i"),
+            {"p": json.dumps({"checkpoint": {"makers": {"기아": ["K5"]}}}), "i": earlier},
+        )
+    fake = FakeEncar()
+    fake.global_makers = {"현대"}
+    fake.nav_status = 500
+    jid = await add_job(db)
+    await service(db, fake).run_once()
+
+    assert {"201", "202"} <= await ingested_ids(db, jid)
+    result = await run_result(db, jid)
+    assert result["full_run"] is True, "a navigation that fails costs nothing but its makers"
+    assert await known_makers(db, SCHEMA, "encar", exclude=jid) == ["기아"]
+    assert await known_makers(db, SCHEMA, "encar", exclude=earlier) == ["기아", "현대"]
+
+
+async def test_years_and_models_cut_short_are_retried_too(
+    db: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sweep, "MAX_SAFE_OFFSET", 3)  # 현대 (4 lots) goes by year, each year by model
+    fake = FakeEncar()  # the global pass gives 현대 its models
+    page_failures = 0
+
+    def failing(q: str, offset: int, count: int) -> int:
+        nonlocal page_failures
+        if "Year.range(201900" in q and "_.Model." not in q and count > 1 and page_failures < 4:
+            page_failures += 1  # the 2019 page fails past the fetcher's retries once
+            return 503
+        if "Year.range(202000" in q and "_.Model." in q and count == 1:
+            return 503  # the 2020 model Count never answers: the retry sweeps the model anyway
+        return 200
+
+    fake.search_status_for = failing
+    jid = await add_job(db)
+    await service(db, fake).run_once()
+
+    result = await run_result(db, jid)
+    assert {"101", "102", "103", "104"} <= await ingested_ids(db, jid)
+    assert result["error_log"][0] == "year:현대:2019 p.1: HTTP 503"
+    assert result["error_log"][1].startswith("[현대/2020/")
+    assert (result["errors"], result["incomplete"], result["full_run"]) == (2, [], True)
