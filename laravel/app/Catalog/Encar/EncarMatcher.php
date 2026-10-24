@@ -59,7 +59,7 @@ class EncarMatcher
         $badge = $lot['badge'] ?? null;
         $trim = $lot['trim'] ?? null;
 
-        [$modelName, $code] = $this->model($encar, trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? '')), (string) $badge);
+        [$modelName, $code, $modelWords] = $this->model($encar, trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? '')), (string) $badge);
         // a make may name the engine before the model ("Cooper S Countryman"): it goes to the
         // badge, and what is left names the model through "engine_models" ("" → "Hatch")
         $engine = '';
@@ -91,7 +91,7 @@ class EncarMatcher
             });
         }
 
-        $english = trim($engine . ' ' . $this->english(self::text($badge, $trim)));
+        $english = trim("{$engine} {$modelWords} " . $this->english(self::text($badge, $trim)));
         // the make's own spellings of the reference's words ("AB" → "Autobiography")
         foreach ($encar['words'] ?? [] as $from => $to) {
             $english = preg_replace('/(?<=^|\s)' . preg_quote($from, '/') . '(?=\s|$)/u', $to, $english);
@@ -183,19 +183,26 @@ class EncarMatcher
     }
 
     /**
-     * Reference model name and chassis code of Encar's model ("5시리즈 (G30)", "E-클래스 W213",
-     * or the English model_en): the name through the make's "names", then its exceptions —
-     * "badges" (a model whose badge names another one: the AMG GT 4-Door) and "models".
+     * Reference model name, generation and words for the badge, of Encar's model:
+     *   - "encar_models": Encar's model exactly as Encar writes it → model, generation, and the
+     *     words its name says of the engine ("쏘나타 디 엣지 하이브리드(DN8)" → Sonata, DN8 FL, "Hybrid"):
+     *     Encar keeps a facelift or a powertrain as a model of its own, we keep it as the generation's;
+     *   - else "5시리즈 (G30)", "E-클래스 W213" or the English model_en: the name through the make's
+     *     "names", then the exceptions "badges" (a model whose badge names another one) and "models".
      *
-     * @return array{0: string, 1: ?string}
+     * @return array{0: string, 1: ?string, 2: string}
      */
     private function model(array $encar, string $encarModel, string $badge): array
     {
+        if (isset($encar['encar_models'][$encarModel])) {
+            $m = $encar['encar_models'][$encarModel];
+            return [$m['model'], $m['generation'] ?? null, $m['words'] ?? ''];
+        }
         [$name, $code] = self::split($encarModel);
         $name = $encar['names'][$name] ?? $name;
         foreach ($encar['badges'] ?? [] as $rule) {
             if (self::split($rule['model_en']) === [$name, $code] && preg_match('/^' . $rule['badge'] . '/u', $badge)) {
-                return $rule['to'];
+                return [$rule['to'][0], $rule['to'][1] ?? null, ''];
             }
         }
         // a key without a chassis code renames every generation of that name; its generation
@@ -206,13 +213,13 @@ class EncarMatcher
                 continue;
             }
             if ($keyCode === $code) {
-                return [$to[0], $to[1] ?? $code];
+                return [$to[0], $to[1] ?? $code, ''];
             }
             if ($keyCode === null) {
-                return [$to[0], $code];
+                return [$to[0], $code, ''];
             }
         }
-        return [$name, $code];
+        return [$name, $code, ''];
     }
 
     /**

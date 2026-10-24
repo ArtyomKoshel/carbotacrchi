@@ -1,0 +1,22 @@
+{
+  "_comment": "Kia on Encar. names: Encar's model group → our model (Kia's own Latin names for the Korean market). model_splits: an Encar model that is a model of its own. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "기아",
+  "names": {
+    "EV3": "EV3", "EV4": "EV4", "EV5": "EV5", "EV6": "EV6", "EV9": "EV9", "K3": "K3", "K5": "K5", "K7": "K7", "K8": "K8",
+    "K9": "K9", "PV5": "PV5", "X-TREK": "X-Trek", "니로": "Niro", "델타": "Delta", "레이": "Ray", "레토나": "Retona",
+    "로체": "Lotze", "록스타": "Rocsta", "리갈": "Regal", "리오": "Rio", "모닝": "Morning", "모하비": "Mohave",
+    "베스타": "Besta", "봉고III 미니버스": "Bongo III Minibus", "브리샤": "Brisa", "비스토": "Visto", "세피아": "Sephia",
+    "셀토스": "Seltos", "슈마": "Shuma", "스토닉": "Stonic", "스팅어": "Stinger", "스펙트라": "Spectra",
+    "스포티지": "Sportage", "쎄라토": "Cerato", "쏘렌토": "Sorento", "쏘울": "Soul", "씨드": "Ceed", "아벨라": "Avella",
+    "엔터프라이즈": "Enterprise", "엘란": "Elan", "오피러스": "Opirus", "옵티마": "Optima", "카니발": "Carnival",
+    "카렌스": "Carens", "카스타": "Carstar", "캐피탈": "Capital", "콩코드": "Concord", "크레도스": "Credos",
+    "타스만": "Tasman", "타우너": "Towner", "텔루라이드": "Telluride", "토픽": "Topic", "파크타운": "Park Town",
+    "포르테": "Forte", "포텐샤": "Potentia", "프라이드": "Pride", "프레지오": "Pregio", "피아트132": "Fiat 132"
+  },
+  "model_splits": {
+    "그랜드 카니발": "Grand Carnival",
+    "니로 플러스": "Niro Plus",
+    "하이베스타": "Hi-Besta",
+    "쏘울 부스터": "Soul Booster"
+  }
+}

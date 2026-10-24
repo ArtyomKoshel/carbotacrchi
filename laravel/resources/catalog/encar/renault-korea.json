@@ -1,0 +1,10 @@
+{
+  "_comment": "Renault Korea (Samsung) on Encar. names: Encar's model group → our model. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "르노코리아(삼성)",
+  "names": {
+    "QM3": "QM3", "QM5": "QM5", "QM6": "QM6", "SM3": "SM3", "SM5": "SM5", "SM6": "SM6", "SM7": "SM7", "XM3": "XM3",
+    "그랑 콜레오스": "Grand Koleos", "마스터": "Master", "세닉": "Scenic", "아르카나": "Arkana", "조에": "Zoe",
+    "캡처": "Captur", "클리오": "Clio", "트위지": "Twizy", "필랑트": "Filante"
+  },
+  "model_splits": {}
+}

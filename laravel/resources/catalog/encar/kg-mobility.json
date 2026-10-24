@@ -1,0 +1,30 @@
+{
+  "_comment": "KG Mobility (SsangYong) on Encar. names: Encar's model group → our model. model_splits: Encar keeps the pickups and long bodies under the SUV's group; they are models of their own. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "KG모빌리티(쌍용)",
+  "names": {
+    "뉴훼미리": "New Family", "렉스턴": "Rexton", "로디우스": "Rodius", "무쏘": "Musso", "액티언": "Actyon",
+    "이스타나": "Istana", "체어맨": "Chairman", "카이런": "Kyron", "칼리스타": "Kallista", "코란도": "Korando",
+    "토레스": "Torres", "티볼리": "Tivoli"
+  },
+  "model_splits": {
+    "렉스턴 스포츠 칸": "Rexton Sports Khan",
+    "렉스턴 스포츠": "Rexton Sports",
+    "무쏘 스포츠 칸": "Musso Sports Khan",
+    "무쏘 스포츠": "Musso Sports",
+    "무쏘 EV": "Musso EV",
+    "액티언 스포츠": "Actyon Sports",
+    "코란도 스포츠": "Korando Sports",
+    "코란도 투리스모": "Korando Turismo",
+    "코란도 훼미리": "Korando Family",
+    "코란도 지프": "Korando Jeep",
+    "코란도 C": "Korando C",
+    "코란도 EV": "Korando EV",
+    "티볼리 에어": "Tivoli Air",
+    "티볼리 아머": "Tivoli Armour",
+    "토레스 EVX": "Torres EVX",
+    "체어맨 W": "Chairman W",
+    "체어맨 H": "Chairman H",
+    "G4 렉스턴": "G4 Rexton",
+    "렉스턴 W": "Rexton W"
+  }
+}

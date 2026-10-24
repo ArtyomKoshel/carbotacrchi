@@ -143,7 +143,12 @@ def _rotate_proxy() -> None:
 
 # ── API helpers ────────────────────────────────────────────────────────────────
 
+class Failed(Exception):
+    """A drill-down Encar did not answer after every retry: its model is fetched again on --resume."""
+
+
 def _get_inav(q: str, retries: int = 5) -> dict:
+    """The iNav of a query; raises Failed when every retry fails (never an empty answer)."""
     global _api_calls
     for attempt in range(retries):
         client = _client()
@@ -166,7 +171,7 @@ def _get_inav(q: str, retries: int = 5) -> dict:
             with _print_lock:
                 print(f"    [retry {attempt+1}] {e.__class__.__name__} — wait {wait}s")
             time.sleep(wait)
-    return {}
+    raise Failed(q)
 
 
 def _find_facets(container: dict, aspect_name: str, _depth: int = 0) -> list[dict]:
@@ -229,6 +234,7 @@ def _process_model(
     model_kr  = model_f["Value"]
     model_act = model_f["Action"]
     model_rows: list[dict] = []
+    # a Failed below leaves the model out whole, so --resume fetches it again
 
     # Encar's own facts about the model: its code and production dates (yyyymm), for the catalog
     base = dict(
@@ -280,10 +286,12 @@ def scrape(
     workers: int = 8,
     dry_run: bool = False,
     existing_rows: list[dict] | None = None,
-) -> tuple[dict, list[dict]]:
+    on_save=None,
+) -> tuple[dict, list[dict], list[str]]:
 
     rows: list[dict] = list(existing_rows or [])
     rows_lock = threading.Lock()
+    failed: list[str] = []
 
     scraped_models: set[tuple] = {
         (r["make_kr"], r["model_group_kr"] or "", r["model_kr"] or "")
@@ -312,7 +320,7 @@ def scrape(
         print(f"\n  CarType={ct_value}  ({ct_facet['Count']:,})")
 
         # Step 2: Manufacturers
-        make_facets = _get_next_level(ct_action, "Manufacturer")
+        make_facets = _get_next_level(ct_action, "Manufacturer")  # Failed here ends the run: nothing to resume from
         print(f"    Manufacturers: {len(make_facets)}")
         if dry_run:
             make_facets = make_facets[:2]
@@ -328,7 +336,11 @@ def scrape(
             make_rows_before = len(rows)
 
             # Step 3: ModelGroups
-            mg_facets = _get_next_level(make_act, "ModelGroup")
+            try:
+                mg_facets = _get_next_level(make_act, "ModelGroup")
+            except Failed:
+                failed.append(f"{make_kr} (model groups)")
+                continue
             print(f"      ModelGroups: {len(mg_facets)}")
             if dry_run:
                 mg_facets = mg_facets[:2]
@@ -340,7 +352,11 @@ def scrape(
                 mg_act = mg_f["Action"]
 
                 # Step 4: Models
-                model_facets = _get_next_level(mg_act, "Model")
+                try:
+                    model_facets = _get_next_level(mg_act, "Model")
+                except Failed:
+                    failed.append(f"{make_kr} {mg_kr} (models)")
+                    continue
                 print(f"        {mg_kr}: {len(model_facets)} models", flush=True)
                 if dry_run:
                     model_facets = model_facets[:1]
@@ -362,7 +378,11 @@ def scrape(
                     for fut in as_completed(futures):
                         if _STOP:
                             break
-                        model_rows = fut.result()
+                        try:
+                            model_rows = fut.result()
+                        except Failed:
+                            failed.append(f"{make_kr} {mg_kr} {futures[fut]['Value']}")
+                            continue
                         with rows_lock:
                             rows.extend(model_rows)
                             if len(rows) % 500 < len(model_rows):
@@ -371,21 +391,23 @@ def scrape(
                                 print(f"      rows so far: {len(rows):,}  api_calls: {calls:,}",
                                       flush=True)
 
-            # Autosave after each make
-            if len(rows) > make_rows_before:
+            # Autosave after each make: a crash loses one make at most (--resume)
+            if len(rows) > make_rows_before and on_save is not None:
+                on_save(flat, rows, failed)
                 with _api_lock:
                     calls = _api_calls
-                print(f"      [autosave] {len(rows):,} rows  api_calls: {calls:,}", flush=True)
+                print(f"      [autosave] {len(rows):,} rows  api_calls: {calls:,}  failed: {len(failed)}", flush=True)
 
-    return flat, rows
+    return flat, rows, failed
 
 
-def _save(out_path: str, flat: dict, rows: list[dict], start: datetime) -> None:
+def _save(out_path: str, flat: dict, rows: list[dict], start: datetime, failed: list[str] | None = None) -> None:
     data = {
         "meta": {
             "scraped_at": start.isoformat(),
             "api_calls":  _api_calls,
             "rows":       len(rows),
+            "failed":     failed or [],   # not in rows: fetched again by --resume
         },
         "flat":     flat,
         "taxonomy": rows,
@@ -431,16 +453,21 @@ def main():
     if proxy_count == 0:
         print("  [!] No proxy configured (FLOPPY_USERNAME/FLOPPY_PASSWORD not set) — running direct")
 
-    flat, rows = scrape(
+    flat, rows, failed = scrape(
         workers=args.workers,
         dry_run=args.dry_run,
         existing_rows=existing_rows,
+        on_save=lambda f, r, x: _save(out_path, f, r, start, x),
     )
 
     if existing_flat and not flat.get("colors"):
         flat = existing_flat
 
-    _save(out_path, flat, rows, start)
+    _save(out_path, flat, rows, start, failed)
+    if failed:
+        print(f"\n  [!] {len(failed)} not fetched — run again with --resume:")
+        for f in failed[:50]:
+            print(f"      {f}")
 
     makes  = len({r["make_kr"] for r in rows})
     models = len({(r["make_kr"], r["model_group_kr"], r["model_kr"]) for r in rows})

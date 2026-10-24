@@ -1,0 +1,23 @@
+{
+  "_comment": "Chevrolet (GM Daewoo) on Encar. names: Encar's model group → our model (the Latin names they were sold under in Korea). encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "쉐보레(GM대우)",
+  "names": {
+    "G2X": "G2X", "넥시아": "Nexia", "누비라": "Nubira", "다마스": "Damas", "라노스": "Lanos", "라보": "Labo",
+    "라세티": "Lacetti", "레간자": "Leganza", "레조": "Rezzo", "로얄살롱": "Royale Salon", "르망": "LeMans",
+    "마티즈": "Matiz", "말리부": "Malibu", "매그너스": "Magnus", "맵시": "Maepsy", "베리타스": "Veritas",
+    "볼트 EUV": "Bolt EUV", "볼트 EV": "Bolt EV", "볼트(Volt)": "Volt", "브로엄": "Brougham", "슈퍼살롱": "Super Salon",
+    "스테이츠맨": "Statesman", "스파크": "Spark", "씨에로": "Cielo", "아베오": "Aveo", "아카디아": "Arcadia",
+    "알페온": "Alpheon", "에스페로": "Espero", "올란도": "Orlando", "윈스톰": "Winstorm", "이쿼녹스": "Equinox",
+    "임팔라": "Impala", "임페리얼": "Imperial", "젠트라": "Gentra", "카마로": "Camaro", "칼로스": "Kalos",
+    "캡티바": "Captiva", "콜로라도": "Colorado", "콜벳": "Corvette", "크루즈": "Cruze", "타호": "Tahoe",
+    "토스카": "Tosca", "트래버스": "Traverse", "트랙스": "Trax", "트레일블레이저": "Trailblazer", "티코": "Tico",
+    "프린스": "Prince"
+  },
+  "model_splits": {
+    "트랙스 크로스오버": "Trax Crossover",
+    "윈스톰 맥스": "Winstorm MaXX",
+    "로얄 프린스": "Royale Prince",
+    "크루즈5": "Cruze5",
+    "토스카 프리미엄6": "Tosca Premium 6"
+  }
+}

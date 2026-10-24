@@ -1,0 +1,10 @@
+{
+  "_comment": "Genesis on Encar. names: Encar's model group → our model. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "제네시스",
+  "names": {
+    "EQ900": "EQ900", "G70": "G70", "G80": "G80", "G90": "G90", "GV60": "GV60", "GV70": "GV70", "GV80": "GV80"
+  },
+  "model_splits": {
+    "GV80 쿠페": "GV80 Coupe"
+  }
+}
