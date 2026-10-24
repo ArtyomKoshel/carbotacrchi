@@ -1,5 +1,7 @@
 # Справочник: передача работы (2026-10-24)
 
+> Готовый промпт для другого инструмента (всё самое важное в одном тексте) — [catalog-prompt.md](./catalog-prompt.md).
+>
 > Снимок сессии, чтобы продолжить в другом окне. План целиком —
 > [catalog-migration.md](./catalog-migration.md), устройство справочника — [13-catalog](../13-catalog.md).
 
@@ -48,8 +50,13 @@
 | Таблицы `ref_*`, связывание по хэшу варианта, `catalog:remap` (~2 мин на дампе), ingest-link | готово |
 | API `/api/catalog`, каскад в мини-приложении, место в справочнике в выдаче и карточке, очередь «Справочник: разбор» в админке | готово |
 | Скорость: поиск по справочнику 0,39 с (старый 3,56 с) | замерено |
-| Hyundai по октябрьскому дереву (с годами Encar) | 90,3% разобрано · 9,5% без двигателя в бейдже · 0,3% нет |
-| Kia, Genesis, KGM, Chevrolet, Renault Korea | черновики по июньскому дереву, без годов; пересобрать |
+| Шесть корейских марок по октябрьскому дереву (годы Encar, рестайлинги привязаны к поколениям, `badge_groups`) | Hyundai 99,7% · Kia 91,6% · Genesis 96,3% · KGM 92,3% · Chevrolet 83,8% · Renault Korea 85,8% |
+
+Две находки, после которых покрытие выросло (подробно — в [catalog-prompt.md](./catalog-prompt.md)):
+1. `lots.model` у корейских марок урезан коллектором («올 뉴 K3» → «K3»). Справочник читает Encar-название из
+   `raw_data.model_kr_raw` (`CatalogLinker::MODEL_SQL`).
+2. Двигатель корейских бейджей-комплектаций стоит у Encar в BadgeGroup, которой у лотов нет. Однозначные группы
+   из дерева лежат в `encar/{make}.json → badge_groups`, разбор подставляет их, только когда бейдж двигателя не называет.
 
 Активные машины в дампе по группам:
 - европейские марки — 37,9 тыс. (27%);
@@ -58,7 +65,7 @@
 
 ## Что идёт прямо сейчас
 
-**Обход дерева Encar** (фоновый процесс в старом окне):
+**Обход дерева Encar — закончен** (13 594 строки, 76 марок, 1 852 модели, 0 сбоев). Команда для повторного обхода:
 
 ```
 cmd /c "railway run -s collector -e production -- D:\work\carbot\.claude\worktrees\refactor-collector\collector\.venv\Scripts\python.exe -X utf8 -u D:\work\carbot\.claude\worktrees\release\analysis\scrape_encar_inav_tree.py --out-dir D:\work\carbot\analysis\data --out-name encar_tree_2026-10.json --workers 8 --sleep 0.1 --resume > <log> 2>&1"
