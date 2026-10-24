@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Catalog;
 
+use App\Catalog\BadgeGrammar;
 use App\Catalog\Encar\EncarMatcher;
 use App\Catalog\Reference;
 use App\Catalog\VariantMatch;
@@ -90,6 +91,50 @@ class EncarMatcherTest extends TestCase
                 ['폭스바겐', '티구안 2세대', '2.0 TDI 4모션 프레스티지', null, 2020],
                 ['generation' => 'AD1', 'modification' => '2.0 TDI 4MOTION', 'drive' => 'awd', 'complectation' => 'Prestige'],
             ],
+            'Hyundai Sonata LF: encar_models gives model and generation' => [
+                ['현대', 'LF 쏘나타', '2.0 스마트', null, 2016],
+                ['model' => 'Sonata', 'generation' => 'LF', 'modification' => '2.0', 'complectation' => 'Smart'],
+            ],
+            'Kia Ray: complectation-only badge resolved via badge_groups when badge_group absent' => [
+                ['기아', '레이', '프레스티지', null, 2015],
+                ['model' => 'Ray', 'generation' => 'I', 'fuel' => 'gasoline', 'complectation' => 'Prestige'],
+            ],
+            'Kia Carnival: the badge group repeats the seats and names the fuel only' => [
+                ['기아', '올 뉴 카니발', '9인승 프레스티지', '9인승 프레스티지', 2016],
+                ['generation' => 'All New', 'modification' => 'Diesel', 'fuel' => 'diesel', 'drive' => null, 'seats' => 9, 'complectation' => 'Prestige'],
+            ],
+            'Genesis G90: e-S/C and LWB are engine words' => [
+                ['제네시스', 'G90 (RS4)', '가솔린 3.5 터보 e-S/C AWD LWB', null, 2024],
+                ['modification' => 'Gasoline 3.5 Turbo e-S/C AWD LWB', 'fuel' => 'gasoline', 'drive' => 'awd'],
+            ],
+            'Chevrolet: a run-together word beats the shorter one inside it' => [
+                ['쉐보레(GM대우)', '말리부', '2.0 LT 디럭스팩', null, 2014],
+                ['modification' => '2.0', 'fuel' => null, 'complectation' => 'LT Deluxe Pack'],
+            ],
+            'KG Mobility: Delight is not Light' => [
+                ['KG모빌리티(쌍용)', '뷰티풀 코란도', '디젤 1.6 2WD 딜라이트', '2WD 딜라이트', 2020],
+                ['modification' => 'Diesel 1.6 2WD', 'fuel' => 'diesel', 'complectation' => 'Delight'],
+            ],
+            'Kia K9: Unicode roman numeral in the complectation' => [
+                ['기아', '더 K9', '3.8 GDI AWD', '플래티넘Ⅲ', 2017],
+                ['modification' => '3.8 GDI AWD', 'drive' => 'awd', 'complectation' => 'Platinum Ⅲ'],
+            ],
+            'Chevrolet Spark: the model name repeated in the badge is dropped' => [
+                ['쉐보레(GM대우)', '스파크', '스파크 S', 'LT', 2010],
+                ['model' => 'Spark', 'complectation' => 'S LT'],
+            ],
+            'Kia Carnival R: Grand Carnival in the badge is the model, GLX the complectation' => [
+                ['기아', '카니발 R', '그랜드 카니발 GLX', '고급형', 2012],
+                ['model' => 'Carnival', 'generation' => 'R', 'modification' => 'Diesel 2.2', 'fuel' => 'diesel'],
+            ],
+            'Kia Pride: 5DR is the hatchback body' => [
+                ['기아', '더 뉴 프라이드', '5DR 1.6 GDI', '럭셔리', 2013],
+                ['modification' => '1.6 GDI', 'body' => 'hatchback', 'complectation' => 'Luxury'],
+            ],
+            'Audi: Korean words two apart are not read as one ("다이나믹 스포트백")' => [
+                ['아우디', 'A3', '35 TDI 다이나믹 스포트백', '8V', 2018],
+                ['modification' => '35 TDI', 'complectation' => 'Dynamic', 'body' => 'hatchback'],
+            ],
         ];
     }
 
@@ -137,6 +182,8 @@ class EncarMatcherTest extends TestCase
         $this->assertSame('520i 스페셜 에디션', EncarMatcher::text('520i 스페셜 에디션', '520i M 스포츠'), 'an old copy of an earlier badge');
         $this->assertSame('2.0 LPI 시그니처', EncarMatcher::text('2.0 LPI', '시그니처'), 'Korean: engine + complectation');
         $this->assertSame('2.0', EncarMatcher::text('2.0', '(세부등급 없음)'));
+        // Encar inconsistently capitalises engine codes across listings: LPI vs LPi are the same word
+        $this->assertSame('2.0 LPI 시그니처', EncarMatcher::text('2.0 LPi', '2.0 LPI 시그니처'), 'case-insensitive badge-is-prefix check');
     }
 
     public function test_the_year_never_picks_a_generation(): void
@@ -168,5 +215,30 @@ class EncarMatcherTest extends TestCase
         $match = self::matcher()->match(['make' => null, 'make_en' => 'BMW', 'model' => null, 'model_en' => '5 Series (G30)', 'badge' => '520i 럭셔리']);
 
         $this->assertSame('520i', $match->modification);
+    }
+
+    public function test_seats_said_twice_count_once_and_a_different_count_is_left_over(): void
+    {
+        $kia = (new Reference(dirname(__DIR__, 3) . '/resources/catalog/reference'))->make('kia');
+
+        $same = BadgeGrammar::read('Diesel 9-seater 9-seater Prestige', $kia, null);
+        $other = BadgeGrammar::read('Diesel 9-seater 7-seater Prestige', $kia, null);
+
+        $this->assertSame([9, 'Diesel'], [$same['seats'], $same['rest']]);
+        $this->assertSame([9, 'Diesel 7-seater'], [$other['seats'], $other['rest']]);
+    }
+
+    /** badge_groups lookup is skipped when the lot already carries Encar's badge_group: the caller knows the engine. */
+    public function test_badge_groups_not_used_when_lot_has_badge_group(): void
+    {
+        $match = self::matcher()->match([
+            'make' => '기아', 'model' => '레이', 'badge' => '프레스티지',
+            'badge_group' => '가솔린 1000cc',
+        ]);
+
+        // '프레스티지' alone has no engine code; badge_groups is the only path to fuel,
+        // but it is skipped because badge_group is set → NO_ENGINE, not MATCHED
+        $this->assertSame(VariantMatch::NO_ENGINE, $match->status);
+        $this->assertSame('Prestige', $match->complectation);
     }
 }

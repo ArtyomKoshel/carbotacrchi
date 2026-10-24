@@ -186,7 +186,7 @@ class EncarMatcher
         if ($trim === '' || $trim === '(세부등급 없음)' || $badge === '') {
             return $badge !== '' ? $badge : $trim;
         }
-        $words = fn (string $s) => preg_split('/\s+/u', $s, -1, PREG_SPLIT_NO_EMPTY);
+        $words = fn (string $s) => array_map('mb_strtolower', preg_split('/\s+/u', $s, -1, PREG_SPLIT_NO_EMPTY));
         $b = $words($badge);
         $t = $words($trim);
         return match (true) {
@@ -270,7 +270,7 @@ class EncarMatcher
         if (preg_match('/^(.*?)\s*\(([A-Za-z0-9]+)\)$/u', $model, $m) || preg_match('/^(.*\S)\s+([A-Z]\d{3}[a-z]?)$/u', $model, $m)) {
             return [$m[1], self::generationKey($m[2]) ?? $m[2]];
         }
-        if (preg_match('/^(.*\S)\s+(\d세대|Gen \d)$/u', $model, $m)) {
+        if (preg_match('/^(.*\S)\s+(\d+세대|Gen \d+)$/u', $model, $m)) {
             return [$m[1], self::generationKey($m[2])];
         }
         return [$model, null];
@@ -279,7 +279,7 @@ class EncarMatcher
     /** "2세대" / "Gen 2" → "#2" */
     private static function generationKey(string $level): ?string
     {
-        return preg_match('/^(?:(\d)세대|Gen (\d))$/u', trim($level), $m) ? '#' . ($m[1] ?: $m[2]) : null;
+        return preg_match('/^(?:(\d+)세대|Gen (\d+))$/u', trim($level), $m) ? '#' . ($m[1] ?: $m[2]) : null;
     }
 
     /** Encar's Korean name of a reference make ("Mercedes-Benz" → "벤츠"). */

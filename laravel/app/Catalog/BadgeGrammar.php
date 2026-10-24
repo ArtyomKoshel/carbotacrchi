@@ -30,9 +30,11 @@ final class BadgeGrammar
         $text = ' ' . preg_replace('/\s+/u', ' ', trim($badge)) . ' ';
 
         $seats = null;
-        if (preg_match('/ (\d{1,2})-seater /', $text, $m)) {
+        // Encar's BadgeGroup may repeat the badge's seats ("Diesel 9-seater" + "9-seater Prestige");
+        // a different count stays as a leftover word
+        if (preg_match('/(?<= )(\d{1,2})-seater(?= )/', $text, $m)) {
             $seats = (int) $m[1];
-            $text = str_replace($m[0], ' ', $text);
+            $text = preg_replace('/(?<= )' . $m[1] . '-seater(?= )/', ' ', $text);
         }
 
         // a model maps a body word to "" where the word is a modification of its own (911 GT3 Touring)

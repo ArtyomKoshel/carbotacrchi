@@ -35,8 +35,11 @@ class CatalogRemap extends Command
             $active[$v->h] = (int) $v->active;
         }
         $stored = $linker->store($variants, again: ! $this->option('new-only'), lots: $active);
-        $this->info(sprintf('Variants: %d in lots, %d read, %d placed differently than before (%.1f s)',
-            count($variants), $stored['read'], $stored['changed'], microtime(true) - $started));
+        // variants are never deleted (hand placings stay); one no lot has any more counts none
+        $stale = DB::table('ref_variants')->whereIn('source', CatalogLinker::SOURCES)->where('lots', '>', 0)
+            ->whereNotIn('hash', array_keys($active))->update(['lots' => 0]);
+        $this->info(sprintf('Variants: %d in lots, %d read, %d placed differently than before, %d left by their lots (%.1f s)',
+            count($variants), $stored['read'], $stored['changed'], $stale, microtime(true) - $started));
 
         $chunk = max(100, (int) $this->option('chunk'));
         $pause = max(0, (int) $this->option('pause-ms')) * 1000;
