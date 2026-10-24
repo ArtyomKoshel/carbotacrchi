@@ -32,6 +32,9 @@ class EncarMatcher
         'bmw' => BmwRules::class, 'mercedes' => MercedesRules::class, 'audi' => AudiRules::class, 'porsche' => PorscheRules::class,
     ];
 
+    /** Encar's marketing words before a model name, the ones the collector cuts (mapping.py _MODEL_PREFIXES) */
+    private const MARKETING = '/^(?:더 ?뉴 더 ?뉴|더 ?뉴|올 ?뉴|완전변경|부분변경|신형|뉴)\s+/u';
+
     /** @var array<string, string>|null regex → English */
     private ?array $tokens = null;
 
@@ -59,7 +62,8 @@ class EncarMatcher
         $badge = $lot['badge'] ?? null;
         $trim = $lot['trim'] ?? null;
 
-        [$modelName, $code, $modelWords] = $this->model($encar, trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? '')), (string) $badge);
+        $encarModel = trim((string) ($lot['model'] ?? '')) ?: trim((string) ($lot['model_en'] ?? ''));
+        [$modelName, $code, $modelWords] = $this->model($encar, $encarModel, (string) $badge);
         // a make may name the engine before the model ("Cooper S Countryman"): it goes to the
         // badge, and what is left names the model through "engine_models" ("" → "Hatch")
         $engine = '';
@@ -98,6 +102,18 @@ class EncarMatcher
         }
         $read = BadgeGrammar::read($english, $ref, $model);
         $mod = $this->rules($ref)->modification($read['rest'], $model, $generation);
+        // a badge that is the complectation alone ("더 뉴 레이" / "프레스티지"): the engine is Encar's
+        // BadgeGroup, which lots lack; Encar's tree gives it where the badge has one group only
+        if ($mod['code'] === null && $mod['leftover'] === [] && empty($lot['badge_group'])) {
+            $words = self::badgeGroup((string) ($encar['badge_groups'][$encarModel][(string) $badge] ?? ''));
+            if ($words !== null) {
+                $withGroup = BadgeGrammar::read("{$words} {$english}", $ref, $model);
+                $groupMod = $this->rules($ref)->modification($withGroup['rest'], $model, $generation);
+                if ($groupMod['leftover'] === [] && $groupMod['code'] !== null) {
+                    [$read, $mod] = [$withGroup, $groupMod];
+                }
+            }
+        }
 
         $status = match (true) {
             $mod['leftover'] !== [] => VariantMatch::UNMATCHED,
@@ -198,6 +214,9 @@ class EncarMatcher
             $m = $encar['encar_models'][$encarModel];
             return [$m['model'], $m['generation'] ?? null, $m['words'] ?? ''];
         }
+        // the name without Encar's marketing words, as the collector cuts them into lots.model
+        // ("뉴 A6" 2004–2018 is A6, its generation in the BadgeDetail: "C7")
+        $encarModel = preg_replace(self::MARKETING, '', $encarModel, 1);
         [$name, $code] = self::split($encarModel);
         $name = $encar['names'][$name] ?? $name;
         foreach ($encar['badges'] ?? [] as $rule) {
@@ -220,6 +239,25 @@ class EncarMatcher
             }
         }
         return [$name, $code, ''];
+    }
+
+    /**
+     * Encar's BadgeGroup as badge words: "가솔린 1600cc" → "Gasoline 1.6", "디젤 2WD" → "Diesel 2WD",
+     * "디젤 9 인승" → "Diesel 9-seater". A group Encar left vague ("가솔린 3000cc 이상", "가솔린+LPG")
+     * gives nothing.
+     */
+    private static function badgeGroup(string $group): ?string
+    {
+        if (! preg_match('/^(가솔린\+전기|LPG\+전기|가솔린|디젤|LPG|전기)(?:\s+(\d{3,4})cc)?(?:\s+([24]WD))?(?:\s+(\d{1,2})\s*인승)?$/u', trim($group), $m)) {
+            return null;
+        }
+        $fuel = ['가솔린+전기' => 'Hybrid', 'LPG+전기' => 'Hybrid LPG', '가솔린' => 'Gasoline', '디젤' => 'Diesel', 'LPG' => 'LPG', '전기' => 'Electric'][$m[1]];
+        return implode(' ', array_filter([
+            $fuel,
+            ($m[2] ?? '') !== '' ? number_format((int) $m[2] / 1000, 1) : null,
+            ($m[3] ?? '') !== '' ? $m[3] : null,
+            ($m[4] ?? '') !== '' ? "{$m[4]}-seater" : null,
+        ]));
     }
 
     /**

@@ -102,8 +102,8 @@ class CatalogReconcile extends Command
         foreach ($tree['taxonomy'] as $r) {
             $encar["{$r['make_kr']}|{$r['model_kr']}"] ??= (int) ($r['model_count'] ?? 0);
         }
-        $ours = DB::table('lots')->where('is_active', true)->where('source', 'encar')
-            ->groupBy('make', 'model')->selectRaw('make, model, COUNT(*) n')->get()
+        $ours = DB::table('lots as l')->where('l.is_active', true)->where('l.source', 'encar')
+            ->groupByRaw('l.make, ' . CatalogLinker::MODEL_SQL)->selectRaw('l.make make, ' . CatalogLinker::MODEL_SQL . ' model, COUNT(*) n')->get()
             ->mapWithKeys(fn ($r) => ["{$r->make}|{$r->model}" => (int) $r->n])->all();
 
         $rows = [];

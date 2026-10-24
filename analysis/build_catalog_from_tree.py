@@ -65,10 +65,14 @@ POWERTRAIN = {
 BODY = {
     "슈팅브레이크": "Shooting Brake", "해치백": "Hatchback", "쿠페": "Coupe", "쿱": "Coupe", "세단": "Sedan",
     "살룬": "Saloon", "cw": "Wagon", "왜건": "Wagon", "유로": "Euro", "점보": "Jumbo", "밴": "Van",
+    "오픈베드": "Open Bed",
 }
-ROMAN = {"II": 2, "III": 3, "2": 2, "3": 3}
+# a number after the name is Encar's ("카렌스 II" 2002 is a facelift of the first Carens), kept as
+# written; only "N세대" says generation
+ROMAN = {"II": "II", "III": "III", "2": "II", "3": "III"}
 # facelift words that in Korean marketing mean a full model change, a generation of its own
-RENEWAL = {"All New", "The All New", "(new)"}
+# ("더 K9" 2018 is THE K9, the second K9; "더 뉴" is the facelift)
+RENEWAL = {"All New", "The All New", "(new)", "The"}
 
 
 def ym(v: str | None) -> int | None:
@@ -107,7 +111,7 @@ def read_model(group: str, model_kr: str, splits: dict[str, str]) -> dict:
     gen = None
     m = re.search(r"(\d)세대", text)
     if m:
-        gen = int(m.group(1))
+        gen = f"Gen {m.group(1)}"
         text = text.replace(m.group(0), " ")
     # the group's own name first, glued or spaced ("뉴쏘렌토", "쏘나타", "볼트 EV"), then the make's
     text = text.replace(group, " ")
@@ -127,7 +131,7 @@ def read_model(group: str, model_kr: str, splits: dict[str, str]) -> dict:
             gen = ROMAN[w]
         else:
             rest.append(w)
-    label = code or (f"Gen {gen}" if gen else None)
+    label = code or gen
     return {
         "model": model_name,
         "code": label,
@@ -136,6 +140,24 @@ def read_model(group: str, model_kr: str, splits: dict[str, str]) -> dict:
         "rest": " ".join(rest),
         "start": None,
     }
+
+
+def badge_groups(tree: list[dict], make: str) -> dict[str, dict[str, str]]:
+    """Encar model → badge → its BadgeGroup, where Encar files the badge under one group only.
+
+    The collector gets no BadgeGroup, and a Korean badge is often the complectation alone
+    ("더 뉴 레이" / "프레스티지"): its engine is the group Encar's tree puts it in ("가솔린 1000cc").
+    A badge under two groups stays out — which one a car is, Encar did not say.
+    """
+    seen: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for r in tree:
+        if r["make_kr"] == make and r.get("badge_kr") and r.get("badge_group_kr"):
+            seen[(r["model_kr"], r["badge_kr"])].add(r["badge_group_kr"])
+    out: dict[str, dict[str, str]] = defaultdict(dict)
+    for (model, badge), groups in sorted(seen.items()):
+        if len(groups) == 1:
+            out[model][badge] = next(iter(groups))
+    return dict(out)
 
 
 def main() -> None:
@@ -179,25 +201,56 @@ def main() -> None:
         model = read["model"] or names.get(info["group"]) or info["group"]
         read_all[model].append((model_kr, info, read))
 
+    # a person's word on an Encar model ("New 스포티지" 2004 is the second Sportage, where "New"
+    # elsewhere is a facelift): its generation is taken as it stands and starts a generation
+    manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
+
     placed: list[tuple[str, str, dict, dict]] = []   # model, generation, info, read
     for model, items in read_all.items():
-        items.sort(key=lambda x: (ym(x[1]["start"]) or 0, x[0]))
-        bases: list[tuple[int, str]] = []               # (start, label) of generations in time order
+        items.sort(key=lambda x: (x[1]["start"] or "", x[0]))
+        # generations in time order: label → [first year, last year or None while Encar sells it];
+        # a facelift or powertrain added to one extends it ("그랜저 TG" 2005–2008, "뉴 럭셔리" 2008–2009,
+        # "더 럭셔리" 2009–2011 are all TG)
+        bases: dict[str, list] = {}
+
+        def selling(year: int) -> str | None:
+            on = [(span[0], label) for label, span in bases.items()
+                  if span[0] <= year and (span[1] is None or year <= span[1] + 2)]
+            return max(on)[1] if on else None
+
+        def add(label: str, info: dict, base: bool) -> None:
+            first, last = ym(info["start"]) or 0, None if info["end"] is None else ym(info["end"])
+            span = bases.get(label.split(" · ")[0])
+            if span is None and base:
+                bases[label] = [first, last]
+            elif span is not None and span[1] is not None:
+                span[1] = None if last is None else max(span[1], last)
+
         for model_kr, info, read in items:
             start = ym(info["start"]) or 0
             facelift, rest = read["facelift"], read["rest"]
             own = read["code"]
-            if own is None and facelift in RENEWAL:
-                # "올 뉴 투싼" (2015): a model change, named so; "(신형)" says only "new", so its year
-                own, facelift = (f"New ({start})" if facelift == "(new)" else facelift), ""
+            if model_kr in manual:
+                label = manual[model_kr]["generation"]
+                add(label, info, " · " not in label)
+                placed.append((model, label, info, read))
+                continue
+            if facelift in RENEWAL:
+                # "올 뉴 투싼" (2015): a model change, named so; "(신형)" says only "new", so its year;
+                # with a code ("올 뉴 모닝 (JA)") the code names it
+                renewal = {"(new)": f"New ({start})", "The": f"The {model}"}.get(facelift, facelift)
+                own, facelift = own or renewal, ""
             if own is None and rest:
                 own, rest = rest, ""                     # a name of its own ("투싼 ix")
-            if own is None and (facelift or read["words"]) and bases:
-                base = max((b for b in bases if b[0] <= start), default=bases[0])[1]
-            else:
-                base = own or "I"
-                if base not in {b[1] for b in bases}:
-                    bases.append((start, base))
+            base = own
+            if base is None and (facelift or read["words"]):
+                # the generation on sale when it came out; none on sale ("뷰티풀 코란도" 2019, the
+                # last Korando ended 2005): Encar's name for it is a generation of its own
+                base = selling(start)
+                if base is None and facelift:
+                    base, facelift = facelift, ""
+            base = base or "I"
+            add(base, info, True)
             label = " · ".join(x for x in [base, facelift, rest] if x)
             placed.append((model, label, info, read))
 
@@ -208,7 +261,10 @@ def main() -> None:
         # one facelift name used twice ("더 뉴 레이" 2017, "더 뉴 기아 레이" 2022) is two facelifts:
         # a facelift label merges only with a model Encar started within a year of it
         if taken and " · " in code and taken["years"][0] and start and abs(taken["years"][0] - start) > 1:
-            code = f"{code} ({start})"
+            # the later one, or a powertrain of it ("더 뉴 기아 레이 EV" 2023 joins 2022's)
+            code = next((c for c, g in reference[model]["generations"].items()
+                         if c.startswith(f"{code} (") and g["years"][0] and abs(g["years"][0] - start) <= 1),
+                        f"{code} ({start})")
         if HANGUL.search(model) or HANGUL.search(code):
             unknown.append((model_kr, model, code))
         g = reference[model]["generations"].setdefault(code, {"code": code, "years": [None, None], "encar": []})
@@ -255,6 +311,7 @@ def main() -> None:
         encar["korean"] = args.make
         manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
         encar["encar_models"] = dict(sorted({**encar_models, **manual}.items()))
+        encar["badge_groups"] = badge_groups(tree, args.make)
         encar_path.write_text(json.dumps(encar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"\nwritten: {ref_path}, {encar_path}")
 

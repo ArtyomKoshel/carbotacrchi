@@ -286,15 +286,15 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2005,
+            2011
           ],
           "source": "encar"
         },
         {
           "code": "Gen 2",
           "years": [
-            null,
+            2024,
             null
           ],
           "source": "encar"
@@ -307,8 +307,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2006,
+            2011
           ],
           "source": "encar"
         }
@@ -318,18 +318,18 @@
       "name": "Chairman",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1997,
+            2003
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2003,
+            2008
           ],
           "source": "encar"
         }
@@ -341,16 +341,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2008,
+            2011
           ],
           "source": "encar"
         },
         {
-          "code": "New Classic",
+          "code": "I · New Classic",
           "years": [
-            null,
-            null
+            2011,
+            2014
           ],
           "source": "encar"
         }
@@ -360,18 +360,18 @@
       "name": "Chairman W",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2008,
+            2011
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2011,
+            2017
           ],
           "source": "encar"
         }
@@ -383,8 +383,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2017,
+            2020
           ],
           "source": "encar"
         }
@@ -396,8 +396,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1995,
+            2003
           ],
           "source": "encar"
         }
@@ -409,8 +409,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1992,
+            1994
           ],
           "source": "encar"
         }
@@ -422,15 +422,15 @@
         {
           "code": "New",
           "years": [
-            null,
-            null
+            1996,
+            2005
           ],
           "source": "encar"
         },
         {
           "code": "Beautiful",
           "years": [
-            null,
+            2019,
             null
           ],
           "source": "encar"
@@ -441,26 +441,26 @@
       "name": "Korando C",
       "generations": [
         {
-          "code": "New Style",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2013
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New",
+          "years": [
+            2013,
+            2017
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New Style",
+          "years": [
+            2017,
+            2018
           ],
           "source": "encar"
         }
@@ -472,7 +472,7 @@
         {
           "code": "Emotion",
           "years": [
-            null,
+            2022,
             null
           ],
           "source": "encar"
@@ -485,8 +485,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1988,
+            1996
           ],
           "source": "encar"
         }
@@ -498,8 +498,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1969,
+            1996
           ],
           "source": "encar"
         }
@@ -509,18 +509,18 @@
       "name": "Korando Sports",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2012,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2016,
+            2018
           ],
           "source": "encar"
         }
@@ -532,8 +532,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2013,
+            2019
           ],
           "source": "encar"
         }
@@ -543,18 +543,18 @@
       "name": "Kyron",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2005,
+            2007
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2007,
+            2011
           ],
           "source": "encar"
         }
@@ -564,25 +564,25 @@
       "name": "Musso",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1993,
+            1998
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            1998,
+            2004
           ],
           "source": "encar"
         },
         {
           "code": "Q300",
           "years": [
-            null,
+            2026,
             null
           ],
           "source": "encar"
@@ -595,7 +595,7 @@
         {
           "code": "O100",
           "years": [
-            null,
+            2025,
             null
           ],
           "source": "encar"
@@ -608,16 +608,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2002,
+            2006
           ],
           "source": "encar"
         },
         {
-          "code": "Q250",
+          "code": "Q260",
           "years": [
-            null,
-            null
+            2025,
+            2026
           ],
           "source": "encar"
         }
@@ -627,10 +627,10 @@
       "name": "Musso Sports Khan",
       "generations": [
         {
-          "code": "Q250",
+          "code": "Q261",
           "years": [
-            null,
-            null
+            2025,
+            2026
           ],
           "source": "encar"
         }
@@ -642,8 +642,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1994,
+            1997
           ],
           "source": "encar"
         }
@@ -653,49 +653,49 @@
       "name": "Rexton",
       "generations": [
         {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2001,
+            2003
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2003,
+            2006
           ],
           "source": "encar"
         },
         {
-          "code": "New Arena",
+          "code": "II",
           "years": [
-            null,
-            null
+            2006,
+            2008
           ],
           "source": "encar"
         },
         {
-          "code": "Super",
+          "code": "II · Super",
           "years": [
-            null,
-            null
+            2008,
+            2012
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
+            2020,
+            2023
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · New Arena",
+          "years": [
+            2023,
             null
           ],
           "source": "encar"
@@ -706,18 +706,18 @@
       "name": "Rexton Sports",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2018,
+            2021
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2021,
+            2025
           ],
           "source": "encar"
         }
@@ -727,18 +727,18 @@
       "name": "Rexton Sports Khan",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2019,
+            2021
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2021,
+            2025
           ],
           "source": "encar"
         }
@@ -750,8 +750,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2012,
+            2017
           ],
           "source": "encar"
         }
@@ -761,26 +761,18 @@
       "name": "Rodius",
       "generations": [
         {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2004,
+            2013
           ],
           "source": "encar"
         },
         {
-          "code": "I · Euro",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2007,
+            2012
           ],
           "source": "encar"
         }
@@ -790,25 +782,33 @@
       "name": "Tivoli",
       "generations": [
         {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Very New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
+            2015,
+            2017
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Armour",
+          "years": [
+            2017,
+            2019
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Very New",
+          "years": [
+            2019,
+            2023
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The New",
+          "years": [
+            2023,
             null
           ],
           "source": "encar"
@@ -819,30 +819,17 @@
       "name": "Tivoli Air",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2016,
+            2023
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        }
-      ]
-    },
-    {
-      "name": "Tivoli Armour",
-      "generations": [
-        {
-          "code": "I",
-          "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"
@@ -853,17 +840,25 @@
       "name": "Torres",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2022,
+            2024
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
+            2024,
+            2026
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New",
+          "years": [
+            2026,
             null
           ],
           "source": "encar"
@@ -876,7 +871,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"

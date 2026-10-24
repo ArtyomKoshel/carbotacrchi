@@ -286,8 +286,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2015,
+            2018
           ],
           "source": "encar"
         }
@@ -299,15 +299,23 @@
         {
           "code": "I",
           "years": [
-            null,
+            2017,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The New",
+          "years": [
+            2020,
             null
           ],
           "source": "encar"
         },
         {
-          "code": "The New",
+          "code": "I · The New (2022)",
           "years": [
-            null,
+            2022,
             null
           ],
           "source": "encar"
@@ -320,15 +328,15 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2016,
+            2020
           ],
           "source": "encar"
         },
         {
           "code": "RG3",
           "years": [
-            null,
+            2020,
             null
           ],
           "source": "encar"
@@ -341,15 +349,15 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2018,
+            2021
           ],
           "source": "encar"
         },
         {
           "code": "RS4",
           "years": [
-            null,
+            2021,
             null
           ],
           "source": "encar"
@@ -362,7 +370,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2021,
             null
           ],
           "source": "encar"
@@ -375,15 +383,7 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · Electrified",
-          "years": [
-            null,
+            2021,
             null
           ],
           "source": "encar"
@@ -396,7 +396,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2020,
             null
           ],
           "source": "encar"
@@ -409,7 +409,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"

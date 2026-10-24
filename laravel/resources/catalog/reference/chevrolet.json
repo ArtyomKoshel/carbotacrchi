@@ -286,8 +286,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2010,
+            2015
           ],
           "source": "encar"
         }
@@ -299,8 +299,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1994,
+            1999
           ],
           "source": "encar"
         }
@@ -310,26 +310,18 @@
       "name": "Aveo",
       "generations": [
         {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "I · Hatchback",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2016,
+            2019
           ],
           "source": "encar"
         }
@@ -341,8 +333,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2021,
+            2023
           ],
           "source": "encar"
         }
@@ -352,18 +344,18 @@
       "name": "Bolt EV",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2017,
+            2021
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2021,
+            2023
           ],
           "source": "encar"
         }
@@ -375,8 +367,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1991,
+            2000
           ],
           "source": "encar"
         }
@@ -386,26 +378,26 @@
       "name": "Camaro",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2015
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2016,
+            2018
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "All New · The New",
           "years": [
-            null,
-            null
+            2018,
+            2022
           ],
           "source": "encar"
         }
@@ -417,8 +409,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2018
           ],
           "source": "encar"
         }
@@ -430,8 +422,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1994,
+            1996
           ],
           "source": "encar"
         }
@@ -441,25 +433,25 @@
       "name": "Colorado",
       "generations": [
         {
-          "code": "Real New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2019,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Real New",
+          "years": [
+            2020,
+            2024
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I",
-          "years": [
-            null,
+            2024,
             null
           ],
           "source": "encar"
@@ -472,8 +464,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2012,
+            2013
           ],
           "source": "encar"
         }
@@ -483,26 +475,26 @@
       "name": "Cruze",
       "generations": [
         {
-          "code": "Amazing New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2014
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Amazing New",
+          "years": [
+            2015,
+            2017
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I",
-          "years": [
-            null,
-            null
+            2017,
+            2018
           ],
           "source": "encar"
         }
@@ -512,18 +504,18 @@
       "name": "Cruze5",
       "generations": [
         {
-          "code": "Amazing New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2014
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · Amazing New",
           "years": [
-            null,
-            null
+            2015,
+            2017
           ],
           "source": "encar"
         }
@@ -533,26 +525,26 @@
       "name": "Damas",
       "generations": [
         {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            1991,
+            2003
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II",
           "years": [
-            null,
-            null
+            2003,
+            2007
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "II · New",
+          "years": [
+            2008,
+            2021
           ],
           "source": "encar"
         }
@@ -562,18 +554,18 @@
       "name": "Equinox",
       "generations": [
         {
-          "code": "The Next",
+          "code": "I",
           "years": [
-            null,
-            null
+            2018,
+            2020
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The Next",
           "years": [
-            null,
-            null
+            2022,
+            2024
           ],
           "source": "encar"
         }
@@ -585,8 +577,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1990,
+            1997
           ],
           "source": "encar"
         }
@@ -598,8 +590,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2007,
+            2008
           ],
           "source": "encar"
         }
@@ -611,16 +603,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2005,
+            2011
           ],
           "source": "encar"
         },
         {
           "code": "X",
           "years": [
-            null,
-            null
+            2007,
+            2011
           ],
           "source": "encar"
         }
@@ -632,8 +624,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2015,
+            2020
           ],
           "source": "encar"
         }
@@ -645,8 +637,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1989,
+            1993
           ],
           "source": "encar"
         }
@@ -658,8 +650,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2002,
+            2007
           ],
           "source": "encar"
         }
@@ -669,18 +661,18 @@
       "name": "Labo",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1991,
+            2006
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2008,
+            2021
           ],
           "source": "encar"
         }
@@ -692,16 +684,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2002,
+            2009
           ],
           "source": "encar"
         },
         {
-          "code": "Premier",
+          "code": "I · Premier",
           "years": [
-            null,
-            null
+            2008,
+            2011
           ],
           "source": "encar"
         }
@@ -713,16 +705,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1996,
+            2000
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II",
           "years": [
-            null,
-            null
+            2000,
+            2002
           ],
           "source": "encar"
         }
@@ -734,8 +726,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1986,
+            1997
           ],
           "source": "encar"
         }
@@ -747,8 +739,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1997,
+            2002
           ],
           "source": "encar"
         }
@@ -760,8 +752,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1982,
+            1987
           ],
           "source": "encar"
         }
@@ -773,8 +765,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1999,
+            2006
           ],
           "source": "encar"
         }
@@ -784,26 +776,26 @@
       "name": "Malibu",
       "generations": [
         {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2016
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2016,
+            2018
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · The New",
+          "years": [
+            2018,
+            2023
           ],
           "source": "encar"
         }
@@ -813,42 +805,42 @@
       "name": "Matiz",
       "generations": [
         {
-          "code": "All New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            1998,
+            2000
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II",
           "years": [
-            null,
-            null
+            2000,
+            2005
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New",
+          "years": [
+            2005,
+            2009
           ],
           "source": "encar"
         },
         {
           "code": "Creative",
           "years": [
-            null,
-            null
+            2009,
+            2011
           ],
           "source": "encar"
         },
         {
-          "code": "Classic",
+          "code": "All New · Classic",
           "years": [
-            null,
-            null
+            2009,
+            2011
           ],
           "source": "encar"
         }
@@ -860,8 +852,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1995,
+            1996
           ],
           "source": "encar"
         }
@@ -873,16 +865,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1997,
+            1999
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II",
           "years": [
-            null,
-            null
+            1999,
+            2002
           ],
           "source": "encar"
         }
@@ -894,8 +886,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2018
           ],
           "source": "encar"
         }
@@ -905,18 +897,18 @@
       "name": "Prince",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1991,
+            1996
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            1996,
+            1997
           ],
           "source": "encar"
         }
@@ -928,8 +920,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2000,
+            2007
           ],
           "source": "encar"
         }
@@ -941,8 +933,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1983,
+            1991
           ],
           "source": "encar"
         }
@@ -954,8 +946,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1980,
+            1991
           ],
           "source": "encar"
         }
@@ -965,34 +957,26 @@
       "name": "Spark",
       "generations": [
         {
-          "code": "The Next",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "I · EV",
+          "code": "The Next",
           "years": [
-            null,
-            null
+            2015,
+            2018
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "The Next · The New",
+          "years": [
+            2018,
+            2023
           ],
           "source": "encar"
         }
@@ -1004,8 +988,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2005,
+            2007
           ],
           "source": "encar"
         }
@@ -1017,8 +1001,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1991,
+            1999
           ],
           "source": "encar"
         }
@@ -1030,7 +1014,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2022,
             null
           ],
           "source": "encar"
@@ -1043,8 +1027,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1991,
+            2001
           ],
           "source": "encar"
         }
@@ -1056,8 +1040,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2006,
+            2008
           ],
           "source": "encar"
         }
@@ -1069,8 +1053,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2008,
+            2011
           ],
           "source": "encar"
         }
@@ -1080,17 +1064,17 @@
       "name": "Trailblazer",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2020,
+            2023
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"
@@ -1103,7 +1087,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2019,
             null
           ],
           "source": "encar"
@@ -1114,18 +1098,18 @@
       "name": "Trax",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2013,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2016,
+            2022
           ],
           "source": "encar"
         }
@@ -1137,7 +1121,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"
@@ -1150,8 +1134,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2008,
+            2010
           ],
           "source": "encar"
         }
@@ -1163,8 +1147,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2016,
+            2019
           ],
           "source": "encar"
         }
@@ -1176,8 +1160,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2006,
+            2010
           ],
           "source": "encar"
         }
@@ -1189,8 +1173,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2008,
+            2010
           ],
           "source": "encar"
         }

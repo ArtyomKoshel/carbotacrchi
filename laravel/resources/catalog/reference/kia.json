@@ -286,8 +286,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1994,
+            2000
           ],
           "source": "encar"
         }
@@ -299,8 +299,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1986,
+            1997
           ],
           "source": "encar"
         }
@@ -312,8 +312,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2004,
+            2005
           ],
           "source": "encar"
         }
@@ -325,8 +325,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1974,
+            1982
           ],
           "source": "encar"
         }
@@ -338,8 +338,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1989,
+            1996
           ],
           "source": "encar"
         }
@@ -349,42 +349,42 @@
       "name": "Carens",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1999,
+            2002
           ],
           "source": "encar"
         },
         {
-          "code": "The New",
+          "code": "II",
           "years": [
-            null,
-            null
+            2002,
+            2006
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "II · New",
+          "years": [
+            2006,
+            2013
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2013,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "All New · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 2",
-          "years": [
-            null,
-            null
+            2016,
+            2018
           ],
           "source": "encar"
         }
@@ -394,65 +394,65 @@
       "name": "Carnival",
       "generations": [
         {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 4 · The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "All New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            1998,
+            2001
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 4",
+          "code": "II",
           "years": [
-            null,
-            null
+            2001,
+            2005
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II · New",
           "years": [
-            null,
-            null
+            2006,
+            2010
           ],
           "source": "encar"
         },
         {
           "code": "R",
           "years": [
-            null,
+            2010,
+            2014
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New",
+          "years": [
+            2014,
+            2018
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · The New",
+          "years": [
+            2018,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 4",
+          "years": [
+            2020,
+            2023
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 4 · The New",
+          "years": [
+            2023,
             null
           ],
           "source": "encar"
@@ -465,8 +465,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1999,
+            2002
           ],
           "source": "encar"
         }
@@ -478,7 +478,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2006,
             null
           ],
           "source": "encar"
@@ -489,18 +489,18 @@
       "name": "Cerato",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2003,
+            2006
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2006,
+            2008
           ],
           "source": "encar"
         }
@@ -510,18 +510,18 @@
       "name": "Concord",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1987,
+            1991
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            1991,
+            1995
           ],
           "source": "encar"
         }
@@ -533,16 +533,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1995,
+            1998
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II",
           "years": [
-            null,
-            null
+            1998,
+            2000
           ],
           "source": "encar"
         }
@@ -554,8 +554,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1994,
+            1999
           ],
           "source": "encar"
         }
@@ -567,7 +567,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2024,
             null
           ],
           "source": "encar"
@@ -580,7 +580,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2025,
             null
           ],
           "source": "encar"
@@ -593,7 +593,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2025,
             null
           ],
           "source": "encar"
@@ -606,15 +606,15 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2021,
+            2024
           ],
           "source": "encar"
         },
         {
-          "code": "The New",
+          "code": "I · The New",
           "years": [
-            null,
+            2024,
             null
           ],
           "source": "encar"
@@ -627,7 +627,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"
@@ -640,8 +640,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1996,
+            2000
           ],
           "source": "encar"
         }
@@ -653,8 +653,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1997,
+            2002
           ],
           "source": "encar"
         }
@@ -666,8 +666,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1979,
+            1981
           ],
           "source": "encar"
         }
@@ -679,24 +679,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · Coupe",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · Hatchback",
-          "years": [
-            null,
-            null
+            2008,
+            2013
           ],
           "source": "encar"
         }
@@ -708,8 +692,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2005,
+            2010
           ],
           "source": "encar"
         }
@@ -721,8 +705,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1992,
+            1997
           ],
           "source": "encar"
         }
@@ -734,47 +718,31 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2012,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "I · Euro",
+          "code": "I · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · Coupe",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 2 · The New",
-          "years": [
-            null,
-            null
+            2015,
+            2018
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
+            2018,
+            2021
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2 · The New",
+          "years": [
+            2021,
             null
           ],
           "source": "encar"
@@ -787,55 +755,47 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2010,
+            2015
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The New",
+          "years": [
+            2013,
+            2015
           ],
           "source": "encar"
         },
         {
           "code": "Gen 2",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 3",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · Hybrid",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
+            2015,
+            2018
           ],
           "source": "encar"
         },
         {
           "code": "Gen 2 · The New",
           "years": [
-            null,
-            null
+            2018,
+            2019
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 3",
+          "years": [
+            2019,
+            2023
           ],
           "source": "encar"
         },
         {
           "code": "Gen 3 · The New",
           "years": [
-            null,
+            2023,
             null
           ],
           "source": "encar"
@@ -848,48 +808,40 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2009,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "Premier",
+          "code": "I · The Prestige",
           "years": [
-            null,
-            null
+            2011,
+            2012
           ],
           "source": "encar"
         },
         {
-          "code": "I · Hybrid",
+          "code": "I · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The Prestige",
-          "years": [
-            null,
-            null
+            2012,
+            2016
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2016,
+            2019
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · Premier",
+          "years": [
+            2019,
+            2021
           ],
           "source": "encar"
         }
@@ -901,23 +853,15 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2021,
+            2024
           ],
           "source": "encar"
         },
         {
-          "code": "I · Hybrid",
+          "code": "I · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
+            2024,
             null
           ],
           "source": "encar"
@@ -930,31 +874,31 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2012,
+            2014
           ],
           "source": "encar"
         },
         {
-          "code": "The",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2014,
+            2018
           ],
           "source": "encar"
         },
         {
-          "code": "The New",
+          "code": "The K9",
           "years": [
-            null,
-            null
+            2018,
+            2021
           ],
           "source": "encar"
         },
         {
           "code": "Gen 2 · The New",
           "years": [
-            null,
+            2021,
             null
           ],
           "source": "encar"
@@ -967,24 +911,24 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2005,
+            2007
           ],
           "source": "encar"
         },
         {
-          "code": "Advance",
+          "code": "I · Advance",
           "years": [
-            null,
-            null
+            2007,
+            2008
           ],
           "source": "encar"
         },
         {
-          "code": "Innovation",
+          "code": "I · Innovation",
           "years": [
-            null,
-            null
+            2008,
+            2010
           ],
           "source": "encar"
         }
@@ -994,25 +938,25 @@
       "name": "Mohave",
       "generations": [
         {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2007,
+            2016
           ],
           "source": "encar"
         },
         {
-          "code": "The Master",
+          "code": "I · The New",
           "years": [
-            null,
+            2016,
+            2019
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The Master",
+          "years": [
+            2019,
             null
           ],
           "source": "encar"
@@ -1023,57 +967,57 @@
       "name": "Morning",
       "generations": [
         {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "JA · The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2004,
+            2008
           ],
           "source": "encar"
         },
         {
-          "code": "JA · Urban",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2008,
+            2011
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2011,
+            2015
           ],
           "source": "encar"
         },
         {
-          "code": "JA · All New",
+          "code": "All New · The New",
           "years": [
-            null,
+            2015,
+            2017
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "JA",
+          "years": [
+            2017,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "JA · Urban",
+          "years": [
+            2020,
+            2023
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "JA · The New",
+          "years": [
+            2023,
             null
           ],
           "source": "encar"
@@ -1086,31 +1030,31 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2016,
+            2022
           ],
           "source": "encar"
         },
         {
-          "code": "I · EV",
+          "code": "I · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
+            2019,
+            2022
           ],
           "source": "encar"
         },
         {
           "code": "The All New",
           "years": [
-            null,
+            2022,
+            null
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2 · The New",
+          "years": [
+            2026,
             null
           ],
           "source": "encar"
@@ -1123,7 +1067,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2022,
             null
           ],
           "source": "encar"
@@ -1134,26 +1078,26 @@
       "name": "Opirus",
       "generations": [
         {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2003,
+            2006
           ],
           "source": "encar"
         },
         {
-          "code": "Premium",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2006,
+            2009
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Premium",
+          "years": [
+            2009,
+            2011
           ],
           "source": "encar"
         }
@@ -1165,8 +1109,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2000,
+            2005
           ],
           "source": "encar"
         }
@@ -1178,7 +1122,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2025,
             null
           ],
           "source": "encar"
@@ -1191,8 +1135,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1998,
+            2000
           ],
           "source": "encar"
         }
@@ -1202,18 +1146,18 @@
       "name": "Potentia",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1992,
+            1997
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            1997,
+            2002
           ],
           "source": "encar"
         }
@@ -1225,8 +1169,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1995,
+            2004
           ],
           "source": "encar"
         }
@@ -1236,34 +1180,34 @@
       "name": "Pride",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            1987,
+            2000
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "New (2005)",
+          "years": [
+            2005,
+            2011
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2011,
+            2015
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "All New · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "(new)",
-          "years": [
-            null,
-            null
+            2015,
+            2017
           ],
           "source": "encar"
         }
@@ -1273,17 +1217,25 @@
       "name": "Ray",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2011,
+            2017
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
+            2017,
+            2022
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The New (2022)",
+          "years": [
+            2022,
             null
           ],
           "source": "encar"
@@ -1296,8 +1248,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2002,
+            2005
           ],
           "source": "encar"
         }
@@ -1309,8 +1261,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1998,
+            2003
           ],
           "source": "encar"
         }
@@ -1322,8 +1274,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1999,
+            2005
           ],
           "source": "encar"
         }
@@ -1335,16 +1287,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1990,
+            1993
           ],
           "source": "encar"
         },
         {
           "code": "R2",
           "years": [
-            null,
-            null
+            1993,
+            1997
           ],
           "source": "encar"
         }
@@ -1354,25 +1306,25 @@
       "name": "Seltos",
       "generations": [
         {
-          "code": "The New",
+          "code": "I",
           "years": [
-            null,
-            null
+            2019,
+            2022
           ],
           "source": "encar"
         },
         {
-          "code": "I",
+          "code": "I · The New",
           "years": [
-            null,
-            null
+            2022,
+            2026
           ],
           "source": "encar"
         },
         {
           "code": "Gen 2",
           "years": [
-            null,
+            2026,
             null
           ],
           "source": "encar"
@@ -1385,16 +1337,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1992,
+            1997
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 2",
+          "code": "II",
           "years": [
-            null,
-            null
+            1997,
+            2001
           ],
           "source": "encar"
         }
@@ -1406,8 +1358,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1997,
+            2001
           ],
           "source": "encar"
         }
@@ -1417,65 +1369,65 @@
       "name": "Sorento",
       "generations": [
         {
-          "code": "New · R",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 4 · The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
+            2002,
+            2006
           ],
           "source": "encar"
         },
         {
-          "code": "Gen 4",
+          "code": "I · New",
           "years": [
-            null,
-            null
+            2006,
+            2009
           ],
           "source": "encar"
         },
         {
           "code": "R",
           "years": [
-            null,
-            null
+            2009,
+            2012
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "R · New",
+          "years": [
+            2012,
+            2014
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
+            2014,
+            2017
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · The New",
+          "years": [
+            2017,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 4",
+          "years": [
+            2020,
+            2023
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 4 · The New",
+          "years": [
+            2023,
             null
           ],
           "source": "encar"
@@ -1486,34 +1438,26 @@
       "name": "Soul",
       "generations": [
         {
-          "code": "The New",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
           "code": "I",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · EV",
-          "years": [
-            null,
-            null
+            2008,
+            2013
           ],
           "source": "encar"
         },
         {
           "code": "All New",
           "years": [
-            null,
-            null
+            2013,
+            2019
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · The New",
+          "years": [
+            2016,
+            2019
           ],
           "source": "encar"
         }
@@ -1525,16 +1469,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I · EV",
-          "years": [
-            null,
-            null
+            2019,
+            2021
           ],
           "source": "encar"
         }
@@ -1546,8 +1482,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2000,
+            2004
           ],
           "source": "encar"
         }
@@ -1557,9 +1493,57 @@
       "name": "Sportage",
       "generations": [
         {
-          "code": "New",
+          "code": "I",
           "years": [
-            null,
+            1993,
+            2002
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            2004,
+            2010
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "R",
+          "years": [
+            2010,
+            2013
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "R · The New",
+          "years": [
+            2013,
+            2015
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 4",
+          "years": [
+            2015,
+            2018
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 4 · The Bold",
+          "years": [
+            2018,
+            2021
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 5",
+          "years": [
+            2021,
             null
           ],
           "source": "encar"
@@ -1567,55 +1551,7 @@
         {
           "code": "Gen 5 · The New",
           "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The New · R",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "I",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 4",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "Gen 5",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "R",
-          "years": [
-            null,
-            null
-          ],
-          "source": "encar"
-        },
-        {
-          "code": "The Bold",
-          "years": [
-            null,
+            2024,
             null
           ],
           "source": "encar"
@@ -1628,16 +1564,16 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2017,
+            2020
           ],
           "source": "encar"
         },
         {
-          "code": "Meister",
+          "code": "I · Meister",
           "years": [
-            null,
-            null
+            2020,
+            2023
           ],
           "source": "encar"
         }
@@ -1649,8 +1585,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2017,
+            2020
           ],
           "source": "encar"
         }
@@ -1662,7 +1598,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2025,
             null
           ],
           "source": "encar"
@@ -1675,7 +1611,7 @@
         {
           "code": "I",
           "years": [
-            null,
+            2019,
             null
           ],
           "source": "encar"
@@ -1688,8 +1624,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1987,
+            1999
           ],
           "source": "encar"
         }
@@ -1701,8 +1637,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1992,
+            2002
           ],
           "source": "encar"
         }
@@ -1714,8 +1650,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            1999,
+            2004
           ],
           "source": "encar"
         }
@@ -1727,8 +1663,8 @@
         {
           "code": "I",
           "years": [
-            null,
-            null
+            2003,
+            2006
           ],
           "source": "encar"
         }

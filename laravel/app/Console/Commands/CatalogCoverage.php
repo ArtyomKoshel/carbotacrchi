@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Catalog\CatalogLinker;
 use App\Catalog\Encar\EncarMatcher;
 use App\Catalog\VariantMatch;
 use Illuminate\Console\Command;
@@ -136,9 +137,9 @@ class CatalogCoverage extends Command
      */
     private function fromDb(string $korean): array
     {
-        return DB::table('lots')->where('is_active', true)->where('source', 'encar')->where('make', $korean)
-            ->groupBy('make', 'model', 'badge_group', 'badge', 'trim')
-            ->selectRaw('make, model, badge_group, badge, `trim`, COUNT(*) n, MIN(year) year, GROUP_CONCAT(DISTINCT fuel) fuel')
+        return DB::table('lots as l')->where('l.is_active', true)->where('l.source', 'encar')->where('l.make', $korean)
+            ->groupByRaw('l.make, ' . CatalogLinker::MODEL_SQL . ', l.badge_group, l.badge, l.`trim`')
+            ->selectRaw('l.make, ' . CatalogLinker::MODEL_SQL . ' model, l.badge_group, l.badge, l.`trim`, COUNT(*) n, MIN(l.year) year, GROUP_CONCAT(DISTINCT l.fuel) fuel')
             ->get()
             ->map(fn ($r) => ['make' => $r->make, 'model' => $r->model, 'badge_group' => $r->badge_group, 'badge' => $r->badge,
                 'trim' => $r->trim, 'n' => (int) $r->n, 'year' => $r->year === null ? null : (int) $r->year, 'fuel' => $r->fuel])

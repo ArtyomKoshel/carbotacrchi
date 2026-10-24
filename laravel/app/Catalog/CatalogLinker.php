@@ -22,7 +22,19 @@ class CatalogLinker
 
     public const VARIANT_FIELDS = ['make', 'model', 'badge_group', 'badge', 'trim'];
 
-    public const SQL_HASH = "SHA1(CONCAT_WS(CHAR(31), IFNULL(l.make, ''), IFNULL(l.model, ''), IFNULL(l.badge_group, ''), "
+    /**
+     * Encar's model as Encar names it. lots.model has the marketing words cut ("더 뉴 K3 2세대"
+     * → "K3 2세대", "올 뉴 K3" → "K3"), which is the generation; the collector keeps the name in
+     * raw_data.model_kr_raw.
+     */
+    public const MODEL_SQL = "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(l.raw_data, '$.model_kr_raw')), ''), l.model)";
+
+    /** Each variant field as SQL on `lots l`. */
+    public const FIELD_SQL = [
+        'make' => 'l.make', 'model' => self::MODEL_SQL, 'badge_group' => 'l.badge_group', 'badge' => 'l.badge', 'trim' => 'l.`trim`',
+    ];
+
+    public const SQL_HASH = "SHA1(CONCAT_WS(CHAR(31), IFNULL(l.make, ''), IFNULL(" . self::MODEL_SQL . ", ''), IFNULL(l.badge_group, ''), "
         . "IFNULL(l.badge, ''), IFNULL(l.`trim`, '')))";
 
     private readonly ConnectionInterface $db;
@@ -66,7 +78,7 @@ class CatalogLinker
      */
     public function variants(callable $where): array
     {
-        $fields = implode(', ', array_map(fn ($f) => "ANY_VALUE(l.`{$f}`) AS `{$f}`", self::VARIANT_FIELDS));
+        $fields = implode(', ', array_map(fn ($f) => 'ANY_VALUE(' . self::FIELD_SQL[$f] . ") AS `{$f}`", self::VARIANT_FIELDS));
         $query = $this->db->table('lots as l')->whereIn('l.source', self::SOURCES)
             ->selectRaw('l.source, ' . self::SQL_HASH . " AS h, {$fields}, SUM(l.is_active) AS active")
             ->groupByRaw('l.source, h');
