@@ -187,7 +187,7 @@ const CatalogFilter = (() => {
       plugins: maxItems === 1 ? [] : ['remove_button'],
       render: {
         option: o => `<div class="cat-opt"><span>${esc(o.text)}</span>${o.n ? `<span class="cat-opt__n">${n(o.n)}</span>` : ''}</div>`,
-        item: o => `<div>${esc(o.text)}</div>`,
+        item: o => `<div>${esc(o.text)}${o.n ? `<span class="cat-opt__n cat-item__n">${n(o.n)}</span>` : ''}</div>`,
       },
       onChange(v) { onChange(maxItems === 1 ? (v || '') : (Array.isArray(v) ? v : String(v || '').split(',').filter(Boolean))); },
     });
