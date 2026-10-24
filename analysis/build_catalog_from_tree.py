@@ -67,6 +67,8 @@ BODY = {
     "살룬": "Saloon", "cw": "Wagon", "왜건": "Wagon", "유로": "Euro", "점보": "Jumbo", "밴": "Van",
 }
 ROMAN = {"II": 2, "III": 3, "2": 2, "3": 3}
+# facelift words that in Korean marketing mean a full model change, a generation of its own
+RENEWAL = {"All New", "The All New", "(new)"}
 
 
 def ym(v: str | None) -> int | None:
@@ -165,26 +167,48 @@ def main() -> None:
     reference: dict[str, dict] = defaultdict(lambda: {"generations": {}})
     encar_models: dict[str, dict] = {}
     unknown = []
-    for model_kr, info in sorted(models.items()):
+
+    # Encar models of one model, oldest first. A generation is what Encar names by a chassis code
+    # or number ("YF 쏘나타", "쏘나타 II"), or the plain model name ("쏘나타", 1985). A name that only
+    # adds facelift, powertrain or body words ("쏘나타 더 브릴리언트" 2012, "쏘나타 하이브리드" 2011)
+    # belongs to the generation Encar was selling when it came out (YF, 2009–): its start date is
+    # Encar's own, so this reads Encar, not the car. "(신형)" is a new model, not a facelift.
+    read_all: dict[str, list[tuple[str, dict, dict]]] = defaultdict(list)
+    for model_kr, info in models.items():
         read = read_model(info["group"], model_kr, splits)
         model = read["model"] or names.get(info["group"]) or info["group"]
-        label = " · ".join(x for x in [read["code"], read["facelift"], read["rest"]] if x)
-        # with a chassis, number or facelift, Encar models that differ only by powertrain or body
-        # are one generation; without any, each stays apart (the 1985 Sonata is not the 2011 Hybrid)
-        code = label or "I"
+        read_all[model].append((model_kr, info, read))
+
+    placed: list[tuple[str, str, dict, dict]] = []   # model, generation, info, read
+    for model, items in read_all.items():
+        items.sort(key=lambda x: (ym(x[1]["start"]) or 0, x[0]))
+        bases: list[tuple[int, str]] = []               # (start, label) of generations in time order
+        for model_kr, info, read in items:
+            start = ym(info["start"]) or 0
+            facelift, rest = read["facelift"], read["rest"]
+            own = read["code"]
+            if own is None and facelift in RENEWAL:
+                # "올 뉴 투싼" (2015): a model change, named so; "(신형)" says only "new", so its year
+                own, facelift = (f"New ({start})" if facelift == "(new)" else facelift), ""
+            if own is None and rest:
+                own, rest = rest, ""                     # a name of its own ("투싼 ix")
+            if own is None and (facelift or read["words"]) and bases:
+                base = max((b for b in bases if b[0] <= start), default=bases[0])[1]
+            else:
+                base = own or "I"
+                if base not in {b[1] for b in bases}:
+                    bases.append((start, base))
+            label = " · ".join(x for x in [base, facelift, rest] if x)
+            placed.append((model, label, info, read))
+
+    for model, code, info, read in placed:
+        model_kr = next(k for k, v in models.items() if v is info)
         taken = reference[model]["generations"].get(code)
         start = ym(info["start"])
-        # Encar models that read alike are one generation only when Encar's start dates agree (a
-        # powertrain or body added within a year: "K5 3세대" / "K5 하이브리드 3세대"); "더 뉴 레이" 2017
-        # and "더 뉴 기아 레이" 2022 read alike and are two facelifts. Without dates, unlabelled models
-        # stay apart (the 1985 Sonata is not the 2011 Sonata Hybrid).
-        if taken:
-            if taken["years"][0] and start:
-                together = abs(taken["years"][0] - start) <= 1
-            else:
-                together = bool(label)
-            if not together:
-                code = f"{code} ({start})" if start else f"{code} · {read['words'] or model_kr}"
+        # one facelift name used twice ("더 뉴 레이" 2017, "더 뉴 기아 레이" 2022) is two facelifts:
+        # a facelift label merges only with a model Encar started within a year of it
+        if taken and " · " in code and taken["years"][0] and start and abs(taken["years"][0] - start) > 1:
+            code = f"{code} ({start})"
         if HANGUL.search(model) or HANGUL.search(code):
             unknown.append((model_kr, model, code))
         g = reference[model]["generations"].setdefault(code, {"code": code, "years": [None, None], "encar": []})
@@ -211,6 +235,10 @@ def main() -> None:
     if args.write:
         ref_path = out / "reference" / f"{slug}.json"
         ref = json.loads(ref_path.read_text(encoding="utf-8")) if ref_path.exists() else {"make": make_en, "complectations": [], "editions": [], "models": []}
+        # what this script drafted before ("source": "encar") is drafted again from the tree;
+        # generations and models a person wrote, and encar_models marked "manual", stay
+        for m in ref["models"]:
+            m["generations"] = [g for g in m["generations"] if g.get("source") != "encar"]
         have = {m["name"]: m for m in ref["models"]}
         for model, data in reference.items():
             target = have.setdefault(model, {"name": model, "generations": []})
@@ -221,10 +249,12 @@ def main() -> None:
                 if g["code"] not in codes:
                     years = [g["years"][0], None if g.get("open") else g["years"][1]]
                     target["generations"].append({"code": g["code"], "years": years, "source": "encar"})
-        ref["models"].sort(key=lambda m: m["name"])
+        ref["models"] = sorted((m for m in ref["models"] if m["generations"] or set(m) - {"name", "generations"}),
+                               key=lambda m: m["name"])
         ref_path.write_text(json.dumps(ref, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         encar["korean"] = args.make
-        encar["encar_models"] = {**encar_models, **encar.get("encar_models", {})}
+        manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
+        encar["encar_models"] = dict(sorted({**encar_models, **manual}.items()))
         encar_path.write_text(json.dumps(encar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"\nwritten: {ref_path}, {encar_path}")
 
