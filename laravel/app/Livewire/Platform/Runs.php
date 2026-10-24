@@ -4,6 +4,7 @@ namespace App\Livewire\Platform;
 
 use App\Filament\Resources\Lots\LotFormat;
 use App\Models\ParseJob;
+use App\Services\Notifications\JobReport;
 use App\Services\ParseJobLog;
 use App\Services\ParseRuns;
 use App\Support\JobFormat;
@@ -239,6 +240,8 @@ class Runs extends PlatformComponent implements HasTable
         $s = ParseRuns::stats($job);
         $r = (array) ($job->result ?? []);
         $num = fn ($v) => $v === null ? '—' : LotFormat::number((int) $v);
+        $etypes = $r['error_types'] ?? JobReport::errorTypes($job);
+        $elog = JobReport::errorLog($job);
 
         return [
             Grid::make(3)->schema([
@@ -261,10 +264,10 @@ class Runs extends PlatformComponent implements HasTable
             Section::make('Сработавшие правила отбора')->compact()->visible(!empty($r['filter_rules']))->schema([
                 ViewEntry::make('rules')->hiddenLabel()->view('livewire.platform.partials.key-counts', ['counts' => $r['filter_rules'] ?? []]),
             ]),
-            Section::make('Ошибки')->compact()->visible(!empty($r['error_types']) || !empty($r['error_log']) || !empty($r['error']))->schema([
+            Section::make('Ошибки')->compact()->visible(!empty($etypes) || !empty($elog) || !empty($r['error']))->schema([
                 TextEntry::make('error')->label('Ошибка задачи')->state($r['error'] ?? null)->visible(!empty($r['error']))->fontFamily('mono'),
-                ViewEntry::make('etypes')->label('По типам')->view('livewire.platform.partials.key-counts', ['counts' => $r['error_types'] ?? []])->visible(!empty($r['error_types'])),
-                ViewEntry::make('elog')->label('Последние')->view('livewire.platform.partials.lines', ['lines' => array_slice((array) ($r['error_log'] ?? []), -20)])->visible(!empty($r['error_log'])),
+                ViewEntry::make('etypes')->label('По типам')->view('livewire.platform.partials.key-counts', ['counts' => $etypes])->visible(!empty($etypes)),
+                ViewEntry::make('elog')->label('Последние')->view('livewire.platform.partials.lines', ['lines' => array_slice($elog, -20)])->visible(!empty($elog)),
             ]),
             Section::make('Лог задачи')->compact()->collapsible()->collapsed($job->status !== 'error')->schema([
                 ViewEntry::make('log')->hiddenLabel()->view('livewire.platform.partials.lines', [

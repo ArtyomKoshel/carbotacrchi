@@ -31,13 +31,16 @@ from typing import Any, Final
 
 from collector.adapters.encar.api import DEFAULT_QUERY, MAX_SAFE_OFFSET, PAGE_SIZE, EncarApi
 from collector.adapters.encar.pipeline import EncarPipeline, PageReport
-from collector.http import Failed, Missing, Ok
+from collector.http import Failed, Missing, Ok, Outcome
 
 MAX_PAGES_PER_SEGMENT: Final = 100
 YEAR_FROM: Final = 1990
 # Lots a page re-reads from the end of the previous one: covers the delistings between two
 # requests (each shifts the rest up by one); a repeated lot costs nothing, it is already seen.
 PAGE_OVERLAP: Final = 10
+# A search page that comes back 404 mid-list is asked again (a fresh proxy each time) before the
+# segment is given up: a 404 there is a block, not the end of the list, and giving up loses the rest.
+SEARCH_RETRIES_ON_MISSING: Final = 2
 CATCH_UP: Final = "catchup"
 
 
@@ -76,6 +79,7 @@ class SweepState:
 
 
 Progress = Callable[[SweepState, str], Awaitable[None]]
+ErrorSink = Callable[[str], Awaitable[None]]
 
 
 @dataclass
@@ -96,6 +100,7 @@ class Sweeper:
         run_id: int,
         history_cutoff: datetime | None,
         on_progress: Progress,
+        on_error: ErrorSink | None = None,
         should_stop: Callable[[], bool] = lambda: False,
         current_year: int,
         seen: set[str] | None = None,
@@ -106,6 +111,7 @@ class Sweeper:
         self.run_id = run_id
         self.cutoff = history_cutoff
         self.on_progress = on_progress
+        self.on_error = on_error
         self.should_stop = should_stop
         self.current_year = current_year
         self._seen: set[str] = set(seen or ())
@@ -146,12 +152,20 @@ class Sweeper:
         outcome = await self.api.search(query, 0, 1)
         return int(outcome.data.get("Count") or 0) if isinstance(outcome, Ok) else None
 
+    async def _search_page(self, query: str, offset: int, size: int) -> Outcome:
+        outcome = await self.api.search(query, offset, size)
+        for _ in range(SEARCH_RETRIES_ON_MISSING):
+            if not isinstance(outcome, Missing):
+                break
+            outcome = await self.api.search(query, offset, size)
+        return outcome
+
     async def _maker(self, state: SweepState, maker: str) -> None:
         if f"maker:{maker}" in state.done_segments:
             return
         total = await self._count(maker_query(maker))
         if total is None:
-            self._error(state, f"[{maker}] count failed")
+            await self._error(state, f"[{maker}] count failed")
         elif total <= MAX_SAFE_OFFSET:
             await self._segment(state, f"maker:{maker}", maker_query(maker), MAX_PAGES_PER_SEGMENT)
             return
@@ -170,7 +184,7 @@ class Sweeper:
         total = await self._count(year_query(maker, year))
         if not total:
             if total is None:
-                self._error(state, f"[{maker}/{year}] count failed")
+                await self._error(state, f"[{maker}/{year}] count failed")
             await self._done(state, key)
             return
         if total <= MAX_SAFE_OFFSET:
@@ -211,9 +225,9 @@ class Sweeper:
                 break
             offset = max(0, start - PAGE_OVERLAP) if page else 0
             size = PAGE_SIZE + (start - offset)
-            outcome = await self.api.search(query, offset, size)
+            outcome = await self._search_page(query, offset, size)
             if isinstance(outcome, Failed | Missing):
-                self._error(state, f"{key} p.{page + 1}: {getattr(outcome, 'reason', 'missing')}")
+                await self._error(state, f"{key} p.{page + 1}: {getattr(outcome, 'reason', 'missing')}")
                 break
             data = outcome.data
             count = int(data.get("Count") or 0)
@@ -272,6 +286,11 @@ class Sweeper:
         state.pages += 1
         state.cursor[p.key] = p.page + 1
         state.report = PageReport(**state.report).plus(report).__dict__ if state.report else report.__dict__
+        # Counted in the report (detail_failed, history_failed), not in state.errors; logged so they show.
+        if report.detail_failed and self.on_error:
+            await self.on_error(f"{p.key} p.{p.page + 1}: {report.detail_failed} card(s) failed to load")
+        if report.history_failed and self.on_error:
+            await self.on_error(f"{p.key} p.{p.page + 1}: history failed for {report.history_failed} lot(s)")
         await self.on_progress(state, f"{p.key} p.{p.page + 1}")
 
     async def _cancel_pending(self) -> None:
@@ -301,7 +320,9 @@ class Sweeper:
                     models.append(mo)
         return fresh
 
-    @staticmethod
-    def _error(state: SweepState, message: str) -> None:
+    async def _error(self, state: SweepState, message: str) -> None:
+        """Counted in the run's result and written to the run log at once, as an error."""
         state.errors += 1
         state.error_log = [*state.error_log, message][-50:]
+        if self.on_error:
+            await self.on_error(message)

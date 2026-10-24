@@ -85,4 +85,15 @@ class CollectorLogsTest extends AdminTestCase
             'newest first, like the files',
         );
     }
+
+    public function test_with_the_collector_on_the_logs_page_opens_on_its_newest_job(): void
+    {
+        $this->signIn();
+        $this->logLines(41);
+        $this->logLines(42);
+
+        config(['ingest.enabled' => true]);
+        $this->assertSame('collector:42', app(LogFiles::class)->all()[0]['key'], 'the old parser files, which nothing writes, go last');
+        Livewire::test(Logs::class)->assertSet('file', 'collector:42');
+    }
 }

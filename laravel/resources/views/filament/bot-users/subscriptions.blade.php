@@ -1,13 +1,8 @@
 @php
+    use App\Filament\Resources\BotUsers\SearchDescriber;
     use App\Filament\Resources\Lots\LotFormat;
     $rows = $getRecord()->subscriptions()->latest()->limit(20)->get();
-    $describe = fn (array $q) => collect([
-        $q['make'] ?? null,
-        $q['model'] ?? null,
-        isset($q['yearFrom']) || isset($q['yearTo']) ? trim(($q['yearFrom'] ?? '') . '–' . ($q['yearTo'] ?? ''), '–') : null,
-        isset($q['priceMax']) ? 'до ' . LotFormat::won($q['priceMax']) : null,
-        isset($q['mileageMax']) ? 'до ' . LotFormat::km($q['mileageMax']) : null,
-    ])->filter()->implode(' · ');
+    $describe = fn (array $q) => SearchDescriber::describe($q);
 @endphp
 @if ($rows->isEmpty())
     <p class="lot-empty">Подписок нет.</p>

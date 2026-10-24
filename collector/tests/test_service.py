@@ -489,6 +489,30 @@ async def test_a_lot_shifted_up_by_a_delisting_is_not_skipped(
     assert fake.searches[1][1:] == (1, 3), "page 2 starts one lot earlier"
 
 
+async def test_a_search_page_404_mid_list_is_asked_again_not_given_up(
+    db: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sweep, "PAGE_SIZE", 2)
+    monkeypatch.setattr(sweep, "PAGE_OVERLAP", 0)
+    fake = FakeEncar()
+    blocked: list[int] = []
+
+    def block_page_two_once(f: FakeEncar, q: str, offset: int) -> None:
+        # Through a proxy a 404 is "missing", which used to end the segment and lose its rest.
+        f.search_status = 404 if offset > 0 and not blocked else 200
+        if f.search_status == 404:
+            blocked.append(offset)
+
+    fake.on_search = block_page_two_once
+    proxy = {"proxy_username": "u", "proxy_password": "p", "proxy_host": "proxy.test:1", "proxy_sessions": 2}
+    jid = await add_job(db, filters={"max_pages": 3})
+    await service(db, fake, **proxy).run_once()
+
+    assert len(blocked) == 1
+    assert len(await ingested_ids(db, jid)) == 6, "all three pages of 2 lots"
+    assert json.loads((await job_row(db, jid)).result)["errors"] == 0
+
+
 async def test_full_run_ends_with_a_catch_up_pass_for_lots_listed_meanwhile(db: AsyncEngine) -> None:
     fake = FakeEncar()
     default_searches = 0

@@ -128,11 +128,39 @@ class JobReport
             'new'         => $run ? $run['inserted'] : (int) ($r['new'] ?? $p['new'] ?? 0),
             'updated'     => $run ? $run['updated'] : (int) ($r['updated'] ?? $p['updated'] ?? 0),
             'written'     => $run ? $run['inserted'] + $run['updated'] + $run['unchanged'] : (isset($r['lots_written']) ? (int) $r['lots_written'] : null),
-            'errors'      => (int) ($r['errors'] ?? $p['errors'] ?? 0),
+            'errors'      => array_sum(self::errorTypes($job)),
             'filtered'    => $run ? $run['filtered'] : (isset($r['filtered']) ? (int) $r['filtered'] : null),
             'stale'       => isset($r['stale']) ? (int) $r['stale'] : null,
             'proxy_bytes' => (int) ($r['proxy_bytes'] ?? $p['proxy_bytes'] ?? 0),
         ];
+    }
+
+    /**
+     * A collector run's errors by kind: search pages (the run's own "errors") plus the cards and
+     * histories that failed to load, which it reports apart. Read from the result once the run is
+     * over, from the checkpoint while it goes. An old parser run has only its "errors".
+     *
+     * @return array<string, int> label => count, zeros dropped
+     */
+    public static function errorTypes(ParseJob $job): array
+    {
+        $p = $job->progress ?? [];
+        $r = $job->result ?? [];
+        $report = $r ?: (array) ($p['checkpoint']['report'] ?? []);
+
+        return array_filter([
+            'Страницы поиска'  => (int) ($r['errors'] ?? $p['errors'] ?? 0),
+            'Карточки лотов'   => (int) ($report['detail_failed'] ?? 0),
+            'История лотов'    => (int) ($report['history_failed'] ?? 0),
+        ]);
+    }
+
+    /** @return list<string> the collector's last error lines: the result's, or the checkpoint's while it runs */
+    public static function errorLog(ParseJob $job): array
+    {
+        $r = $job->result ?? [];
+
+        return array_values((array) ($r['error_log'] ?? ($job->progress['checkpoint']['error_log'] ?? [])));
     }
 
     public static function duration(float $seconds): string
