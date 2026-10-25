@@ -1,11 +1,7 @@
 const Filters = (() => {
   let filtersData = null;
-  let trimRequestSeq = 0;
   let optionsSelectInstance  = null;
   let makeSelectInstance     = null;
-  let modelSelectInstance    = null;
-  let badgeSelectInstance    = null;
-  let trimSelectInstance     = null;
   let _countTimer = null;
   let _contextTimer = null;
   let _onChange = null;   // the shell: re-run the search (desktop) or refresh the count (phone)
@@ -233,16 +229,7 @@ const Filters = (() => {
           <div class="filter-select-wrap">
             <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
           </div>
-          <div class="filter-select-wrap" id="filter-model-wrap">
-            <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
-          </div>
-          <div class="filter-selects" id="filter-catalog" hidden></div>
-          <div class="filter-select-wrap" id="filter-badge-wrap" style="display:none">
-            <select class="filter-select" id="filter-badge"><option value="">Любая серия</option></select>
-          </div>
-          <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
-            <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
-          </div>`;
+          <div class="filter-selects" id="filter-catalog" hidden></div>`;
         body.appendChild(selects);
         break;
       }
@@ -374,8 +361,7 @@ const Filters = (() => {
   function populateFilters() {
     renderSourceChips();
     renderMakeSelect();
-    renderModelSelect();
-    renderBadgeSelect([]);
+    renderCatalog();
     initOptionsSelect(filtersData?.options ?? []);
 
     const enabled = getEnabledFields();
@@ -392,7 +378,7 @@ const Filters = (() => {
       }
     }
 
-    if (state.make || state.model) {
+    if (state.make) {
       _scheduleContextUpdate();
     }
   }
@@ -485,20 +471,11 @@ const Filters = (() => {
   }
 
   function _destroySelectInstances() {
-    for (const [key, inst] of [
-      ['optionsSelectInstance',   optionsSelectInstance],
-      ['makeSelectInstance',      makeSelectInstance],
-      ['modelSelectInstance',     modelSelectInstance],
-      ['badgeSelectInstance',     badgeSelectInstance],
-      ['trimSelectInstance',      trimSelectInstance],
-    ]) {
+    for (const inst of [optionsSelectInstance, makeSelectInstance]) {
       if (inst) { try { inst.destroy(); } catch (_) {} }
     }
     optionsSelectInstance    = null;
     makeSelectInstance       = null;
-    modelSelectInstance      = null;
-    badgeSelectInstance      = null;
-    trimSelectInstance       = null;
   }
 
   function _tsBase(el, opts) {
@@ -518,9 +495,8 @@ const Filters = (() => {
   function renderMakeSelect() {
     const el = document.getElementById('filter-make');
     if (!el) return;
-    const makes = (Taxonomy.normalizeOptionItems(
-      filtersData?.makeOptions ?? Object.keys(filtersData?.makes ?? {})
-    )).map(o => ({ value: o.value, text: o.label }));
+    const makes = Taxonomy.normalizeOptionItems(filtersData?.makeOptions ?? [])
+      .map(o => ({ value: o.value, text: o.label }));
 
     makeSelectInstance = _tsBase(el, {
       maxItems: 1,
@@ -530,143 +506,21 @@ const Filters = (() => {
         const v = val || '';
         if (state.make === v) return;
         state.make = v; state.model = ''; state.badge = ''; state.trim = '';
-        renderModelSelect();
-        renderBadgeSelect([]);
-        renderTrimSelect([]);
+        renderCatalog();
         _scheduleContextUpdate(); _scheduleCountUpdate();
       },
     });
   }
 
-  function renderModelSelect() {
-    if (modelSelectInstance) { try { modelSelectInstance.destroy(); } catch(_) {} modelSelectInstance = null; }
-    if (badgeSelectInstance) { try { badgeSelectInstance.destroy(); } catch(_) {} badgeSelectInstance = null; }
-    if (trimSelectInstance)  { try { trimSelectInstance.destroy();  } catch(_) {} trimSelectInstance  = null; }
-
-    const el = document.getElementById('filter-model');
+  // the make's reference catalog below the make: model → generation → modification → complectation
+  function renderCatalog() {
+    const el = document.getElementById('filter-catalog');
     if (!el) return;
-
-    // a make of the reference catalog: model → generation → modification → complectation
-    const catalogEl = document.getElementById('filter-catalog');
-    const modelWrap = document.getElementById('filter-model-wrap');
-    if (CatalogFilter.covers(state.make)) {
-      if (modelWrap) modelWrap.hidden = true;
-      const restore = _catalogRestore;
-      _catalogRestore = null;
-      CatalogFilter.mount(catalogEl, state.make, () => { _updateResetBtn(); _scheduleCountUpdate(); }, restore)
-        .then(ok => { if (!ok && modelWrap) modelWrap.hidden = false; if (restore) _scheduleCountUpdate(); });
-      return;
-    }
-    CatalogFilter.reset();
-    if (modelWrap) modelWrap.hidden = false;
-
-    // filtersData.makes[make] is now a flat array of English model names: ["Sonata", "Tucson", ...]
-    // (was: {model_group_kr: [model_kr, ...]} — changed by FiltersController refactor)
-    const raw = filtersData?.makes?.[state.make] ?? [];
-    const models = Array.isArray(raw)
-      ? [...new Set(raw)].sort()                                        // new flat format
-      : [...new Set(Object.values(raw).flat())].sort();                 // legacy nested fallback
-
-    modelSelectInstance = _tsBase(el, {
-      maxItems: 1,
-      options:  [{ value: '', text: 'Любая модель' }, ...models.map(m => ({ value: m, text: m }))],
-      items:    state.model ? [state.model] : [''],
-      onChange(val) {
-        const v = val || '';
-        if (state.model === v) return;
-        state.model = v; state.badge = ''; state.trim = '';
-        renderBadgeSelect([]);
-        renderTrimSelect([]);
-        if (state.make || state.model) loadTrims();
-        _scheduleContextUpdate(); _scheduleCountUpdate();
-      },
-    });
-
-    if (state.make || state.model) loadTrims();
-  }
-
-  function renderBadgeSelect(badges) {
-    if (badgeSelectInstance) { try { badgeSelectInstance.destroy(); } catch(_) {} badgeSelectInstance = null; }
-
-    const wrap = document.getElementById('filter-badge-wrap');
-    const sel  = document.getElementById('filter-badge');
-    if (!wrap || !sel) return;
-
-    const badgeOptions = Taxonomy.normalizeOptionItems(badges);
-    if (!badgeOptions || badgeOptions.length === 0) {
-      wrap.style.display = 'none';
-      return;
-    }
-
-    sel.innerHTML = '<option value=""></option>';
-    wrap.style.display = '';
-
-    const opts = badgeOptions.map(o => ({
-      value: o.value,
-      text:  o.label || o.value,
-    }));
-
-    badgeSelectInstance = _tsBase(sel, {
-      maxItems: 1,
-      options:  [{ value: '', text: 'Любая серия' }, ...opts],
-      items:    state.badge ? [state.badge] : [''],
-      onChange(val) {
-        const v = val || '';
-        if (state.badge === v) return;
-        state.badge = v;
-        state.trim = '';
-        _scheduleContextUpdate();
-        _scheduleCountUpdate();
-      },
-    });
-  }
-
-  async function loadTrims() {
-    const make = state.make;
-    const model = state.model;
-    const reqId = ++trimRequestSeq;
-    try {
-      const data = await API.getTrims(make, model, 'ru');
-      if (reqId !== trimRequestSeq) return;
-      if (make !== state.make || model !== state.model) return;
-      const trimOpts = data?.trimOptions ?? [];
-      Taxonomy.ingestTrims(trimOpts);
-      renderTrimSelect(trimOpts.length ? trimOpts : (data?.trims ?? []));
-    } catch (e) {
-      if (reqId !== trimRequestSeq) return;
-      renderTrimSelect([]);
-    }
-  }
-
-  function renderTrimSelect(trims) {
-    if (trimSelectInstance) { try { trimSelectInstance.destroy(); } catch(_) {} trimSelectInstance = null; }
-
-    const wrap = document.getElementById('filter-trim-wrap');
-    const sel  = document.getElementById('filter-trim');
-    if (!wrap || !sel) return;
-
-    const trimOptions = Taxonomy.normalizeOptionItems(trims);
-    if (!trimOptions || trimOptions.length === 0) {
-      wrap.style.display = 'none';
-      state.trim = '';
-      return;
-    }
-
-    // Reset native select so Tom Select starts clean
-    sel.innerHTML = '<option value=""></option>';
-    wrap.style.display = '';
-
-    const opts = trimOptions.map(o => ({
-      value: o.value,
-      text:  Taxonomy.label('trim', o.value) || o.label || o.value,
-    }));
-
-    trimSelectInstance = _tsBase(sel, {
-      maxItems: 1,
-      options:  [{ value: '', text: 'Любая комплектация' }, ...opts],
-      items:    state.trim ? [state.trim] : [''],
-      onChange(val) { state.trim = val || ''; _scheduleCountUpdate(); },
-    });
+    const restore = _catalogRestore;
+    _catalogRestore = null;
+    if (!state.make) { CatalogFilter.reset(); return; }
+    CatalogFilter.mount(el, state.make, () => { _updateResetBtn(); _scheduleContextUpdate(); _scheduleCountUpdate(); }, restore)
+      .then(() => { if (restore) _scheduleCountUpdate(); });
   }
 
   function readFormState() {
@@ -752,7 +606,7 @@ const Filters = (() => {
     };
 
     if (q.make)  { state.make  = q.make;  }
-    _catalogRestore = q.refMakeId ? q : null;
+    _catalogRestore = (q.refMakeId || q.model) ? q : null;
     if (q.model) { state.model = q.model; }
     if (q.badge) { state.badge = q.badge; }
     if (q.trim)  { state.trim  = q.trim;  }
@@ -897,12 +751,12 @@ const Filters = (() => {
   }
 
   async function _updateContext() {
-    if (!state.make && !state.model) return;
+    if (!state.make) return;
     try {
-      const params = {};
-      if (state.make)  params.make  = state.make;
-      if (state.model) params.model = state.model;
-      if (state.badge) params.badge = state.badge;
+      const { refMakeId, refModelId } = CatalogFilter.query();
+      const params = { make: state.make };
+      if (refMakeId) params.refMakeId = refMakeId;
+      if (refModelId) params.refModelId = refModelId;
       const ctx = await API.getContext(params);
       if (!ctx) return;
 
@@ -920,15 +774,6 @@ const Filters = (() => {
         if (Array.isArray(items) && items.length) {
           renderChipGroup(`chips-${fieldName}`, items, stateKey);
         }
-      }
-
-      // Update badge and trim options by context (the catalog's makes have their own cascade)
-      if (CatalogFilter.active()) return;
-      if (Array.isArray(ctx.badgeOptions)) {
-        renderBadgeSelect(ctx.badgeOptions);
-      }
-      if (Array.isArray(ctx.trimOptions)) {
-        renderTrimSelect(ctx.trimOptions);
       }
     } catch (_) {
       // Context update is best-effort

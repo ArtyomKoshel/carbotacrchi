@@ -1,6 +1,6 @@
 /**
  * Model → generation → modification → complectation, from the reference catalog
- * (GET /api/catalog/{makeId}), for the makes it covers. Filters keeps make; this module
+ * (GET /api/catalog/{makeId}). Filters keeps make; this module
  * owns the four selects below it and the ref* fields of the query.
  *
  * The cascade runs on the client from the make's `cells` [model, generation, modification,
@@ -21,7 +21,7 @@ const CatalogFilter = (() => {
       const data = await API.getCatalogMakes();
       makes = new Map((data?.makes ?? []).map(m => [m.name.toLowerCase(), m]));
     } catch (_) {
-      makes = new Map(); // no catalog: every make keeps the old filters
+      makes = new Map(); // no catalog: the make alone filters
     }
   }
 
@@ -64,7 +64,9 @@ const CatalogFilter = (() => {
     if (my !== seq) return false;
     tree = data;
     if (restore) {
-      sel.model = Number(restore.refModelId) || 0;
+      // a query saved before the catalog names its model as text ("Sonata")
+      const named = String(restore.model ?? '').toLowerCase();
+      sel.model = Number(restore.refModelId) || (named && tree.models.find(m => m.name.toLowerCase() === named)?.id) || 0;
       sel.generations = (restore.refGenerationIds ?? []).map(Number);
       sel.complectations = (restore.refComplectationIds ?? []).map(Number);
       const ids = new Set((restore.refModificationIds ?? []).map(Number));

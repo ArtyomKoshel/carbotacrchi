@@ -42,6 +42,5 @@ Route::middleware('internal.token')->prefix('internal')->group(function () {
 Route::get('/catalog', [CatalogController::class, 'makes']);
 Route::get('/catalog/{makeId}', [CatalogController::class, 'make'])->whereNumber('makeId');
 Route::post('/filters/count', [FiltersController::class, 'count']);
-Route::get('/filters/trims', [FiltersController::class, 'trims']);
 Route::get('/filters/context', [FiltersController::class, 'context']);
 Route::get('/filters', [FiltersController::class, 'index']);

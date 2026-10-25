@@ -41,10 +41,6 @@ const Taxonomy = (() => {
     indexField('color',        data?.colorOptions       ?? data?.colors        ?? []);
   }
 
-  function ingestTrims(trimOptions) {
-    indexField('trim', trimOptions ?? []);
-  }
-
   // Korean seat color descriptions → Russian (closed set, display-only)
   const SEAT_COLOR_RU = {
     '검정색 계열': 'Чёрный',
@@ -74,7 +70,6 @@ const Taxonomy = (() => {
 
   return {
     ingestFilters,
-    ingestTrims,
     label,
     options,
     normalizeOptionItems,

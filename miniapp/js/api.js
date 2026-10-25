@@ -153,13 +153,6 @@ const API = (() => {
     return request('GET', `/filters/context?${p}`);
   }
 
-  function getTrims(make, model, locale = 'ru') {
-    const p = new URLSearchParams();
-    if (make) p.set('make', make);
-    if (model) p.set('model', model);
-    if (locale) p.set('locale', locale);
-    return request('GET', `/filters/trims?${p}`);
-  }
 
   // ── Reference catalog (makes → models → generations → modifications) ──────
 
@@ -238,7 +231,7 @@ const API = (() => {
     browserAuthInit, browserAuthStatus, isAuthError,
     search,
     searchChat, resetChat,
-    getCount, getContext, getTrims,
+    getCount, getContext,
     getCatalogMakes, getCatalog,
     getFavorites, addFavorite, removeFavorite,
     getSubscriptions, subscribe, unsubscribe, markSeen,
