@@ -31,9 +31,12 @@
 
 ## Локальное окружение
 
-- Должен быть запущен Docker Desktop: `docker start carbot-e2e-mysql-1 carbot-filament-mysql`.
-  - `carbot-e2e-mysql-1`: дамп прода, `127.0.0.1:3320`, база `carbot_dump`. На нём стоит `laravel/.env` worktree.
-  - `carbot-filament-mysql`: `3318`, база `carbot_test`, для тестов.
+- Должен быть запущен Docker Desktop. Все базы — на одном MySQL локального стека `carbot-dev`
+  ([docs/local-stack.md](../local-stack.md)), `127.0.0.1:3318`, поднимается сам:
+  - `carbot`: дамп прода (бывший `carbot_dump` с :3320), root / `root-local`. На нём стоит `laravel/.env` worktree;
+  - `prodbak`: полный бэкап прода до выкатки справочника;
+  - `carbot_test`, `carbot_test_release`, `collector_test*`: для тестов, carbot / carbot.
+  - Тот же код открыт в стеке: http://localhost:8100 (`/miniapp/`, `/dev/admin-login`).
 - PHP запускать с флагами: `php -d extension=pdo_mysql -d extension=intl artisan …`.
 - Тесты: на последнем прогоне весь набор зелёный, 311 штук. Плюс `tests/Unit/Catalog/EncarMatcherTest.php` и `tests/Feature/Catalog/CatalogLinkTest.php`.
 - Прокси для скриптов анализа:

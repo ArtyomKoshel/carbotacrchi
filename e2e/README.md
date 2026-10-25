@@ -11,10 +11,12 @@
 
 ## Что нужно
 
-1. Docker с дампом прода: контейнер `carbot-e2e-mysql-1`, база `carbot_dump`, порт 3320.
-   После выкатки справочника на дамп выполнить `php artisan catalog:remap`.
-2. `laravel/.env`: `APP_ENV=local`, база — дамп. При `APP_ENV=local` работает вход без Telegram
+1. Локальный стек `docker/dev` ([docs/local-stack.md](../docs/local-stack.md)): MySQL `127.0.0.1:3318`,
+   база `carbot` — дамп прода. После выкатки справочника на дамп выполнить `php artisan catalog:remap`.
+2. `laravel/.env`: `APP_ENV=local`, база — `carbot` на `127.0.0.1:3318`. При `APP_ENV=local` работает вход без Telegram
    (`laravel/routes/dev.php`), в остальных окружениях его нет.
+   Тот же код уже открыт в стеке на http://localhost:8100 (несколько запросов параллельно) — тестам можно
+   задать его вместо встроенного PHP-сервера на 8097.
 3. Node 18+, один раз: `npm install` в этой папке. Используется Playwright 1.56.1 и браузер `chromium-1194`.
    Если браузера нет, его ставит `npx playwright install chromium`.
 

@@ -285,6 +285,8 @@ php artisan export:fields-schema
 
 ## После правки справочника
 
+Локально команды artisan — через `docker compose -f docker/dev/compose.yml exec web php artisan …` ([local-stack.md](./local-stack.md)).
+
 Новые лоты встают в справочник сами при приёме (`ingest:consume`). После правки
 `resources/catalog` (эталон, словари, правила марок):
 

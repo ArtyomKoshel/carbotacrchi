@@ -2,53 +2,39 @@
 
 Telegram Mini App + Bot for searching cars across Korean auction platforms. A company uses the bot to find cars for clients instead of manually browsing multiple auction sites.
 
-**Sources:** Encar (API) · KBChacha (scraper)
-**Stack:** Laravel 13 · PHP 8.4 · MySQL 8 · Python 3.11 · Docker
+**Sources:** Encar (collector)
+**Stack:** Laravel 13 · PHP 8.4 · MySQL 9 · Python 3.13 (collector) · Docker
 
-## Quick Start
+## Local stack
 
 ```bash
-cp .env.example .env           # Edit: TELEGRAM_BOT_TOKEN, DB_*, AI_API_KEY
-make up                        # Start all containers
+make up        # docker compose -f docker/dev/compose.yml up -d --build
+make dump      # prod dump into the local database
 ```
 
-On first start the PHP container runs `composer install`, generates `APP_KEY`, waits for MySQL, and runs `php artisan migrate`.
-
-Open Mini App: `http://localhost:8080/miniapp/`
+Mini app, admin and API on http://localhost:8100 (`/miniapp/`, `/admin`, `/api/*`), MySQL on `127.0.0.1:3318`.
+Everything about it — which checkout it serves, sign-in without Telegram, refreshing the dump — is in
+**[docs/local-stack.md](./docs/local-stack.md)**. `make help` lists the other targets.
 
 ## Project Structure
 
 ```
 carbot/
-├── laravel/          # Laravel 11 — API + Admin + Bot webhook
-├── parser/           # Python parser — fetches lots from auctions
+├── laravel/          # Laravel 13 — API + Admin (Filament) + Bot webhook
+├── collector/        # Python collector — fetches lots from Encar
+├── parser/           # old Python parser, replaced by the collector
 ├── miniapp/          # Telegram Mini App (static HTML/JS/CSS)
-├── docker/           # Nginx + PHP-FPM Dockerfiles
-├── docker-compose.yml
+├── docker/           # dev = local stack, railway = prod image parts
+├── Dockerfile        # prod web image (Railway)
 ├── Makefile
 └── docs/             # Full technical documentation
 ```
 
-## Make Commands
-
-```
-make up        Start all containers
-make down      Stop containers
-make build     Rebuild images (no cache)
-make restart   Restart PHP + Nginx
-make logs      Tail logs
-make shell     Shell into PHP container
-make migrate   Run migrations
-make fresh     Drop + re-migrate all tables
-make status    Container status
-```
-
 ## Artisan Commands
 
-```bash
-# Run parser once (Python)
-docker compose exec parser python main.py --once
+Locally: `docker compose -f docker/dev/compose.yml exec web php artisan …`.
 
+```bash
 # Rebuild the reference catalog after editing resources/catalog
 php artisan catalog:remap
 

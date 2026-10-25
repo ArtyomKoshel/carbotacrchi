@@ -141,4 +141,4 @@ php artisan collector:compare
 
 ## Локальный стенд
 
-`docker/local-e2e/` — веб и сборщик в контейнерах на одной MySQL 9.1, `COLLECTOR_MODE=primary`, права сборщика как в шаге 1. Запуск и проверки — в [docker/local-e2e/README.md](../../docker/local-e2e/README.md).
+Локальный стек `docker/dev/` — веб и сборщик (профиль `collector`) на одной MySQL 9.1, `COLLECTOR_MODE=primary`, права сборщика как в шаге 1. Запуск — в [local-stack.md](../local-stack.md). Стенд `docker/local-e2e/` с запечённым кодом удалён 25.10; его проверки от 21.10 (задача → сборщик → буфер → `lots`, повтор прогона, SIGTERM/SIGKILL посреди прогона) остаются в истории git.
