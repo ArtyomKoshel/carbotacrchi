@@ -51,9 +51,10 @@ class CatalogValidate extends Command
                     }
                 }
             }
-            $encar = resource_path('catalog/encar/' . strtolower(str_replace(' ', '-', $makeName)) . '.json');
-            $file = is_file($encar) ? json_decode(file_get_contents($encar), true) : [];
-            $targets = [...array_values($file['models'] ?? []), ...array_map(fn ($b) => $b['to'], $file['badges'] ?? [])];
+            $targets = [];
+            foreach ($this->encarFiles($reference)[$makeName] ?? [] as $file) {
+                $targets = [...$targets, ...array_values($file['models'] ?? []), ...array_map(fn ($b) => $b['to'], $file['badges'] ?? [])];
+            }
             foreach ($targets as [$modelName, $code]) {
                 $model = $reference->model($makeName, $modelName);
                 if ($model === null || ($code !== null && $reference->generation($model, $code) === null)) {
@@ -73,6 +74,31 @@ class CatalogValidate extends Command
             $this->years();
         }
         return $errors ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Encar files by the reference make they belong to: named after it, or naming it in "make"
+     * (a second Encar make such as the imported Chevrolet, or "citroen-ds.json" for "Citroën/DS").
+     *
+     * @return array<string, list<array>>
+     */
+    private function encarFiles(Reference $reference): array
+    {
+        static $byMake = null;
+        if ($byMake === null) {
+            $byMake = [];
+            foreach (glob(resource_path('catalog/encar/*.json')) as $path) {
+                if (basename($path) === 'tokens.json') {
+                    continue;
+                }
+                $file = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+                $ref = $reference->make($file['make'] ?? basename($path, '.json'));
+                if ($ref !== null) {
+                    $byMake[$ref['make']][] = $file;
+                }
+            }
+        }
+        return $byMake;
     }
 
     private function years(): void

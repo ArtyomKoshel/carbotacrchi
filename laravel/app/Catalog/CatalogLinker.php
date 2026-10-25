@@ -220,7 +220,8 @@ class CatalogLinker
         $m = $this->matcher->match($v);
 
         $makeId = $m->make ? $this->store->makeId($m->make) : null;
-        $modelId = $m->make && $m->model && $m->generation ? $this->store->modelId($m->make, $m->model) : null;
+        // a model Encar named without its generation (Mustang 1964–2024) stays under the model: «поколение не указано»
+        $modelId = $m->make && $m->model ? $this->store->referenceModelId($m->make, $m->model) : null;
         $generationId = $modelId ? $this->store->generationId($m->make, $m->model, $m->generation) : null;
         $modificationId = $generationId && $m->modification
             ? $this->store->modificationId($generationId, $m->modification, $m->fuel, $m->drive) : null;

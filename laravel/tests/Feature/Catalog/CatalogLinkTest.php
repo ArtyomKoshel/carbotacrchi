@@ -26,7 +26,7 @@ final class CatalogLinkTest extends TestCase
         $this->lot('9001', 'BMW', '5시리즈 (G60)', '530i xDrive M 스포츠', '530i xDrive M 스포츠');
         $this->lot('9002', 'BMW', '5시리즈 (G60)', '520i M 스포츠');
         $this->lot('9003', '벤츠', 'E-클래스 W214', 'E300 4MATIC AMG Line');
-        $this->lot('9004', '토요타', '캠리', '2.5 하이브리드');
+        $this->lot('9004', '라다', '니바', '1.7');  // Lada: Encar has no such make
 
         Artisan::call('catalog:remap', ['--pause-ms' => 0]);
 

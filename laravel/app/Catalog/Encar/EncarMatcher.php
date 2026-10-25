@@ -195,6 +195,9 @@ class EncarMatcher
         $t = $words($trim);
         return match (true) {
             count($t) > count($b) && ! array_diff($b, $t) => $trim,
+            // a BadgeDetail that picks up where the badge ends ("6.2 ESV" + "ESV 스포츠 플래티넘")
+            count($t) > 1 && end($b) === $t[0] && ! array_intersect(array_slice($t, 1), $b)
+                => $badge . ' ' . implode(' ', array_slice(preg_split('/\s+/u', $trim, -1, PREG_SPLIT_NO_EMPTY), 1)),
             // sharing some words but not all: our old normalization's copy of an earlier badge
             // ("520i M 스포츠" under "520i 스페셜 에디션"), not a BadgeDetail
             (bool) array_intersect($t, $b) => $badge,

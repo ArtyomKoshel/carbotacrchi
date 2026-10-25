@@ -292,6 +292,8 @@ class EncarMatcherTest extends TestCase
         $this->assertSame('2.0', EncarMatcher::text('2.0', '(세부등급 없음)'));
         // Encar inconsistently capitalises engine codes across listings: LPI vs LPi are the same word
         $this->assertSame('2.0 LPI 시그니처', EncarMatcher::text('2.0 LPi', '2.0 LPI 시그니처'), 'case-insensitive badge-is-prefix check');
+        $this->assertSame('6.2 ESV 스포츠 플래티넘', EncarMatcher::text('6.2 ESV', 'ESV 스포츠 플래티넘'), 'BadgeDetail picks up where the badge ends');
+        $this->assertSame('B5 얼티메이트 브라이트', EncarMatcher::text('B5 얼티메이트 브라이트', 'B6 얼티메이트 브라이트'), 'a stale copy of another engine is not added');
     }
 
     public function test_the_year_never_picks_a_generation(): void

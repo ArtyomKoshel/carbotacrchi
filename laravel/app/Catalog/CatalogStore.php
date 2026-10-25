@@ -31,28 +31,75 @@ class CatalogStore
     public function sync(): array
     {
         $now = now()->toDateTimeString();
-        $counts = ['makes' => 0, 'models' => 0, 'generations' => 0, 'complectations' => 0];
+        $stamp = ['created_at' => $now, 'updated_at' => $now];
+        $makes = [];
         foreach ($this->reference->makeNames() as $name) {
-            $make = $this->reference->make($name);
-            $makeId = $this->makeId($name);
-            $counts['makes']++;
-            foreach ($make['complectations'] ?? [] as $c) {
-                $this->complectationId($makeId, $c);
-                $counts['complectations']++;
+            $makes[] = ['make' => $name, ...array_diff_key($this->reference->make($name), ['make' => 1])];
+        }
+
+        // level by level: what is missing goes in by batches, then every id is read back at once
+        $this->preload();
+        $this->insertMissing('ref_makes', array_map(fn (array $m) => ['name' => $m['make']], $makes), fn (array $r) => "make|{$r['name']}", $stamp);
+        $models = $complectations = [];
+        foreach ($makes as $m) {
+            $makeId = $this->ids["make|{$m['make']}"];
+            foreach ($m['complectations'] ?? [] as $c) {
+                $complectations["{$makeId}|{$c}"] = ['make_id' => $makeId, 'name' => $c];
             }
-            foreach ($make['models'] as $model) {
-                $modelId = $this->modelId($name, $model['name']);
-                $this->db->table('ref_models')->where('id', $modelId)
-                    ->update(['body' => $model['body'] ?? null, 'fuel' => $model['fuel'] ?? null, 'updated_at' => $now]);
-                $counts['models']++;
+            foreach ($m['models'] as $model) {
+                $models[] = ['make_id' => $makeId, 'name' => $model['name'], 'body' => $model['body'] ?? null, 'fuel' => $model['fuel'] ?? null];
+            }
+        }
+        $this->insertMissing('ref_complectations', array_values($complectations), fn (array $r) => "complectation|{$r['make_id']}|{$r['name']}", $stamp);
+        $byId = [];
+        foreach ($makes as $m) {
+            $byId[$this->ids["make|{$m['make']}"]] = $m['make'];
+        }
+        $modelKey = fn (array $r) => "model|{$byId[$r['make_id']]}|{$r['name']}";
+        $this->insertMissing('ref_models', $models, $modelKey, $stamp);
+
+        $generations = [];
+        foreach ($makes as $m) {
+            foreach ($m['models'] as $model) {
+                $modelId = $this->ids["model|{$m['make']}|{$model['name']}"];
                 foreach ($model['generations'] as $g) {
-                    $id = $this->generationId($name, $model['name'], $g['code']);
-                    $this->db->table('ref_generations')->where('id', $id)->update([...self::generationAttributes($g), 'updated_at' => $now]);
-                    $counts['generations']++;
+                    $generations["{$modelId}|{$g['code']}"] = ['model_id' => $modelId, 'code' => $g['code'], ...self::generationAttributes($g),
+                        'key' => "generation|{$m['make']}|{$model['name']}|{$g['code']}"];
                 }
             }
         }
-        return $counts;
+        $this->insertMissing('ref_generations', array_map(fn (array $g) => array_diff_key($g, ['key' => 1]), array_values($generations)),
+            fn (array $r) => $generations["{$r['model_id']}|{$r['code']}"]['key'], $stamp);
+
+        // years / body / fuel brought up to date in batches
+        foreach (array_chunk($models, 500) as $chunk) {
+            $this->db->table('ref_models')->upsert(array_map(fn (array $r) => ['id' => $this->ids[$modelKey($r)], ...$r, 'updated_at' => $now], $chunk),
+                ['id'], ['body', 'fuel', 'updated_at']);
+        }
+        foreach (array_chunk(array_values($generations), 500) as $chunk) {
+            $this->db->table('ref_generations')->upsert(array_map(fn (array $g) => ['id' => $this->ids[$g['key']], ...array_diff_key($g, ['key' => 1]), 'updated_at' => $now], $chunk),
+                ['id'], ['number', 'year_from', 'year_to', 'fuel', 'updated_at']);
+        }
+
+        return ['makes' => count($makes), 'models' => count($models), 'generations' => count($generations), 'complectations' => count($complectations)];
+    }
+
+    /** Rows not known by their cache key are inserted in batches; then every id is read again. */
+    private function insertMissing(string $table, array $rows, callable $key, array $stamp): void
+    {
+        $missing = array_values(array_filter($rows, fn (array $r) => ! isset($this->ids[$key($r)])));
+        foreach (array_chunk($missing, 500) as $chunk) {
+            $this->db->table($table)->insertOrIgnore(array_map(fn (array $r) => [...$r, ...$stamp], $chunk));
+        }
+        if ($missing !== []) {
+            $this->preload();
+        }
+    }
+
+    /** The reference's model of that name as stored, without making one for a name the reference does not have. */
+    public function referenceModelId(string $make, string $model): ?int
+    {
+        return $this->reference->model($make, $model) ? $this->modelId($make, $model) : null;
     }
 
     /** Every stored id at once, so reading many variants asks the database nothing more. */
