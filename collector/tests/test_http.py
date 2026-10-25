@@ -64,6 +64,20 @@ async def test_404_on_proxy_means_missing() -> None:
     assert await f.get_json(URL) == Missing(404)
 
 
+async def test_404_where_it_cannot_mean_missing_is_retried_on_a_fresh_session() -> None:
+    sessions: list[str | None] = []
+    transport = httpx.MockTransport(sequence(httpx.Response(404), httpx.Response(200, json={"Count": 3})))
+
+    def client(proxy: str | None) -> httpx.AsyncClient:
+        sessions.append(proxy)
+        return httpx.AsyncClient(transport=transport)
+
+    f = Fetcher(ProxyPool(["http://u-session-a-c:p@h:1"]), retries=2, client_factory=client, sleep=_no_sleep)
+    assert await f.get_json(URL, missing_ok=False) == Ok({"Count": 3}, len(b'{"Count":3}'))
+    assert f.stats.retries == 1
+    assert len(set(sessions)) == 2, "the retry goes out on a new proxy session"
+
+
 async def test_404_without_proxy_is_a_geo_block_and_retried() -> None:
     f = fetcher(sequence(httpx.Response(404)))
     assert isinstance(await f.get_json(URL), Failed)

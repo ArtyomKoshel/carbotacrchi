@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\BrowserLinkToken;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,6 +20,7 @@ class ValidateTelegramAuth
             if ($record && $record->isLinked()) {
                 // Inject user_id so downstream controllers work unchanged
                 $request->merge(['user_id' => $record->chat_id]);
+                $this->touchUser((int) $record->chat_id, null);
                 return $next($request);
             }
             if (!$this->bypassed()) {
@@ -44,6 +46,7 @@ class ValidateTelegramAuth
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
         }
         $request->merge(['user_id' => (int) $user['id']]);
+        $this->touchUser((int) $user['id'], $user);
 
         return $next($request);
     }
@@ -53,6 +56,38 @@ class ValidateTelegramAuth
     {
         return app()->environment('local', 'development')
             || (config('app.miniapp_dev_bypass') && !app()->environment('production'));
+    }
+
+    /**
+     * «Был» in the admin: mini app use counts as activity, not only chat messages
+     * to the bot. Written at most once a minute per user.
+     */
+    private function touchUser(int $id, ?array $tgUser): void
+    {
+        try {
+            $user = User::find($id);
+            if ($user === null) {
+                if ($tgUser !== null) {
+                    User::create([
+                        'id'         => $id,
+                        'username'   => $tgUser['username'] ?? '',
+                        'first_name' => $tgUser['first_name'] ?? '',
+                        'last_seen'  => now(),
+                    ]);
+                }
+                return;
+            }
+            if ($user->last_seen?->gt(now()->subMinute())) {
+                return;
+            }
+            $user->last_seen = now();
+            if ($tgUser !== null) {
+                $user->username   = $tgUser['username'] ?? $user->username;
+                $user->first_name = $tgUser['first_name'] ?? $user->first_name;
+            }
+            $user->save();
+        } catch (\Throwable) {
+        }
     }
 
     private function validate(string $initData): bool

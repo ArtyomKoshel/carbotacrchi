@@ -17,6 +17,12 @@ the cap. Same plan here, with these changes:
   requested with an overlap, a resumed segment starts one page back, and a full
   run ends with a catch-up pass from the top that takes the lots which moved
   into the part already swept.
+- Makers do not come from the global pass alone: its unfiltered results are
+  unstable (run 19 stopped after 24 pages and 14 makers were never swept), so
+  the makers of Encar's navigation and of the earlier runs are swept as well.
+- A segment a failure cut short (a page or a Count that kept failing) is not
+  marked done: it stays in `incomplete`, is retried once at the end of the run
+  from its cursor, and a run with an incomplete segment is not a full run.
 """
 
 from __future__ import annotations
@@ -24,7 +30,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections import deque
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
@@ -65,6 +71,8 @@ class SweepState:
     report: dict[str, int] = field(default_factory=dict)
     cursor: dict[str, int] = field(default_factory=dict)  # segment -> next page, for unfinished segments
     proxy_bytes: int = 0  # traffic of the run so far, earlier processes included
+    incomplete: list[str] = field(default_factory=list)  # segments, makers, years a failure cut short
+    counts: dict[str, int] = field(default_factory=dict)  # Encar's Count per segment, maker and year
 
     def to_json(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -76,6 +84,7 @@ class SweepState:
 
 
 Progress = Callable[[SweepState, str], Awaitable[None]]
+ErrorSink = Callable[[str], Awaitable[None]]
 
 
 @dataclass
@@ -96,19 +105,23 @@ class Sweeper:
         run_id: int,
         history_cutoff: datetime | None,
         on_progress: Progress,
+        on_error: ErrorSink | None = None,
         should_stop: Callable[[], bool] = lambda: False,
         current_year: int,
         seen: set[str] | None = None,
         depth: int = 3,
+        known_makers: Iterable[str] = (),
     ) -> None:
         self.pipeline = pipeline
         self.api: EncarApi = pipeline.api
         self.run_id = run_id
         self.cutoff = history_cutoff
         self.on_progress = on_progress
+        self.on_error = on_error
         self.should_stop = should_stop
         self.current_year = current_year
         self._seen: set[str] = set(seen or ())
+        self.known_makers = tuple(known_makers)  # makers of earlier runs
         self.depth = max(1, depth)  # pages in flight
         self._pending: deque[_Pending] = deque()
         self.stopped = False
@@ -135,44 +148,84 @@ class Sweeper:
             )
             return
         await self._segment(state, "global", DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT, discover=True, total=True)
+        if self.stopped:
+            return
+        await self._discover(state)
         for mk in sorted(state.makers):
             if self.stopped:
                 return
             await self._maker(state, mk)
         # Lots changed or listed while the run went float to the top: take those it passed.
         await self._segment(state, CATCH_UP, DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT)
+        await self._retry(state)
+
+    async def _discover(self, state: SweepState) -> None:
+        """Makers the global pass did not reach: Encar's navigation, and the makers of earlier runs."""
+        for mk in self.known_makers:
+            state.makers.setdefault(mk, [])
+        outcome = await self.api.makers()
+        if isinstance(outcome, Ok):
+            state.counts["nav:makers"] = len(outcome.data)
+            for mk in outcome.data:
+                state.makers.setdefault(mk, [])
+
+    async def _retry(self, state: SweepState) -> None:
+        """Once more for what a failure cut short, from where it stopped; failing again, it stays cut."""
+        for key in list(state.incomplete):
+            if self.stopped:
+                return
+            kind, _, rest = key.partition(":")
+            if key == "global":
+                await self._segment(
+                    state, key, DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT, discover=True, total=True
+                )
+            elif key == CATCH_UP:
+                await self._segment(state, key, DEFAULT_QUERY, MAX_PAGES_PER_SEGMENT)
+            elif kind == "maker":
+                await self._maker(state, rest)
+            elif kind == "year":
+                maker, _, year = rest.rpartition(":")
+                await self._year(state, maker, int(year))
+            elif kind == "model":
+                maker, year, model = rest.split(":", 2)
+                await self._segment(state, key, year_query(maker, int(year), model), MAX_PAGES_PER_SEGMENT)
 
     async def _count(self, query: str) -> int | None:
         outcome = await self.api.search(query, 0, 1)
         return int(outcome.data.get("Count") or 0) if isinstance(outcome, Ok) else None
 
     async def _maker(self, state: SweepState, maker: str) -> None:
-        if f"maker:{maker}" in state.done_segments:
+        key = f"maker:{maker}"
+        if key in state.done_segments:
             return
         total = await self._count(maker_query(maker))
         if total is None:
-            self._error(state, f"[{maker}] count failed")
-        elif total <= MAX_SAFE_OFFSET:
-            await self._segment(state, f"maker:{maker}", maker_query(maker), MAX_PAGES_PER_SEGMENT)
+            await self._cut(state, key, f"[{maker}] count failed")
             return
-        else:
-            for year in range(YEAR_FROM, self.current_year + 2):
-                if self.stopped:
-                    return
-                await self._year(state, maker, year)
-        if not self.stopped:
-            await self._done(state, f"maker:{maker}")
+        state.counts[key] = total
+        if total <= MAX_SAFE_OFFSET:
+            await self._segment(state, key, maker_query(maker), MAX_PAGES_PER_SEGMENT)
+            return
+        for year in range(YEAR_FROM, self.current_year + 2):
+            if self.stopped:
+                return
+            await self._year(state, maker, year)
+        cut = any(k.startswith((f"year:{maker}:", f"model:{maker}:")) for k in state.incomplete)
+        if not self.stopped and not cut:
+            await self._done(state, key)
 
     async def _year(self, state: SweepState, maker: str, year: int) -> None:
         key = f"year:{maker}:{year}"
         if key in state.done_segments:
             return
         total = await self._count(year_query(maker, year))
+        if total is None:
+            await self._cut(state, key, f"[{maker}/{year}] count failed")
+            return
         if not total:
-            if total is None:
-                self._error(state, f"[{maker}/{year}] count failed")
             await self._done(state, key)
             return
+        state.counts[key] = total
         if total <= MAX_SAFE_OFFSET:
             await self._segment(state, key, year_query(maker, year), MAX_PAGES_PER_SEGMENT)
             return
@@ -180,7 +233,12 @@ class Sweeper:
             if self.stopped:
                 return
             mkey = f"model:{maker}:{year}:{model}"
-            if mkey not in state.done_segments and await self._count(year_query(maker, year, model)):
+            if mkey in state.done_segments:
+                continue
+            n = await self._count(year_query(maker, year, model))
+            if n is None:
+                await self._cut(state, mkey, f"[{maker}/{year}/{model}] count failed")
+            elif n:
                 await self._segment(state, mkey, year_query(maker, year, model), MAX_PAGES_PER_SEGMENT)
         # Models the global pass did not see: the year query itself, up to the cap.
         await self._segment(state, key, year_query(maker, year), MAX_PAGES_PER_SEGMENT)
@@ -213,12 +271,15 @@ class Sweeper:
             size = PAGE_SIZE + (start - offset)
             outcome = await self.api.search(query, offset, size)
             if isinstance(outcome, Failed | Missing):
-                self._error(state, f"{key} p.{page + 1}: {getattr(outcome, 'reason', 'missing')}")
-                break
+                # Not the end of the results: the segment stays open from its cursor, for _retry.
+                await self._cut(state, key, f"{key} p.{page + 1}: {getattr(outcome, 'reason', 'missing')}")
+                return
             data = outcome.data
             count = int(data.get("Count") or 0)
-            if total and page == 0:
-                state.api_total = count
+            if page == 0:
+                state.counts[key] = count
+                if total:
+                    state.api_total = count
             items = data.get("SearchResults") or []
             if not items:
                 break
@@ -265,6 +326,8 @@ class Sweeper:
             state.cursor.pop(p.key, None)
             if p.key not in state.done_segments:
                 state.done_segments.append(p.key)
+            if p.key in state.incomplete:
+                state.incomplete.remove(p.key)  # a retry finished it
             return
         report = await p.task
         self._pending.popleft()
@@ -272,6 +335,11 @@ class Sweeper:
         state.pages += 1
         state.cursor[p.key] = p.page + 1
         state.report = PageReport(**state.report).plus(report).__dict__ if state.report else report.__dict__
+        # Counted in the report (detail_failed, history_failed), not in state.errors; logged so they show.
+        if report.detail_failed and self.on_error:
+            await self.on_error(f"{p.key} p.{p.page + 1}: {report.detail_failed} card(s) failed to load")
+        if report.history_failed and self.on_error:
+            await self.on_error(f"{p.key} p.{p.page + 1}: history failed for {report.history_failed} lot(s)")
         await self.on_progress(state, f"{p.key} p.{p.page + 1}")
 
     async def _cancel_pending(self) -> None:
@@ -301,7 +369,15 @@ class Sweeper:
                     models.append(mo)
         return fresh
 
-    @staticmethod
-    def _error(state: SweepState, message: str) -> None:
+    async def _error(self, state: SweepState, message: str) -> None:
+        """Counted in the run's result and written to the run log at once, as an error."""
         state.errors += 1
         state.error_log = [*state.error_log, message][-50:]
+        if self.on_error:
+            await self.on_error(message)
+
+    async def _cut(self, state: SweepState, key: str, message: str) -> None:
+        """A failure stopped `key` before its end: not done, the run is not full until a retry finishes it."""
+        await self._error(state, message)
+        if key not in state.incomplete:
+            state.incomplete.append(key)

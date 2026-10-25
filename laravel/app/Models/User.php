@@ -12,6 +12,8 @@ class User extends Model
     public $incrementing = false;
     protected $keyType   = 'integer';
 
+    protected $casts = ['last_seen' => 'datetime'];
+
     public function searches(): HasMany
     {
         return $this->hasMany(Search::class);

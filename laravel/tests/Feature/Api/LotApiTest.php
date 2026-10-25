@@ -4,9 +4,11 @@ namespace Tests\Feature\Api;
 
 use App\Catalog\CatalogLinker;
 use App\Models\LotInspection;
+use App\Models\User;
 use App\Services\SearchQuery;
 use App\Services\TelegramBot;
 use App\Support\ClientLotCard;
+use Database\Factories\BotUserFactory;
 use Database\Factories\LotFactory;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
@@ -51,6 +53,20 @@ final class LotApiTest extends TestCase
         app(CatalogLinker::class)->link(['41536978']);
 
         return '41536978';
+    }
+
+    public function test_a_mini_app_request_marks_the_picker_as_seen(): void
+    {
+        $id = $this->sonata();
+        BotUserFactory::new()->create(['id' => 777, 'username' => 'picker', 'first_name' => 'Old', 'last_seen' => now()->subMonths(5)]);
+
+        $this->getJson("/api/lots/{$id}?init_data=".urlencode(self::initData(777)))->assertOk();
+        $this->getJson("/api/lots/{$id}?init_data=".urlencode(self::initData(778)))->assertOk();
+
+        $picker = User::find(777);
+        $this->assertTrue($picker->last_seen->gt(now()->subMinute()), '«Был» counts mini app use, not only chat messages');
+        $this->assertSame(['picker', 'Picker'], [$picker->username, $picker->first_name], 'the name follows Telegram');
+        $this->assertNotNull(User::find(778), 'a picker who only opened the mini app is listed too');
     }
 
     public function test_a_lot_has_its_own_link_with_the_whole_gallery(): void
