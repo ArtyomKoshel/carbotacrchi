@@ -10,6 +10,9 @@ Company uses it to find cars for clients instead of manually browsing auction si
 
 ## Documentation
 
+**Start here:** [docs/refactor/next-steps.md](docs/refactor/next-steps.md) — where the work stands, the rules, the prioritised plan
+and every working doc. Local stack (mini app, admin, API on the prod dump): [docs/local-stack.md](docs/local-stack.md).
+
 Full docs are in `docs/` — read them before touching unfamiliar areas:
 
 | File | Topic |
