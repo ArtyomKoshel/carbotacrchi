@@ -9,13 +9,14 @@ use RuntimeException;
 /**
  * Base for Laravel feature tests.
  *
- * Safety: the app must point at the local throw-away database carbot_test
- * before anything (migrations included) runs, and no HTTP request may leave
- * the process unless a test fakes it.
+ * Safety: the app must point at the local throw-away database carbot_test (or a
+ * carbot_test_<suffix> one, so parallel branches don't share a schema) before
+ * anything (migrations included) runs, and no HTTP request may leave the
+ * process unless a test fakes it.
  */
 abstract class TestCase extends BaseTestCase
 {
-    private const ALLOWED_DB = 'carbot_test';
+    private const ALLOWED_DB = '/^carbot_test(_[a-z0-9_]+)?$/';
 
     private const ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'mysql'];
 
@@ -25,11 +26,11 @@ abstract class TestCase extends BaseTestCase
 
         $db = $app['config']->get('database.connections.mysql');
         if ($app['config']->get('database.default') !== 'mysql'
-            || ($db['database'] ?? null) !== self::ALLOWED_DB
+            || !preg_match(self::ALLOWED_DB, (string) ($db['database'] ?? ''))
             || !in_array($db['host'] ?? null, self::ALLOWED_HOSTS, true)) {
             throw new RuntimeException(sprintf(
-                'Refusing to run tests against %s@%s: only %s on a local host is allowed (config cached? run php artisan config:clear).',
-                $db['database'] ?? '?', $db['host'] ?? '?', self::ALLOWED_DB,
+                'Refusing to run tests against %s@%s: only carbot_test or carbot_test_<suffix> on a local host is allowed (config cached? run php artisan config:clear).',
+                $db['database'] ?? '?', $db['host'] ?? '?',
             ));
         }
 
