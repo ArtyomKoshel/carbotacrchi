@@ -1,0 +1,230 @@
+{
+  "make": "Chrysler",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "C",
+    "Limited",
+    "Prestige",
+    "Touring"
+  ],
+  "editions": [],
+  "models": [
+    {
+      "name": "200",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2011,
+            2014
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2015,
+            2017
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "300C",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2004,
+            2010
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2011,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "300M",
+      "generations": []
+    },
+    {
+      "name": "Caravan",
+      "generations": []
+    },
+    {
+      "name": "Cirrus",
+      "generations": []
+    },
+    {
+      "name": "Concorde",
+      "generations": []
+    },
+    {
+      "name": "Crossfire",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2003,
+            2008
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eagle Talon",
+      "generations": []
+    },
+    {
+      "name": "Grand Voyager",
+      "body": "minivan",
+      "generations": []
+    },
+    {
+      "name": "Intrepid",
+      "generations": []
+    },
+    {
+      "name": "LHS",
+      "generations": []
+    },
+    {
+      "name": "LeBaron",
+      "generations": []
+    },
+    {
+      "name": "Neon",
+      "generations": []
+    },
+    {
+      "name": "New Yorker",
+      "generations": []
+    },
+    {
+      "name": "PT Cruiser",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2000,
+            2010
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pacifica",
+      "generations": []
+    },
+    {
+      "name": "Plymouth Laser",
+      "generations": []
+    },
+    {
+      "name": "Prowler",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1997,
+            2002
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sebring",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1995,
+            2000
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2000,
+            2006
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2006,
+            2010
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stratus",
+      "generations": []
+    },
+    {
+      "name": "Town & Country",
+      "generations": []
+    },
+    {
+      "name": "Vision",
+      "generations": []
+    },
+    {
+      "name": "Voyager",
+      "generations": []
+    }
+  ]
+}

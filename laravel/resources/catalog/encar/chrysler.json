@@ -1,0 +1,255 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "크라이슬러",
+  "names": {
+    "200": "200",
+    "300C": "300C",
+    "300M": "300M",
+    "LHS": "LHS",
+    "PT 크루저": "PT Cruiser",
+    "그랜드 보이저": "Grand Voyager",
+    "네온": "Neon",
+    "뉴요커": "New Yorker",
+    "레바론": "LeBaron",
+    "보이저": "Voyager",
+    "비전": "Vision",
+    "세브링": "Sebring",
+    "스트라투스": "Stratus",
+    "시러스": "Cirrus",
+    "이글 탈론": "Eagle Talon",
+    "인트리피드": "Intrepid",
+    "캐러밴": "Caravan",
+    "콩코드": "Concorde",
+    "크로스파이어": "Crossfire",
+    "타운 앤 컨트리": "Town & Country",
+    "퍼시피카": "Pacifica",
+    "프라울러": "Prowler",
+    "플리머스 레이저": "Plymouth Laser"
+  },
+  "encar_models": {
+    "200 1세대": {
+      "model": "200",
+      "generation": "I"
+    },
+    "200 2세대": {
+      "model": "200",
+      "generation": "II"
+    },
+    "300C": {
+      "model": "300C"
+    },
+    "300M": {
+      "model": "300M"
+    },
+    "LHS": {
+      "model": "LHS"
+    },
+    "PT 크루저": {
+      "model": "PT Cruiser"
+    },
+    "그랜드 보이저": {
+      "model": "Grand Voyager"
+    },
+    "네온": {
+      "model": "Neon"
+    },
+    "뉴 세브링": {
+      "model": "Sebring",
+      "generation": "III",
+      "manual": true
+    },
+    "뉴요커": {
+      "model": "New Yorker"
+    },
+    "더 뉴 300C": {
+      "model": "300C",
+      "generation": "II",
+      "manual": true
+    },
+    "레바론": {
+      "model": "LeBaron"
+    },
+    "보이저": {
+      "model": "Voyager"
+    },
+    "비전": {
+      "model": "Vision"
+    },
+    "세브링": {
+      "model": "Sebring"
+    },
+    "스트라투스": {
+      "model": "Stratus"
+    },
+    "시러스": {
+      "model": "Cirrus"
+    },
+    "올 뉴 300C": {
+      "model": "300C",
+      "generation": "II",
+      "manual": true
+    },
+    "이글 탈론": {
+      "model": "Eagle Talon"
+    },
+    "인트리피드": {
+      "model": "Intrepid"
+    },
+    "캐러밴": {
+      "model": "Caravan"
+    },
+    "콩코드": {
+      "model": "Concorde"
+    },
+    "크로스파이어": {
+      "model": "Crossfire"
+    },
+    "타운 앤 컨트리": {
+      "model": "Town & Country"
+    },
+    "퍼시피카": {
+      "model": "Pacifica"
+    },
+    "프라울러": {
+      "model": "Prowler"
+    },
+    "플리머스 레이저": {
+      "model": "Plymouth Laser"
+    }
+  },
+  "badge_groups": {
+    "200 1세대": {
+      "세단": "가솔린",
+      "컨버터블": "가솔린"
+    },
+    "200 2세대": {
+      "2.4 C": "가솔린 2400cc",
+      "2.4 리미티드": "가솔린 2400cc",
+      "3.6": "가솔린 3600cc"
+    },
+    "300C": {
+      "2.7": "가솔린",
+      "2.7 시그니처": "가솔린",
+      "3.0 디젤": "디젤",
+      "3.0 디젤 시그니처": "디젤",
+      "3.5": "가솔린",
+      "3.5 시그니처": "가솔린",
+      "5.7 헤미": "가솔린",
+      "6.1 SRT8": "가솔린",
+      "리무진": "가솔린",
+      "컨버터블": "가솔린",
+      "투어링": "가솔린"
+    },
+    "300M": {
+      "2.7L V6": "가솔린 2700cc",
+      "3.5L V6": "가솔린 3500cc"
+    },
+    "LHS": {
+      "3.5L V6": "가솔린 3500cc"
+    },
+    "PT 크루저": {
+      "2.0L": "가솔린 2000cc",
+      "2.4L": "가솔린 2400cc",
+      "Cabrio 2.4L": "가솔린 2400cc"
+    },
+    "그랜드 보이저": {
+      "2.5 CRD": "디젤",
+      "2.8 CRD": "디젤",
+      "3.3 LIMITED": "가솔린",
+      "3.6 LIMITED": "가솔린",
+      "3.8": "가솔린"
+    },
+    "네온": {
+      "STANDARD": "가솔린"
+    },
+    "뉴 세브링": {
+      "2.0 디젤 세단": "디젤 2000cc",
+      "2.4 세단": "가솔린 2400cc",
+      "2.4 컨버터블": "가솔린 2400cc",
+      "2.7 컨버터블": "가솔린 2700cc"
+    },
+    "뉴요커": {
+      "STANDARD": "가솔린"
+    },
+    "더 뉴 300C": {
+      "3.0 디젤": "디젤 2WD",
+      "3.6": "가솔린 2WD",
+      "3.6 AWD": "가솔린 4WD",
+      "3.6 프레스티지": "가솔린 2WD",
+      "6.4 SRT8": "가솔린 2WD"
+    },
+    "레바론": {
+      "Convertible": "가솔린",
+      "Sedan": "가솔린"
+    },
+    "보이저": {
+      "Grand Voyager": "가솔린",
+      "Voyager": "가솔린"
+    },
+    "비전": {
+      "3.5": "가솔린 3500cc"
+    },
+    "세브링": {
+      "2.0 Sedan": "가솔린 2000cc",
+      "2.4L Sedan": "가솔린 2400cc",
+      "2.7 Convertible": "가솔린 2700cc",
+      "2.7 Sedan": "가솔린 2700cc"
+    },
+    "스트라투스": {
+      "2.4": "가솔린 2400cc",
+      "NEW 2.0L": "가솔린 2000cc",
+      "NEW 2.5L": "가솔린 2500cc"
+    },
+    "시러스": {
+      "2.5 LX": "가솔린 2500cc",
+      "2.5 LXi": "가솔린 2500cc"
+    },
+    "올 뉴 300C": {
+      "3.6": "가솔린 3600cc"
+    },
+    "이글 탈론": {
+      "Coupe": "가솔린"
+    },
+    "인트리피드": {
+      "2.7": "가솔린 2700cc",
+      "3.3": "가솔린 3300cc"
+    },
+    "캐러밴": {
+      "2.4(SWB)": "가솔린 2400cc",
+      "3.3P(SWB)": "가솔린 3300cc",
+      "GRAND 3.3H(LWB)": "가솔린 3300cc",
+      "GRAND 3.3P(LWB)": "가솔린 3300cc",
+      "NEW 3.3L (SWB)": "가솔린 3300cc",
+      "NEW GRAND (LWB)": "가솔린 3300cc",
+      "SE 2.5L": "가솔린 2500cc",
+      "SE 3.3L": "가솔린 3300cc",
+      "기타": "가솔린 3300cc"
+    },
+    "콩코드": {
+      "LX": "가솔린",
+      "LXi": "가솔린"
+    },
+    "크로스파이어": {
+      "SRT-6": "가솔린 3200cc",
+      "로드스터 3.2": "가솔린 3200cc",
+      "쿠페 3.2": "가솔린 3200cc"
+    },
+    "타운 앤 컨트리": {
+      "LIMITED": "가솔린",
+      "LX": "가솔린",
+      "밴": "가솔린",
+      "투어링": "가솔린"
+    },
+    "퍼시피카": {
+      "3.5L V6": "가솔린 3500cc",
+      "3.6L V6": "가솔린 3600cc",
+      "4.0L V6": "가솔린 4000cc"
+    },
+    "프라울러": {
+      "3.5": "가솔린 3500cc"
+    },
+    "플리머스 레이저": {
+      "2.0": "가솔린 2000cc"
+    }
+  }
+}

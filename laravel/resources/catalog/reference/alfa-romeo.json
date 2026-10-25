@@ -1,0 +1,141 @@
+{
+  "make": "Alfa Romeo",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [],
+  "editions": [],
+  "models": [
+    {
+      "name": "147",
+      "generations": []
+    },
+    {
+      "name": "156",
+      "generations": []
+    },
+    {
+      "name": "159",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2011
+          ]
+        }
+      ]
+    },
+    {
+      "name": "166",
+      "generations": []
+    },
+    {
+      "name": "4C",
+      "body": "coupe",
+      "bodies": {
+        "Spider": "roadster"
+      },
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2013,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brera",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2010
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Giulia",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2016,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Giulietta",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2010,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MiTo",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2008,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Spider",
+      "generations": []
+    }
+  ]
+}

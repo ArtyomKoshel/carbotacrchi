@@ -1,0 +1,95 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "GMC",
+  "names": {
+    "밴츄라": "Vandura",
+    "사바나": "Savana",
+    "사파리": "Safari",
+    "소노마": "Sonoma",
+    "시에라": "Sierra",
+    "아카디아": "Acadia",
+    "유콘": "Yukon",
+    "지미": "Jimmy",
+    "캐니언": "Canyon",
+    "터레인": "Terrain",
+    "허머 EV": "Hummer EV",
+    "허머EV": "Hummer EV"
+  },
+  "encar_models": {
+    "밴츄라": {
+      "model": "Vandura"
+    },
+    "사바나": {
+      "model": "Savana"
+    },
+    "사파리": {
+      "model": "Safari"
+    },
+    "소노마": {
+      "model": "Sonoma"
+    },
+    "시에라": {
+      "model": "Sierra"
+    },
+    "아카디아": {
+      "model": "Acadia"
+    },
+    "유콘": {
+      "model": "Yukon"
+    },
+    "지미": {
+      "model": "Jimmy"
+    },
+    "캐니언": {
+      "model": "Canyon"
+    },
+    "캐니언 3세대": {
+      "model": "Canyon",
+      "generation": "III"
+    },
+    "터레인": {
+      "model": "Terrain"
+    },
+    "허머 EV": {
+      "model": "Hummer EV"
+    }
+  },
+  "badge_groups": {
+    "밴츄라": {
+      "5.7": "가솔린 5700cc"
+    },
+    "사바나": {
+      "5.3": "가솔린 5300cc",
+      "5.3 AWD": "가솔린 5300cc",
+      "5.7": "가솔린 5700cc",
+      "6.0": "가솔린 6000cc"
+    },
+    "시에라": {
+      "1500": "가솔린",
+      "1500 할리데이비슨 에디션": "가솔린",
+      "1500HD": "가솔린",
+      "2500HD": "가솔린",
+      "3500HD": "가솔린",
+      "드날리": "가솔린",
+      "드날리 스칼렛 나이트 에디션": "가솔린",
+      "드날리-X": "가솔린"
+    },
+    "유콘": {
+      "5.3": "가솔린",
+      "5.7": "가솔린",
+      "6.0": "가솔린",
+      "6.2": "가솔린",
+      "하이브리드": "가솔린+전기"
+    },
+    "캐니언": {
+      "3.6 2WD": "가솔린 2WD",
+      "3.6 4WD": "가솔린 4WD"
+    },
+    "캐니언 3세대": {
+      "2.7T 드날리": "가솔린 4WD"
+    },
+    "허머 EV": {
+      "e4WD": "전기"
+    }
+  }
+}

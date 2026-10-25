@@ -1,0 +1,93 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "알파 로메오",
+  "names": {
+    "147": "147",
+    "156": "156",
+    "159": "159",
+    "166": "166",
+    "4C": "4C",
+    "미토": "MiTo",
+    "브레라": "Brera",
+    "스파이더": "Spider",
+    "줄리아": "Giulia",
+    "줄리에타": "Giulietta"
+  },
+  "words": {
+    "Spyder": "Spider"
+  },
+  "encar_models": {
+    "147": {
+      "model": "147"
+    },
+    "156": {
+      "model": "156"
+    },
+    "159": {
+      "model": "159"
+    },
+    "166": {
+      "model": "166"
+    },
+    "4C": {
+      "model": "4C"
+    },
+    "미토": {
+      "model": "MiTo"
+    },
+    "브레라": {
+      "model": "Brera"
+    },
+    "스파이더": {
+      "model": "Spider"
+    },
+    "줄리아": {
+      "model": "Giulia"
+    },
+    "줄리에타": {
+      "model": "Giulietta"
+    }
+  },
+  "badge_groups": {
+    "147": {
+      "1.6": "가솔린",
+      "1.9 디젤": "디젤",
+      "2.0": "가솔린",
+      "3.2": "가솔린"
+    },
+    "156": {
+      "2.0": "가솔린 2000cc",
+      "2.5": "가솔린 2500cc",
+      "3.2": "가솔린 3200cc"
+    },
+    "159": {
+      "3.2": "가솔린"
+    },
+    "166": {
+      "3.0": "가솔린 3000cc"
+    },
+    "4C": {
+      "1.7 스파이더": "가솔린 1700cc",
+      "1.7 쿠페": "가솔린 1700cc"
+    },
+    "미토": {
+      "1.4": "가솔린 1400cc"
+    },
+    "브레라": {
+      "2.2": "가솔린 2200cc",
+      "3.2": "가솔린 3200cc"
+    },
+    "스파이더": {
+      "2.0": "가솔린 2000cc",
+      "3.0": "가솔린 3000cc"
+    },
+    "줄리아": {
+      "2.0": "가솔린",
+      "2.9": "가솔린"
+    },
+    "줄리에타": {
+      "1.4": "가솔린",
+      "1.7": "가솔린"
+    }
+  }
+}

@@ -40,6 +40,37 @@ MAKES = {
     "쉐보레(GM대우)": ("Chevrolet", "chevrolet"),
     "르노코리아(삼성)": ("Renault Korea", "renault-korea"),
 }
+# imports (Encar's own make names): drafted by draft_import()
+IMPORTS = {
+    "테슬라": ("Tesla", "tesla"),
+    "지프": ("Jeep", "jeep"),
+    "포드": ("Ford", "ford"),
+    "렉서스": ("Lexus", "lexus"),
+    "도요타": ("Toyota", "toyota"),
+    "혼다": ("Honda", "honda"),
+    "링컨": ("Lincoln", "lincoln"),
+    "캐딜락": ("Cadillac", "cadillac"),
+    "BYD": ("BYD", "byd"),
+    "닛산": ("Nissan", "nissan"),
+    "인피니티": ("Infiniti", "infiniti"),
+    "시트로엥/DS": ("Citroën/DS", "citroen-ds"),
+    "GMC": ("GMC", "gmc"),
+    "닷지": ("Dodge", "dodge"),
+    "동풍소콘": ("Dongfeng Sokon", "dongfeng-sokon"),
+    "크라이슬러": ("Chrysler", "chrysler"),
+    "신위안": ("Xinyuan", "xinyuan"),
+    "이네오스": ("Ineos", "ineos"),
+    "다이하쯔": ("Daihatsu", "daihatsu"),
+    "알파 로메오": ("Alfa Romeo", "alfa-romeo"),
+    # Encar's "other": no models, the listings still find the make
+    "기타 제조사": ("Other Manufacturers", "other-manufacturers"),
+    "기타 수입차": ("Other Imported Cars", "other-imported-cars"),
+    # a second Encar make of a reference make: its own Encar file names the make, the reference
+    # file is the make's (written by hand here, never by this script)
+    "쉐보레": ("Chevrolet", "chevrolet-imported"),
+}
+SECOND = {"쉐보레": "chevrolet"}
+MAKES.update(IMPORTS)
 
 # words in Encar model names (longest first is applied): facelift names → kept in the code;
 # powertrain and body words → passed to the badge reading
@@ -160,6 +191,177 @@ def badge_groups(tree: list[dict], make: str) -> dict[str, dict[str, str]]:
     return dict(out)
 
 
+ROMAN_N = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV"]
+# an import's facelift words before the name ("뉴 MKZ", "올뉴어코드", not "뉴요커"): Encar's, they name no generation
+IMPORT_PREFIX = re.compile(r"^(?:(?:디 올 뉴|더 올 뉴|올 뉴|더 뉴|뉴|All New|New)\s+|올뉴)")
+# a BadgeDetail that is a generation: "5세대", or a chassis code ("WK2", "XV60", "L33", "Z34", "FD2/FN2")
+GEN_DETAIL = re.compile(r"^(?:(\d{1,2})(?:세대|st|nd|rd|th)|([A-Z]{1,3}\d{1,3}[A-Z]?\d?(?:/[A-Z]{1,3}\d{1,3})?|[A-Z]{2}))$")
+
+
+def gen_label(detail: str) -> tuple[str, int | None] | None:
+    """A generation-like BadgeDetail → (code, number): "5세대" → ("V", 5), "WK2" → ("WK2", None)."""
+    m = GEN_DETAIL.match(detail.strip())
+    if not m:
+        return None
+    if m.group(1):
+        n = int(m.group(1))
+        return (ROMAN_N[n] if n < len(ROMAN_N) else f"Gen {n}", n)
+    return (m.group(2) or m.group(0), None)
+
+
+def draft_import(tree: list[dict], make: str, encar: dict, written: dict[str, int]):
+    """An import make: Encar keeps one model per generation it names ("익스플로러 6세대", "랭글러 (JL)")
+    and lumps the older ones under the plain name ("익스플로러" 1991–2019), each listing's generation
+    in its BadgeDetail ("5세대", "WK2"). The badge holds engine and package, as with the European makes.
+
+      model       names[name] (the Encar model without chassis, number and facelift words), else
+                  names[ModelGroup]; a name glued to its group ("ES300h" in "ES", "QX56" in "QX")
+                  is the group's model, the name its engine (passed to the badge reading)
+      generation  "(JL)" → JL, "6세대" → VI (number 6); else, where the tree's BadgeDetails name
+                  generations, none (the listing's BadgeDetail says it); else nothing is assumed:
+                  the model is reported, a person decides (encar_models "manual": true)
+
+    written: the generations a person wrote per model (the reference file's, not "source": "encar").
+    Returns reference {model: {"generations": {code: {...}}}}, encar_models, the report.
+    """
+    names = encar.get("names", {})
+    manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
+    models: dict[str, dict] = {}
+    details: dict[str, set] = defaultdict(set)
+    for r in tree:
+        if r["make_kr"] != make or not r.get("model_kr") or r["model_group_kr"] == "기타":
+            continue
+        cur = models.setdefault(r["model_kr"], {"group": r["model_group_kr"], "start": r.get("model_start"),
+                                                "end": r.get("model_end"), "count": r.get("model_count") or 0})
+        cur["count"] = max(cur["count"], r.get("model_count") or 0)
+        if r.get("badge_detail_kr"):
+            details[r["model_kr"]].add(r["badge_detail_kr"])
+
+    reference: dict[str, dict] = defaultdict(lambda: {"generations": {}})
+    encar_models: dict[str, dict] = {}
+    report: list[str] = []
+    plain: dict[str, list[str]] = defaultdict(list)    # reference model → Encar models naming no generation
+
+    def put(model: str, code: str, number: int | None, years: list, model_kr: str | None) -> None:
+        g = reference[model]["generations"].setdefault(code, {"code": code, "years": [None, None], "encar": []})
+        if number:
+            g["number"] = number
+        if years[0] and (g["years"][0] is None or years[0] < g["years"][0]):
+            g["years"][0] = years[0]
+        if years[1] is None and years[0]:
+            g["open"] = True
+        if years[1] and (g["years"][1] is None or years[1] > g["years"][1]):
+            g["years"][1] = years[1]
+        if model_kr:
+            g["encar"].append(model_kr)
+
+    for model_kr, info in sorted(models.items(), key=lambda x: (x[1]["start"] or "", x[0])):
+        text = model_kr.strip()
+        code = number = None
+        m = re.search(r"\s*\(([A-Z0-9]{2,5})\)\s*$", text)
+        if m:
+            code, text = m.group(1), text[: m.start()]
+        m = re.search(r"\s+(\d{1,2})세대$", text)
+        if m:
+            number = int(m.group(1))
+            code, text = ROMAN_N[number], text[: m.start()]
+        base = IMPORT_PREFIX.sub("", text).strip()
+        group = info["group"].strip()
+        words = ""
+        if base in names:
+            model = names[base]
+        elif base == group:
+            model = names.get(group, group)
+        elif re.fullmatch(r"[A-Za-z0-9-]+", group) and re.fullmatch(re.escape(group) + r" ?[A-Za-z0-9+\-]+", base):
+            model, words = names.get(group, group), base
+        else:
+            model = names.get(base, base)
+        if HANGUL.search(model):
+            report.append(f"name not translated: {model_kr} (group {group})")
+        years = [ym(info["start"]), ym(info["end"])]
+        entry = {"model": model, **({"words": words} if words else {})}
+        if model_kr in manual:
+            encar_models[model_kr] = manual[model_kr]
+            if manual[model_kr].get("generation") is None:
+                plain[manual[model_kr]["model"]].append(model_kr)
+            continue
+        if code:
+            put(model, code, number, years, model_kr)
+            encar_models[model_kr] = {**entry, "generation": code}
+            continue
+        gens = [g for g in (gen_label(d) for d in details[model_kr]) if g]
+        for c, n in gens:
+            put(model, c, n, [None, None], None)
+        if not gens and info["count"]:
+            report.append(f"no generation named: {model_kr} {years[0]}–{years[1] or ''} ({info['count']} listings) → decide by hand")
+        plain[model].append(model_kr)
+        encar_models[model_kr] = entry
+
+    # a model of one generation answers for a listing that names none (Reference::generation):
+    # an Encar model without one must not fall into it
+    for model, kr in plain.items():
+        drafted = [c for c, g in reference[model]["generations"].items()]
+        if written.get(model, 0) + len(drafted) == 1:
+            report.append(f"one generation: {model} ({''.join(drafted) or 'written'}) takes {' | '.join(kr)}, which name none"
+                          " — right only if the model never had another")
+    return reference, encar_models, report
+
+
+def print_and_write(args, out: Path, make_en: str, slug: str, encar: dict, encar_path: Path, tree: list[dict],
+                    reference: dict, encar_models: dict, report: list[str]) -> None:
+    for model, data in sorted(reference.items()):
+        print(model)
+        for g in sorted(data["generations"].values(), key=lambda g: g["years"][0] or 0):
+            to = "" if g.get("open") else (g["years"][1] or "")
+            print(f"   {g['code']:<34} {g['years'][0] or '?'}–{to}   ← {' | '.join(g['encar'])}")
+    if report:
+        print("\nFor a person:")
+        for line in report:
+            print("  ", line)
+
+    if args.write and args.make in SECOND:
+        encar = {"make": make_en, **encar, "korean": args.make}
+        manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
+        encar["encar_models"] = dict(sorted({**encar_models, **manual}.items()))
+        encar["badge_groups"] = badge_groups(tree, args.make)
+        encar_path.write_text(json.dumps(encar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"\nwritten: {encar_path} (the reference is reference/{SECOND[args.make]}.json, by hand)")
+    elif args.write:
+        ref_path = out / "reference" / f"{slug}.json"
+        ref = json.loads(ref_path.read_text(encoding="utf-8")) if ref_path.exists() else {"make": make_en, "complectations": [], "editions": [], "models": []}
+        # what this script drafted before ("source": "encar") is drafted again from the tree;
+        # generations and models a person wrote, and encar_models marked "manual", stay
+        hand = {m["name"] for m in ref["models"] if not any(g.get("source") == "encar" for g in m["generations"])}
+        for m in ref["models"]:
+            m["generations"] = [g for g in m["generations"] if g.get("source") != "encar"]
+        have = {m["name"]: m for m in ref["models"]}
+        for model, data in reference.items():
+            target = have.setdefault(model, {"name": model, "generations": []})
+            if target not in ref["models"]:
+                ref["models"].append(target)
+            codes = {c.upper() for g in target["generations"] for c in [g["code"], *g.get("aliases", [])]}
+            numbers = {g["number"] for g in target["generations"] if "number" in g}
+            for g in sorted(data["generations"].values(), key=lambda g: g["years"][0] or 0):
+                if g["code"].upper() not in codes and g.get("number", 0) not in numbers:
+                    years = [g["years"][0], None if g.get("open") else g["years"][1]]
+                    number = {"number": g["number"]} if g.get("number") else {}
+                    target["generations"].append({"code": g["code"], **number, "years": years, "source": "encar"})
+        # an import's model Encar sells without naming a generation stays, so its listings find the
+        # model; so does a model a person wrote
+        ref["models"] = sorted((m for m in ref["models"] if m["generations"] or set(m) - {"name", "generations"}
+                                or m["name"] in reference or m["name"] in hand),
+                               key=lambda m: m["name"])
+        ref_path.write_text(json.dumps(ref, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # a make Encar files under two names keeps both ("쉐보레(GM대우)", "쉐보레")
+        if args.make not in (encar.get("korean") if isinstance(encar.get("korean"), list) else []):
+            encar["korean"] = args.make
+        manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
+        encar["encar_models"] = dict(sorted({**encar_models, **manual}.items()))
+        encar["badge_groups"] = badge_groups(tree, args.make)
+        encar_path.write_text(json.dumps(encar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"\nwritten: {ref_path}, {encar_path}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("tree")
@@ -175,6 +377,13 @@ def main() -> None:
     names = encar.get("names", {})                    # Encar model group → our model
     splits = encar.get("model_splits", {})            # regex on Encar's model → another model of ours
     tree = json.loads(Path(args.tree).read_text(encoding="utf-8"))["taxonomy"]
+    if args.make in IMPORTS:
+        ref_path = out / "reference" / f"{SECOND.get(args.make, slug)}.json"
+        written = {m["name"]: sum(1 for g in m["generations"] if g.get("source") != "encar")
+                   for m in (json.loads(ref_path.read_text(encoding="utf-8"))["models"] if ref_path.exists() else [])}
+        reference, encar_models, report = draft_import(tree, args.make, encar, written)
+        print_and_write(args, out, make_en, slug, encar, encar_path, tree, reference, encar_models, report)
+        return
 
     models: dict[str, dict] = {}
     for r in tree:
@@ -278,42 +487,8 @@ def main() -> None:
         g["encar"].append(model_kr)
         encar_models[model_kr] = {"model": model, "generation": code, **({"words": read["words"]} if read["words"] else {})}
 
-    for model, data in sorted(reference.items()):
-        print(model)
-        for g in sorted(data["generations"].values(), key=lambda g: g["years"][0] or 0):
-            to = "" if g.get("open") else (g["years"][1] or "")
-            print(f"   {g['code']:<34} {g['years'][0] or '?'}–{to}   ← {' | '.join(g['encar'])}")
-    if unknown:
-        print("\nNot understood (Korean left):")
-        for row in unknown:
-            print("  ", *row)
-
-    if args.write:
-        ref_path = out / "reference" / f"{slug}.json"
-        ref = json.loads(ref_path.read_text(encoding="utf-8")) if ref_path.exists() else {"make": make_en, "complectations": [], "editions": [], "models": []}
-        # what this script drafted before ("source": "encar") is drafted again from the tree;
-        # generations and models a person wrote, and encar_models marked "manual", stay
-        for m in ref["models"]:
-            m["generations"] = [g for g in m["generations"] if g.get("source") != "encar"]
-        have = {m["name"]: m for m in ref["models"]}
-        for model, data in reference.items():
-            target = have.setdefault(model, {"name": model, "generations": []})
-            if target not in ref["models"]:
-                ref["models"].append(target)
-            codes = {g["code"] for g in target["generations"]}
-            for g in sorted(data["generations"].values(), key=lambda g: g["years"][0] or 0):
-                if g["code"] not in codes:
-                    years = [g["years"][0], None if g.get("open") else g["years"][1]]
-                    target["generations"].append({"code": g["code"], "years": years, "source": "encar"})
-        ref["models"] = sorted((m for m in ref["models"] if m["generations"] or set(m) - {"name", "generations"}),
-                               key=lambda m: m["name"])
-        ref_path.write_text(json.dumps(ref, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        encar["korean"] = args.make
-        manual = {k: v for k, v in encar.get("encar_models", {}).items() if v.get("manual")}
-        encar["encar_models"] = dict(sorted({**encar_models, **manual}.items()))
-        encar["badge_groups"] = badge_groups(tree, args.make)
-        encar_path.write_text(json.dumps(encar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        print(f"\nwritten: {ref_path}, {encar_path}")
+    print_and_write(args, out, make_en, slug, encar, encar_path, tree, reference, encar_models,
+                    [f"Korean left: {' '.join(row)}" for row in unknown])
 
 
 if __name__ == "__main__":

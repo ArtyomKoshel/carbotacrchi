@@ -1,0 +1,217 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "시트로엥/DS",
+  "names": {
+    "C2": "C2",
+    "C3": "C3",
+    "C3 에어크로스": "C3 Aircross",
+    "C4 칵투스": "C4 Cactus",
+    "C4 피카소": "C4 Picasso",
+    "C5": "C5",
+    "C5 에어크로스": "C5 Aircross",
+    "C6": "C6",
+    "DS3": "DS3",
+    "DS3 카브리오": "DS3 Cabrio",
+    "DS3 크로스백": "DS3 Crossback",
+    "DS4": "DS4",
+    "DS4 크로스백": "DS4 Crossback",
+    "DS5": "DS5",
+    "DS7 크로스백": "DS7 Crossback",
+    "XM": "XM",
+    "그랜드 C4 스페이스투어러": "Grand C4 SpaceTourer",
+    "그랜드 C4 피카소": "Grand C4 Picasso",
+    "잔티아": "Xantia"
+  },
+  "encar_models": {
+    "C2": {
+      "model": "C2"
+    },
+    "C3": {
+      "model": "C3"
+    },
+    "C3 에어크로스": {
+      "model": "C3 Aircross"
+    },
+    "C4 칵투스": {
+      "model": "C4 Cactus"
+    },
+    "C4 피카소": {
+      "model": "C4 Picasso",
+      "generation": "II",
+      "manual": true
+    },
+    "C5": {
+      "model": "C5"
+    },
+    "C5 에어크로스": {
+      "model": "C5 Aircross"
+    },
+    "C6": {
+      "model": "C6"
+    },
+    "DS3": {
+      "model": "DS3"
+    },
+    "DS3 카브리오": {
+      "model": "DS3 Cabrio"
+    },
+    "DS3 크로스백": {
+      "model": "DS3 Crossback"
+    },
+    "DS4": {
+      "model": "DS4"
+    },
+    "DS4 2세대": {
+      "model": "DS4",
+      "generation": "II"
+    },
+    "DS4 크로스백": {
+      "model": "DS4 Crossback"
+    },
+    "DS5": {
+      "model": "DS5"
+    },
+    "DS7 크로스백": {
+      "model": "DS7 Crossback"
+    },
+    "XM": {
+      "model": "XM"
+    },
+    "그랜드 C4 스페이스투어러": {
+      "model": "Grand C4 SpaceTourer"
+    },
+    "그랜드 C4 피카소": {
+      "model": "Grand C4 Picasso",
+      "generation": "II",
+      "manual": true
+    },
+    "잔티아": {
+      "model": "Xantia"
+    }
+  },
+  "badge_groups": {
+    "C2": {
+      "1.4": "디젤 1400cc",
+      "1.6": "디젤 1600cc"
+    },
+    "C3": {
+      "프를리엘": "가솔린",
+      "피카소": "가솔린"
+    },
+    "C3 에어크로스": {
+      "1.5 BlueHDi 샤인": "디젤 1500cc",
+      "1.5 BlueHDi 샤인팩": "디젤 1500cc",
+      "1.5 BlueHDi 필": "디젤 1500cc"
+    },
+    "C4 칵투스": {
+      "1.5 BlueHDi 샤인": "디젤 2WD",
+      "1.5 BlueHDi 필": "디젤 2WD",
+      "1.6 BlueHDi 라이브": "디젤 2WD",
+      "1.6 BlueHDi 샤인": "디젤 2WD",
+      "1.6 BlueHDi 원톤 에디션": "디젤 2WD",
+      "1.6 BlueHDi 필": "디젤 2WD",
+      "1.6 BlueHDi 필 원톤 에디션": "디젤 2WD"
+    },
+    "C4 피카소": {
+      "1.6 B-HDI 인텐시브": "디젤 1600cc",
+      "1.6 B-HDI 필": "디젤 1600cc",
+      "2.0 B-HDI 인텐시브": "디젤 2000cc"
+    },
+    "C5": {
+      "2.0": "가솔린 2000cc",
+      "2.0 디젤": "디젤 2000cc"
+    },
+    "C5 에어크로스": {
+      "1.5 BlueHDi 샤인": "디젤 1500cc",
+      "1.5 BlueHDi 샤인 팩": "디젤 1500cc",
+      "1.5 BlueHDi 필": "디젤 1500cc",
+      "2.0 BlueHDi 샤인": "디젤 2000cc"
+    },
+    "C6": {
+      "2.7": "디젤 2700cc"
+    },
+    "DS3": {
+      "1.4 e-HDi 시크": "디젤 1400cc",
+      "1.6 Blue-HDi 지방시 르 메이크업": "디젤 1600cc",
+      "1.6 BlueHDi 비 시크": "디젤 1600cc",
+      "1.6 BlueHDi 소 시크": "디젤 1600cc",
+      "1.6 VTI 소 시크": "가솔린 1600cc",
+      "1.6 e-HDi 뉴 라이트 시그니쳐": "디젤 1600cc",
+      "1.6 e-HDi 비 시크": "디젤 1600cc",
+      "1.6 e-HDi 소 시크": "디젤 1600cc",
+      "1.6 e-HDi 소 시크+": "디젤 1600cc",
+      "1.6 e-HDi 시크": "디젤 1600cc",
+      "1.6 레이싱": "가솔린 1600cc"
+    },
+    "DS3 카브리오": {
+      "1.6 BlueHDi 비 시크": "디젤 1600cc",
+      "1.6 BlueHDi 소 시크": "디젤 1600cc",
+      "1.6 e-HDi 소 시크": "디젤 1600cc",
+      "1.6 e-HDi 소 시크+": "디젤 1600cc"
+    },
+    "DS3 크로스백": {
+      "1.5 BlueHDi 그랜드 시크": "디젤 1500cc",
+      "1.5 BlueHDi 소 시크": "디젤 1500cc",
+      "1.5 BlueHDi 소 시크 테크팩": "디젤 1500cc",
+      "1.5 BlueHDi 오페라": "디젤 1500cc",
+      "E-텐스 그랜드 시크": "전기",
+      "E-텐스 소 시크": "전기"
+    },
+    "DS4": {
+      "1.6": "가솔린 1600cc",
+      "1.6 e-HDi 소 시크": "디젤 1600cc",
+      "1.6 e-HDi 시크": "디젤 1600cc",
+      "2.0 HDi 소 시크": "디젤 2000cc",
+      "2.0 HDi 시크": "디젤 2000cc"
+    },
+    "DS4 2세대": {
+      "1.5 BlueHDi 리볼리": "디젤 1500cc",
+      "1.5 BlueHDi 트로카데로": "디젤 1500cc"
+    },
+    "DS4 크로스백": {
+      "1.6 BlueHDi 소 시크": "디젤 1600cc"
+    },
+    "DS5": {
+      "2.0 소 시크": "디젤 2000cc",
+      "2.0 소 시크+": "디젤 2000cc",
+      "2.0 시크": "디젤 2000cc",
+      "2.0 시크+": "디젤 2000cc",
+      "2.0 익스큐티브": "디젤 2000cc",
+      "2.0 하이브리드 4": "디젤+전기 2000cc"
+    },
+    "DS7 크로스백": {
+      "1.2 PureTech 그랜드 시크": "가솔린 1200cc",
+      "1.2 PureTech 소 시크": "가솔린 1200cc",
+      "1.5 BlueHDi 그랜드 시크": "디젤 1500cc",
+      "2.0 BlueHDi 그랜드 시크": "디젤 2000cc",
+      "2.0 BlueHDi 루브르 에디션": "디젤 2000cc",
+      "2.0 BlueHDi 소 시크": "디젤 2000cc"
+    },
+    "XM": {
+      "EXECLUSIVE": "가솔린",
+      "L4": "가솔린",
+      "VSX": "가솔린"
+    },
+    "그랜드 C4 스페이스투어러": {
+      "1.5 BlueHDi 샤인": "디젤 1500cc",
+      "1.5 BlueHDi 샤인팩": "디젤 1500cc",
+      "1.5 BlueHDi 필": "디젤 1500cc",
+      "1.6 BlueHDi 필": "디젤 1600cc",
+      "2.0 BlueHDi 샤인": "디젤 2000cc",
+      "2.0 BlueHDi 샤인+": "디젤 2000cc"
+    },
+    "그랜드 C4 피카소": {
+      "1.6 B-HDI 인텐시브": "디젤 1600cc",
+      "1.6 B-HDI 필": "디젤 1600cc",
+      "2.0 B-HDI 샤인": "디젤 2000cc",
+      "2.0 B-HDI 익스클루시브": "디젤 2000cc",
+      "2.0 B-HDI 인텐시브": "디젤 2000cc",
+      "2.0 B-HDI 인텐시브 플러스": "디젤 2000cc"
+    },
+    "잔티아": {
+      "ESTATE": "가솔린",
+      "SX": "가솔린",
+      "VSX": "가솔린"
+    }
+  }
+}

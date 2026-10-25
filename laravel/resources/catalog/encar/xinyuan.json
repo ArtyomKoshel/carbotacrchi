@@ -1,0 +1,22 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "신위안",
+  "names": {
+    "이티밴": "ET Van"
+  },
+  "encar_models": {
+    "이티밴": {
+      "model": "ET Van"
+    }
+  },
+  "badge_groups": {
+    "이티밴": {
+      "2인승": "전기",
+      "4인승": "전기",
+      "미니 2인승": "전기",
+      "미니 4인승": "전기",
+      "프로 2인승": "전기",
+      "프로 4인승": "전기"
+    }
+  }
+}

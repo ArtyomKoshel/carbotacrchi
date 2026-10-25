@@ -1,0 +1,51 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "BYD",
+  "names": {
+    "E6": "e6",
+    "돌핀": "Dolphin",
+    "씨라이언 6": "Sealion 6",
+    "씨라이언 7": "Sealion 7",
+    "씰": "Seal",
+    "아토 3": "Atto 3"
+  },
+  "encar_models": {
+    "E6": {
+      "model": "e6"
+    },
+    "돌핀": {
+      "model": "Dolphin"
+    },
+    "씨라이언 6": {
+      "model": "Sealion 6"
+    },
+    "씨라이언 7": {
+      "model": "Sealion 7"
+    },
+    "씰": {
+      "model": "Seal"
+    },
+    "아토 3": {
+      "model": "Atto 3"
+    }
+  },
+  "badge_groups": {
+    "돌핀": {
+      "베이스": "전기 2WD",
+      "액티브": "전기 2WD"
+    },
+    "씨라이언 7": {
+      "베이스": "전기 2WD",
+      "플러스": "전기 2WD"
+    },
+    "씰": {
+      "RWD": "전기 2WD",
+      "다이나믹 AWD": "전기 4WD",
+      "플러스 RWD": "전기 2WD"
+    },
+    "아토 3": {
+      "베이직": "전기 2WD",
+      "플러스": "전기 2WD"
+    }
+  }
+}

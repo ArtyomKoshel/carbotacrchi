@@ -1,0 +1,290 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "캐딜락",
+  "names": {
+    "ATS": "ATS",
+    "ATS-V": "ATS-V",
+    "BLS": "BLS",
+    "CT4": "CT4",
+    "CT5": "CT5",
+    "CT5-V": "CT5-V",
+    "CT6": "CT6",
+    "CT6-V": "CT6-V",
+    "CTS": "CTS",
+    "CTS-V": "CTS-V",
+    "DTS": "DTS",
+    "SRX": "SRX",
+    "STS": "STS",
+    "XLR": "XLR",
+    "XT4": "XT4",
+    "XT5": "XT5",
+    "XT6": "XT6",
+    "XTS": "XTS",
+    "드빌": "DeVille",
+    "리릭": "Lyriq",
+    "스빌": "Seville",
+    "에스컬레이드": "Escalade",
+    "에스컬레이드 IQ": "Escalade IQ",
+    "엘도라도": "Eldorado",
+    "컨코어": "Concours",
+    "플리트우드": "Fleetwood"
+  },
+  "encar_models": {
+    "ATS": {
+      "model": "ATS"
+    },
+    "ATS-V": {
+      "model": "ATS-V"
+    },
+    "BLS": {
+      "model": "BLS"
+    },
+    "CT4": {
+      "model": "CT4"
+    },
+    "CT5": {
+      "model": "CT5"
+    },
+    "CT5-V": {
+      "model": "CT5-V"
+    },
+    "CT6": {
+      "model": "CT6"
+    },
+    "CT6-V": {
+      "model": "CT6-V"
+    },
+    "CTS 1세대": {
+      "model": "CTS",
+      "generation": "I"
+    },
+    "CTS 2세대": {
+      "model": "CTS",
+      "generation": "II"
+    },
+    "CTS 3세대": {
+      "model": "CTS",
+      "generation": "III"
+    },
+    "CTS-V": {
+      "model": "CTS-V"
+    },
+    "DTS": {
+      "model": "DTS"
+    },
+    "SRX": {
+      "model": "SRX",
+      "generation": "I",
+      "manual": true
+    },
+    "STS": {
+      "model": "STS",
+      "generation": "I",
+      "manual": true
+    },
+    "XLR": {
+      "model": "XLR"
+    },
+    "XT4": {
+      "model": "XT4"
+    },
+    "XT5": {
+      "model": "XT5"
+    },
+    "XT6": {
+      "model": "XT6"
+    },
+    "XTS": {
+      "model": "XTS"
+    },
+    "뉴 STS": {
+      "model": "STS",
+      "generation": "I",
+      "manual": true
+    },
+    "드빌": {
+      "model": "DeVille"
+    },
+    "리릭": {
+      "model": "Lyriq"
+    },
+    "스빌": {
+      "model": "Seville"
+    },
+    "에스컬레이드": {
+      "model": "Escalade"
+    },
+    "에스컬레이드 5세대": {
+      "model": "Escalade",
+      "generation": "V"
+    },
+    "에스컬레이드 IQ": {
+      "model": "Escalade IQ"
+    },
+    "엘도라도": {
+      "model": "Eldorado"
+    },
+    "올 뉴 SRX": {
+      "model": "SRX",
+      "generation": "II",
+      "manual": true
+    },
+    "컨코어": {
+      "model": "Concours"
+    },
+    "플리트우드": {
+      "model": "Fleetwood"
+    }
+  },
+  "badge_groups": {
+    "ATS": {
+      "2.0 럭셔리": "가솔린 2WD",
+      "2.0 슈프림 블랙": "가솔린 2WD",
+      "2.0 쿠페": "가솔린 2WD",
+      "2.0 프리미엄": "가솔린 2WD",
+      "2.0 프리미엄 AWD": "가솔린 4WD"
+    },
+    "ATS-V": {
+      "3.6": "가솔린 3600cc",
+      "3.6 카본 패키지": "가솔린 3600cc"
+    },
+    "BLS": {
+      "1.9D 150HP": "디젤 1900cc",
+      "2.0T": "가솔린 2000cc"
+    },
+    "CT4": {
+      "2.0 스포츠": "가솔린 2000cc"
+    },
+    "CT5": {
+      "2.0 스포츠": "가솔린 2000cc",
+      "2.0 프리미엄 럭셔리": "가솔린 2000cc"
+    },
+    "CT5-V": {
+      "6.2 블랙윙": "가솔린 6200cc"
+    },
+    "CT6": {
+      "2.0 터보": "가솔린 2WD",
+      "3.6 스포츠 AWD": "가솔린 4WD",
+      "3.6 스포츠 플러스 AWD": "가솔린 4WD",
+      "3.6 프리미엄 AWD": "가솔린 4WD",
+      "3.6 플래티넘 AWD": "가솔린 4WD"
+    },
+    "CT6-V": {
+      "V8 4.2": "가솔린 4200cc"
+    },
+    "CTS 1세대": {
+      "2.8": "가솔린 2800cc",
+      "3.2": "가솔린 3200cc",
+      "3.6 기본형": "가솔린 3600cc",
+      "3.6 프리미엄": "가솔린 3600cc"
+    },
+    "CTS 2세대": {
+      "2.8 Luxury": "가솔린 2800cc",
+      "3.0 Luxury": "가솔린 3000cc",
+      "3.0 Performance": "가솔린 3000cc",
+      "3.0 Sport Wagon": "가솔린 3000cc",
+      "3.6 Coupe": "가솔린 3600cc",
+      "3.6 Luxury": "가솔린 3600cc",
+      "3.6 Premium": "가솔린 3600cc",
+      "3.6 Sport Wagon": "가솔린 3600cc"
+    },
+    "CTS 3세대": {
+      "2.0 럭셔리": "가솔린 2WD",
+      "2.0 프리미엄": "가솔린 2WD",
+      "2.0 프리미엄 AWD": "가솔린 4WD",
+      "2.0 프리미엄 플러스": "가솔린 2WD"
+    },
+    "CTS-V": {
+      "V8 6.2L": "가솔린 6200cc",
+      "V8 6.2L 카본 패키지": "가솔린 6200cc"
+    },
+    "DTS": {
+      "4.6 리무진": "가솔린 4600cc",
+      "4.6L V8": "가솔린 4600cc"
+    },
+    "SRX": {
+      "3.6": "가솔린 3600cc",
+      "4.6": "가솔린 4600cc"
+    },
+    "STS": {
+      "3.6": "가솔린 3600cc",
+      "4.6": "가솔린 4600cc"
+    },
+    "XLR": {
+      "LIMITED": "가솔린",
+      "Roadster": "가솔린",
+      "V Roadster": "가솔린"
+    },
+    "XT4": {
+      "2.0 스포츠 AWD": "가솔린 4WD"
+    },
+    "XT5": {
+      "3.6 스포츠 AWD": "가솔린 4WD",
+      "3.6 프리미엄 AWD": "가솔린 4WD",
+      "3.6 프리미엄 럭셔리 AWD": "가솔린 4WD",
+      "3.6 프리미엄 플러스 AWD": "가솔린 4WD",
+      "3.6 플래티넘 AWD": "가솔린 4WD"
+    },
+    "XT6": {
+      "3.6 스포츠": "가솔린 4WD"
+    },
+    "XTS": {
+      "3.6": "가솔린 3600cc"
+    },
+    "뉴 STS": {
+      "3.6": "가솔린 3600cc",
+      "4.6 Platinum Edition": "가솔린 4600cc"
+    },
+    "드빌": {
+      "DHS": "가솔린",
+      "DTS": "가솔린",
+      "리무진": "가솔린"
+    },
+    "리릭": {
+      "스포츠": "전기 4WD"
+    },
+    "스빌": {
+      "SLS": "가솔린",
+      "STD": "가솔린",
+      "STS": "가솔린"
+    },
+    "에스컬레이드": {
+      "5.3": "가솔린 6000cc 이하",
+      "5.7": "가솔린 6000cc 이하",
+      "6.0": "가솔린 6000cc 이하",
+      "6.0 ESV": "가솔린 6000cc 이하",
+      "6.2": "가솔린 6000cc 이상",
+      "6.2 ESV": "가솔린 6000cc 이상",
+      "6.2 EXT": "가솔린 6000cc 이상",
+      "리무진": "가솔린 6000cc 이상",
+      "하이브리드": "가솔린+전기 6000cc 이하"
+    },
+    "에스컬레이드 5세대": {
+      "6.2": "가솔린 6000cc 이상",
+      "6.2 ESV": "가솔린 6000cc 이상"
+    },
+    "에스컬레이드 IQ": {
+      "L 프리미엄 스포츠": "전기 4WD",
+      "프리미엄 스포츠": "전기 4WD"
+    },
+    "엘도라도": {
+      "BIARRITS": "가솔린",
+      "COUPE": "가솔린",
+      "ESC": "가솔린"
+    },
+    "올 뉴 SRX": {
+      "2.8 Turbo": "가솔린 2800cc",
+      "3.0 Luxury": "가솔린 3000cc",
+      "3.0 Premium": "가솔린 3000cc",
+      "3.6": "가솔린 3600cc"
+    },
+    "컨코어": {
+      "4.6": "가솔린 4600cc"
+    },
+    "플리트우드": {
+      "4.6": "가솔린",
+      "5.7": "가솔린",
+      "리무진": "가솔린"
+    }
+  }
+}

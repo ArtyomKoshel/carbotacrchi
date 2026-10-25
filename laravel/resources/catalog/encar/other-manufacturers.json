@@ -1,0 +1,31 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "기타 제조사",
+  "names": {
+    "기타": "Other",
+    "어울림모터스-스피라": "Oullim Spirra"
+  },
+  "encar_models": {
+    "기타": {
+      "model": "Other"
+    },
+    "어울림모터스-스피라": {
+      "model": "Oullim Spirra"
+    }
+  },
+  "badge_groups": {
+    "기타": {
+      "기타 전기차": "전기"
+    },
+    "어울림모터스-스피라": {
+      "2.7": "가솔린 2700cc",
+      "2.7 S 수퍼차저": "가솔린 2700cc",
+      "2.7 T 터보": "가솔린 2700cc",
+      "2.7 프로토타입": "가솔린 2700cc",
+      "4.6 GT 프로토타입": "가솔린 4600cc",
+      "EX 2.7": "가솔린 2700cc",
+      "S": "가솔린 2700cc",
+      "Turbo 2.7": "가솔린 2700cc"
+    }
+  }
+}

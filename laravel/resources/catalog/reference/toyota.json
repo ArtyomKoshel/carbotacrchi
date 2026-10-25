@@ -1,0 +1,659 @@
+{
+  "make": "Toyota",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "V6": null,
+      "V8": null,
+      "GR": null,
+      "Dual": null,
+      "Boost": null
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "XLE",
+    "XSE",
+    "LE",
+    "SE",
+    "LTD",
+    "Limited",
+    "Platinum",
+    "Premium",
+    "Standard",
+    "Executive",
+    "Basic",
+    "Crossover",
+    "SR5",
+    "Monotone",
+    "Two-Tone",
+    "GR Sport",
+    "S",
+    "E"
+  ],
+  "editions": [
+    "Sport Edition"
+  ],
+  "models": [
+    {
+      "name": "4Runner",
+      "generations": []
+    },
+    {
+      "name": "86",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2012,
+            2021
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Alphard",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2015,
+            2023
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Altezza",
+      "generations": []
+    },
+    {
+      "name": "Aristo",
+      "generations": []
+    },
+    {
+      "name": "Avalon",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2012,
+            2018
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2018,
+            2022
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Aygo",
+      "generations": []
+    },
+    {
+      "name": "C-HR",
+      "generations": []
+    },
+    {
+      "name": "Cami",
+      "generations": []
+    },
+    {
+      "name": "Camry",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "XV40",
+          "number": 6,
+          "years": [
+            2006,
+            2011
+          ]
+        },
+        {
+          "code": "XV50",
+          "number": 7,
+          "years": [
+            2011,
+            2017
+          ]
+        },
+        {
+          "code": "XV70",
+          "number": 8,
+          "years": [
+            2017,
+            2024
+          ]
+        },
+        {
+          "code": "XV80",
+          "number": 9,
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Camry Solara",
+      "generations": []
+    },
+    {
+      "name": "Carina",
+      "generations": []
+    },
+    {
+      "name": "Celica",
+      "generations": []
+    },
+    {
+      "name": "Celsior",
+      "generations": []
+    },
+    {
+      "name": "Chaser",
+      "generations": []
+    },
+    {
+      "name": "Corolla",
+      "generations": []
+    },
+    {
+      "name": "Corona",
+      "generations": []
+    },
+    {
+      "name": "Corsa",
+      "generations": []
+    },
+    {
+      "name": "Crown",
+      "generations": []
+    },
+    {
+      "name": "Crown Crossover",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crown Majesta",
+      "generations": []
+    },
+    {
+      "name": "Esquire",
+      "generations": []
+    },
+    {
+      "name": "Estima",
+      "generations": []
+    },
+    {
+      "name": "FJ Cruiser",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2006,
+            2014
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Funcargo",
+      "generations": []
+    },
+    {
+      "name": "GR86",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gaia",
+      "generations": []
+    },
+    {
+      "name": "Harrier",
+      "generations": []
+    },
+    {
+      "name": "HiAce",
+      "generations": []
+    },
+    {
+      "name": "Highlander",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2013,
+            2019
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hilux Surf",
+      "generations": []
+    },
+    {
+      "name": "Ipsum",
+      "generations": []
+    },
+    {
+      "name": "Isis",
+      "generations": []
+    },
+    {
+      "name": "Land Cruiser",
+      "generations": []
+    },
+    {
+      "name": "MR-S",
+      "generations": []
+    },
+    {
+      "name": "MR2",
+      "generations": []
+    },
+    {
+      "name": "Mark II",
+      "generations": []
+    },
+    {
+      "name": "Mark X",
+      "generations": []
+    },
+    {
+      "name": "Matrix",
+      "generations": []
+    },
+    {
+      "name": "Noah",
+      "generations": []
+    },
+    {
+      "name": "Passo",
+      "generations": []
+    },
+    {
+      "name": "Pickup",
+      "generations": []
+    },
+    {
+      "name": "Porte",
+      "generations": []
+    },
+    {
+      "name": "Premio",
+      "generations": []
+    },
+    {
+      "name": "Previa",
+      "generations": []
+    },
+    {
+      "name": "Prius",
+      "body": "liftback",
+      "fuel": "hybrid",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2009,
+            2015
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2015,
+            2022
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prius Prime",
+      "body": "liftback",
+      "fuel": "hybrid",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2016,
+            2022
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prius c",
+      "body": "hatchback",
+      "fuel": "hybrid",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2011,
+            2021
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prius v",
+      "body": "wagon",
+      "fuel": "hybrid",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2011,
+            2021
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RAV4",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1994,
+            2000
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2000,
+            2005
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2005,
+            2012
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2012,
+            2018
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2018,
+            2025
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2025,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ractis",
+      "generations": []
+    },
+    {
+      "name": "Raum",
+      "generations": []
+    },
+    {
+      "name": "Roomy",
+      "generations": []
+    },
+    {
+      "name": "Sai",
+      "generations": []
+    },
+    {
+      "name": "Sequoia",
+      "generations": []
+    },
+    {
+      "name": "Sera",
+      "generations": []
+    },
+    {
+      "name": "Sienna",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1997,
+            2003
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2003,
+            2010
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2010,
+            2020
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sienta",
+      "generations": []
+    },
+    {
+      "name": "Soarer",
+      "generations": []
+    },
+    {
+      "name": "Supra",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            1993,
+            2002
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tacoma",
+      "generations": []
+    },
+    {
+      "name": "Tundra",
+      "generations": []
+    },
+    {
+      "name": "Vellfire",
+      "generations": []
+    },
+    {
+      "name": "Venza",
+      "generations": []
+    },
+    {
+      "name": "Verso",
+      "generations": []
+    },
+    {
+      "name": "Vista",
+      "generations": []
+    },
+    {
+      "name": "Voxy",
+      "generations": []
+    },
+    {
+      "name": "WiLL",
+      "generations": []
+    },
+    {
+      "name": "Wish",
+      "generations": []
+    },
+    {
+      "name": "Xtracab",
+      "generations": []
+    },
+    {
+      "name": "Yaris",
+      "body": "hatchback",
+      "generations": []
+    },
+    {
+      "name": "bB",
+      "generations": []
+    },
+    {
+      "name": "iQ",
+      "generations": []
+    },
+    {
+      "name": "ist",
+      "generations": []
+    }
+  ]
+}

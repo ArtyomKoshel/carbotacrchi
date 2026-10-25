@@ -1,0 +1,522 @@
+{
+  "make": "Lexus",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "F": null
+    },
+    "codes": [
+      {
+        "re": "^[A-Z]{2}\\d{3}h(?:L|\\+)?$",
+        "fuel": "hybrid"
+      },
+      {
+        "re": "^[A-Z]{2}\\d{3}e$",
+        "fuel": "electric"
+      },
+      {
+        "re": "^[A-Z]{2}\\d{3}[tL]?$"
+      },
+      {
+        "re": "^(?:IS|RC|GS)$"
+      },
+      {
+        "re": "^\\d{3}h$",
+        "fuel": "hybrid"
+      },
+      {
+        "re": "^\\d{3}$"
+      }
+    ],
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Luxury Plus",
+    "Luxury",
+    "Executive",
+    "Limited",
+    "F-Sport",
+    "Supreme+",
+    "Supreme",
+    "Premium",
+    "Platinum",
+    "Royal",
+    "Overtrail",
+    "VIP",
+    "Ottoman",
+    "F Sport",
+    "Sport+",
+    "Sport",
+    "Standard",
+    "STD",
+    "L-Grade",
+    "P-Grade",
+    "S-Grade",
+    "I-Grade",
+    "Special",
+    "Compact",
+    "Trendy",
+    "Design Package",
+    "Premium-Navi Package",
+    "Superior",
+    "Mobility",
+    "Plus"
+  ],
+  "editions": [
+    "Style Edition",
+    "Crystal Edition"
+  ],
+  "models": [
+    {
+      "name": "CT",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "ZWA10",
+          "number": 1,
+          "years": [
+            2010,
+            2022
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ES",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "XV20",
+          "number": 3,
+          "years": [
+            1996,
+            2001
+          ]
+        },
+        {
+          "code": "XV30",
+          "number": 4,
+          "years": [
+            2001,
+            2006
+          ]
+        },
+        {
+          "code": "XV40",
+          "number": 5,
+          "years": [
+            2006,
+            2012
+          ]
+        },
+        {
+          "code": "XV60",
+          "number": 6,
+          "years": [
+            2012,
+            2018
+          ]
+        },
+        {
+          "code": "XV70",
+          "number": 7,
+          "years": [
+            2018,
+            null
+          ],
+          "aliases": [
+            "VII"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "S140",
+          "number": 1,
+          "years": [
+            1991,
+            1997
+          ]
+        },
+        {
+          "code": "S160",
+          "number": 2,
+          "years": [
+            1997,
+            2005
+          ]
+        },
+        {
+          "code": "S190",
+          "number": 3,
+          "years": [
+            2005,
+            2011
+          ]
+        },
+        {
+          "code": "L10",
+          "number": 4,
+          "years": [
+            2011,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "J120",
+          "number": 1,
+          "years": [
+            2002,
+            2009
+          ]
+        },
+        {
+          "code": "J150",
+          "number": 2,
+          "years": [
+            2009,
+            2023
+          ]
+        },
+        {
+          "code": "J250",
+          "number": 3,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "XE10",
+          "number": 1,
+          "years": [
+            1998,
+            2005
+          ]
+        },
+        {
+          "code": "XE20",
+          "number": 2,
+          "years": [
+            2005,
+            2013
+          ]
+        },
+        {
+          "code": "XE30",
+          "number": 3,
+          "years": [
+            2013,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LC",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LM",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            2023
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "XF10",
+          "number": 1,
+          "years": [
+            1989,
+            1994
+          ]
+        },
+        {
+          "code": "XF20",
+          "number": 2,
+          "years": [
+            1994,
+            2000
+          ]
+        },
+        {
+          "code": "XF30",
+          "number": 3,
+          "years": [
+            2000,
+            2006
+          ]
+        },
+        {
+          "code": "XF40",
+          "number": 4,
+          "years": [
+            2006,
+            2017
+          ]
+        },
+        {
+          "code": "XF50",
+          "number": 5,
+          "years": [
+            2017,
+            null
+          ],
+          "aliases": [
+            "V"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "J80",
+          "number": 1,
+          "years": [
+            1995,
+            1997
+          ]
+        },
+        {
+          "code": "J100",
+          "number": 2,
+          "years": [
+            1998,
+            2007
+          ]
+        },
+        {
+          "code": "J200",
+          "number": 3,
+          "years": [
+            2007,
+            2021
+          ]
+        },
+        {
+          "code": "J300",
+          "number": 4,
+          "years": [
+            2021,
+            null
+          ],
+          "aliases": [
+            "IV"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "NX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "AZ10",
+          "number": 1,
+          "years": [
+            2014,
+            2021
+          ]
+        },
+        {
+          "code": "AZ20",
+          "number": 2,
+          "years": [
+            2021,
+            null
+          ],
+          "aliases": [
+            "II"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RC",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "XC10",
+          "number": 1,
+          "years": [
+            2014,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "XU10",
+          "number": 1,
+          "years": [
+            1997,
+            2003
+          ]
+        },
+        {
+          "code": "XU30",
+          "number": 2,
+          "years": [
+            2003,
+            2009
+          ]
+        },
+        {
+          "code": "AL10",
+          "number": 3,
+          "years": [
+            2008,
+            2015
+          ]
+        },
+        {
+          "code": "AL20",
+          "number": 4,
+          "years": [
+            2015,
+            2022
+          ],
+          "aliases": [
+            "IV"
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RZ",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SC",
+      "body": "convertible",
+      "generations": [
+        {
+          "code": "Z30",
+          "number": 1,
+          "years": [
+            1991,
+            2000
+          ]
+        },
+        {
+          "code": "Z40",
+          "number": 2,
+          "years": [
+            2001,
+            2010
+          ]
+        }
+      ]
+    },
+    {
+      "name": "UX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}
