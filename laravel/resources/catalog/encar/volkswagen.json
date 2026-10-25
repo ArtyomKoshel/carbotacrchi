@@ -1,0 +1,19 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "폭스바겐",
+  "names": {
+    "골프": "Golf",
+    "더 비틀": "The Beetle",
+    "시로코": "Scirocco",
+    "아테온": "Arteon",
+    "아틀라스": "Atlas",
+    "제타": "Jetta",
+    "투아렉": "Touareg",
+    "티구안": "Tiguan",
+    "티구안 올스페이스": "Tiguan Allspace",
+    "티록": "T-Roc",
+    "파사트": "Passat",
+    "파사트 GT": "Passat GT",
+    "폴로": "Polo"
+  }
+}

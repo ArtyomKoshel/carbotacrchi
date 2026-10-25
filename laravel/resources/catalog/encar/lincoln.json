@@ -1,0 +1,175 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "링컨",
+  "names": {
+    "LS": "LS",
+    "MKC": "MKC",
+    "MKS": "MKS",
+    "MKT": "MKT",
+    "MKX": "MKX",
+    "MKZ": "MKZ",
+    "네비게이터": "Navigator",
+    "노틸러스": "Nautilus",
+    "에비에이터": "Aviator",
+    "컨티넨탈": "Continental",
+    "코세어": "Corsair",
+    "타운카": "Town Car"
+  },
+  "encar_models": {
+    "LS": {
+      "model": "LS"
+    },
+    "MKC": {
+      "model": "MKC"
+    },
+    "MKS": {
+      "model": "MKS"
+    },
+    "MKT": {
+      "model": "MKT"
+    },
+    "MKX": {
+      "model": "MKX",
+      "generation": "I",
+      "manual": true
+    },
+    "MKX 2세대": {
+      "model": "MKX",
+      "generation": "II"
+    },
+    "MKZ": {
+      "model": "MKZ",
+      "generation": "I",
+      "manual": true
+    },
+    "네비게이터": {
+      "model": "Navigator"
+    },
+    "네비게이터 4세대": {
+      "model": "Navigator",
+      "generation": "IV"
+    },
+    "노틸러스 1세대": {
+      "model": "Nautilus",
+      "generation": "I"
+    },
+    "노틸러스 2세대": {
+      "model": "Nautilus",
+      "generation": "II"
+    },
+    "뉴 MKS": {
+      "model": "MKS"
+    },
+    "뉴 MKX": {
+      "model": "MKX",
+      "generation": "I",
+      "manual": true
+    },
+    "뉴 MKZ": {
+      "model": "MKZ"
+    },
+    "에비에이터 1세대": {
+      "model": "Aviator",
+      "generation": "I"
+    },
+    "에비에이터 2세대": {
+      "model": "Aviator",
+      "generation": "II"
+    },
+    "컨티넨탈": {
+      "model": "Continental"
+    },
+    "컨티넨탈 10세대": {
+      "model": "Continental",
+      "generation": "X"
+    },
+    "코세어": {
+      "model": "Corsair"
+    },
+    "타운카": {
+      "model": "Town Car"
+    }
+  },
+  "badge_groups": {
+    "LS": {
+      "3.0": "가솔린 3000cc",
+      "3.9": "가솔린 3900cc"
+    },
+    "MKC": {
+      "2.0 AWD": "가솔린 4WD"
+    },
+    "MKS": {
+      "3.7": "가솔린 3700cc"
+    },
+    "MKT": {
+      "3.5 AWD": "가솔린 4WD"
+    },
+    "MKX": {
+      "3.5 AWD": "가솔린 4WD",
+      "3.5 FWD": "가솔린 2WD"
+    },
+    "MKX 2세대": {
+      "2.7 AWD": "가솔린"
+    },
+    "MKZ": {
+      "3.5": "가솔린 3500cc"
+    },
+    "네비게이터": {
+      "5.4L V8": "가솔린 5400cc"
+    },
+    "네비게이터 4세대": {
+      "3.5L": "가솔린 3500cc",
+      "3.5L (8인승)": "가솔린 3500cc",
+      "3.5L 블랙 레이블": "가솔린 3500cc"
+    },
+    "노틸러스 1세대": {
+      "2.7 200A AWD": "가솔린 4WD",
+      "2.7 201A AWD": "가솔린 4WD",
+      "2.7 202A AWD": "가솔린 4WD",
+      "2.7 리저브 AWD": "가솔린 4WD",
+      "2.7 셀렉트 AWD": "가솔린 4WD"
+    },
+    "노틸러스 2세대": {
+      "2.0 HEV AWD": "가솔린+전기 4WD",
+      "2.0 리저브 AWD": "가솔린 4WD"
+    },
+    "뉴 MKS": {
+      "3.5 AWD": "가솔린 4WD",
+      "3.7": "가솔린 2WD"
+    },
+    "뉴 MKX": {
+      "3.7 AWD": "가솔린 4WD"
+    },
+    "뉴 MKZ": {
+      "2.0": "가솔린 2000cc",
+      "2.0 AWD": "가솔린 2000cc",
+      "3.5": "가솔린 3500cc",
+      "하이브리드": "가솔린+전기 2000cc"
+    },
+    "에비에이터 1세대": {
+      "4.6L V8": "가솔린 4600cc"
+    },
+    "에비에이터 2세대": {
+      "3.0 PHEV GT AWD": "가솔린+전기 4WD",
+      "3.0 리저브 AWD": "가솔린 4WD",
+      "3.0 리저브 제트 패키지 AWD": "가솔린 4WD",
+      "3.0 블랙라벨 AWD": "가솔린 4WD"
+    },
+    "컨티넨탈": {
+      "3.8L V6": "가솔린",
+      "4.6L V8": "가솔린"
+    },
+    "컨티넨탈 10세대": {
+      "2.7 AWD": "가솔린 2700cc",
+      "3.0 AWD": "가솔린 3000cc",
+      "3.0 블랙라벨 AWD": "가솔린 3000cc",
+      "3.0 프레지덴셜 AWD": "가솔린 3000cc"
+    },
+    "코세어": {
+      "2.0 리저브 AWD": "가솔린 4WD"
+    },
+    "타운카": {
+      "4.6L V8": "가솔린"
+    }
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "make": "Lincoln",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "V8": null,
+      "V6": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dL$"
+      }
+    ],
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Reserve",
+    "Black Label",
+    "Presidential",
+    "Jet Package",
+    "202A",
+    "201A",
+    "200A",
+    "GT",
+    "Select",
+    "Premiere"
+  ],
+  "editions": [],
+  "models": [
+    {
+      "name": "Aviator",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2002,
+            2005
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Continental",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "IX",
+          "number": 9,
+          "years": [
+            1995,
+            2002
+          ]
+        },
+        {
+          "code": "X",
+          "number": 10,
+          "years": [
+            2016,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Corsair",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LS",
+      "generations": []
+    },
+    {
+      "name": "MKC",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2014,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MKS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2008,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MKT",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2009,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MKX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2006,
+            2015
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2015,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MKZ",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2012
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2012,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nautilus",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            2023
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Navigator",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2006,
+            2017
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Town Car",
+      "generations": []
+    }
+  ]
+}

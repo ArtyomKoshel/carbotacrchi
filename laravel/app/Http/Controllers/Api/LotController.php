@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Catalog\CatalogPlaces;
 use App\Http\Controllers\Controller;
 use App\Models\LotInspection;
 use App\Services\OptionEnricher;
@@ -74,6 +75,7 @@ class LotController extends Controller
         }
         $lot = $provider->normalize((array) $row)->toArray();
         $lot['isActive'] = (bool) $row->is_active;
+        $lot['catalog'] = app(CatalogPlaces::class)->of([$lotId])[$lotId] ?? null;
 
         return $this->enricher->enrichLots([$lot])[0];
     }

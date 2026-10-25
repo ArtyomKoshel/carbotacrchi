@@ -1,0 +1,152 @@
+{
+ "make": "Maserati",
+ "engine": {
+  "words": {
+   "S": null,
+   "V6": null,
+   "V8": null,
+   "Diesel": "diesel",
+   "GTS": null,
+   "Trofeo": null,
+   "MC": null,
+   "Folgore": "electric"
+  },
+  "drives": {
+   "Q4": "awd",
+   "AWD": "awd"
+  }
+ },
+ "complectations": [
+  "GranSport",
+  "GranLusso",
+  "Sport",
+  "Luxury",
+  "Premium",
+  "Modena",
+  "GT",
+  "Type P",
+  "Base"
+ ],
+ "editions": [
+  "F Tributo"
+ ],
+ "models": [
+  {
+   "name": "Ghibli",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "M157",
+     "number": 3,
+     "years": [
+      2013,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Levante",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "M161",
+     "number": 1,
+     "years": [
+      2016,
+      2024
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Quattroporte",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "M156",
+     "number": 6,
+     "years": [
+      2013,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "GranTurismo",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "M145",
+     "number": 1,
+     "years": [
+      2007,
+      2019
+     ]
+    },
+    {
+     "code": "M189",
+     "number": 2,
+     "years": [
+      2023,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "GranCabrio",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "M145",
+     "number": 1,
+     "years": [
+      2010,
+      2019
+     ]
+    },
+    {
+     "code": "M189",
+     "number": 2,
+     "years": [
+      2024,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Grecale",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "M182",
+     "number": 1,
+     "years": [
+      2022,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "MC20",
+   "body": "coupe",
+   "bodies": {
+    "Cielo": "convertible"
+   },
+   "generations": [
+    {
+     "code": "M240",
+     "number": 1,
+     "years": [
+      2020,
+      null
+     ]
+    }
+   ]
+  }
+ ]
+}

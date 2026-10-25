@@ -1,0 +1,106 @@
+{
+  "make": "Tesla",
+  "engine": {
+    "words": {
+      "Long": null,
+      "Range": null,
+      "Standard": null,
+      "Plus": null,
+      "Performance": null,
+      "Plaid": null,
+      "Cyberbeast": null,
+      "L": null
+    },
+    "codes": [
+      {
+        "re": "^P?\\d{2,3}D$"
+      }
+    ],
+    "drives": {
+      "AWD": "awd",
+      "RWD": "rwd"
+    }
+  },
+  "complectations": [
+    "Premium"
+  ],
+  "editions": [
+    "Launch Edition"
+  ],
+  "models": [
+    {
+      "name": "Cybertruck",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Model 3",
+      "body": "sedan",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Model S",
+      "body": "liftback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2012,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Model X",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2015,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Model Y",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

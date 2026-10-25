@@ -1,0 +1,14 @@
+{
+  "name": "carbot-e2e",
+  "private": true,
+  "description": "UI tests of the mini app and the admin against a local server on the prod dump (see README.md)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

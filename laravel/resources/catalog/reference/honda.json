@@ -1,0 +1,531 @@
+{
+  "make": "Honda",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "EX-L",
+    "EX",
+    "LX",
+    "Touring",
+    "Sport",
+    "Elite",
+    "Type R",
+    "Euro",
+    "Si",
+    "STD"
+  ],
+  "editions": [
+    "Black Edition"
+  ],
+  "models": [
+    {
+      "name": "Accord",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            1985,
+            1989
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            1989,
+            1993
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            1993,
+            1997
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            1997,
+            2002
+          ]
+        },
+        {
+          "code": "VII",
+          "number": 7,
+          "years": [
+            2002,
+            2008
+          ]
+        },
+        {
+          "code": "VIII",
+          "number": 8,
+          "years": [
+            2007,
+            2012
+          ]
+        },
+        {
+          "code": "IX",
+          "number": 9,
+          "years": [
+            2012,
+            2017
+          ]
+        },
+        {
+          "code": "X",
+          "number": 10,
+          "years": [
+            2017,
+            2022
+          ]
+        },
+        {
+          "code": "XI",
+          "number": 11,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Beat",
+      "generations": []
+    },
+    {
+      "name": "CR-V",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1995,
+            2001
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2001,
+            2006
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2006,
+            2011
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2011,
+            2016
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2016,
+            2022
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CR-Z",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2010,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Civic",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            1983,
+            1987
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            1987,
+            1991
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            1991,
+            1995
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            1995,
+            2000
+          ],
+          "aliases": [
+            "EK9"
+          ]
+        },
+        {
+          "code": "VII",
+          "number": 7,
+          "years": [
+            2000,
+            2005
+          ],
+          "aliases": [
+            "EP3"
+          ]
+        },
+        {
+          "code": "VIII",
+          "number": 8,
+          "years": [
+            2005,
+            2011
+          ],
+          "aliases": [
+            "FD2/FN2"
+          ]
+        },
+        {
+          "code": "IX",
+          "number": 9,
+          "years": [
+            2011,
+            2015
+          ],
+          "aliases": [
+            "FK2"
+          ]
+        },
+        {
+          "code": "X",
+          "number": 10,
+          "years": [
+            2015,
+            2021
+          ],
+          "aliases": [
+            "FK8"
+          ]
+        },
+        {
+          "code": "XI",
+          "number": 11,
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crossroad",
+      "generations": []
+    },
+    {
+      "name": "Crosstour",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2009,
+            2015
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Element",
+      "generations": []
+    },
+    {
+      "name": "Fit",
+      "generations": []
+    },
+    {
+      "name": "Fit Aria",
+      "generations": []
+    },
+    {
+      "name": "Freed",
+      "generations": []
+    },
+    {
+      "name": "HR-V",
+      "body": "suv",
+      "generations": []
+    },
+    {
+      "name": "Insight",
+      "generations": []
+    },
+    {
+      "name": "Inspire",
+      "generations": []
+    },
+    {
+      "name": "Integra",
+      "generations": []
+    },
+    {
+      "name": "Legend",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2004,
+            2012
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2014,
+            2021
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Life",
+      "generations": []
+    },
+    {
+      "name": "N-BOX",
+      "generations": []
+    },
+    {
+      "name": "N-ONE",
+      "generations": []
+    },
+    {
+      "name": "N-WGN",
+      "generations": []
+    },
+    {
+      "name": "Odyssey",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1994,
+            1998
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            1998,
+            2004
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2004,
+            2010
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2010,
+            2017
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Passport",
+      "generations": []
+    },
+    {
+      "name": "Pilot",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2002,
+            2008
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2008,
+            2015
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2015,
+            2022
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prelude",
+      "generations": []
+    },
+    {
+      "name": "Ridgeline",
+      "generations": []
+    },
+    {
+      "name": "S2000",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1999,
+            2009
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S660",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2015,
+            2022
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stepwgn",
+      "generations": []
+    },
+    {
+      "name": "Stream",
+      "generations": []
+    },
+    {
+      "name": "That's",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2002,
+            2007
+          ]
+        }
+      ]
+    },
+    {
+      "name": "del Sol",
+      "generations": []
+    }
+  ]
+}

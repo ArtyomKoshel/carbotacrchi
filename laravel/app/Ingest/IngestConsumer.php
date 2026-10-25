@@ -2,8 +2,13 @@
 
 namespace App\Ingest;
 
+use App\Catalog\CatalogLinker;
+use App\Catalog\CatalogStore;
+use App\Catalog\Encar\EncarMatcher;
+use App\Catalog\Reference;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 
 /**
@@ -123,7 +128,7 @@ final class IngestConsumer
     private function apply(array $lots, string $now, IngestResult $result): void
     {
         $stored = $this->core->table('lots')->whereIn('id', array_keys($lots))
-            ->get(array_values(array_unique(['id', 'ingest_hash', ...LotChangeDetector::TRACKED, ...LotUpsert::LOT_KEEP])))
+            ->get(array_values(array_unique(['id', 'ingest_hash', ...LotChangeDetector::TRACKED])))
             ->keyBy('id');
         $rules = $this->rules($lots);
 
@@ -160,12 +165,6 @@ final class IngestConsumer
                 continue;
             }
 
-            // What the upsert will keep, so lot_changes reports only what really changes.
-            foreach (LotUpsert::LOT_KEEP as $c) {
-                if ($old !== null && $old->{$c} !== null) {
-                    $row[$c] = $old->{$c};
-                }
-            }
             $row['is_active'] = $passed ? 1 : 0;
             $row['history_checked_at'] = LotRowMapper::historyCheckedAt($lot);
             $row['ingest_hash'] = $record->content_hash;
@@ -209,6 +208,23 @@ final class IngestConsumer
         }
         $this->writeSkipLog($skipLog);
         $result->changes += count($changes);
+        $this->linkCatalog(array_column($upserts, 'id'));
+    }
+
+    /**
+     * Written lots take their place in the reference catalog. A failure here must not hold
+     * the buffer back: the lots stay unlinked until the next catalog:remap.
+     *
+     * @param list<string> $ids
+     */
+    private function linkCatalog(array $ids): void
+    {
+        try {
+            $store = new CatalogStore(app(Reference::class), $this->core);
+            (new CatalogLinker(app(EncarMatcher::class), $store, $this->core))->link($ids);
+        } catch (\Throwable $e) {
+            Log::warning('[ingest] catalog link failed: ' . $e->getMessage(), ['lots' => count($ids)]);
+        }
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Catalog\CatalogPlaces;
 use App\Models\BotFilterSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -162,12 +163,19 @@ class TelegramBot
 
         $lines = [];
 
+        // names from the reference catalog; Encar's own Korean ones only for a lot not on it
+        $place = array_key_exists('catalog', $lot)
+            ? $lot['catalog']
+            : (isset($lot['id']) ? (app(CatalogPlaces::class)->of([(string) $lot['id']])[(string) $lot['id']] ?? null) : null);
+        $make = $place['make'] ?? ($lot['make'] ?? null);
+        $model = $place ? trim(($place['model'] ?? '') . ' ' . ($place['modification'] ?? '')) : ($lot['model'] ?? null);
+
         $titleParts = [];
-        if (in_array('make', $cardFields, true) && !empty($lot['make'])) {
-            $titleParts[] = htmlspecialchars((string) $lot['make']);
+        if (in_array('make', $cardFields, true) && !empty($make)) {
+            $titleParts[] = htmlspecialchars((string) $make);
         }
-        if (in_array('model', $cardFields, true) && !empty($lot['model'])) {
-            $titleParts[] = htmlspecialchars((string) $lot['model']);
+        if (in_array('model', $cardFields, true) && !empty($model)) {
+            $titleParts[] = htmlspecialchars((string) $model);
         }
         if (in_array('year', $cardFields, true) && !empty($lot['year'])) {
             $titleParts[] = (string) ((int) $lot['year']);
@@ -225,12 +233,12 @@ class TelegramBot
         if (in_array('body_type', $cardFields, true) && !empty($lot['bodyType'])) {
             $specs[] = htmlspecialchars((string) $lot['bodyType']);
         }
-        if (in_array('trim', $cardFields, true) && !empty($lot['trim'])) {
-            $trimLabel = !empty($lot['trimEn']) ? $lot['trimEn'] : $lot['trim'];
+        $trimLabel = $place ? ($place['complectation'] ?? null) : ($lot['trim'] ?? null);
+        if (in_array('trim', $cardFields, true) && !empty($trimLabel)) {
             $specs[] = '🏷 ' . htmlspecialchars((string) $trimLabel);
         }
-        if (in_array('generation', $cardFields, true) && !empty($lot['generation'])) {
-            $specs[] = '🧬 ' . htmlspecialchars((string) $lot['generation']);
+        if (in_array('generation', $cardFields, true) && !empty($place['generation'])) {
+            $specs[] = '🧬 ' . htmlspecialchars((string) $place['generation']);
         }
         if ($specs) {
             $lines[] = implode(' · ', $specs);

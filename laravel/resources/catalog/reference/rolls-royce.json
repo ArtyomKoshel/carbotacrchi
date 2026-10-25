@@ -1,0 +1,116 @@
+{
+ "make": "Rolls-Royce",
+ "engine": {
+  "words": {
+   "V12": null,
+   "EWB": null
+  }
+ },
+ "complectations": [
+  "Black Badge"
+ ],
+ "editions": [],
+ "models": [
+  {
+   "name": "Cullinan",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "RR31",
+     "number": 1,
+     "years": [
+      2018,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Ghost",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "RR4",
+     "number": 1,
+     "years": [
+      2009,
+      2020
+     ]
+    },
+    {
+     "code": "RR21",
+     "number": 2,
+     "years": [
+      2020,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Phantom",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "RR1",
+     "number": 7,
+     "years": [
+      2003,
+      2016
+     ]
+    },
+    {
+     "code": "RR11",
+     "number": 8,
+     "years": [
+      2017,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Spectre",
+   "body": "coupe",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "RR25",
+     "number": 1,
+     "years": [
+      2023,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Wraith",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "RR5",
+     "number": 1,
+     "years": [
+      2013,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Dawn",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "RR6",
+     "number": 1,
+     "years": [
+      2015,
+      2023
+     ]
+    }
+   ]
+  }
+ ]
+}

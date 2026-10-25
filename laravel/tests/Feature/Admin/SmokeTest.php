@@ -81,7 +81,7 @@ class SmokeTest extends AdminTestCase
 
         // a floor, not a list: losing a page should be noticed
         $this->assertGreaterThanOrEqual(15, count($urls));
-        foreach (['/admin', '/admin/lots', '/admin/platforms/encar', '/admin/translations', '/admin/logs'] as $path) {
+        foreach (['/admin', '/admin/lots', '/admin/platforms/encar', '/admin/logs'] as $path) {
             $this->assertContains(url($path), $urls);
         }
     }

@@ -1,0 +1,287 @@
+{
+ "make": "Peugeot",
+ "engine": {
+  "words": {
+   "PureTech": "gasoline",
+   "BlueHDi": "diesel",
+   "e-HDi": "diesel",
+   "HDi": "diesel",
+   "Hybrid": "hybrid",
+   "EV": "electric",
+   "Turbo": null
+  }
+ },
+ "complectations": [
+  "GT Line",
+  "GT Pack",
+  "GT",
+  "Allure GC",
+  "Allure",
+  "Feline L",
+  "Feline S",
+  "Feline",
+  "Active",
+  "Sportium",
+  "Luxe Pack",
+  "Eco"
+ ],
+ "editions": [],
+ "models": [
+  {
+   "name": "208",
+   "body": "hatchback",
+   "generations": [
+    {
+     "code": "A9",
+     "number": 1,
+     "years": [
+      2012,
+      2019
+     ]
+    }
+   ]
+  },
+  {
+   "name": "e-208",
+   "body": "hatchback",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "P21",
+     "number": 2,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "2008",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "A94",
+     "number": 1,
+     "years": [
+      2013,
+      2019
+     ]
+    },
+    {
+     "code": "P24",
+     "number": 2,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "e-2008",
+   "body": "suv",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "P24",
+     "number": 2,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "3008",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "T84",
+     "number": 1,
+     "years": [
+      2009,
+      2016
+     ]
+    },
+    {
+     "code": "P84",
+     "number": 2,
+     "years": [
+      2016,
+      2023
+     ]
+    },
+    {
+     "code": "P64",
+     "number": 3,
+     "years": [
+      2024,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "308",
+   "body": "hatchback",
+   "generations": [
+    {
+     "code": "T7",
+     "number": 1,
+     "years": [
+      2007,
+      2013
+     ]
+    },
+    {
+     "code": "T9",
+     "number": 2,
+     "years": [
+      2013,
+      2021
+     ]
+    },
+    {
+     "code": "P5",
+     "number": 3,
+     "years": [
+      2021,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "308SW",
+   "body": "wagon",
+   "generations": [
+    {
+     "code": "T7",
+     "number": 1,
+     "years": [
+      2008,
+      2013
+     ]
+    },
+    {
+     "code": "T9",
+     "number": 2,
+     "years": [
+      2014,
+      2021
+     ]
+    }
+   ]
+  },
+  {
+   "name": "308CC",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "T7",
+     "number": 1,
+     "years": [
+      2009,
+      2015
+     ]
+    }
+   ]
+  },
+  {
+   "name": "408",
+   "body": "liftback",
+   "generations": [
+    {
+     "code": "P54",
+     "number": 2,
+     "years": [
+      2022,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "5008",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "P87",
+     "number": 2,
+     "years": [
+      2017,
+      2023
+     ]
+    },
+    {
+     "code": "P74",
+     "number": 3,
+     "years": [
+      2024,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "508",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "W2",
+     "number": 1,
+     "years": [
+      2010,
+      2018
+     ]
+    },
+    {
+     "code": "R8",
+     "number": 2,
+     "years": [
+      2018,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "508SW",
+   "body": "wagon",
+   "generations": [
+    {
+     "code": "W2",
+     "number": 1,
+     "years": [
+      2011,
+      2018
+     ]
+    },
+    {
+     "code": "R8",
+     "number": 2,
+     "years": [
+      2018,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "508 RXH",
+   "body": "wagon",
+   "generations": [
+    {
+     "code": "W2",
+     "number": 1,
+     "years": [
+      2012,
+      2018
+     ]
+    }
+   ]
+  }
+ ]
+}

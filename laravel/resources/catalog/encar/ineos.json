@@ -1,0 +1,17 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "이네오스",
+  "names": {
+    "그레나디어": "Grenadier"
+  },
+  "encar_models": {
+    "그레나디어": {
+      "model": "Grenadier"
+    }
+  },
+  "badge_groups": {
+    "그레나디어": {
+      "3.0 스테이션 왜건": "가솔린 3000cc"
+    }
+  }
+}

@@ -59,6 +59,26 @@ const BrowserAuth = (() => {
     return !!_chatId;
   }
 
+  /** A page served from this computer: the local sign-in (APP_ENV=local, routes/dev.php) is offered. */
+  function isLocal() {
+    return ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || location.hostname.endsWith('.localhost');
+  }
+
+  /** Local sign-in as the test user, without Telegram: a token the server links at once. */
+  async function devLogin() {
+    _setBarState('loading');
+    try {
+      const data = await API.browserAuthDevLogin();
+      if (!data?.token || !data?.chat_id) throw new Error('Bad server response');
+      _saveToken(data.token);
+      _saveLinked(data.chat_id, { first_name: data.first_name || '', username: data.username || '' });
+      _setBarState('linked');
+      if (typeof _onLinked === 'function') _onLinked(data.chat_id);
+    } catch (e) {
+      _setBarState('error', e.message);
+    }
+  }
+
   function getChatId() {
     return _chatId || 0;
   }
@@ -151,6 +171,7 @@ const BrowserAuth = (() => {
       if (btn.dataset.action === 'link')   startLinking();
       if (btn.dataset.action === 'retry')  startLinking();
       if (btn.dataset.action === 'unlink') _unlink();
+      if (btn.dataset.action === 'dev-login') devLogin();
     });
 
     if (isLinked()) {
@@ -167,7 +188,7 @@ const BrowserAuth = (() => {
         return `
           
           <span class="blb-text">Войдите через Telegram, чтобы искать и сохранять</span>
-          <button class="blb-btn" data-action="link">Войти через Telegram</button>`;
+          <button class="blb-btn" data-action="link">Войти через Telegram</button>${_devButton()}`;
 
       case 'loading':
         return `
@@ -198,11 +219,15 @@ const BrowserAuth = (() => {
         return `
           
           <span class="blb-text">Ошибка привязки</span>
-          <button class="blb-btn" data-action="retry">Повторить</button>`;
+          <button class="blb-btn" data-action="retry">Повторить</button>${_devButton()}`;
 
       default:
         return '';
     }
+  }
+
+  function _devButton() {
+    return isLocal() ? `<button class="blb-btn" data-action="dev-login" data-testid="dev-login">Войти локально</button>` : '';
   }
 
   function _setBarState(state) {
@@ -235,6 +260,7 @@ const BrowserAuth = (() => {
       <b>Нужен вход через Telegram</b>
       <span>Поиск, избранное и подписки открываются после входа. Нажмите кнопку, затем Start в боте — страница обновится сама.</span>
       <button class="btn btn--primary" type="button" onclick="BrowserAuth.startLinking()">Войти через Telegram</button>
+      ${isLocal() ? '<button class="btn" type="button" onclick="BrowserAuth.devLogin()">Войти локально</button>' : ''}
     </div>`;
   }
 
@@ -243,5 +269,5 @@ const BrowserAuth = (() => {
       c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  return { init, isBrowserMode, isLinked, getChatId, getUser, startLinking, authRequiredHtml };
+  return { init, isBrowserMode, isLinked, getChatId, getUser, startLinking, devLogin, authRequiredHtml };
 })();

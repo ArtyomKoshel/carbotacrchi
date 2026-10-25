@@ -1,0 +1,816 @@
+{
+  "make": "Renault Korea",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "LPI": "lpg",
+      "LPe": "lpg",
+      "HEV": "hybrid",
+      "PHEV": "hybrid",
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "E-TECH": "hybrid",
+      "EV": "electric",
+      "Electric": "electric",
+      "Electrified": "electric",
+      "Turbo": null,
+      "GDI": null,
+      "GDi": null,
+      "T-GDI": null,
+      "T-GDi": null,
+      "MPI": null,
+      "MPi": null,
+      "CRDi": null,
+      "VGT": null,
+      "e-VGT": null,
+      "TCe": null,
+      "GDe": null,
+      "GTe": null,
+      "dCi": null,
+      "VVT": null,
+      "Long": null,
+      "Range": null,
+      "Standard": null,
+      "CVVL": null,
+      "Performance": null,
+      "Long Range": null,
+      "CVT": null,
+      "e-S/C": null,
+      "LWB": null,
+      "T": null,
+      "V6": null,
+      "V8": null,
+      "LPLi": "lpg",
+      "Bi-Fuel": "lpg",
+      "Z.E.": {
+        "fuel": "electric",
+        "code": false
+      },
+      "Plug-in": "hybrid",
+      "DCT": null,
+      "LPGi": "lpg",
+      "FCEV": "hydrogen",
+      "D": null,
+      "EL240H": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dT$"
+      },
+      {
+        "re": "^[A-Z]{1,2}\\d{3}$"
+      },
+      {
+        "re": "^L\\d\\.\\d$",
+        "fuel": "lpg"
+      },
+      {
+        "re": "^[A-Z]\\d{2}$"
+      },
+      {
+        "re": "^\\d{3}$"
+      },
+      {
+        "re": "^\\d\\.\\dD$",
+        "fuel": "diesel"
+      },
+      {
+        "re": "^\\d{3}h$",
+        "fuel": "hybrid"
+      }
+    ],
+    "drives": {
+      "4WD": "4wd",
+      "AWD": "awd",
+      "e-AWD": "awd",
+      "HTRAC": "awd",
+      "2WD": null,
+      "4TRONIC": "awd"
+    }
+  },
+  "complectations": [
+    "Best Selection Ⅰ",
+    "Best Selection Ⅱ",
+    "Platinum Ⅱ",
+    "Signature X Line",
+    "Esprit Alpine",
+    "Safety Pack",
+    "Black Ink",
+    "Le Blanc",
+    "The Black",
+    "Value Plus",
+    "Premium Plus",
+    "X-Line",
+    "X Line",
+    "N Line",
+    "GT Line",
+    "Prestige",
+    "Modern",
+    "Noblesse",
+    "Signature",
+    "Exclusive",
+    "Premium",
+    "Calligraphy",
+    "Inspiration",
+    "Smart",
+    "Special",
+    "Luxury",
+    "Trendy",
+    "Plus",
+    "Masters",
+    "Gravity",
+    "Choice",
+    "Value",
+    "President",
+    "Style",
+    "Basic",
+    "Upper",
+    "Top",
+    "Earth",
+    "Air",
+    "Deluxe",
+    "Premier",
+    "Premiere",
+    "Platinum",
+    "Master",
+    "Best Selection",
+    "Adventure",
+    "Elite",
+    "Safety",
+    "Club",
+    "Coolmen",
+    "Core",
+    "Family",
+    "Expedition",
+    "Fashion",
+    "Supreme",
+    "Pop",
+    "Iconic",
+    "Intelligent",
+    "Wild",
+    "Flux",
+    "Inspire",
+    "Art",
+    "Tech",
+    "Prime",
+    "Professional",
+    "Dynamic",
+    "Extreme",
+    "Midnight",
+    "Redline",
+    "Millennial",
+    "Business",
+    "Mobility",
+    "Honors",
+    "Life",
+    "Black",
+    "Noble",
+    "Trend",
+    "Design",
+    "Cross",
+    "Grand",
+    "Active",
+    "Sport",
+    "High",
+    "RE",
+    "LE",
+    "SE",
+    "XE",
+    "PE",
+    "T5",
+    "T7",
+    "V1",
+    "V3",
+    "V5",
+    "V7",
+    "VX",
+    "IX",
+    "CVX",
+    "LT",
+    "LTZ",
+    "LS",
+    "RS",
+    "ACTIV",
+    "Z71-X",
+    "H Pick",
+    "Hi-pass",
+    "Navi",
+    "Navigation",
+    "Sunroof",
+    "Package",
+    "5-link",
+    "N",
+    "S",
+    "GT",
+    "The Essential",
+    "Essential",
+    "Tourer",
+    "Lounge",
+    "Limousine",
+    "High Limousine",
+    "The Iconic",
+    "VIP",
+    "E-Value+",
+    "Celebrity",
+    "Collection",
+    "The Spec",
+    "Spec",
+    "PYL",
+    "Business 1",
+    "Business 2",
+    "Q",
+    "Urban",
+    "Light",
+    "Avenue",
+    "Fever",
+    "Care Plus",
+    "Selection",
+    "Xtreme Selection",
+    "Wit",
+    "Blue Saver",
+    "Unique",
+    "GT-R",
+    "HVX",
+    "VXL",
+    "300VXL",
+    "VIP Pack",
+    "PACK",
+    "D Spec",
+    "Xtreme",
+    "X-Pro",
+    "High Roof",
+    "Executive",
+    "Minus",
+    "Heritage",
+    "Majesty",
+    "Gear",
+    "Gear Plus",
+    "Outdoor",
+    "C5",
+    "C7",
+    "CX5",
+    "CX7",
+    "TX",
+    "LX",
+    "RX",
+    "RX7",
+    "A3",
+    "S7",
+    "S9",
+    "E5",
+    "E7",
+    "MX",
+    "X",
+    "SX",
+    "Platinum Ⅰ",
+    "Platinum Ⅲ",
+    "Masters Ⅰ",
+    "Masters Ⅱ",
+    "Masters Ⅲ",
+    "A Type",
+    "E Type",
+    "Lady",
+    "Quantum",
+    "Ace",
+    "TLX",
+    "W",
+    "Magic Space",
+    "GLX",
+    "Advanced",
+    "Finest",
+    "Perfect Black",
+    "DLX",
+    "Coach",
+    "Super",
+    "LTZ+",
+    "LS+",
+    "LT+",
+    "L",
+    "Leather",
+    "Eco",
+    "High Country",
+    "Convenience Pack",
+    "Sport Bar",
+    "Extreme-X",
+    "Deluxe Pack",
+    "SS",
+    "Intens",
+    "Classic",
+    "Feel",
+    "Techno",
+    "Panoramic",
+    "Quest",
+    "e-Shifter",
+    "Noir",
+    "Esprit Alpine 1955",
+    "Delight",
+    "R-Plus",
+    "C3",
+    "S8",
+    "TV5",
+    "TV7",
+    "M7",
+    "M9",
+    "A1",
+    "A7",
+    "Black Edge",
+    "Pioneer",
+    "Leaf",
+    "Driving Gear",
+    "Gear Ⅱ",
+    "Long Deck",
+    "Chateau",
+    "Upbeat",
+    "Fantastic",
+    "Advance",
+    "Mania",
+    "Vision",
+    "Ultimate",
+    "STD",
+    "CVS",
+    "KX",
+    "DX",
+    "AX",
+    "A5",
+    "M5",
+    "TL7",
+    "RT",
+    "SVIP",
+    "VVIP",
+    "RVIP",
+    "300VX",
+    "380VXL",
+    "ZL1",
+    "RE35",
+    "LE35",
+    "LE20",
+    "I",
+    "E-Lite",
+    "Edge-Up",
+    "Passenger",
+    "Wave",
+    "Black Wheel",
+    "Escapade",
+    "Summit",
+    "Dark Knight",
+    "Gear Plus Ⅰ",
+    "S/S",
+    "Convenience",
+    "Attraction",
+    "Private",
+    "Economy",
+    "Regular",
+    "Styling Gear",
+    "Tour",
+    "White",
+    "Run",
+    "Blade",
+    "Side Rail",
+    "Original",
+    "Red Zone",
+    "Brown Zone",
+    "Green Zone",
+    "Volcano Red",
+    "Red",
+    "Eco Dynamics",
+    "Easy Move",
+    "Zen",
+    "Panorama",
+    "Star",
+    "Summer",
+    "Leisure Pack",
+    "Libig",
+    "City Run",
+    "C Type",
+    "Standard LED Pack",
+    "City",
+    "RE25",
+    "TUIX",
+    "Crayon",
+    "GX"
+  ],
+  "editions": [
+    "White Edition",
+    "Outdoor Edition",
+    "Gear Edition",
+    "Limited",
+    "Special Vehicle",
+    "Other Special Vehicle",
+    "Iron Man Edition",
+    "Ten Million Limited",
+    "Dump",
+    "Box Truck",
+    "Wing Body",
+    "Refrigerated",
+    "1 Million",
+    "Deluxe Taxi",
+    "Coachbuilt",
+    "Ambulance",
+    "Camper",
+    "The Black Edition",
+    "School Bus",
+    "Rental",
+    "Disabled",
+    "Commercial",
+    "Taxi",
+    "Driving School",
+    "Eurasia Edition",
+    "Finest Edition",
+    "Dynamic Edition",
+    "Limited Edition",
+    "Design Edition",
+    "Black Edition",
+    "X Edition",
+    "Special Edition",
+    "First Edition",
+    "Edition",
+    "Number One Edition",
+    "30th Anniversary Edition",
+    "60th Edition",
+    "Tribute Edition",
+    "Dream Edition",
+    "World Cup Edition",
+    "MyFit Edition",
+    "RedFit Edition",
+    "City Pop Edition",
+    "Edition Paris",
+    "Converted",
+    "Export",
+    "Wheelchair Lift",
+    "Long-Cargo",
+    "Folding Box Truck",
+    "Power Gate",
+    "Mobile Shop",
+    "Mobile Fuel Truck",
+    "Mobile Office",
+    "Long Body",
+    "Acro Edition",
+    "Samba Edition",
+    "Bold Edition",
+    "Graffiti Edition",
+    "My Trip Edition",
+    "Edge Edition",
+    "Red Edition",
+    "Tattoo Edition",
+    "Bow Edition",
+    "Trunk"
+  ],
+  "models": [
+    {
+      "name": "Arkana",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2024,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Captur",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2020,
+            2021
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Clio",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2018,
+            2019
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Filante",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2026,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Grand Koleos",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2024,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Master",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2018,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "QM3",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2013,
+            2017
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New",
+          "years": [
+            2017,
+            2019
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "QM5",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2007,
+            2011
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New",
+          "years": [
+            2011,
+            2014
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · Neo",
+          "years": [
+            2014,
+            2016
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "QM6",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2016,
+            2019
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The New",
+          "years": [
+            2019,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "SM3",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2002,
+            2005
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New Generation",
+          "years": [
+            2005,
+            2011
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            2009,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2 · Neo",
+          "years": [
+            2014,
+            2019
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "SM5",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            1998,
+            2005
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2",
+          "years": [
+            2005,
+            2007
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 2 · New Impression",
+          "years": [
+            2007,
+            2010
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 3",
+          "years": [
+            2010,
+            2012
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 3 · New Platinum",
+          "years": [
+            2012,
+            2015
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "Gen 3 · Nova",
+          "years": [
+            2015,
+            2019
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "SM6",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2016,
+            2020
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · The New",
+          "years": [
+            2020,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "SM7",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2004,
+            2008
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "I · New Art",
+          "years": [
+            2008,
+            2011
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New",
+          "years": [
+            2011,
+            2014
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "All New · Nova",
+          "years": [
+            2014,
+            2019
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Scenic",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2025,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Twizy",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2017,
+            2022
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "XM3",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2020,
+            2024
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Zoe",
+      "generations": [
+        {
+          "code": "I",
+          "years": [
+            2020,
+            2022
+          ],
+          "source": "encar"
+        }
+      ]
+    }
+  ]
+}

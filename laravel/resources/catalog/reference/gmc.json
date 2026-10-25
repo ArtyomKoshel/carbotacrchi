@@ -1,0 +1,144 @@
+{
+  "make": "GMC",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "1500": null,
+      "2500HD": null,
+      "3500HD": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dT$"
+      }
+    ],
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null,
+      "e4WD": "4wd"
+    }
+  },
+  "complectations": [
+    "Denali-X",
+    "Denali",
+    "AT4"
+  ],
+  "editions": [
+    "Harley-Davidson Edition",
+    "Scarlet Night Edition"
+  ],
+  "models": [
+    {
+      "name": "Acadia",
+      "generations": []
+    },
+    {
+      "name": "Canyon",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2004,
+            2012
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2014,
+            2022
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hummer EV",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jimmy",
+      "generations": []
+    },
+    {
+      "name": "Safari",
+      "generations": []
+    },
+    {
+      "name": "Savana",
+      "body": "van",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1996,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sierra",
+      "generations": []
+    },
+    {
+      "name": "Sonoma",
+      "generations": []
+    },
+    {
+      "name": "Terrain",
+      "generations": []
+    },
+    {
+      "name": "Vandura",
+      "generations": []
+    },
+    {
+      "name": "Yukon",
+      "body": "suv",
+      "generations": []
+    }
+  ]
+}

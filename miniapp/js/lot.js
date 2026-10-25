@@ -5,6 +5,24 @@
  */
 const LotView = (() => {
   const OPTION_GROUPS = { exterior: 'Экстерьер', safety: 'Безопасность', convenience: 'Комфорт', interior: 'Салон' };
+  // Encar option code → a Material Symbols glyph; every name must be in the font link of index.html.
+  // Encar's own option pictures are not reachable outside Korea.
+  const OPTION_ICONS = {
+    '003': 'album', '004': 'tv', '005': 'navigation', '015': 'settings_remote', '023': 'thermostat', '054': 'live_tv',
+    '057': 'vpn_key', '068': 'speed', '071': 'cable', '072': 'usb', '079': 'radar', '081': 'water_drop', '092': 'blinds',
+    '093': 'wb_shade', '094': 'local_parking', '095': 'visibility', '096': 'bluetooth', '097': 'brightness_auto',
+    '006': 'lock', '007': 'window', '008': 'tune', '010': 'wb_sunny', '017': 'trip_origin', '024': 'flip', '029': 'highlight',
+    '030': 'brightness_6', '031': 'gamepad', '059': 'unarchive', '062': 'luggage', '074': 'toll', '075': 'emoji_objects',
+    '080': 'sensor_door', '082': 'local_fire_department', '083': 'open_with', '084': 'swap_vert',
+    '014': 'airline_seat_recline_normal', '021': 'airline_seat_recline_extra', '022': 'local_fire_department', '034': 'air',
+    '035': 'airline_seat_recline_extra', '051': 'memory', '063': 'local_fire_department', '077': 'air', '078': 'memory',
+    '089': 'event_seat', '090': 'air', '091': 'spa',
+    '001': 'security', '002': 'height', '019': 'security', '020': 'shield', '026': 'shield', '027': 'shield',
+    '032': 'wifi_tethering', '033': 'compress', '055': 'security', '056': 'shield', '058': 'camera_rear',
+    '085': 'wifi_tethering', '086': 'visibility_off', '087': '360', '088': 'add_road',
+  };
+  const GROUP_ICONS = { exterior: 'directions_car', safety: 'security', convenience: 'tune', interior: 'event_seat' };
+  const optionIcon = o => OPTION_ICONS[o.code] ?? GROUP_ICONS[o.category] ?? 'check';
 
   function gallery(lot) {
     const photos = Fmt.photos(lot);
@@ -52,15 +70,15 @@ const LotView = (() => {
     `<div class="${cls?.row ?? ''}"><dt>${k}</dt><dd class="${cls?.value ?? ''}">${v}</dd></div>`).join('')}</dl>`;
   const yesNo = (v, yes = 'было', no = 'нет') => v === true ? [yes, 'bad'] : v === false ? [no, 'ok'] : null;
 
-  function historyBlock(lot, inspection, q) {
+  function historyBlock(lot, inspection, asked) {
     const rows = [];
     const add = (label, pair, match) => pair && rows.push([label, Fmt.esc(pair[0]), { value: pair[1], row: match ? 'match' : '' }]);
-    add('ДТП по страховым', yesNo(lot.hasAccident), q?.hasAccident !== undefined);
-    if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: q?.ownersCountMax ? 'match' : '' }]);
-    if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: q?.insuranceCountMax ? 'match' : '' }]);
+    add('ДТП по страховым', yesNo(lot.hasAccident), asked.has('accident'));
+    if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: asked.has('owners') ? 'match' : '' }]);
+    if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: asked.has('insurance') ? 'match' : '' }]);
     if (lot.repairCost) rows.push(['Ремонт по страховым', Fmt.won(lot.repairCost), { value: 'num warn' }]);
-    add('Затопление', yesNo(lot.floodHistory), q?.floodHistory !== undefined);
-    add('Тотал', yesNo(lot.totalLossHistory), q?.totalLossHistory !== undefined);
+    add('Затопление', yesNo(lot.floodHistory), asked.has('flood'));
+    add('Тотал', yesNo(lot.totalLossHistory), asked.has('totalLoss'));
     if (lot.lienStatus) rows.push(['Залог', lot.lienStatus === 'clean' ? 'нет' : 'есть', { value: lot.lienStatus === 'clean' ? 'ok' : 'bad' }]);
     if (lot.seizureStatus) rows.push(['Арест', lot.seizureStatus === 'clean' ? 'нет' : 'есть', { value: lot.seizureStatus === 'clean' ? 'ok' : 'bad' }]);
     if (inspection) {
@@ -76,22 +94,23 @@ const LotView = (() => {
     return `<section class="sect"><h3 class="sect__title">История</h3><div class="card">${kv(rows)}</div></section>`;
   }
 
-  function specsBlock(lot, q) {
+  function specsBlock(lot, asked) {
     const copy = (v, what) => v ? `<span class="num">${Fmt.esc(v)}</span><button class="copy" type="button" data-copy="${Fmt.esc(v)}" aria-label="Скопировать ${what}">копировать</button>` : null;
     const rows = [
-      ['Кузов', Fmt.label('body_type', lot.bodyType), q?.bodyTypes],
-      ['Цвет', Fmt.label('color', lot.color), q?.colors],
+      ['Кузов', Fmt.label('body_type', lot.bodyType), 'body'],
+      ['Цвет', Fmt.label('color', lot.color), 'color'],
       ['Салон', Fmt.label('seat_color', lot.seatColor)],
-      ['Мест', lot.seatCount],
-      ['Комплектация', Fmt.trim(lot), q?.trim],
-      ['Регистрация', lot.firstRegDate ? Fmt.month(lot.firstRegDate) : null],
-      ['Выставлен', lot.listedAt ? Fmt.day(lot.listedAt) : null],
+      ['Мест', lot.seatCount, 'seats'],
+      ['Комплектация', Fmt.trim(lot), ['modification', 'complectation']],
+      ['Регистрация', lot.firstRegDate ? Fmt.month(lot.firstRegDate) : null, 'firstReg'],
+      ['Выставлен', lot.listedAt ? Fmt.day(lot.listedAt) : null, 'listed'],
       ['Новая стоила', lot.retailValue ? Fmt.won(lot.retailValue) : null],
       ['Город', lot.location && lot.location !== 'Korea' ? Fmt.esc(lot.location) : null],
       ['VIN', copy(lot.vin, 'VIN')],
       ['Номер', copy(lot.plateNumber, 'номер')],
     ].filter(([, v]) => v !== null && v !== undefined && v !== '')
-      .map(([k, v, match]) => [k, typeof v === 'string' && v.startsWith('<') ? v : Fmt.esc(v), { row: match && (Array.isArray(match) ? match.length : match) ? 'match' : '' }]);
+      .map(([k, v, field]) => [k, typeof v === 'string' && v.startsWith('<') ? v : Fmt.esc(v),
+        { row: [].concat(field ?? []).some(f => asked.has(f)) ? 'match' : '' }]);
     return rows.length ? `<section class="sect"><h3 class="sect__title">Автомобиль</h3><div class="card">${kv(rows)}</div></section>` : '';
   }
 
@@ -110,7 +129,7 @@ const LotView = (() => {
       <div class="card opts">${order.map(g => `<div class="opts__group"><h4>${OPTION_GROUPS[g] ?? 'Прочее'}</h4>
         <div class="opts__list">${groups.get(g)
           .sort((a, b) => (wanted.has(b.code) ? 1 : 0) - (wanted.has(a.code) ? 1 : 0))
-          .map(o => `<span class="opt${wanted.has(o.code) ? ' opt--match' : ''}">${Fmt.esc(o.name_ru || o.name_en || o.name_kr || o.code)}</span>`).join('')}</div></div>`).join('')}
+          .map(o => `<span class="opt${wanted.has(o.code) ? ' opt--match' : ''}"><span class="material-symbols-outlined opt__icon" aria-hidden="true">${optionIcon(o)}</span>${Fmt.esc(o.name_ru || o.name_en || o.name_kr || o.code)}</span>`).join('')}</div></div>`).join('')}
       </div></section>`;
   }
 
@@ -122,12 +141,14 @@ const LotView = (() => {
    */
   function render(mount, lot, ctx) {
     const q = ctx.query ?? null;
+    const asked = Fmt.matched(q);
+    const any = (...f) => f.some(x => asked.has(x));
     const facts = [
-      [Fmt.num(lot.mileage), 'км'],
-      [Fmt.engine(lot).replace(' л', '') || '—', Fmt.lower(Fmt.label('fuel', lot.fuel)) || 'двигатель'],
+      [Fmt.num(lot.mileage), 'км', any('mileage')],
+      [Fmt.engine(lot).replace(' л', '') || '—', Fmt.lower(Fmt.label('fuel', lot.fuel)) || 'двигатель', any('engine', 'fuel')],
       [lot.transmission === 'automatic' ? 'AT' : lot.transmission === 'manual' ? 'MT' : (Fmt.label('transmission', lot.transmission) || '—'),
-        Fmt.lower(Fmt.label('drive_type', lot.driveType)) || 'привод'],
-      [lot.firstRegDate ? Fmt.month(lot.firstRegDate) : (lot.year || '—'), lot.firstRegDate ? 'регистрация' : 'год'],
+        Fmt.lower(Fmt.label('drive_type', lot.driveType)) || 'привод', any('transmission', 'drive')],
+      [lot.firstRegDate ? Fmt.month(lot.firstRegDate) : (lot.year || '—'), lot.firstRegDate ? 'регистрация' : 'год', any('year', 'firstReg')],
     ];
     mount.innerHTML = `
       ${ctx.closable ? `<div class="lot__bar">
@@ -139,19 +160,19 @@ const LotView = (() => {
       <div class="lot__body">
         <div>
           <h2 class="lot__title">${Fmt.esc(Fmt.title(lot))}</h2>
-          ${Fmt.trim(lot) ? `<div class="lot__trim">${Fmt.esc(Fmt.trim(lot))}</div>` : ''}
-          <div class="lot__price">${Fmt.won(lot.price)}</div>
+          ${Fmt.trim(lot) ? `<div class="lot__trim${any('modification', 'complectation') ? ' match' : ''}">${Fmt.esc(Fmt.trim(lot))}</div>` : ''}
+          <div class="lot__price${any('price') ? ' match' : ''}">${Fmt.won(lot.price)}</div>
           <div class="lot__meta">${Fmt.esc([lot.sourceName, Fmt.city(lot), lot.listedAt ? 'выставлен ' + Fmt.day(lot.listedAt) : ''].filter(Boolean).join(' · '))}</div>
         </div>
         ${lot.lotUrl ? `<button class="btn btn--primary btn--block lot__source" type="button" data-source>${Fmt.icon.out}Открыть объявление на ${Fmt.esc(lot.sourceName || 'площадке')}</button>` : ''}
         ${lot.isActive === false ? '<div class="lot__inactive">Снят с продажи или больше не проходит правила отбора. Данные — на момент последнего обхода.</div>' : ''}
-        <div class="facts">${facts.map(([b, s]) => `<div><b>${Fmt.esc(b)}</b><span>${Fmt.esc(s)}</span></div>`).join('')}</div>
+        <div class="facts">${facts.map(([b, s, m]) => `<div${m ? ' class="match"' : ''}><b>${Fmt.esc(b)}</b><span>${Fmt.esc(s)}</span></div>`).join('')}</div>
         <div class="lot__tools">
           ${ctx.closable ? '' : `<button class="btn fav${ctx.favorite ? ' on' : ''}" type="button" data-fav aria-pressed="${!!ctx.favorite}">${Fmt.icon.heart}<span>${ctx.favorite ? 'В избранном' : 'В избранное'}</span></button>`}
           <button class="btn${ctx.compared ? ' on' : ''}" type="button" data-compare aria-pressed="${!!ctx.compared}">${Fmt.icon.compare}<span>${ctx.compared ? 'В сравнении' : 'Сравнить'}</span></button>
         </div>
-        ${historyBlock(lot, ctx.inspection, q)}
-        ${specsBlock(lot, q)}
+        ${historyBlock(lot, ctx.inspection, asked)}
+        ${specsBlock(lot, asked)}
         ${optionsBlock(lot, q)}
         <div class="lot__actions">
           <button class="btn" type="button" data-share>${Fmt.icon.share}Клиенту</button>

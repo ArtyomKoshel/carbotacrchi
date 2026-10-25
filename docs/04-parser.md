@@ -1,6 +1,6 @@
 # 04 · Парсер (Python)
 
-> [← Database](./03-database.md) · [Index](./index.md) · [Catalog →](./05-catalog.md)
+> [← Database](./03-database.md) · [Index](./index.md) · [API →](./08-api.md)
 
 ---
 
@@ -199,6 +199,9 @@ APScheduler запускает каждый парсер по настроенн
 - нет фильтров `maker` / `max_pages`;
 - `result.coverage_pct >= LOTS_LIFECYCLE_MIN_COVERAGE` (по умолчанию 85);
 - `result.full_run` не равен `false`. Парсер пишет туда своё решение; у старых строк поля нет.
+  Сборщик пишет `false` и тогда, когда сбой (страница поиска или `Count`, не ответившие и после
+  повторов) оборвал сегмент обхода, а повтор в конце прогона его не дошёл. Такие сегменты
+  перечислены в `result.incomplete`: их лоты прогон не видел, и снимать их нельзя.
 
 `coverage_pct` = обработано / `Count` из API Encar. Правило реализовано дважды, держите копии одинаковыми:
 - в парсере: [`parser/lifecycle.py`](../parser/lifecycle.py);
@@ -239,4 +242,4 @@ Purge:
 
 ---
 
-[← Database](./03-database.md) · [Index](./index.md) · [Catalog →](./05-catalog.md)
+[← Database](./03-database.md) · [Index](./index.md) · [API →](./08-api.md)

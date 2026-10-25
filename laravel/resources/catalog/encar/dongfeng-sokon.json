@@ -1,0 +1,45 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "동풍소콘",
+  "names": {
+    "C31": "C31",
+    "C32": "C32",
+    "C35": "C35",
+    "SX6": "SX6",
+    "펜콘 ix5": "Fengon ix5"
+  },
+  "encar_models": {
+    "C31": {
+      "model": "C31"
+    },
+    "C32": {
+      "model": "C32"
+    },
+    "C35": {
+      "model": "C35"
+    },
+    "SX6": {
+      "model": "SX6"
+    },
+    "펜콘 ix5": {
+      "model": "Fengon ix5"
+    }
+  },
+  "badge_groups": {
+    "C31": {
+      "1.5 싱글캡": "가솔린 1500cc",
+      "싱글캡": "전기"
+    },
+    "C35": {
+      "2인승밴 비즈니스": "가솔린 1500cc",
+      "2인승밴 스탠다드": "가솔린 1500cc",
+      "5인승밴 비즈니스": "가솔린 1500cc",
+      "5인승밴 스탠다드": "가솔린 1500cc",
+      "EV 2인승밴": "전기",
+      "EV 4인승밴": "전기"
+    },
+    "펜콘 ix5": {
+      "1.5": "가솔린 1500cc"
+    }
+  }
+}

@@ -8,9 +8,10 @@ up to it before the run counts, or not yet ingested lots would look unseen.
 
 from __future__ import annotations
 
+import json
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -45,6 +46,29 @@ async def load_rules(db: AsyncEngine, core_schema: str) -> RuleEngine:
     async with db.connect() as conn:
         rows = (await conn.execute(text(sql))).mappings()
         return RuleEngine.from_rows([dict(r) for r in rows])
+
+
+async def known_makers(
+    db: AsyncEngine, core_schema: str, source: str, *, exclude: int, runs: int = 5
+) -> list[str]:
+    """Makers the last full runs of a source swept (their checkpoints in parse_jobs, the core's).
+
+    Each run starts from the makers of the runs before it, so a maker once found is not lost
+    when the global pass of a later run does not reach it."""
+    sql = (
+        f"SELECT JSON_KEYS(JSON_EXTRACT(progress, '$.checkpoint.makers')) AS makers"  # noqa: S608
+        f" FROM {qualified(core_schema, 'parse_jobs')}"
+        " WHERE source = :s AND type = 'full' AND id <> :id"
+        " AND JSON_TYPE(JSON_EXTRACT(progress, '$.checkpoint.makers')) = 'OBJECT'"
+        " ORDER BY id DESC LIMIT :n"
+    )
+    async with db.connect() as conn:
+        rows = (await conn.execute(text(sql), {"s": source, "id": exclude, "n": runs})).all()
+    found: set[str] = set()
+    for row in rows:
+        keys = json.loads(row.makers) if isinstance(row.makers, str) else row.makers
+        found.update(str(k) for k in keys or [] if str(k).strip())
+    return sorted(found)
 
 
 async def history_cutoff(
@@ -98,6 +122,7 @@ class RunContext:
     proxy_bytes: Callable[[], int] = lambda: 0
     pipeline_depth: int = 3
     runlog: RunLog | None = None
+    known_makers: Sequence[str] = ()
 
 
 def coverage_pct(seen: int, api_total: int) -> float:
@@ -177,6 +202,7 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
         current_year=current_year,
         seen=seen,
         depth=ctx.pipeline_depth,
+        known_makers=ctx.known_makers,
     )
     maker = job.filters.get("maker") or None
     max_pages = job.filters.get("max_pages") or None
@@ -191,11 +217,14 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
 
     coverage = coverage_pct(state.seen, state.api_total)
     report = PageReport(**state.report) if state.report else PageReport()
+    # A segment a failure cut short was not seen to its end: its lots would look delisted.
+    full = not maker and not max_pages and coverage >= ctx.min_coverage_pct and not state.incomplete
     result = {
         "total": state.seen,
         "api_total": state.api_total,
         "coverage_pct": coverage,
-        "full_run": not maker and not max_pages and coverage >= ctx.min_coverage_pct,
+        "full_run": full,
+        "incomplete": state.incomplete,
         "run_started_at": datetime.fromisoformat(state.started_at).strftime("%Y-%m-%d %H:%M:%S"),
         "ingest_last_id": ctx.sink.last_id if isinstance(ctx.sink, MySqlIngestSink) else None,
         "lots_emitted": report.emitted,
@@ -225,6 +254,11 @@ async def run_full(ctx: RunContext, *, history_cutoff_at: datetime | None, curre
     )
     if ctx.runlog:
         # Each error went to the log as it happened (Sweeper.on_error); here only their count.
+        if state.incomplete:
+            cut = ", ".join(state.incomplete)
+            await ctx.runlog.warning(
+                f"not a full run: {len(state.incomplete)} cut short after a retry: {cut}"
+            )
         await ctx.runlog.info(
             f"done: {state.seen:,}/{state.api_total:,} lots ({coverage}%), full_run={result['full_run']},"
             f" errors {state.errors},"

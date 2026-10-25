@@ -103,7 +103,7 @@ final class IngestConsumerTest extends TestCase
     {
         $this->buffer(self::lot());
         $this->consume();
-        DB::table('lots')->where('id', '39847215')->update(['parsed_at' => '2026-10-01 00:00:00', 'make_en' => 'Hyundai']);
+        DB::table('lots')->where('id', '39847215')->update(['parsed_at' => '2026-10-01 00:00:00']);
 
         $this->buffer(self::lot());
         $result = $this->consume();
@@ -111,15 +111,13 @@ final class IngestConsumerTest extends TestCase
         $this->assertSame(1, $result->unchanged);
         $lot = DB::table('lots')->find('39847215');
         $this->assertSame(self::NOW, $lot->parsed_at);
-        $this->assertSame('Hyundai', $lot->make_en);
         $this->assertSame([], $this->changes('39847215'));
     }
 
     public function test_update_keeps_stored_values_where_the_source_sends_null(): void
     {
         LotFactory::new()->create([
-            'id' => '39847215', 'price' => 19_500_000, 'vin' => 'KMHOLDVIN00000001', 'make_en' => 'Hyundai',
-            'model_group_en' => 'Sonata', 'color' => 'black', 'is_active' => true,
+            'id' => '39847215', 'price' => 19_500_000, 'vin' => 'KMHOLDVIN00000001', 'color' => 'black', 'is_active' => true,
         ]);
         $this->buffer(self::lot(['vehicle' => ['vin' => null, 'color' => null]]));
 
@@ -130,8 +128,6 @@ final class IngestConsumerTest extends TestCase
         $this->assertSame(18_900_000, (int) $lot->price, 'price always takes the source value');
         $this->assertSame('KMHOLDVIN00000001', $lot->vin, 'null VIN keeps the stored one');
         $this->assertSame('black', $lot->color);
-        $this->assertSame('Hyundai', $lot->make_en, 'normalized columns are never touched');
-        $this->assertSame('Sonata', $lot->model_group_en);
 
         $changes = $this->changes('39847215');
         $this->assertCount(1, $changes);
@@ -139,26 +135,24 @@ final class IngestConsumerTest extends TestCase
         $this->assertEquals(['old' => 19_500_000, 'new' => 18_900_000], json_decode($changes[0]->changes, true)['price']);
     }
 
-    public function test_normalized_color_and_trim_are_not_put_back_to_the_raw_value(): void
+    /** Nothing rewrites color and trim after ingest any more: Encar's value replaces the stored one, null keeps it. */
+    public function test_encar_color_and_trim_replace_the_stored_ones(): void
     {
-        // As normalization left them: translated color, extracted trim.
+        // As the old normalization left them: translated color, a copy of the badge in trim.
         LotFactory::new()->create([
             'id' => '39847215', 'price' => 18_900_000, 'color' => 'Silver', 'seat_color' => 'Beige',
-            'trim' => '프리미엄', 'is_active' => true,
+            'trim' => '2.0 스마트', 'is_active' => true,
         ]);
-        LotFactory::new()->create(['id' => '39847216', 'color' => null, 'seat_color' => null, 'trim' => null, 'is_active' => true]);
-        $this->buffer(self::lot(['vehicle' => ['color' => '은회색', 'seat_color' => '베이지', 'trim' => '(세부등급 없음)']]));
-        $this->buffer(self::lot(['source_id' => '39847216']));
+        LotFactory::new()->create(['id' => '39847216', 'color' => 'white', 'seat_color' => 'Beige', 'trim' => '프레스티지', 'is_active' => true]);
+        $this->buffer(self::lot(['vehicle' => ['color' => '은회색', 'seat_color' => '베이지', 'trim' => '프리미엄']]));
+        $this->buffer(self::lot(['source_id' => '39847216', 'vehicle' => ['color' => null, 'seat_color' => null, 'trim' => null]]));
 
         $this->consume();
 
-        $kept = DB::table('lots')->find('39847215');
-        $this->assertSame(['Silver', 'Beige', '프리미엄'], [$kept->color, $kept->seat_color, $kept->trim]);
-        foreach ($this->changes('39847215') as $change) {
-            $this->assertEmpty(array_intersect_key(json_decode($change->changes, true), ['color' => 1, 'trim' => 1]), 'a kept value is not a change');
-        }
-        $filled = DB::table('lots')->find('39847216');
-        $this->assertSame(['white', 'black', '프레스티지'], [$filled->color, $filled->seat_color, $filled->trim], 'empty ones are filled');
+        $replaced = DB::table('lots')->find('39847215');
+        $this->assertSame(['은회색', '베이지', '프리미엄'], [$replaced->color, $replaced->seat_color, $replaced->trim]);
+        $kept = DB::table('lots')->find('39847216');
+        $this->assertSame(['white', 'Beige', '프레스티지'], [$kept->color, $kept->seat_color, $kept->trim], 'null keeps the stored value');
     }
 
     public function test_each_run_counts_what_the_core_did_with_its_lots(): void

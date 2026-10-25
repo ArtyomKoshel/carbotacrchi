@@ -1,6 +1,6 @@
 const API = (() => {
   const BASE = '/api';
-  const FILTERS_CACHE_KEY = 'carbot_filters_v5'; // v5: Russian labels
+  const FILTERS_CACHE_KEY = 'carbot_filters_v6'; // v6: makes from the reference catalog
   const FILTERS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
 
   async function request(method, path, body = null) {
@@ -39,14 +39,18 @@ const API = (() => {
       const raw = localStorage.getItem(FILTERS_CACHE_KEY);
       if (!raw) return null;
       const { ts, data } = JSON.parse(raw);
-      if (Date.now() - ts > FILTERS_CACHE_TTL) return null;
+      if (Date.now() - ts > FILTERS_CACHE_TTL || !_hasMakes(data)) return null;
       return data;
     } catch (_) {
       return null;
     }
   }
 
+  // an answer without makes (the server mid-deploy) is shown once, never kept
+  const _hasMakes = data => Array.isArray(data?.makeOptions) && data.makeOptions.length > 0;
+
   function _writeFiltersCache(data) {
+    if (!_hasMakes(data)) return;
     try {
       localStorage.setItem(FILTERS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
     } catch (_) {}
@@ -118,6 +122,11 @@ const API = (() => {
     return request('POST', '/auth/browser-init');
   }
 
+  /** Local sign-in as the test user: exists only when the server runs with APP_ENV=local. */
+  function browserAuthDevLogin() {
+    return request('POST', '/auth/dev-login');
+  }
+
   function browserAuthStatus(token) {
     return request('GET', `/auth/browser-status?token=${encodeURIComponent(token)}`);
   }
@@ -153,12 +162,15 @@ const API = (() => {
     return request('GET', `/filters/context?${p}`);
   }
 
-  function getTrims(make, model, locale = 'ru') {
-    const p = new URLSearchParams();
-    if (make) p.set('make', make);
-    if (model) p.set('model', model);
-    if (locale) p.set('locale', locale);
-    return request('GET', `/filters/trims?${p}`);
+
+  // ── Reference catalog (makes → models → generations → modifications) ──────
+
+  function getCatalogMakes() {
+    return request('GET', '/catalog');
+  }
+
+  function getCatalog(makeId) {
+    return request('GET', `/catalog/${encodeURIComponent(makeId)}`);
   }
 
   // ── Favorites ──────────────────────────────────────────────────────────────
@@ -225,10 +237,11 @@ const API = (() => {
   return {
     getLot, shareLot,
     getFilters, invalidateFiltersCache, isFiltersCached,
-    browserAuthInit, browserAuthStatus, isAuthError,
+    browserAuthInit, browserAuthStatus, browserAuthDevLogin, isAuthError,
     search,
     searchChat, resetChat,
-    getCount, getContext, getTrims,
+    getCount, getContext,
+    getCatalogMakes, getCatalog,
     getFavorites, addFavorite, removeFavorite,
     getSubscriptions, subscribe, unsubscribe, markSeen,
     getInspection,

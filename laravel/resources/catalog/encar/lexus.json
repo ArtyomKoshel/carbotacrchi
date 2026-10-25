@@ -1,0 +1,598 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "렉서스",
+  "names": {
+    "CT200h": "CT"
+  },
+  "encar_models": {
+    "CT200h": {
+      "model": "CT",
+      "words": "CT200h",
+      "manual": true
+    },
+    "ES300": {
+      "model": "ES",
+      "words": "ES300"
+    },
+    "ES300h 7세대": {
+      "model": "ES",
+      "words": "ES300h",
+      "generation": "VII"
+    },
+    "ES330": {
+      "model": "ES",
+      "words": "ES330"
+    },
+    "ES350": {
+      "model": "ES",
+      "words": "ES350"
+    },
+    "GS300": {
+      "model": "GS",
+      "words": "GS300"
+    },
+    "GS350": {
+      "model": "GS",
+      "words": "GS350"
+    },
+    "GS400": {
+      "model": "GS",
+      "words": "GS400"
+    },
+    "GS430": {
+      "model": "GS",
+      "words": "GS430"
+    },
+    "GS450h": {
+      "model": "GS",
+      "words": "GS450h"
+    },
+    "GS460": {
+      "model": "GS",
+      "words": "GS460"
+    },
+    "GX460": {
+      "model": "GX",
+      "words": "GX460"
+    },
+    "GX470": {
+      "model": "GX",
+      "words": "GX470"
+    },
+    "IS F": {
+      "model": "IS",
+      "words": "IS F"
+    },
+    "IS200": {
+      "model": "IS",
+      "words": "IS200"
+    },
+    "IS250": {
+      "model": "IS",
+      "words": "IS250"
+    },
+    "IS300": {
+      "model": "IS",
+      "words": "IS300"
+    },
+    "IS350": {
+      "model": "IS",
+      "words": "IS350"
+    },
+    "LC": {
+      "model": "LC"
+    },
+    "LM 2세대": {
+      "model": "LM",
+      "generation": "II"
+    },
+    "LS400": {
+      "model": "LS",
+      "words": "LS400"
+    },
+    "LS430": {
+      "model": "LS",
+      "words": "LS430"
+    },
+    "LS460": {
+      "model": "LS",
+      "words": "LS460"
+    },
+    "LS460L": {
+      "model": "LS",
+      "words": "LS460L"
+    },
+    "LS500 5세대": {
+      "model": "LS",
+      "words": "LS500",
+      "generation": "V"
+    },
+    "LS500h 5세대": {
+      "model": "LS",
+      "words": "LS500h",
+      "generation": "V"
+    },
+    "LS600hL": {
+      "model": "LS",
+      "words": "LS600hL"
+    },
+    "LX": {
+      "model": "LX"
+    },
+    "LX 4세대": {
+      "model": "LX",
+      "generation": "IV"
+    },
+    "NX200t": {
+      "model": "NX",
+      "generation": "AZ10",
+      "words": "NX200t",
+      "manual": true
+    },
+    "NX300": {
+      "model": "NX",
+      "generation": "AZ10",
+      "words": "NX300",
+      "manual": true
+    },
+    "NX300h": {
+      "model": "NX",
+      "generation": "AZ10",
+      "words": "NX300h",
+      "manual": true
+    },
+    "NX350h 2세대": {
+      "model": "NX",
+      "words": "NX350h",
+      "generation": "II"
+    },
+    "NX450h+ 2세대": {
+      "model": "NX",
+      "words": "NX450h+",
+      "generation": "II"
+    },
+    "RC F": {
+      "model": "RC",
+      "words": "RC F"
+    },
+    "RC200t": {
+      "model": "RC",
+      "words": "RC200t"
+    },
+    "RC300": {
+      "model": "RC",
+      "words": "RC300"
+    },
+    "RC350": {
+      "model": "RC",
+      "words": "RC350"
+    },
+    "RX300": {
+      "model": "RX",
+      "words": "RX300"
+    },
+    "RX330": {
+      "model": "RX",
+      "words": "RX330"
+    },
+    "RX350": {
+      "model": "RX",
+      "words": "RX350"
+    },
+    "RX350 4세대": {
+      "model": "RX",
+      "words": "RX350",
+      "generation": "IV"
+    },
+    "RX350h 5세대": {
+      "model": "RX",
+      "words": "RX350h",
+      "generation": "V"
+    },
+    "RX400h": {
+      "model": "RX",
+      "words": "RX400h"
+    },
+    "RX450h": {
+      "model": "RX",
+      "words": "RX450h"
+    },
+    "RX450h 4세대": {
+      "model": "RX",
+      "words": "RX450h",
+      "generation": "IV"
+    },
+    "RX450h+ 5세대": {
+      "model": "RX",
+      "words": "RX450h+",
+      "generation": "V"
+    },
+    "RX450hL 4세대": {
+      "model": "RX",
+      "words": "RX450hL",
+      "generation": "IV"
+    },
+    "RX500h 5세대": {
+      "model": "RX",
+      "words": "RX500h",
+      "generation": "V"
+    },
+    "RZ450e": {
+      "model": "RZ",
+      "words": "RZ450e"
+    },
+    "SC300": {
+      "model": "SC",
+      "words": "SC300"
+    },
+    "SC430": {
+      "model": "SC",
+      "words": "SC430"
+    },
+    "UX250h": {
+      "model": "UX",
+      "words": "UX250h"
+    },
+    "UX300e": {
+      "model": "UX",
+      "words": "UX300e"
+    },
+    "UX300h": {
+      "model": "UX",
+      "words": "UX300h"
+    },
+    "뉴 ES250": {
+      "model": "ES",
+      "words": "ES250"
+    },
+    "뉴 ES300h": {
+      "model": "ES",
+      "words": "ES300h"
+    },
+    "뉴 ES350": {
+      "model": "ES",
+      "words": "ES350"
+    },
+    "뉴 GS F": {
+      "model": "GS",
+      "words": "GS F"
+    },
+    "뉴 GS200t": {
+      "model": "GS",
+      "words": "GS200t"
+    },
+    "뉴 GS250": {
+      "model": "GS",
+      "words": "GS250"
+    },
+    "뉴 GS300": {
+      "model": "GS",
+      "words": "GS300"
+    },
+    "뉴 GS350": {
+      "model": "GS",
+      "words": "GS350"
+    },
+    "뉴 GS450h": {
+      "model": "GS",
+      "words": "GS450h"
+    },
+    "뉴 IS200t": {
+      "model": "IS",
+      "generation": "XE30",
+      "words": "IS200t",
+      "manual": true
+    },
+    "뉴 IS250": {
+      "model": "IS",
+      "words": "IS250"
+    },
+    "뉴 IS300": {
+      "model": "IS",
+      "generation": "XE30",
+      "words": "IS300",
+      "manual": true
+    }
+  },
+  "badge_groups": {
+    "CT200h": {
+      "1.8 F-Sport": "가솔린+전기 1800cc",
+      "1.8 슈프림": "가솔린+전기 1800cc",
+      "1.8 컴팩트 럭셔리": "가솔린+전기 1800cc",
+      "1.8 컴팩트 트랜디": "가솔린+전기 1800cc"
+    },
+    "ES300": {
+      "L-Grade": "가솔린 3000cc",
+      "P-Grade": "가솔린 3000cc"
+    },
+    "ES300h 7세대": {
+      "F-Sport": "가솔린+전기 2500cc",
+      "F-Sport 디자인 패키지": "가솔린+전기 2500cc",
+      "럭셔리": "가솔린+전기 2500cc",
+      "럭셔리 플러스": "가솔린+전기 2500cc",
+      "리미티드": "가솔린+전기 2500cc",
+      "슈프림": "가솔린+전기 2500cc",
+      "이그제큐티브": "가솔린+전기 2500cc"
+    },
+    "ES330": {
+      "L-Grade": "가솔린 3300cc",
+      "P-Grade": "가솔린 3300cc"
+    },
+    "ES350": {
+      "슈페리어": "가솔린 3500cc",
+      "스탠다드": "가솔린 3500cc",
+      "프리미엄": "가솔린 3500cc"
+    },
+    "GS300": {
+      "AWD": "가솔린 3000cc",
+      "L-Grade": "가솔린 3000cc",
+      "P-Grade": "가솔린 3000cc",
+      "STD": "가솔린 3000cc"
+    },
+    "GS350": {
+      "3.5 AWD": "가솔린 3500cc",
+      "STD": "가솔린 3500cc",
+      "Special": "가솔린 3500cc"
+    },
+    "GS400": {
+      "STD": "가솔린 4000cc"
+    },
+    "GS430": {
+      "Premium-Navi Package": "가솔린 4300cc",
+      "Standard": "가솔린 4300cc"
+    },
+    "GS450h": {
+      "STD": "가솔린+전기 3500cc",
+      "Special": "가솔린+전기 3500cc"
+    },
+    "GS460": {
+      "STD": "가솔린 4600cc"
+    },
+    "GX460": {
+      "4.6": "가솔린 4600cc"
+    },
+    "GX470": {
+      "STD": "가솔린 4700cc"
+    },
+    "IS F": {
+      "5.0": "가솔린 5000cc"
+    },
+    "IS200": {
+      "I-Grade": "가솔린 2000cc",
+      "L-Grade": "가솔린 2000cc",
+      "S-Grade": "가솔린 2000cc",
+      "STD": "가솔린 2000cc"
+    },
+    "IS250": {
+      "2.5": "가솔린 2500cc",
+      "2.5 AWD": "가솔린 2500cc",
+      "2.5 F-스포츠": "가솔린 2500cc",
+      "2.5 스타일 에디션": "가솔린 2500cc",
+      "2.5 스탠다드": "가솔린 2500cc",
+      "2.5 컨버터블": "가솔린 2500cc",
+      "2.5 프리미엄": "가솔린 2500cc"
+    },
+    "IS300": {
+      "3.0": "가솔린 3000cc"
+    },
+    "IS350": {
+      "3.5": "가솔린 3500cc"
+    },
+    "LC": {
+      "LC500 스포츠+": "가솔린 5000cc",
+      "LC500 스포츠+ 컨버터블": "가솔린 5000cc",
+      "LC500h 스포츠+": "가솔린+전기 3500cc"
+    },
+    "LM 2세대": {
+      "500h 로얄": "가솔린+전기 2400cc",
+      "500h 이그제큐티브": "가솔린+전기 2400cc"
+    },
+    "LS400": {
+      "STD": "가솔린 4000cc"
+    },
+    "LS430": {
+      "L-Grade": "가솔린 4300cc",
+      "P-Grade": "가솔린 4300cc",
+      "S-Grade": "가솔린 4300cc",
+      "STD": "가솔린 4300cc"
+    },
+    "LS460": {
+      "AWD": "가솔린 4WD",
+      "SPORT": "가솔린 2WD",
+      "STD": "가솔린 2WD",
+      "슈프림": "가솔린 2WD"
+    },
+    "LS460L": {
+      "4인승": "가솔린 4 인승",
+      "4인승 Ottoman": "가솔린 4 인승",
+      "5인승": "가솔린 5 인승",
+      "5인승 Ottoman": "가솔린 4 인승"
+    },
+    "LS500 5세대": {
+      "3.5 럭셔리 AWD": "가솔린 4WD",
+      "3.5 슈프림": "가솔린 2WD",
+      "3.5 슈프림 AWD": "가솔린 4WD",
+      "3.5 플래티넘 AWD": "가솔린 4WD"
+    },
+    "LS500h 5세대": {
+      "3.5 럭셔리": "가솔린+전기 2WD",
+      "3.5 럭셔리 AWD": "가솔린+전기 4WD",
+      "3.5 플래티넘 AWD": "가솔린+전기 4WD"
+    },
+    "LS600hL": {
+      "4인승": "가솔린+전기 4 인승",
+      "4인승 Ottoman": "가솔린+전기 4 인승",
+      "5인승": "가솔린+전기 5 인승",
+      "5인승 Ottoman": "가솔린+전기 5 인승"
+    },
+    "LX": {
+      "470": "가솔린 4700cc",
+      "570": "가솔린 5700cc"
+    },
+    "LX 4세대": {
+      "700h VIP": "가솔린+전기 3500cc",
+      "700h 럭셔리": "가솔린+전기 3500cc",
+      "700h 오버트레일": "가솔린+전기 3500cc"
+    },
+    "NX200t": {
+      "F-Sport": "가솔린 2000cc",
+      "슈프림": "가솔린 2000cc",
+      "이그제큐티브": "가솔린 2000cc"
+    },
+    "NX300": {
+      "F-Sport": "가솔린 2000cc",
+      "슈프림": "가솔린 2000cc",
+      "이그제큐티브": "가솔린 2000cc"
+    },
+    "NX300h": {
+      "슈프림": "가솔린+전기 4WD",
+      "이그제큐티브": "가솔린+전기 4WD"
+    },
+    "NX350h 2세대": {
+      "럭셔리": "가솔린+전기 2500cc",
+      "프리미엄": "가솔린+전기 2500cc"
+    },
+    "NX450h+ 2세대": {
+      "F-Sport": "가솔린+전기 2500cc",
+      "프리미엄": "가솔린+전기 2500cc"
+    },
+    "RC F": {
+      "5.0": "가솔린 5000cc"
+    },
+    "RC200t": {
+      "F-Sport": "가솔린 2000cc"
+    },
+    "RC300": {
+      "F-Sport": "가솔린 2000cc"
+    },
+    "RC350": {
+      "F-Sport": "가솔린 3500cc"
+    },
+    "RX300": {
+      "L-Grade": "가솔린 3000cc",
+      "P-Grade": "가솔린 3000cc",
+      "STD": "가솔린 3000cc"
+    },
+    "RX330": {
+      "L-Grade": "가솔린 3300cc",
+      "P-Grade": "가솔린 3300cc"
+    },
+    "RX350": {
+      "F-Sport": "가솔린 3500cc",
+      "Luxury": "가솔린 3500cc",
+      "Mobility": "가솔린 3500cc",
+      "P-Grade": "가솔린 3500cc",
+      "Premium": "가솔린 3500cc",
+      "슈프림": "가솔린 3500cc",
+      "이그제큐티브": "가솔린 3500cc"
+    },
+    "RX350 4세대": {
+      "3.5": "가솔린 3500cc",
+      "이그제큐티브": "가솔린 3500cc"
+    },
+    "RX350h 5세대": {
+      "럭셔리": "가솔린+전기 2500cc",
+      "프리미엄": "가솔린+전기 2500cc"
+    },
+    "RX400h": {
+      "STD": "가솔린+전기 3300cc"
+    },
+    "RX450h": {
+      "F-Sport": "가솔린+전기 3500cc",
+      "Standard": "가솔린+전기 3500cc",
+      "슈프림": "가솔린+전기 3500cc",
+      "이그제큐티브": "가솔린+전기 3500cc",
+      "크리스털 에디션": "가솔린+전기 3500cc"
+    },
+    "RX450h 4세대": {
+      "F-Sport": "가솔린+전기 3500cc",
+      "슈프림": "가솔린+전기 3500cc",
+      "슈프림 플러스": "가솔린+전기 3500cc",
+      "이그제큐티브": "가솔린+전기 3500cc"
+    },
+    "RX450h+ 5세대": {
+      "럭셔리": "가솔린+전기 2500cc"
+    },
+    "RX450hL 4세대": {
+      "럭셔리 플러스": "가솔린+전기 3500cc",
+      "이그제큐티브": "가솔린+전기 3500cc"
+    },
+    "RX500h 5세대": {
+      "F-Sport": "가솔린+전기 2400cc"
+    },
+    "RZ450e": {
+      "럭셔리": "전기 4WD",
+      "슈프림": "전기 4WD"
+    },
+    "SC300": {
+      "STD": "가솔린 3000cc"
+    },
+    "SC430": {
+      "STD": "가솔린 4300cc"
+    },
+    "UX250h": {
+      "2.0 2WD": "가솔린+전기 2000cc",
+      "2.0 AWD": "가솔린+전기 2000cc",
+      "2.0 F-Sport 2WD": "가솔린+전기 2000cc"
+    },
+    "UX300e": {
+      "2WD": "전기"
+    },
+    "UX300h": {
+      "2.0 2WD": "가솔린+전기 2000cc",
+      "2.0 F-Sport 2WD": "가솔린+전기 2000cc"
+    },
+    "뉴 ES250": {
+      "2.5": "가솔린"
+    },
+    "뉴 ES300h": {
+      "슈프림": "가솔린+전기 2500cc",
+      "슈프림+": "가솔린+전기 2500cc",
+      "이그제큐티브": "가솔린+전기 2500cc",
+      "프리미엄": "가솔린+전기 2500cc"
+    },
+    "뉴 ES350": {
+      "슈프림": "가솔린 3500cc",
+      "이그제큐티브": "가솔린 3500cc",
+      "프리미엄": "가솔린 3500cc"
+    },
+    "뉴 GS F": {
+      "5.0": "가솔린 5000cc"
+    },
+    "뉴 GS200t": {
+      "슈프림": "가솔린 2000cc"
+    },
+    "뉴 GS250": {
+      "슈프림": "가솔린 2500cc"
+    },
+    "뉴 GS300": {
+      "슈프림": "가솔린 2000cc"
+    },
+    "뉴 GS350": {
+      "F Sport": "가솔린 3500cc",
+      "슈프림": "가솔린 3500cc",
+      "이그제큐티브": "가솔린 3500cc"
+    },
+    "뉴 GS450h": {
+      "F-Sport": "가솔린+전기 3500cc",
+      "슈프림": "가솔린+전기 3500cc"
+    },
+    "뉴 IS200t": {
+      "F-Sport": "가솔린 2000cc",
+      "슈프림": "가솔린 2000cc",
+      "이그제큐티브": "가솔린 2000cc",
+      "프리미엄": "가솔린 2000cc"
+    },
+    "뉴 IS250": {
+      "F-Sport": "가솔린 2500cc",
+      "슈프림": "가솔린 2500cc",
+      "이그제큐티브": "가솔린 2500cc",
+      "프리미엄": "가솔린 2500cc"
+    },
+    "뉴 IS300": {
+      "F-Sport": "가솔린 2000cc",
+      "슈프림": "가솔린 2000cc",
+      "프리미엄": "가솔린 2000cc"
+    }
+  }
+}

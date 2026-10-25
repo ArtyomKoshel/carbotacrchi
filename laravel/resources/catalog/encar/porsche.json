@@ -1,0 +1,20 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis code cut off) -> Encar's English one, from lots that carry both. models: English model_en -> reference model and generation where the name does not say it. badges: a model whose badge names another model.",
+  "korean": "포르쉐",
+  "names": {
+    "718 박스터": "718 Boxster",
+    "718 카이맨": "718 Cayman",
+    "마칸": "Macan",
+    "마칸 EV": "Macan Electric",
+    "박스터": "Boxster",
+    "카이맨": "Cayman",
+    "카이엔": "Cayenne",
+    "타이칸": "Taycan",
+    "파나메라": "Panamera"
+  },
+  "badge_groups": {
+    "911 (992)": {
+      "스피릿 70 카브리올레": "가솔린 2WD"
+    }
+  }
+}

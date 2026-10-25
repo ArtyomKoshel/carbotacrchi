@@ -56,6 +56,7 @@ HEADERS = {
 
 _STOP       = False
 _api_calls  = 0
+_refused    = 0   # 404s on facets that have listings: retried, reported at the end
 _api_lock   = threading.Lock()
 _print_lock = threading.Lock()
 
@@ -116,7 +117,10 @@ def _client() -> httpx.Client:
             idx = _worker_counter
             _worker_counter += 1
         _local.worker_idx = idx
-        _local.proxy_base = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else None
+        # a thread past the prepared proxies would go to Encar directly, and Encar answers 404
+        # outside Korea (the October run, with a pool per model group, lost every model after
+        # the first group that way)
+        _local.proxy_base = _WORKER_PROXIES[idx] if idx < len(_WORKER_PROXIES) else _make_proxy_url(idx)
         _local.client = _build_client(_local.proxy_base)
         if _local.proxy_base:
             with _print_lock:
@@ -126,7 +130,7 @@ def _client() -> httpx.Client:
 
 def _rotate_proxy() -> None:
     """Close current client and rebuild with a fresh proxy session (new IP)."""
-    if not hasattr(_local, "proxy_base") or not _local.proxy_base:
+    if not os.getenv("FLOPPY_USERNAME") or not os.getenv("FLOPPY_PASSWORD"):
         return
     username = os.getenv("FLOPPY_USERNAME", "")
     password = os.getenv("FLOPPY_PASSWORD", "")
@@ -143,8 +147,18 @@ def _rotate_proxy() -> None:
 
 # ── API helpers ────────────────────────────────────────────────────────────────
 
-def _get_inav(q: str, retries: int = 5) -> dict:
-    global _api_calls
+class Failed(Exception):
+    """A drill-down Encar did not answer after every retry: its model is fetched again on --resume."""
+
+
+def _get_inav(q: str, retries: int = 5, expected: int = 0) -> dict:
+    """The iNav of a query; raises Failed when every retry fails (never an empty answer).
+
+    expected: the listings Encar counted for this facet one level up. A 404 means "nothing
+    here" only when that is 0; a facet with listings that answers 404 was refused (a request
+    that left Korea, see _client), so it is retried like any block, never saved as empty.
+    """
+    global _api_calls, _refused
     for attempt in range(retries):
         client = _client()
         try:
@@ -156,9 +170,16 @@ def _get_inav(q: str, retries: int = 5) -> dict:
             return r.json().get("iNav", {})
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
+            with _api_lock:
+                _api_calls += 1
+            if status == 404 and not expected:
+                return {}
+            if status == 404:
+                with _api_lock:
+                    _refused += 1
             wait = min(2 ** attempt, 16)
             with _print_lock:
-                print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s")
+                print(f"    [retry {attempt+1}] HTTP {status} — rotating proxy, wait {wait}s  ({expected} listings) {q}")
             _rotate_proxy()
             time.sleep(wait)
         except Exception as e:
@@ -166,7 +187,7 @@ def _get_inav(q: str, retries: int = 5) -> dict:
             with _print_lock:
                 print(f"    [retry {attempt+1}] {e.__class__.__name__} — wait {wait}s")
             time.sleep(wait)
-    return {}
+    raise Failed(q)
 
 
 def _find_facets(container: dict, aspect_name: str, _depth: int = 0) -> list[dict]:
@@ -184,9 +205,8 @@ def _find_facets(container: dict, aspect_name: str, _depth: int = 0) -> list[dic
     return []
 
 
-def _get_next_level(action: str, aspect: str) -> list[dict]:
-    inav = _get_inav(action)
-    return _find_facets(inav, aspect)
+def _get_next_level(action: str, aspect: str, expected: int = 0) -> list[dict]:
+    return _find_facets(_get_inav(action, expected=expected), aspect)
 
 
 def _facet_meta(f: dict, key: str) -> str | None:
@@ -229,13 +249,19 @@ def _process_model(
     model_kr  = model_f["Value"]
     model_act = model_f["Action"]
     model_rows: list[dict] = []
+    # a Failed below leaves the model out whole, so --resume fetches it again
 
+    # Encar's own facts about the model: its code and production dates (yyyymm), for the catalog
     base = dict(
         car_type=ct_value, make_kr=make_kr, make_en=make_en,
         model_group_kr=mg_kr, model_kr=model_kr,
+        model_code=_facet_meta(model_f, "Code"),
+        model_start=_facet_meta(model_f, "ModelStartDate"),
+        model_end=_facet_meta(model_f, "ModelEndDate"),
+        model_count=model_f.get("Count", 0),
     )
 
-    bg_facets = _get_next_level(model_act, "BadgeGroup")
+    bg_facets = _get_next_level(model_act, "BadgeGroup", model_f.get("Count", 0))
     if not bg_facets:
         model_rows.append({**base, "badge_group_kr": None, "badge_kr": None,
                            "badge_detail_kr": None, "count": model_f["Count"]})
@@ -247,22 +273,25 @@ def _process_model(
         bg_kr  = bg_f["Value"]
         bg_act = bg_f["Action"]
 
-        badge_facets = _get_next_level(bg_act, "Badge")
+        badge_facets = _get_next_level(bg_act, "Badge", bg_f.get("Count", 0))
         for badge_f in badge_facets:
             if _STOP:
                 break
             badge_kr  = badge_f["Value"]
             badge_act = badge_f["Action"]
 
-            bd_facets = _get_next_level(badge_act, "BadgeDetail")
+            bd_facets = _get_next_level(badge_act, "BadgeDetail", badge_f.get("Count", 0))
             if not bd_facets:
                 model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
+                                   "badge_code": _facet_meta(badge_f, "Code"),
                                    "badge_detail_kr": None, "count": badge_f["Count"]})
                 continue
 
             for bd_f in bd_facets:
                 model_rows.append({**base, "badge_group_kr": bg_kr, "badge_kr": badge_kr,
-                                   "badge_detail_kr": bd_f["Value"], "count": bd_f["Count"]})
+                                   "badge_code": _facet_meta(badge_f, "Code"),
+                                   "badge_detail_kr": bd_f["Value"], "badge_detail_code": _facet_meta(bd_f, "Code"),
+                                   "count": bd_f["Count"]})
     return model_rows
 
 
@@ -272,10 +301,12 @@ def scrape(
     workers: int = 8,
     dry_run: bool = False,
     existing_rows: list[dict] | None = None,
-) -> tuple[dict, list[dict]]:
+    on_save=None,
+) -> tuple[dict, list[dict], list[str]]:
 
     rows: list[dict] = list(existing_rows or [])
     rows_lock = threading.Lock()
+    failed: list[str] = []
 
     scraped_models: set[tuple] = {
         (r["make_kr"], r["model_group_kr"] or "", r["model_kr"] or "")
@@ -296,6 +327,8 @@ def scrape(
     target_car_types = [f for f in car_type_facets if f.get("Value") in ("Y", "N")]
     print(f"\n[1] CarTypes: {[f['Value'] for f in target_car_types]}")
 
+    # one pool for the run: its threads keep their proxy sessions from make to make
+    pool = ThreadPoolExecutor(max_workers=workers)
     for ct_facet in target_car_types:
         if _STOP:
             break
@@ -304,7 +337,7 @@ def scrape(
         print(f"\n  CarType={ct_value}  ({ct_facet['Count']:,})")
 
         # Step 2: Manufacturers
-        make_facets = _get_next_level(ct_action, "Manufacturer")
+        make_facets = _get_next_level(ct_action, "Manufacturer", ct_facet.get("Count", 0))  # Failed here ends the run: nothing to resume from
         print(f"    Manufacturers: {len(make_facets)}")
         if dry_run:
             make_facets = make_facets[:2]
@@ -320,64 +353,73 @@ def scrape(
             make_rows_before = len(rows)
 
             # Step 3: ModelGroups
-            mg_facets = _get_next_level(make_act, "ModelGroup")
+            try:
+                mg_facets = _get_next_level(make_act, "ModelGroup", make_f.get("Count", 0))
+            except Failed:
+                failed.append(f"{make_kr} (model groups)")
+                continue
             print(f"      ModelGroups: {len(mg_facets)}")
             if dry_run:
                 mg_facets = mg_facets[:2]
 
-            for mg_f in mg_facets:
-                if _STOP:
-                    break
-                mg_kr  = mg_f["Value"]
-                mg_act = mg_f["Action"]
+            # Step 4: Models of every group, then their badges, all in one pool: the threads
+            # stay busy across groups (most groups hold 1-4 models)
+            def models_of(mg_f: dict) -> tuple[dict, list[dict] | None]:
+                try:
+                    return mg_f, _get_next_level(mg_f["Action"], "Model", mg_f.get("Count", 0))
+                except Failed:
+                    return mg_f, None
 
-                # Step 4: Models
-                model_facets = _get_next_level(mg_act, "Model")
-                print(f"        {mg_kr}: {len(model_facets)} models", flush=True)
+            pending: list[tuple[str, dict]] = []
+            for mg_f, model_facets in pool.map(models_of, mg_facets):
+                mg_kr = mg_f["Value"]
+                if model_facets is None:
+                    failed.append(f"{make_kr} {mg_kr} (models)")
+                    continue
                 if dry_run:
                     model_facets = model_facets[:1]
+                pending += [(mg_kr, m) for m in model_facets
+                            if (make_kr, mg_kr, m["Value"]) not in scraped_models]
+            print(f"      Models to fetch: {len(pending)}", flush=True)
 
-                # Filter already-scraped
-                pending = [
-                    m for m in model_facets
-                    if (make_kr, mg_kr, m["Value"]) not in scraped_models
-                ]
-                if not pending:
+            futures = {
+                pool.submit(_process_model, ct_value, make_kr, make_en, mg_kr, m): (mg_kr, m)
+                for mg_kr, m in pending
+            }
+            for fut in as_completed(futures):
+                if _STOP:
+                    break
+                try:
+                    model_rows = fut.result()
+                except Failed:
+                    mg_kr, m = futures[fut]
+                    failed.append(f"{make_kr} {mg_kr} {m['Value']}")
                     continue
+                with rows_lock:
+                    rows.extend(model_rows)
+                    if len(rows) % 500 < len(model_rows):
+                        with _api_lock:
+                            calls = _api_calls
+                        print(f"      rows so far: {len(rows):,}  api_calls: {calls:,}", flush=True)
 
-                # ── Concurrent badge fetch ──────────────────────────────────
-                with ThreadPoolExecutor(max_workers=workers) as pool:
-                    futures = {
-                        pool.submit(_process_model, ct_value, make_kr, make_en, mg_kr, m): m
-                        for m in pending
-                    }
-                    for fut in as_completed(futures):
-                        if _STOP:
-                            break
-                        model_rows = fut.result()
-                        with rows_lock:
-                            rows.extend(model_rows)
-                            if len(rows) % 500 < len(model_rows):
-                                with _api_lock:
-                                    calls = _api_calls
-                                print(f"      rows so far: {len(rows):,}  api_calls: {calls:,}",
-                                      flush=True)
-
-            # Autosave after each make
-            if len(rows) > make_rows_before:
+            # Autosave after each make: a crash loses one make at most (--resume)
+            if len(rows) > make_rows_before and on_save is not None:
+                on_save(flat, rows, failed)
                 with _api_lock:
                     calls = _api_calls
-                print(f"      [autosave] {len(rows):,} rows  api_calls: {calls:,}", flush=True)
+                print(f"      [autosave] {len(rows):,} rows  api_calls: {calls:,}  failed: {len(failed)}", flush=True)
 
-    return flat, rows
+    pool.shutdown(wait=False, cancel_futures=True)
+    return flat, rows, failed
 
 
-def _save(out_path: str, flat: dict, rows: list[dict], start: datetime) -> None:
+def _save(out_path: str, flat: dict, rows: list[dict], start: datetime, failed: list[str] | None = None) -> None:
     data = {
         "meta": {
             "scraped_at": start.isoformat(),
             "api_calls":  _api_calls,
             "rows":       len(rows),
+            "failed":     failed or [],   # not in rows: fetched again by --resume
         },
         "flat":     flat,
         "taxonomy": rows,
@@ -394,12 +436,13 @@ def main():
     ap.add_argument("--sleep",    type=float, default=0.05, help="Sleep between API calls per thread (default 0.05)")
     ap.add_argument("--dry-run",  action="store_true")
     ap.add_argument("--resume",   action="store_true")
+    ap.add_argument("--out-name", default="encar_inav_tree.json", help="File name in --out-dir")
     args = ap.parse_args()
 
     global SLEEP
     SLEEP = args.sleep
 
-    out_path = os.path.join(args.out_dir, "encar_inav_tree.json")
+    out_path = os.path.join(args.out_dir, args.out_name)
     start    = datetime.now(timezone.utc)
 
     os.makedirs(args.out_dir, exist_ok=True)
@@ -410,9 +453,13 @@ def main():
         print(f"[resume] Loading {out_path} ...")
         with open(out_path, encoding="utf-8") as f:
             prev = json.load(f)
-        existing_rows = prev.get("taxonomy", [])
         existing_flat = prev.get("flat", {})
-        print(f"[resume] Loaded {len(existing_rows):,} existing rows")
+        # a model with listings saved without its badges was cut short (a refused 404 before
+        # the fix above): it is fetched again, not skipped
+        existing_rows = [r for r in prev.get("taxonomy", [])
+                         if r.get("badge_group_kr") is not None or not r.get("model_count")]
+        print(f"[resume] Loaded {len(existing_rows):,} existing rows "
+              f"({len(prev.get('taxonomy', [])) - len(existing_rows):,} cut-short models dropped)")
 
     # Build proxy pool — one unique session per worker
     global _WORKER_PROXIES
@@ -422,16 +469,21 @@ def main():
     if proxy_count == 0:
         print("  [!] No proxy configured (FLOPPY_USERNAME/FLOPPY_PASSWORD not set) — running direct")
 
-    flat, rows = scrape(
+    flat, rows, failed = scrape(
         workers=args.workers,
         dry_run=args.dry_run,
         existing_rows=existing_rows,
+        on_save=lambda f, r, x: _save(out_path, f, r, start, x),
     )
 
     if existing_flat and not flat.get("colors"):
         flat = existing_flat
 
-    _save(out_path, flat, rows, start)
+    _save(out_path, flat, rows, start, failed)
+    if failed:
+        print(f"\n  [!] {len(failed)} not fetched — run again with --resume:")
+        for f in failed[:50]:
+            print(f"      {f}")
 
     makes  = len({r["make_kr"] for r in rows})
     models = len({(r["make_kr"], r["model_group_kr"], r["model_kr"]) for r in rows})
@@ -441,6 +493,7 @@ def main():
     print(f"  Models     : {models}")
     print(f"  Trim names : {trims}")
     print(f"  API calls  : {_api_calls:,}")
+    print(f"  Refused 404: {_refused:,}  (facets with listings that answered 404, retried)")
 
 
 if __name__ == "__main__":

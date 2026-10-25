@@ -152,14 +152,15 @@ class ParseRuns
 
     /**
      * Makers to pick for a run: the Korean name the platform's filter needs,
-     * labelled with the English one (translations, category make).
+     * labelled with the reference catalog's make its lots stand on.
      *
      * @return array<string, string> make => label
      */
     public function makers(string $source): array
     {
         $makes = DB::table('lots')->where('source', $source)->distinct()->orderBy('make')->pluck('make')->all();
-        $en = DB::table('translations')->where('category', 'make')->whereIn('kr', $makes)->pluck('en', 'kr');
+        $en = DB::table('lots as l')->join('ref_makes as k', 'k.id', '=', 'l.ref_make_id')
+            ->where('l.source', $source)->whereIn('l.make', $makes)->groupBy('l.make', 'k.name')->pluck('k.name', 'l.make');
 
         $options = [];
         foreach ($makes as $make) {

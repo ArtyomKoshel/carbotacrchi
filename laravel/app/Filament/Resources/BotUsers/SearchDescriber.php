@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BotUsers;
 
 use App\Filament\Resources\Lots\LotFormat;
 use App\Support\Taxonomy\TaxonomyLocalizer;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One line for a saved search query (searches.query, subscriptions.query):
@@ -40,6 +41,7 @@ final class SearchDescriber
             $q['generation'] ?? null,
             $q['badge'] ?? null,
             $q['trim'] ?? null,
+            ...self::catalog($q),
             $range('yearFrom', 'yearTo', $plain),
             ($r = $range('firstRegAfter', 'firstRegBefore', $date)) ? 'рег. ' . $r : null,
             ($r = $range('priceMin', 'priceMax', [LotFormat::class, 'won'])) ? 'цена ' . $r : null,
@@ -63,5 +65,31 @@ final class SearchDescriber
         ];
 
         return collect($parts)->filter(fn ($p) => filled($p))->implode(' · ');
+    }
+
+    /**
+     * The reference catalog's choices of a query (refModelId, refGenerationIds …) by name; the
+     * make is already in "make". 0 is «не указано», −1 the make's other models.
+     *
+     * @return list<?string>
+     */
+    private static function catalog(array $q): array
+    {
+        $names = static function (string $table, string $column, array $ids, string $none): ?string {
+            $ids = array_map('intval', $ids);
+            if ($ids === []) {
+                return null;
+            }
+            $known = DB::table($table)->whereIn('id', array_filter($ids, fn ($id) => $id > 0))->pluck($column)->all();
+            return implode(', ', [...$known, ...(in_array(0, $ids, true) ? [$none] : [])]) ?: null;
+        };
+        $model = (int) ($q['refModelId'] ?? 0);
+
+        return [
+            $model === -1 ? 'прочие модели' : ($model > 0 ? DB::table('ref_models')->where('id', $model)->value('name') : null),
+            $names('ref_generations', 'code', (array) ($q['refGenerationIds'] ?? []), 'поколение не указано'),
+            $names('ref_modifications', 'code', (array) ($q['refModificationIds'] ?? []), 'модификация не указана'),
+            $names('ref_complectations', 'name', (array) ($q['refComplectationIds'] ?? []), 'комплектация не указана'),
+        ];
     }
 }

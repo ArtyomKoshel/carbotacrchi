@@ -1,0 +1,18 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "페라리",
+  "names": {
+    "488 스파이더": "488 Spider",
+    "488 피스타": "488 Pista",
+    "812 슈퍼패스트": "812 Superfast",
+    "F8 스파이더": "F8 Spider",
+    "F8 트리뷰토": "F8 Tributo",
+    "GTC4 루쏘": "GTC4 Lusso",
+    "SF90 스트라달레": "SF90 Stradale",
+    "SF90 스파이더": "SF90 Spider",
+    "로마": "Roma",
+    "캘리포니아": "California",
+    "포르토피노": "Portofino",
+    "푸로산게": "Purosangue"
+  }
+}

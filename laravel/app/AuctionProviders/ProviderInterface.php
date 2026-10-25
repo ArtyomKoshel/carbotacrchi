@@ -3,7 +3,6 @@
 namespace App\AuctionProviders;
 
 use App\Dto\LotDTO;
-use App\Services\SearchQuery;
 
 interface ProviderInterface
 {
@@ -11,9 +10,5 @@ interface ProviderInterface
     public function getName(): string;
     public function isAvailable(): bool;
 
-    /** @return LotDTO[] */
-    public function search(SearchQuery $query): array;
-
-    public function fetchRaw(SearchQuery $query): array;
     public function normalize(array $raw): LotDTO;
 }

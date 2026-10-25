@@ -9,21 +9,6 @@ Schedule::command('notifications:watch')->everyFiveMinutes();
 
 Schedule::command('subscriptions:check')->everyThirtyMinutes();
 
-// Backfill model_en, generation, fuel, drive_type, trim from catalog tables.
-// Hourly; skipped while a parse job runs — its table-wide UPDATEs would fight the
-// parser's upserts for row locks. The first tick after the run catches up.
-Schedule::command('lots:normalize-from-catalog --apply')
-    ->hourlyAt(25)
-    ->skip(function () {
-        try {
-            return \App\Models\ParseJob::where('status', 'running')->exists();
-        } catch (\Throwable) {
-            return true; // DB unreachable: nothing to normalize against
-        }
-    })
-    ->withoutOverlapping()
-    ->runInBackground();
-
 // Lot lifecycle: hide lots the latest successful full run missed, archive and
 // delete those missing from the last N runs. Counted in runs, so an idle parser
 // changes nothing. Hourly so it lands within an hour of each (~12 h) run; skipped

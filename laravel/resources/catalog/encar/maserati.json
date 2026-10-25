@@ -1,0 +1,15 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model name (chassis or generation cut off) -> Encar's English one, from lots that carry both. Exceptions: models, badges, engine_prefix, words.",
+  "korean": "마세라티",
+  "names": {
+    "그란카브리오": "GranCabrio",
+    "그란투리스모": "GranTurismo",
+    "그레칼레": "Grecale",
+    "기블리": "Ghibli",
+    "르반떼": "Levante",
+    "콰트로포르테": "Quattroporte"
+  },
+  "words": {
+    "3.0S": "3.0 S"
+  }
+}

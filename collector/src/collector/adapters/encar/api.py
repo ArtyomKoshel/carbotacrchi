@@ -8,6 +8,10 @@ from typing import Final
 from collector.http import Failed, Fetcher, Missing, Ok, Outcome
 
 SEARCH_URL: Final = "https://api.encar.com/search/car/list/mobile"
+# The same search with its navigation (iNav): every maker of the query with its Count, as
+# analysis/scrape_encar_inav_tree.py reads it.
+NAV_URL: Final = "https://api.encar.com/search/car/list/general"
+NAV_PARAM: Final = "|Metadata|Sort"
 BATCH_URL: Final = "https://api.encar.com/v1/readside/vehicles"
 DETAIL_URL: Final = "https://api.encar.com/v1/readside/vehicle/{id}"
 INSPECTION_URL: Final = "https://api.encar.com/v1/readside/inspection/vehicle/{id}"
@@ -32,6 +36,25 @@ HEADERS: Final = {
 }
 
 
+def facets(nav: object, aspect: str, depth: int = 0) -> dict[str, int]:
+    """Value → Count of every `aspect` node in an iNav tree (Nodes → Facets → Refinements → Nodes)."""
+    found: dict[str, int] = {}
+    if not isinstance(nav, dict) or depth > 12:
+        return found
+    for node in nav.get("Nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        for facet in node.get("Facets") or []:
+            if not isinstance(facet, dict):
+                continue
+            value = str(facet.get("Value") or "").strip()
+            if node.get("Name") == aspect and value:
+                found[value] = max(found.get(value, 0), int(facet.get("Count") or 0))
+            for sub, count in facets(facet.get("Refinements"), aspect, depth + 1).items():
+                found[sub] = max(found.get(sub, 0), count)
+    return found
+
+
 def maker_query(maker: str, model_group: str | None = None) -> str:
     if model_group:
         return f"(And.Hidden.N._.CarType.A._.Manufacturer.{maker}._.ModelGroup.{model_group}.)"
@@ -43,9 +66,23 @@ class EncarApi:
         self.fetcher = fetcher
 
     async def search(self, query: str = DEFAULT_QUERY, offset: int = 0, count: int = PAGE_SIZE) -> Outcome:
+        # No results is Count 0; a 404 is a refused request (run 19 lost nine Hyundai years
+        # when a 404 page was taken for the end of the results).
         return await self.fetcher.get_json(
-            SEARCH_URL, {"count": "true", "q": query, "sr": f"|ModifiedDate|{offset}|{count}"}
+            SEARCH_URL,
+            {"count": "true", "q": query, "sr": f"|ModifiedDate|{offset}|{count}"},
+            missing_ok=False,
         )
+
+    async def makers(self, query: str = DEFAULT_QUERY) -> Outcome:
+        """Ok({maker: Count}) from the search navigation; empty when the answer has no makers."""
+        outcome = await self.fetcher.get_json(
+            NAV_URL, {"count": "true", "q": query, "inav": NAV_PARAM}, missing_ok=False
+        )
+        if not isinstance(outcome, Ok):
+            return outcome
+        nav = outcome.data.get("iNav") if isinstance(outcome.data, dict) else None
+        return Ok(facets(nav, "Manufacturer"), outcome.bytes)
 
     async def batch_details(self, ids: Sequence[str]) -> Outcome:
         outcome = await self.fetcher.get_json(

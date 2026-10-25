@@ -1,0 +1,266 @@
+{
+  "make": "Chevrolet",
+  "_comment": "Encar's imported Chevrolet (\"쉐보레\"), the reference make Chevrolet (reference/chevrolet.json) beside GM Korea's \"쉐보레(GM대우)\" (encar/chevrolet.json). names: Encar's Korean model → the official name; encar_models with \"generation\": null name no generation (Encar's model holds many), never the model's only one.",
+  "korean": "쉐보레",
+  "names": {
+    "HHR": "HHR",
+    "S-10": "S-10",
+    "SSR": "SSR",
+    "루미나": "Lumina",
+    "루미나 미니밴": "Lumina APV",
+    "벤처": "Venture",
+    "볼트(Volt)": "Volt",
+    "블레이저": "Blazer",
+    "트레일블레이저": "Trailblazer",
+    "서버밴": "Suburban",
+    "실버라도": "Silverado",
+    "아발란치": "Avalanche",
+    "아스트로밴": "Astro",
+    "에퀴녹스": "Equinox",
+    "익스프레스밴": "Express",
+    "체비밴": "Chevy Van",
+    "카마로": "Camaro",
+    "콜로라도": "Colorado",
+    "콜벳": "Corvette",
+    "타호": "Tahoe",
+    "트랙커": "Tracker",
+    "트럭밴": "Truck Van",
+    "픽업트럭": "Pickup"
+  },
+  "encar_models": {
+    "HHR": {
+      "model": "HHR"
+    },
+    "S-10": {
+      "model": "S-10"
+    },
+    "SSR": {
+      "model": "SSR"
+    },
+    "루미나": {
+      "model": "Lumina",
+      "generation": null,
+      "manual": true
+    },
+    "루미나 미니밴": {
+      "model": "Lumina APV"
+    },
+    "벤처": {
+      "model": "Venture"
+    },
+    "볼트(Volt)": {
+      "model": "Volt",
+      "generation": null,
+      "manual": true
+    },
+    "블레이저": {
+      "model": "Blazer",
+      "generation": null,
+      "manual": true
+    },
+    "서버밴": {
+      "model": "Suburban",
+      "generation": null,
+      "manual": true
+    },
+    "실버라도": {
+      "model": "Silverado",
+      "generation": null,
+      "manual": true
+    },
+    "아발란치": {
+      "model": "Avalanche",
+      "generation": null,
+      "manual": true
+    },
+    "아스트로밴": {
+      "model": "Astro"
+    },
+    "에퀴녹스": {
+      "model": "Equinox",
+      "generation": null,
+      "manual": true
+    },
+    "익스프레스밴": {
+      "model": "Express"
+    },
+    "체비밴": {
+      "model": "Chevy Van",
+      "generation": null,
+      "manual": true
+    },
+    "카마로": {
+      "model": "Camaro",
+      "generation": null,
+      "manual": true
+    },
+    "콜로라도": {
+      "model": "Colorado",
+      "generation": null,
+      "manual": true
+    },
+    "콜벳": {
+      "model": "Corvette",
+      "generation": null,
+      "manual": true
+    },
+    "타호": {
+      "model": "Tahoe",
+      "generation": null,
+      "manual": true
+    },
+    "트랙커": {
+      "model": "Tracker",
+      "generation": null,
+      "manual": true
+    },
+    "트럭밴": {
+      "model": "Truck Van",
+      "generation": null,
+      "manual": true
+    },
+    "트레일블레이저": {
+      "model": "Trailblazer",
+      "generation": null,
+      "manual": true
+    },
+    "픽업트럭": {
+      "model": "Pickup",
+      "generation": null,
+      "manual": true
+    }
+  },
+  "badge_groups": {
+    "HHR": {
+      "2.0 터보": "가솔린 2200cc 이하",
+      "2.2": "가솔린 2200cc 이하",
+      "2.4": "가솔린 2200cc 이상"
+    },
+    "S-10": {
+      "2.2": "가솔린",
+      "2.8": "가솔린",
+      "4.3": "가솔린"
+    },
+    "SSR": {
+      "5.3": "가솔린 5300cc",
+      "6.0": "가솔린 6000cc"
+    },
+    "루미나": {
+      "3.1": "가솔린 3100cc",
+      "3.4": "가솔린 3400cc",
+      "3.8": "가솔린 3800cc"
+    },
+    "루미나 미니밴": {
+      "V6 3.1": "가솔린 3100cc",
+      "V6 3.8": "가솔린 3800cc"
+    },
+    "벤처": {
+      "3.4": "가솔린 3400cc"
+    },
+    "볼트(Volt)": {
+      "1.4": "가솔린+전기 1400cc"
+    },
+    "블레이저": {
+      "4.3": "가솔린",
+      "6.2": "디젤"
+    },
+    "서버밴": {
+      "5.3": "가솔린 6000cc 이하",
+      "5.7": "가솔린 6000cc 이하",
+      "6.0": "가솔린 6000cc 이하",
+      "6.2": "가솔린 6000cc 이상",
+      "7.4": "가솔린 6000cc 이상",
+      "8.1": "가솔린 6000cc 이상"
+    },
+    "실버라도": {
+      "4.3": "가솔린 6000cc 이하",
+      "4.8": "가솔린 6000cc 이하",
+      "5.3": "가솔린 6000cc 이하",
+      "6.0": "가솔린 6000cc 이하",
+      "6.2": "가솔린 6000cc 이상",
+      "6.6": "가솔린 6000cc 이상",
+      "6.6 디젤": "디젤 6000cc 이상",
+      "하이브리드": "가솔린+전기 6000cc 이하"
+    },
+    "아발란치": {
+      "5.3": "가솔린 5300cc"
+    },
+    "아스트로밴": {
+      "4.3 2WD": "가솔린 2WD",
+      "4.3 4WD": "가솔린 4WD"
+    },
+    "에퀴녹스": {
+      "3.4": "가솔린 3400cc"
+    },
+    "익스프레스밴": {
+      "4.3": "가솔린 5300cc 이하",
+      "4.8": "가솔린 5300cc 이하",
+      "5.0": "가솔린 5300cc 이하",
+      "5.3": "가솔린 5300cc 이상",
+      "5.3 AWD": "가솔린 5300cc 이상",
+      "5.7": "가솔린 5300cc 이상",
+      "6.0": "가솔린 5300cc 이상",
+      "6.0 AWD": "가솔린 5300cc 이상",
+      "6.5": "가솔린 5300cc 이상"
+    },
+    "체비밴": {
+      "11인승": "가솔린",
+      "9인승": "가솔린"
+    },
+    "카마로": {
+      "2.0 컨버터블": "가솔린 3600cc 이하",
+      "2.0 쿠페": "가솔린 3600cc 이하",
+      "3.4 컨버터블": "가솔린 3600cc 이하",
+      "3.4 쿠페": "가솔린 3600cc 이하",
+      "3.6 컨버터블": "가솔린 3600cc 이하",
+      "3.6 쿠페": "가솔린 3600cc 이하",
+      "3.8 컨버터블": "가솔린 3600cc 이상",
+      "3.8 쿠페": "가솔린 3600cc 이상",
+      "5.2 쿠페": "가솔린 3600cc 이상",
+      "5.7 컨버터블": "가솔린 3600cc 이상",
+      "5.7 쿠페": "가솔린 3600cc 이상",
+      "6.2 컨버터블": "가솔린 3600cc 이상",
+      "6.2 쿠페": "가솔린 3600cc 이상",
+      "7.0 쿠페": "가솔린 3600cc 이상"
+    },
+    "콜로라도": {
+      "2.8": "가솔린 3500cc 이하",
+      "2.9": "가솔린 3500cc 이하",
+      "3.5": "가솔린 3500cc 이하",
+      "3.6": "가솔린 3500cc 이상",
+      "3.7": "가솔린 3500cc 이상",
+      "5.3": "가솔린 3500cc 이상"
+    },
+    "콜벳": {
+      "컨버터블": "가솔린",
+      "쿠페": "가솔린"
+    },
+    "타호": {
+      "LS 2WD": "가솔린 2WD",
+      "LS 4WD": "가솔린 4WD",
+      "LT 2WD": "가솔린 2WD",
+      "LT 4WD": "가솔린 4WD",
+      "Z71 4x4": "가솔린 4WD",
+      "프리미어 2WD": "가솔린 2WD",
+      "하이브리드 4WD": "가솔린+전기 4WD"
+    },
+    "트랙커": {
+      "1.6": "가솔린 1600cc",
+      "2.5": "가솔린 2500cc"
+    },
+    "트럭밴": {
+      "5.7": "가솔린 5700cc",
+      "6.2 디젤": "디젤 6200cc"
+    },
+    "트레일블레이저": {
+      "2.8 디젤": "디젤 2800cc",
+      "4.2": "가솔린 4200cc",
+      "5.3": "가솔린 5300cc",
+      "6.0": "가솔린 6000cc"
+    },
+    "픽업트럭": {
+      "3.5": "가솔린",
+      "6.2": "가솔린"
+    }
+  }
+}

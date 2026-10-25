@@ -1,0 +1,55 @@
+{
+  "make": "Ineos",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [],
+  "editions": [],
+  "models": [
+    {
+      "name": "Grenadier",
+      "body": "suv",
+      "bodies": {
+        "Station Wagon": "suv"
+      },
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

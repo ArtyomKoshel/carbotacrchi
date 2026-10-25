@@ -1,0 +1,367 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "닛산",
+  "names": {
+    "180SX": "180SX",
+    "200SX": "200SX",
+    "240SX": "240SX",
+    "280ZX": "280ZX",
+    "300ZX": "300ZX",
+    "350Z": "350Z",
+    "370Z": "370Z",
+    "GT-R": "GT-R",
+    "NV": "NV",
+    "노트": "Note",
+    "라페스타": "Lafesta",
+    "로그": "Rogue",
+    "로렐": "Laurel",
+    "리프": "Leaf",
+    "마치": "March",
+    "맥시마": "Maxima",
+    "모코": "Moco",
+    "무라노": "Murano",
+    "버사": "Versa",
+    "베르사": "Versa",
+    "블루버드": "Bluebird",
+    "블루버드 실피": "Bluebird Sylphy",
+    "세드릭": "Cedric",
+    "세레나": "Serena",
+    "세피로": "Cefiro",
+    "센트라": "Sentra",
+    "스카이라인": "Skyline",
+    "스테이지아": "Stagea",
+    "시마": "Cima",
+    "실비아": "Silvia",
+    "알마다": "Armada",
+    "알티마": "Altima",
+    "엑스테라": "Xterra",
+    "엑스트레일": "X-Trail",
+    "엘그란드": "Elgrand",
+    "윙로드": "Wingroad",
+    "쥬크": "Juke",
+    "캐시카이": "Qashqai",
+    "퀘스트": "Quest",
+    "큐브": "Cube",
+    "타이탄": "Titan",
+    "티아나": "Teana",
+    "파오": "Pao",
+    "패스파인더": "Pathfinder",
+    "펄사": "Pulsar",
+    "푸가": "Fuga",
+    "프레리": "Prairie",
+    "프레지던트": "President",
+    "프론티어": "Frontier",
+    "휘가로": "Figaro"
+  },
+  "encar_models": {
+    "180SX": {
+      "model": "180SX"
+    },
+    "200SX": {
+      "model": "200SX"
+    },
+    "240SX": {
+      "model": "240SX"
+    },
+    "280ZX": {
+      "model": "280ZX"
+    },
+    "300ZX": {
+      "model": "300ZX"
+    },
+    "350Z": {
+      "model": "350Z"
+    },
+    "370Z": {
+      "model": "370Z"
+    },
+    "GT-R": {
+      "model": "GT-R"
+    },
+    "NV": {
+      "model": "NV"
+    },
+    "노트": {
+      "model": "Note"
+    },
+    "라페스타": {
+      "model": "Lafesta"
+    },
+    "로그 (S35)": {
+      "model": "Rogue",
+      "generation": "S35"
+    },
+    "로그 (T32)": {
+      "model": "Rogue",
+      "generation": "T32"
+    },
+    "로그 (T33)": {
+      "model": "Rogue",
+      "generation": "T33"
+    },
+    "로렐": {
+      "model": "Laurel"
+    },
+    "리프": {
+      "model": "Leaf",
+      "generation": "ZE0",
+      "manual": true
+    },
+    "리프 (ZE1)": {
+      "model": "Leaf",
+      "generation": "ZE1"
+    },
+    "마치": {
+      "model": "March"
+    },
+    "맥시마": {
+      "model": "Maxima"
+    },
+    "맥시마 (A36)": {
+      "model": "Maxima",
+      "generation": "A36"
+    },
+    "모코": {
+      "model": "Moco"
+    },
+    "무라노": {
+      "model": "Murano"
+    },
+    "무라노 (Z52)": {
+      "model": "Murano",
+      "generation": "Z52"
+    },
+    "버사": {
+      "model": "Versa"
+    },
+    "베르사": {
+      "model": "Versa"
+    },
+    "블루버드": {
+      "model": "Bluebird"
+    },
+    "블루버드 실피": {
+      "model": "Bluebird Sylphy"
+    },
+    "세드릭": {
+      "model": "Cedric"
+    },
+    "세레나": {
+      "model": "Serena"
+    },
+    "세피로": {
+      "model": "Cefiro"
+    },
+    "센트라": {
+      "model": "Sentra"
+    },
+    "스카이라인": {
+      "model": "Skyline"
+    },
+    "스테이지아": {
+      "model": "Stagea"
+    },
+    "시마": {
+      "model": "Cima"
+    },
+    "실비아": {
+      "model": "Silvia"
+    },
+    "알마다": {
+      "model": "Armada"
+    },
+    "알티마": {
+      "model": "Altima"
+    },
+    "알티마 (L34)": {
+      "model": "Altima",
+      "generation": "L34"
+    },
+    "엑스테라": {
+      "model": "Xterra"
+    },
+    "엑스트레일": {
+      "model": "X-Trail"
+    },
+    "엘그란드": {
+      "model": "Elgrand"
+    },
+    "윙로드": {
+      "model": "Wingroad"
+    },
+    "쥬크": {
+      "model": "Juke"
+    },
+    "캐시카이 2세대": {
+      "model": "Qashqai",
+      "generation": "II"
+    },
+    "퀘스트": {
+      "model": "Quest"
+    },
+    "큐브": {
+      "model": "Cube"
+    },
+    "타이탄": {
+      "model": "Titan"
+    },
+    "티아나": {
+      "model": "Teana"
+    },
+    "파오": {
+      "model": "Pao"
+    },
+    "패스파인더": {
+      "model": "Pathfinder"
+    },
+    "패스파인더 4세대": {
+      "model": "Pathfinder",
+      "generation": "IV"
+    },
+    "펄사": {
+      "model": "Pulsar"
+    },
+    "푸가": {
+      "model": "Fuga"
+    },
+    "프레리": {
+      "model": "Prairie"
+    },
+    "프레지던트": {
+      "model": "President"
+    },
+    "프론티어": {
+      "model": "Frontier"
+    },
+    "휘가로": {
+      "model": "Figaro"
+    }
+  },
+  "badge_groups": {
+    "300ZX": {
+      "STD": "가솔린 3000cc",
+      "TWIN TURBO": "가솔린 3000cc"
+    },
+    "350Z": {
+      "3.5 로드스터": "가솔린 3500cc",
+      "3.5 쿠페": "가솔린 3500cc"
+    },
+    "370Z": {
+      "3.7 로드스터": "가솔린 3700cc",
+      "3.7 쿠페": "가솔린 3700cc"
+    },
+    "GT-R": {
+      "3.8": "가솔린 3800cc",
+      "3.8 미드나잇 오팔에디션": "가솔린 3800cc",
+      "3.8 블랙 에디션": "가솔린 3800cc",
+      "3.8 프리미엄 에디션": "가솔린 3800cc"
+    },
+    "로그 (T33)": {
+      "1.5": "가솔린 1500cc"
+    },
+    "리프": {
+      "EV": "전기",
+      "EV S": "전기",
+      "EV SL": "전기"
+    },
+    "리프 (ZE1)": {
+      "EV S": "전기",
+      "EV SL": "전기"
+    },
+    "마치": {
+      "1.0": "가솔린",
+      "1.3": "가솔린",
+      "1.4": "가솔린",
+      "1.4 4WD": "가솔린",
+      "1.6": "가솔린",
+      "C+C": "가솔린",
+      "라피트": "가솔린",
+      "볼레로": "가솔린"
+    },
+    "맥시마 (A36)": {
+      "3.5 플래티넘": "가솔린 3500cc"
+    },
+    "무라노": {
+      "2.5": "가솔린 2500cc",
+      "3.5": "가솔린 3500cc"
+    },
+    "무라노 (Z52)": {
+      "2.5 하이브리드 플래티넘": "가솔린+전기 4WD"
+    },
+    "센트라": {
+      "1.6": "가솔린 1800cc 이하",
+      "1.8": "가솔린 1800cc 이하",
+      "2.0": "가솔린 1800cc 이상",
+      "2.5": "가솔린 1800cc 이상"
+    },
+    "스카이라인": {
+      "GT": "가솔린",
+      "GT-T": "가솔린",
+      "GTR": "가솔린",
+      "GTS": "가솔린",
+      "GTS-T": "가솔린"
+    },
+    "실비아": {
+      "2.0": "가솔린 2000cc",
+      "2.0 SPEC R": "가솔린 2000cc",
+      "2.0 TURBO": "가솔린 2000cc",
+      "2.0 스펙 S": "가솔린 2000cc"
+    },
+    "알티마": {
+      "2.5": "가솔린 2500cc",
+      "2.5 스마트": "가솔린 2500cc",
+      "2.5 쿠페": "가솔린 2500cc",
+      "2.5 테크": "가솔린 2500cc",
+      "3.5": "가솔린 3500cc",
+      "3.5 쿠페": "가솔린 3500cc",
+      "하이브리드": "가솔린+전기 2500cc"
+    },
+    "알티마 (L34)": {
+      "2.0 터보": "가솔린 2000cc",
+      "2.5 SL 테크": "가솔린 2500cc",
+      "2.5 스마트": "가솔린 2500cc",
+      "2.5 스페셜 에디션": "가솔린 2500cc"
+    },
+    "엑스트레일": {
+      "2.5 4WD": "가솔린 2500cc",
+      "2.5 스마트 2WD": "가솔린 2500cc",
+      "2.5 테크 4WD": "가솔린 2500cc"
+    },
+    "엘그란드": {
+      "2.5": "가솔린 2500cc",
+      "3.5": "가솔린 3500cc"
+    },
+    "쥬크": {
+      "1.5": "가솔린 1500cc",
+      "1.6 S": "가솔린 1600cc",
+      "1.6 SV": "가솔린 1600cc"
+    },
+    "캐시카이 2세대": {
+      "1.6 S": "디젤 1600cc",
+      "1.6 SL": "디젤 1600cc",
+      "1.6 플래티넘": "디젤 1600cc"
+    },
+    "큐브": {
+      "1.4": "가솔린 1400cc",
+      "1.4 4WD": "가솔린 1400cc",
+      "1.5": "가솔린 1500cc",
+      "1.8": "가솔린 1800cc",
+      "1.8 S": "가솔린 1800cc",
+      "1.8 S Krom Edition": "가솔린 1800cc",
+      "1.8 SL": "가솔린 1800cc",
+      "14RS": "가솔린 1400cc"
+    },
+    "티아나": {
+      "2.0": "가솔린 2500cc 이하",
+      "2.3": "가솔린 2500cc 이하",
+      "2.5": "가솔린 2500cc 이하",
+      "3.5": "가솔린 2500cc 이상"
+    },
+    "패스파인더 4세대": {
+      "3.5 4WD": "가솔린 3500cc"
+    },
+    "휘가로": {
+      "CONVERTIBLE": "가솔린 1000cc"
+    }
+  }
+}

@@ -1,0 +1,604 @@
+{
+  "_comment": "Renault Korea (Samsung) on Encar. names: Encar's model group → our model. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "르노코리아(삼성)",
+  "names": {
+    "QM3": "QM3",
+    "QM5": "QM5",
+    "QM6": "QM6",
+    "SM3": "SM3",
+    "SM5": "SM5",
+    "SM6": "SM6",
+    "SM7": "SM7",
+    "XM3": "XM3",
+    "그랑 콜레오스": "Grand Koleos",
+    "마스터": "Master",
+    "세닉": "Scenic",
+    "아르카나": "Arkana",
+    "조에": "Zoe",
+    "캡처": "Captur",
+    "클리오": "Clio",
+    "트위지": "Twizy",
+    "필랑트": "Filante"
+  },
+  "model_splits": {},
+  "encar_models": {
+    "All New SM7": {
+      "model": "SM7",
+      "generation": "All New"
+    },
+    "QM3": {
+      "model": "QM3",
+      "generation": "I"
+    },
+    "QM5": {
+      "model": "QM5",
+      "generation": "I"
+    },
+    "QM5 네오": {
+      "model": "QM5",
+      "generation": "I · Neo"
+    },
+    "QM6": {
+      "model": "QM6",
+      "generation": "I"
+    },
+    "SM3": {
+      "model": "SM3",
+      "generation": "I"
+    },
+    "SM3 Z.E.": {
+      "model": "SM3",
+      "generation": "Gen 2",
+      "words": "Z.E."
+    },
+    "SM3 네오": {
+      "model": "SM3",
+      "generation": "Gen 2 · Neo"
+    },
+    "SM3 뉴 제너레이션": {
+      "model": "SM3",
+      "generation": "I · New Generation"
+    },
+    "SM5": {
+      "model": "SM5",
+      "generation": "I"
+    },
+    "SM5 노바": {
+      "model": "SM5",
+      "generation": "Gen 3 · Nova"
+    },
+    "SM5 뉴 임프레션": {
+      "model": "SM5",
+      "generation": "Gen 2 · New Impression"
+    },
+    "SM6": {
+      "model": "SM6",
+      "generation": "I"
+    },
+    "SM7": {
+      "model": "SM7",
+      "generation": "I"
+    },
+    "SM7 New Art": {
+      "model": "SM7",
+      "generation": "I · New Art"
+    },
+    "SM7 노바": {
+      "model": "SM7",
+      "generation": "All New · Nova"
+    },
+    "XM3": {
+      "model": "XM3",
+      "generation": "I"
+    },
+    "그랑 콜레오스": {
+      "model": "Grand Koleos",
+      "generation": "I"
+    },
+    "뉴QM3": {
+      "model": "QM3",
+      "generation": "I · New"
+    },
+    "뉴QM5": {
+      "model": "QM5",
+      "generation": "I · New"
+    },
+    "뉴SM3": {
+      "model": "SM3",
+      "generation": "Gen 2",
+      "manual": true
+    },
+    "뉴SM5": {
+      "model": "SM5",
+      "generation": "Gen 2",
+      "manual": true
+    },
+    "뉴SM5 플래티넘": {
+      "model": "SM5",
+      "generation": "Gen 3 · New Platinum"
+    },
+    "뉴SM5(신형)": {
+      "model": "SM5",
+      "generation": "Gen 3",
+      "manual": true
+    },
+    "더 뉴 QM6": {
+      "model": "QM6",
+      "generation": "I · The New"
+    },
+    "더 뉴 SM6": {
+      "model": "SM6",
+      "generation": "I · The New"
+    },
+    "마스터": {
+      "model": "Master",
+      "generation": "I"
+    },
+    "세닉": {
+      "model": "Scenic",
+      "generation": "I"
+    },
+    "아르카나": {
+      "model": "Arkana",
+      "generation": "I"
+    },
+    "조에": {
+      "model": "Zoe",
+      "generation": "I"
+    },
+    "캡처": {
+      "model": "Captur",
+      "generation": "I"
+    },
+    "클리오": {
+      "model": "Clio",
+      "generation": "I"
+    },
+    "트위지": {
+      "model": "Twizy",
+      "generation": "I"
+    },
+    "필랑트": {
+      "model": "Filante",
+      "generation": "I"
+    }
+  },
+  "badge_groups": {
+    "All New SM7": {
+      "LE": "가솔린 2500cc",
+      "LE35": "가솔린 3500cc",
+      "RE": "가솔린 2500cc",
+      "RE35": "가솔린 3500cc",
+      "SE": "가솔린 2500cc",
+      "SE35": "가솔린 3500cc"
+    },
+    "QM3": {
+      "LE": "디젤 1500cc",
+      "RE": "디젤 1500cc",
+      "RE 시그니처": "디젤 1500cc",
+      "SE": "디젤 1500cc"
+    },
+    "QM5": {
+      "가솔린 2WD 씨티 LE25": "가솔린 2WD",
+      "가솔린 2WD 씨티 RE25": "가솔린 2WD",
+      "가솔린 2WD 씨티 SE25": "가솔린 2WD",
+      "가솔린 2WD 씨티 보스": "가솔린 2WD",
+      "가솔린 2WD 씨티 어드벤쳐": "가솔린 2WD",
+      "가솔린 2WD 씨티 페어웨이": "가솔린 2WD",
+      "디젤 2WD LE": "디젤 2WD",
+      "디젤 2WD RE": "디젤 2WD",
+      "디젤 2WD SE": "디젤 2WD",
+      "디젤 2WD 보스": "디젤 2WD",
+      "디젤 2WD 어드벤쳐": "디젤 2WD",
+      "디젤 2WD 페어웨이": "디젤 2WD",
+      "디젤 4WD LE": "디젤 4WD",
+      "디젤 4WD RE": "디젤 4WD",
+      "디젤 4WD SE": "디젤 4WD"
+    },
+    "QM5 네오": {
+      "가솔린 2.5 AWD (수출형)": "가솔린 4WD",
+      "가솔린 2WD LE": "가솔린 2WD",
+      "가솔린 2WD R4U 에디션": "가솔린 2WD",
+      "가솔린 2WD RE": "가솔린 2WD",
+      "가솔린 2WD SE": "가솔린 2WD",
+      "디젤 2WD LE": "디젤 2WD",
+      "디젤 2WD R4U 에디션": "디젤 2WD",
+      "디젤 2WD RE": "디젤 2WD",
+      "디젤 2WD SE": "디젤 2WD",
+      "디젤 4WD LE": "디젤 4WD",
+      "디젤 4WD R4U 에디션": "디젤 4WD",
+      "디젤 4WD RE": "디젤 4WD",
+      "디젤 4WD SE": "디젤 4WD"
+    },
+    "QM6": {
+      "가솔린 2WD LE": "가솔린 2WD",
+      "가솔린 2WD RE": "가솔린 2WD",
+      "가솔린 2WD RE 시그니처": "가솔린 2WD",
+      "가솔린 2WD SE": "가솔린 2WD",
+      "가솔린 4WD (직수입)": "가솔린 4WD",
+      "디젤 2WD LE": "디젤 2WD",
+      "디젤 2WD RE": "디젤 2WD",
+      "디젤 2WD RE 시그니처": "디젤 2WD",
+      "디젤 2WD RE 플러스": "디젤 2WD",
+      "디젤 2WD SE": "디젤 2WD",
+      "디젤 4WD LE": "디젤 4WD",
+      "디젤 4WD RE": "디젤 4WD",
+      "디젤 4WD RE 시그니처": "디젤 4WD",
+      "디젤 4WD RE 플러스": "디젤 4WD"
+    },
+    "SM3": {
+      "CE": "가솔린 1500cc",
+      "CE16": "가솔린 1600cc",
+      "FE": "가솔린 1500cc",
+      "FE16": "가솔린 1600cc",
+      "LE": "가솔린 1500cc",
+      "LE16": "가솔린 1600cc",
+      "PE": "가솔린 1500cc",
+      "SE": "가솔린 1500cc",
+      "XE": "가솔린 1500cc",
+      "XE16": "가솔린 1600cc",
+      "스페셜 에디션": "가솔린 1500cc",
+      "엔트리": "가솔린 1500cc"
+    },
+    "SM3 Z.E.": {
+      "RE": "전기",
+      "SE": "전기",
+      "SE 플러스": "전기",
+      "택시형": "전기"
+    },
+    "SM3 네오": {
+      "LE": "가솔린 1600cc",
+      "LE 스페셜": "가솔린 1600cc",
+      "PE": "가솔린 1600cc",
+      "R4U 에디션": "가솔린 1600cc",
+      "RE": "가솔린 1600cc",
+      "SE": "가솔린 1600cc",
+      "SE 스페셜": "가솔린 1600cc",
+      "SE 플러스": "가솔린 1600cc",
+      "디젤 LE": "디젤 1500cc",
+      "디젤 SE": "디젤 1500cc"
+    },
+    "SM3 뉴 제너레이션": {
+      "CE16": "가솔린 1600cc",
+      "CE16 프리미엄": "가솔린 1600cc",
+      "CE16 플러스": "가솔린 1600cc",
+      "LE16": "가솔린 1600cc",
+      "LE16 플러스": "가솔린 1600cc",
+      "Neo": "가솔린 1600cc",
+      "PE": "가솔린 1500cc",
+      "PE16": "가솔린 1600cc",
+      "SE16": "가솔린 1600cc",
+      "SE16 플러스": "가솔린 1600cc",
+      "XE16": "가솔린 1600cc"
+    },
+    "SM5": {
+      "LPG": "LPG 2000cc",
+      "SM518": "가솔린 1800cc",
+      "SM520": "가솔린 2000cc",
+      "SM520LE": "가솔린 2000cc",
+      "SM520SE": "가솔린 2000cc",
+      "SM520V": "가솔린 2000cc",
+      "SM520V 플러스": "가솔린 2000cc",
+      "SM525V": "가솔린 2500cc",
+      "스페셜": "가솔린 2000cc",
+      "스페셜 플러스": "가솔린 2000cc"
+    },
+    "SM5 노바": {
+      "1.6 TCE": "가솔린 1600cc",
+      "LE": "가솔린 2000cc",
+      "LPLi LE": "LPG 2000cc",
+      "LPLi RE": "LPG 2000cc",
+      "LPLi 택시렌터카 고급형": "LPG 2000cc",
+      "LPLi 택시렌터카 최고급형": "LPG 2000cc",
+      "PE": "가솔린 2000cc",
+      "PE 플러스": "가솔린 2000cc",
+      "RE": "가솔린 2000cc",
+      "SE": "가솔린 2000cc",
+      "디젤 D": "디젤 1500cc",
+      "디젤 D 프리미엄": "디젤 1500cc",
+      "클래식": "가솔린 2000cc"
+    },
+    "SM5 뉴 임프레션": {
+      "LE": "가솔린 2000cc",
+      "LE 익스클루시브": "가솔린 2000cc",
+      "LE 플러스": "가솔린 2000cc",
+      "LPLI LE": "LPG 2000cc",
+      "LPLI LE 익스클루시브": "LPG 2000cc",
+      "LPLI SE": "LPG 2000cc",
+      "LPLI SE 블랙": "LPG 2000cc",
+      "LPLI SE 플러스": "LPG 2000cc",
+      "LPLI 택시형 고급형": "LPG 2000cc",
+      "LPLI 택시형 모범형": "LPG 2000cc",
+      "LPLI 택시형 최고급형": "LPG 2000cc",
+      "LPLI 택시형 프리미엄 블랙": "LPG 2000cc",
+      "PE": "가솔린 2000cc",
+      "SE": "가솔린 2000cc",
+      "SE 블랙": "가솔린 2000cc",
+      "SE 플러스": "가솔린 2000cc",
+      "XE": "가솔린 2000cc"
+    },
+    "SM6": {
+      "1.5 dCi LE": "디젤 1500cc",
+      "1.5 dCi PE": "디젤 1500cc",
+      "1.5 dCi SE": "디젤 1500cc",
+      "1.6 TCe LE": "가솔린 1600cc",
+      "1.6 TCe RE": "가솔린 1600cc",
+      "1.6 TCe SE": "가솔린 1600cc",
+      "1.6 TCe 프리미에르": "가솔린 1600cc",
+      "2.0 GDe LE": "가솔린 2000cc",
+      "2.0 GDe LE 스페셜": "가솔린 2000cc",
+      "2.0 GDe PE": "가솔린 2000cc",
+      "2.0 GDe RE": "가솔린 2000cc",
+      "2.0 GDe SE": "가솔린 2000cc",
+      "2.0 GDe 프리미에르": "가솔린 2000cc",
+      "2.0 LPe LE": "LPG 2000cc",
+      "2.0 LPe LE (장애인용)": "LPG 2000cc",
+      "2.0 LPe PE (렌터카)": "LPG 2000cc",
+      "2.0 LPe PE (택시형)": "LPG 2000cc",
+      "2.0 LPe RE": "LPG 2000cc",
+      "2.0 LPe RE (장애인용)": "LPG 2000cc",
+      "2.0 LPe SE": "LPG 2000cc",
+      "2.0 LPe SE (렌터카)": "LPG 2000cc",
+      "2.0 LPe SE (장애인용)": "LPG 2000cc",
+      "2.0 LPe SE (택시형)": "LPG 2000cc",
+      "2.0 프라임 PE": "가솔린 2000cc",
+      "2.0 프라임 SE": "가솔린 2000cc"
+    },
+    "SM7": {
+      "LE": "가솔린 2300cc",
+      "LE35": "가솔린 3500cc",
+      "RE35": "가솔린 3500cc",
+      "RE35 블랙": "가솔린 3500cc",
+      "SE": "가솔린 2300cc",
+      "XE": "가솔린 2300cc",
+      "XE35": "가솔린 3500cc",
+      "프리미어": "가솔린 3500cc"
+    },
+    "SM7 New Art": {
+      "LE": "가솔린 2300cc",
+      "LE35": "가솔린 3500cc",
+      "RE": "가솔린 2300cc",
+      "RE35": "가솔린 3500cc",
+      "SE": "가솔린 2300cc",
+      "SE 플러스": "가솔린 2300cc",
+      "SE 플레져": "가솔린 2300cc",
+      "프레스티지": "가솔린 2300cc"
+    },
+    "SM7 노바": {
+      "2.5 V6": "가솔린 2500cc",
+      "3.5 V6": "가솔린 3500cc",
+      "LE": "가솔린 2500cc",
+      "LE35": "가솔린 3500cc",
+      "LPLI 2.0 LPe": "LPG 2000cc",
+      "LPLI 2.0 LPe 장애인용": "LPG 2000cc",
+      "LPLI 2.0 LPe 택시렌터카": "LPG 2000cc",
+      "RE": "가솔린 2500cc",
+      "RE35": "가솔린 3500cc",
+      "SE": "가솔린 2500cc"
+    },
+    "XM3": {
+      "1.3 TCe LE": "가솔린 1300cc",
+      "1.3 TCe RE": "가솔린 1300cc",
+      "1.3 TCe RE 시그니처": "가솔린 1300cc",
+      "1.3 TCe RE 인스파이어": "가솔린 1300cc",
+      "1.6 E-TECH RE": "가솔린+전기 1600cc",
+      "1.6 E-TECH 인스파이어": "가솔린+전기 1600cc",
+      "1.6 E-TECH 인스파이어 e-시프터": "가솔린+전기 1600cc",
+      "1.6 E-TECH 인스파이어 디자인 패키지": "가솔린+전기 1600cc",
+      "1.6 GTe LE": "가솔린 1600cc",
+      "1.6 GTe LE Plus": "가솔린 1600cc",
+      "1.6 GTe LE 베이직": "가솔린 1600cc",
+      "1.6 GTe RE": "가솔린 1600cc",
+      "1.6 GTe RE 베이직": "가솔린 1600cc",
+      "1.6 GTe SE": "가솔린 1600cc",
+      "1.6 GTe SE 베이직": "가솔린 1600cc",
+      "1.6 GTe 인스파이어": "가솔린 1600cc"
+    },
+    "그랑 콜레오스": {
+      "1.5 E-TECH 아이코닉 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 에스카파드 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 에스프리 알핀 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 에스프리 알핀 누아르 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 테크노 2WD": "가솔린+전기 2WD",
+      "2.0 아이코닉 2WD": "가솔린 2WD",
+      "2.0 아이코닉 4WD": "가솔린 4WD",
+      "2.0 에스카파드 2WD": "가솔린 2WD",
+      "2.0 에스카파드 4WD": "가솔린 4WD",
+      "2.0 에스프리 알핀 2WD": "가솔린 2WD",
+      "2.0 에스프리 알핀 4WD": "가솔린 4WD",
+      "2.0 에스프리 알핀 누아르 2WD": "가솔린 2WD",
+      "2.0 테크노 2WD": "가솔린 2WD"
+    },
+    "뉴QM3": {
+      "LE": "디젤 1500cc",
+      "RE": "디젤 1500cc",
+      "SE": "디젤 1500cc"
+    },
+    "뉴QM5": {
+      "가솔린 2WD 2.0 LE": "가솔린 2WD",
+      "가솔린 2WD 2.0 SE": "가솔린 2WD",
+      "가솔린 2WD 살로몬 에디션": "가솔린 2WD",
+      "가솔린 2WD 씨티 LE25": "가솔린 2WD",
+      "가솔린 2WD 씨티 LE25 플러스": "가솔린 2WD",
+      "가솔린 2WD 씨티 RE25": "가솔린 2WD",
+      "가솔린 2WD 씨티 SE25": "가솔린 2WD",
+      "디젤 2WD LE": "디젤 2WD",
+      "디젤 2WD LE 플러스": "디젤 2WD",
+      "디젤 2WD RE": "디젤 2WD",
+      "디젤 2WD RE Art": "디젤 2WD",
+      "디젤 2WD SE": "디젤 2WD",
+      "디젤 2WD 살로몬 에디션": "디젤 2WD",
+      "디젤 4WD LE": "디젤 4WD",
+      "디젤 4WD RE": "디젤 4WD",
+      "디젤 4WD RE Art": "디젤 4WD",
+      "디젤 4WD SE": "디젤 4WD",
+      "디젤 4WD 살로몬 에디션": "디젤 4WD"
+    },
+    "뉴SM3": {
+      "LE": "가솔린 1600cc",
+      "LE 익스클루시브": "가솔린 1600cc",
+      "LE 익스클루시브 BOSE에디션": "가솔린 1600cc",
+      "LE 플러스": "가솔린 1600cc",
+      "LE20": "가솔린 2000cc",
+      "LE20 익스클루시브": "가솔린 2000cc",
+      "LE20 익스클루시브 BOSE에디션": "가솔린 2000cc",
+      "PE": "가솔린 1600cc",
+      "RE": "가솔린 1600cc",
+      "RE20": "가솔린 2000cc",
+      "SE": "가솔린 1600cc",
+      "SE 블랙": "가솔린 1600cc",
+      "SE 플러스": "가솔린 1600cc",
+      "SE 플러스 Art": "가솔린 1600cc",
+      "SE20": "가솔린 2000cc",
+      "XE": "가솔린 1600cc"
+    },
+    "뉴SM5": {
+      "LE": "가솔린 2000cc",
+      "LE 블랙": "가솔린 2000cc",
+      "LE 플러스": "가솔린 2000cc",
+      "LPLI LE": "LPG 2000cc",
+      "LPLI LE 블랙": "LPG 2000cc",
+      "LPLI SE": "LPG 2000cc",
+      "LPLI SE 플러스": "LPG 2000cc",
+      "LPLI 기본형": "LPG 2000cc",
+      "LPLI 기본형 플러스": "LPG 2000cc",
+      "LPLI 택시형 고급형": "LPG 2000cc",
+      "LPLI 택시형 모범형": "LPG 2000cc",
+      "PE": "가솔린 2000cc",
+      "SE": "가솔린 2000cc",
+      "SE 플러스": "가솔린 2000cc",
+      "XE": "가솔린 2000cc"
+    },
+    "뉴SM5 플래티넘": {
+      "1.6 TCE": "가솔린 1600cc",
+      "LE": "가솔린 2000cc",
+      "LPLI 택시렌터카 고급형": "LPG 2000cc",
+      "LPLi LE": "LPG 2000cc",
+      "LPLi RE": "LPG 2000cc",
+      "LPLi SE 플러스": "LPG 2000cc",
+      "LPLi 택시렌터카 최고급형": "LPG 2000cc",
+      "PE": "가솔린 2000cc",
+      "RE": "가솔린 2000cc",
+      "SE": "가솔린 2000cc",
+      "SE 플러스": "가솔린 2000cc",
+      "구조변경(가솔린)": "가솔린 2000cc",
+      "디젤 D": "디젤 1500cc",
+      "디젤 D 스페셜": "디젤 1500cc"
+    },
+    "뉴SM5(신형)": {
+      "LE": "가솔린 2000cc",
+      "LE 익스클루시브": "가솔린 2000cc",
+      "LPLI LE": "LPG 2000cc",
+      "LPLI SE": "LPG 2000cc",
+      "LPLI SE 플러스": "LPG 2000cc",
+      "LPLI 택시렌터카 고급형": "LPG 2000cc",
+      "LPLI 택시렌터카 최고급형": "LPG 2000cc",
+      "PE": "가솔린 2000cc",
+      "RE": "가솔린 2000cc",
+      "RE25": "가솔린 2500cc",
+      "SE": "가솔린 2000cc",
+      "SE 블랙": "가솔린 2000cc",
+      "SE 플러스": "가솔린 2000cc",
+      "SE 플러스 보스에디션": "가솔린 2000cc",
+      "SE 플러스25": "가솔린 2500cc",
+      "XE": "가솔린 2000cc"
+    },
+    "더 뉴 QM6": {
+      "1.7 dCi RE 2WD": "디젤 2WD",
+      "1.7 dCi RE 시그니처 2WD": "디젤 2WD",
+      "1.7 dCi SE 2WD": "디젤 2WD",
+      "2.0 GDe LE 2WD": "가솔린 2WD",
+      "2.0 GDe LE 시그니처 2WD": "가솔린 2WD",
+      "2.0 GDe RE 2WD": "가솔린 2WD",
+      "2.0 GDe RE 시그니처 2WD": "가솔린 2WD",
+      "2.0 GDe SE 2WD": "가솔린 2WD",
+      "2.0 GDe 볼드에디션": "가솔린 2WD",
+      "2.0 GDe 프리미에르 2WD": "가솔린 2WD",
+      "2.0 LPe LE 2WD": "LPG 2WD",
+      "2.0 LPe LE 시그니처 2WD": "LPG 2WD",
+      "2.0 LPe RE 2WD": "LPG 2WD",
+      "2.0 LPe RE 시그니처 2WD": "LPG 2WD",
+      "2.0 LPe SE 2WD": "LPG 2WD",
+      "2.0 LPe 프리미에르 2WD": "LPG 2WD",
+      "2.0 dCi RE 4WD": "디젤 4WD",
+      "2.0 dCi RE 시그니처 4WD": "디젤 4WD",
+      "2.0 dCi 프리미에르 4WD": "디젤 4WD",
+      "퀘스트 2.0 LPe LE 2WD": "LPG 2WD",
+      "퀘스트 2.0 LPe RE 2WD": "LPG 2WD",
+      "퀘스트 2.0 LPe SE 2WD": "LPG 2WD",
+      "퀘스트 2.0 LPe 밴 2WD": "LPG 2WD",
+      "퀘스트 2.0 LPe 비즈니스 2WD": "LPG 2WD",
+      "퀘스트 2.0 LPe 어드벤처 2WD": "LPG 2WD"
+    },
+    "더 뉴 SM6": {
+      "1.3 TCe LE": "가솔린 1300cc",
+      "1.3 TCe RE": "가솔린 1300cc",
+      "1.3 TCe SE": "가솔린 1300cc",
+      "1.3 TCe SE Plus": "가솔린 1300cc",
+      "1.3 TCe 프리미에르": "가솔린 1300cc",
+      "1.3 TCe 필": "가솔린 1300cc",
+      "1.8 TCe LE": "가솔린 1800cc",
+      "1.8 TCe 인스파이어": "가솔린 1800cc",
+      "1.8 TCe 프리미에르": "가솔린 1800cc",
+      "2.0 LPe LE": "LPG 2000cc",
+      "2.0 LPe RE": "LPG 2000cc",
+      "2.0 LPe SE": "LPG 2000cc",
+      "2.0 LPe SE Plus": "LPG 2000cc",
+      "2.0 LPe 필": "LPG 2000cc"
+    },
+    "마스터": {
+      "2.3 13인승": "디젤 2300cc",
+      "2.3 15인승": "디젤 2300cc",
+      "2.3 밴 L": "디젤 2300cc",
+      "2.3 밴 S": "디젤 2300cc",
+      "냉동차": "디젤 2300cc",
+      "어린이 보호차": "디젤 2300cc",
+      "캠핑카/이동사무차": "디젤 2300cc"
+    },
+    "세닉": {
+      "아이코닉": "전기 2WD",
+      "아이코닉 라이트": "전기 2WD",
+      "테크노": "전기 2WD",
+      "테크노 플러스": "전기 2WD"
+    },
+    "아르카나": {
+      "1.3 TCe 아이코닉": "가솔린 1300cc",
+      "1.6 E-TECH 아이코닉": "가솔린+전기 1600cc",
+      "1.6 E-TECH 아이코닉 디자인 패키지": "가솔린+전기 1600cc",
+      "1.6 E-TECH 에스프리 알핀": "가솔린+전기 1600cc",
+      "1.6 E-TECH 테크노": "가솔린+전기 1600cc",
+      "1.6 GTe 아이코닉": "가솔린 1600cc",
+      "1.6 GTe 에볼루션": "가솔린 1600cc",
+      "1.6 GTe 테크노": "가솔린 1600cc"
+    },
+    "조에": {
+      "인텐스": "전기",
+      "인텐스 에코": "전기",
+      "젠": "전기"
+    },
+    "캡처": {
+      "1.3 TCe 에디션 파리": "가솔린 1300cc",
+      "1.3 TCe 인텐스": "가솔린 1300cc",
+      "1.5 dCi 인텐스": "디젤 1500cc",
+      "1.5 dCi 젠": "디젤 1500cc"
+    },
+    "클리오": {
+      "스틸": "디젤 1500cc",
+      "아이코닉": "디젤 1500cc",
+      "인텐스": "디젤 1500cc",
+      "인텐스 파노라믹": "디젤 1500cc",
+      "젠": "디젤 1500cc"
+    },
+    "트위지": {
+      "라이프(2인승)": "전기",
+      "인텐스(2인승)": "전기",
+      "카고(1인승+트렁크)": "전기"
+    },
+    "필랑트": {
+      "1.5 E-TECH 아이코닉 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 에스프리 알핀 1955 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 에스프리 알핀 2WD": "가솔린+전기 2WD",
+      "1.5 E-TECH 테크노 2WD": "가솔린+전기 2WD"
+    }
+  }
+}

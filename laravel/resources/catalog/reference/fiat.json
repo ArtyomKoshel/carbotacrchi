@@ -1,0 +1,116 @@
+{
+ "make": "Fiat",
+ "engine": {
+  "words": {
+   "Diesel": "diesel",
+   "EV": "electric",
+   "Abarth": null
+  },
+  "drives": {
+   "AWD": "awd"
+  }
+ },
+ "complectations": [
+  "Cross Plus",
+  "Cross",
+  "PopStar",
+  "Color Plus",
+  "Color"
+ ],
+ "editions": [],
+ "models": [
+  {
+   "name": "500",
+   "body": "hatchback",
+   "generations": [
+    {
+     "code": "312",
+     "number": 1,
+     "years": [
+      2007,
+      2024
+     ]
+    }
+   ]
+  },
+  {
+   "name": "500C",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "312",
+     "number": 1,
+     "years": [
+      2009,
+      2024
+     ]
+    }
+   ]
+  },
+  {
+   "name": "500X",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "334",
+     "number": 1,
+     "years": [
+      2014,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "500e",
+   "body": "hatchback",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "312e",
+     "number": 1,
+     "years": [
+      2013,
+      2019
+     ]
+    },
+    {
+     "code": "332",
+     "number": 2,
+     "years": [
+      2020,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "124 Spider",
+   "body": "roadster",
+   "generations": [
+    {
+     "code": "348",
+     "number": 1,
+     "years": [
+      2016,
+      2020
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Ducato",
+   "body": "van",
+   "generations": [
+    {
+     "code": "250",
+     "number": 3,
+     "years": [
+      2006,
+      null
+     ]
+    }
+   ]
+  }
+ ]
+}

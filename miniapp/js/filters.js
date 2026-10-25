@@ -1,15 +1,12 @@
 const Filters = (() => {
   let filtersData = null;
-  let trimRequestSeq = 0;
   let optionsSelectInstance  = null;
   let makeSelectInstance     = null;
-  let modelSelectInstance    = null;
-  let badgeSelectInstance    = null;
-  let trimSelectInstance     = null;
   let _countTimer = null;
   let _contextTimer = null;
   let _onChange = null;   // the shell: re-run the search (desktop) or refresh the count (phone)
   let _onCount  = null;   // (n | null) → shown on the "Показать N лотов" button
+  let _catalogRestore = null; // ref* fields of an applied query, picked once the make's catalog loads
   const SORTS = ['date', 'price_asc', 'price_desc', 'mileage_asc', 'mileage_desc', 'year_desc', 'year_asc'];
   const COUNT_DEBOUNCE_MS = 700;
   const CONTEXT_DEBOUNCE_MS = 400;
@@ -77,6 +74,7 @@ const Filters = (() => {
     state.listedAfter = ''; state.listedBefore = '';
     state.firstRegAfter = ''; state.firstRegBefore = '';
     state.sort = 'date'; state.options = [];
+    CatalogFilter.reset();
   }
 
   // ── Field metadata: maps field_name → UI render config ──
@@ -116,7 +114,7 @@ const Filters = (() => {
 
   async function init() {
     try {
-      filtersData = await API.getFilters('ru');
+      [filtersData] = await Promise.all([API.getFilters('ru'), CatalogFilter.load()]);
       Taxonomy.ingestFilters(filtersData ?? {});
       state.sources = _sourceKeys();
       render();
@@ -231,15 +229,7 @@ const Filters = (() => {
           <div class="filter-select-wrap">
             <select class="filter-select" id="filter-make"><option value="">Любая марка</option></select>
           </div>
-          <div class="filter-select-wrap">
-            <select class="filter-select" id="filter-model"><option value="">Любая модель</option></select>
-          </div>
-          <div class="filter-select-wrap" id="filter-badge-wrap" style="display:none">
-            <select class="filter-select" id="filter-badge"><option value="">Любая серия</option></select>
-          </div>
-          <div class="filter-select-wrap" id="filter-trim-wrap" style="display:none">
-            <select class="filter-select" id="filter-trim"><option value="">Любая комплектация</option></select>
-          </div>`;
+          <div class="filter-selects" id="filter-catalog" hidden></div>`;
         body.appendChild(selects);
         break;
       }
@@ -371,8 +361,7 @@ const Filters = (() => {
   function populateFilters() {
     renderSourceChips();
     renderMakeSelect();
-    renderModelSelect();
-    renderBadgeSelect([]);
+    renderCatalog();
     initOptionsSelect(filtersData?.options ?? []);
 
     const enabled = getEnabledFields();
@@ -389,7 +378,7 @@ const Filters = (() => {
       }
     }
 
-    if (state.make || state.model) {
+    if (state.make) {
       _scheduleContextUpdate();
     }
   }
@@ -482,20 +471,11 @@ const Filters = (() => {
   }
 
   function _destroySelectInstances() {
-    for (const [key, inst] of [
-      ['optionsSelectInstance',   optionsSelectInstance],
-      ['makeSelectInstance',      makeSelectInstance],
-      ['modelSelectInstance',     modelSelectInstance],
-      ['badgeSelectInstance',     badgeSelectInstance],
-      ['trimSelectInstance',      trimSelectInstance],
-    ]) {
+    for (const inst of [optionsSelectInstance, makeSelectInstance]) {
       if (inst) { try { inst.destroy(); } catch (_) {} }
     }
     optionsSelectInstance    = null;
     makeSelectInstance       = null;
-    modelSelectInstance      = null;
-    badgeSelectInstance      = null;
-    trimSelectInstance       = null;
   }
 
   function _tsBase(el, opts) {
@@ -515,9 +495,8 @@ const Filters = (() => {
   function renderMakeSelect() {
     const el = document.getElementById('filter-make');
     if (!el) return;
-    const makes = (Taxonomy.normalizeOptionItems(
-      filtersData?.makeOptions ?? Object.keys(filtersData?.makes ?? {})
-    )).map(o => ({ value: o.value, text: o.label }));
+    const makes = Taxonomy.normalizeOptionItems(filtersData?.makeOptions ?? [])
+      .map(o => ({ value: o.value, text: o.label }));
 
     makeSelectInstance = _tsBase(el, {
       maxItems: 1,
@@ -527,129 +506,21 @@ const Filters = (() => {
         const v = val || '';
         if (state.make === v) return;
         state.make = v; state.model = ''; state.badge = ''; state.trim = '';
-        renderModelSelect();
-        renderBadgeSelect([]);
-        renderTrimSelect([]);
+        renderCatalog();
         _scheduleContextUpdate(); _scheduleCountUpdate();
       },
     });
   }
 
-  function renderModelSelect() {
-    if (modelSelectInstance) { try { modelSelectInstance.destroy(); } catch(_) {} modelSelectInstance = null; }
-    if (badgeSelectInstance) { try { badgeSelectInstance.destroy(); } catch(_) {} badgeSelectInstance = null; }
-    if (trimSelectInstance)  { try { trimSelectInstance.destroy();  } catch(_) {} trimSelectInstance  = null; }
-
-    const el = document.getElementById('filter-model');
+  // the make's reference catalog below the make: model → generation → modification → complectation
+  function renderCatalog() {
+    const el = document.getElementById('filter-catalog');
     if (!el) return;
-
-    // filtersData.makes[make] is now a flat array of English model names: ["Sonata", "Tucson", ...]
-    // (was: {model_group_kr: [model_kr, ...]} — changed by FiltersController refactor)
-    const raw = filtersData?.makes?.[state.make] ?? [];
-    const models = Array.isArray(raw)
-      ? [...new Set(raw)].sort()                                        // new flat format
-      : [...new Set(Object.values(raw).flat())].sort();                 // legacy nested fallback
-
-    modelSelectInstance = _tsBase(el, {
-      maxItems: 1,
-      options:  [{ value: '', text: 'Любая модель' }, ...models.map(m => ({ value: m, text: m }))],
-      items:    state.model ? [state.model] : [''],
-      onChange(val) {
-        const v = val || '';
-        if (state.model === v) return;
-        state.model = v; state.badge = ''; state.trim = '';
-        renderBadgeSelect([]);
-        renderTrimSelect([]);
-        if (state.make || state.model) loadTrims();
-        _scheduleContextUpdate(); _scheduleCountUpdate();
-      },
-    });
-
-    if (state.make || state.model) loadTrims();
-  }
-
-  function renderBadgeSelect(badges) {
-    if (badgeSelectInstance) { try { badgeSelectInstance.destroy(); } catch(_) {} badgeSelectInstance = null; }
-
-    const wrap = document.getElementById('filter-badge-wrap');
-    const sel  = document.getElementById('filter-badge');
-    if (!wrap || !sel) return;
-
-    const badgeOptions = Taxonomy.normalizeOptionItems(badges);
-    if (!badgeOptions || badgeOptions.length === 0) {
-      wrap.style.display = 'none';
-      return;
-    }
-
-    sel.innerHTML = '<option value=""></option>';
-    wrap.style.display = '';
-
-    const opts = badgeOptions.map(o => ({
-      value: o.value,
-      text:  o.label || o.value,
-    }));
-
-    badgeSelectInstance = _tsBase(sel, {
-      maxItems: 1,
-      options:  [{ value: '', text: 'Любая серия' }, ...opts],
-      items:    state.badge ? [state.badge] : [''],
-      onChange(val) {
-        const v = val || '';
-        if (state.badge === v) return;
-        state.badge = v;
-        state.trim = '';
-        _scheduleContextUpdate();
-        _scheduleCountUpdate();
-      },
-    });
-  }
-
-  async function loadTrims() {
-    const make = state.make;
-    const model = state.model;
-    const reqId = ++trimRequestSeq;
-    try {
-      const data = await API.getTrims(make, model, 'ru');
-      if (reqId !== trimRequestSeq) return;
-      if (make !== state.make || model !== state.model) return;
-      const trimOpts = data?.trimOptions ?? [];
-      Taxonomy.ingestTrims(trimOpts);
-      renderTrimSelect(trimOpts.length ? trimOpts : (data?.trims ?? []));
-    } catch (e) {
-      if (reqId !== trimRequestSeq) return;
-      renderTrimSelect([]);
-    }
-  }
-
-  function renderTrimSelect(trims) {
-    if (trimSelectInstance) { try { trimSelectInstance.destroy(); } catch(_) {} trimSelectInstance = null; }
-
-    const wrap = document.getElementById('filter-trim-wrap');
-    const sel  = document.getElementById('filter-trim');
-    if (!wrap || !sel) return;
-
-    const trimOptions = Taxonomy.normalizeOptionItems(trims);
-    if (!trimOptions || trimOptions.length === 0) {
-      wrap.style.display = 'none';
-      state.trim = '';
-      return;
-    }
-
-    // Reset native select so Tom Select starts clean
-    sel.innerHTML = '<option value=""></option>';
-    wrap.style.display = '';
-
-    const opts = trimOptions.map(o => ({
-      value: o.value,
-      text:  Taxonomy.label('trim', o.value) || o.label || o.value,
-    }));
-
-    trimSelectInstance = _tsBase(sel, {
-      maxItems: 1,
-      options:  [{ value: '', text: 'Любая комплектация' }, ...opts],
-      items:    state.trim ? [state.trim] : [''],
-      onChange(val) { state.trim = val || ''; _scheduleCountUpdate(); },
-    });
+    const restore = _catalogRestore;
+    _catalogRestore = null;
+    if (!state.make) { CatalogFilter.reset(); return; }
+    CatalogFilter.mount(el, state.make, () => { _updateResetBtn(); _scheduleContextUpdate(); _scheduleCountUpdate(); }, restore)
+      .then(() => { if (restore) _scheduleCountUpdate(); });
   }
 
   function readFormState() {
@@ -680,10 +551,12 @@ const Filters = (() => {
     if (optionsSelectInstance) {
       state.options = [...optionsSelectInstance.items];
     }
+    const catalog = CatalogFilter.query();
     return {
+      ...catalog,
       make:             state.make              || undefined,
-      model:            state.model             || undefined,
-      badge:            state.badge             || undefined,
+      model:            catalog.refMakeId ? undefined : (state.model || undefined),
+      badge:            catalog.refMakeId ? undefined : (state.badge || undefined),
       yearFrom:         state.yearFrom          ? parseInt(state.yearFrom)          : undefined,
       yearTo:           state.yearTo            ? parseInt(state.yearTo)            : undefined,
       priceMin:         state.priceMin          ? parseInt(state.priceMin)          : undefined,
@@ -703,7 +576,7 @@ const Filters = (() => {
       titleTypes:       state.titleTypes.length       ? state.titleTypes       : undefined,
       lienStatuses:     state.lienStatuses.length     ? state.lienStatuses     : undefined,
       seizureStatuses:  state.seizureStatuses.length  ? state.seizureStatuses  : undefined,
-      trim:             state.trim              || undefined,
+      trim:             catalog.refMakeId ? undefined : (state.trim || undefined),
       hasAccident:      state.hasAccident !== null ? state.hasAccident     : undefined,
       floodHistory:     state.floodHistory !== null ? state.floodHistory   : undefined,
       totalLossHistory: state.totalLossHistory !== null ? state.totalLossHistory : undefined,
@@ -733,6 +606,7 @@ const Filters = (() => {
     };
 
     if (q.make)  { state.make  = q.make;  }
+    _catalogRestore = (q.refMakeId || q.model) ? q : null;
     if (q.model) { state.model = q.model; }
     if (q.badge) { state.badge = q.badge; }
     if (q.trim)  { state.trim  = q.trim;  }
@@ -819,7 +693,7 @@ const Filters = (() => {
 
   function hasActive() {
     return !!(
-      state.make || state.model || state.badge || state.trim ||
+      state.make || state.model || state.badge || state.trim || CatalogFilter.hasChoice() ||
       state.yearFrom || state.yearTo ||
       state.priceMin || state.priceMax ||
       state.mileageMin || state.mileageMax ||
@@ -877,12 +751,12 @@ const Filters = (() => {
   }
 
   async function _updateContext() {
-    if (!state.make && !state.model) return;
+    if (!state.make) return;
     try {
-      const params = {};
-      if (state.make)  params.make  = state.make;
-      if (state.model) params.model = state.model;
-      if (state.badge) params.badge = state.badge;
+      const { refMakeId, refModelId } = CatalogFilter.query();
+      const params = { make: state.make };
+      if (refMakeId) params.refMakeId = refMakeId;
+      if (refModelId) params.refModelId = refModelId;
       const ctx = await API.getContext(params);
       if (!ctx) return;
 
@@ -900,14 +774,6 @@ const Filters = (() => {
         if (Array.isArray(items) && items.length) {
           renderChipGroup(`chips-${fieldName}`, items, stateKey);
         }
-      }
-
-      // Update badge and trim options by context
-      if (Array.isArray(ctx.badgeOptions)) {
-        renderBadgeSelect(ctx.badgeOptions);
-      }
-      if (Array.isArray(ctx.trimOptions)) {
-        renderTrimSelect(ctx.trimOptions);
       }
     } catch (_) {
       // Context update is best-effort
@@ -927,7 +793,7 @@ const Filters = (() => {
     const q = getQuery();
     const chips = [];
     const add = (key, label) => label && chips.push({ key, label });
-    if (q.make) add('make', [Taxonomy.label('make', q.make) || q.make, q.model].filter(Boolean).join(' '));
+    if (q.make) add('make', [Taxonomy.label('make', q.make) || q.make, q.refMakeId ? CatalogFilter.summary() : q.model].filter(Boolean).join(' '));
     if (q.badge) add('badge', q.badge);
     if (q.trim) add('trim', Taxonomy.label('trim', q.trim) || q.trim);
     if (q.yearFrom || q.yearTo) add('year', range(q.yearFrom, q.yearTo, '', String));
@@ -956,7 +822,8 @@ const Filters = (() => {
   }
 
   const CLEAR = {
-    make: ['make', 'model', 'badge', 'trim'], badge: ['badge', 'trim'], trim: ['trim'],
+    make: ['make', 'model', 'badge', 'trim', 'refMakeId', 'refModelId', 'refGenerationIds', 'refModificationIds', 'refComplectationIds'],
+    badge: ['badge', 'trim'], trim: ['trim'],
     year: ['yearFrom', 'yearTo'], price: ['priceMin', 'priceMax'], mileage: ['mileageMin', 'mileageMax'],
     engine: ['engineMin', 'engineMax'], seats: ['seatCountMin', 'seatCountMax'],
     owners: ['ownersCountMin', 'ownersCountMax'], insurance: ['insuranceCountMin', 'insuranceCountMax'],

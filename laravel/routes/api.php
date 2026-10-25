@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BrowserAuthController;
+use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\FavoritesController;
 use App\Http\Controllers\Api\FiltersController;
 use App\Http\Controllers\Api\InspectionsController;
@@ -38,7 +39,8 @@ Route::middleware('internal.token')->prefix('internal')->group(function () {
     Route::post('/lots/delist', [LotsController::class, 'delist']);
 });
 
+Route::get('/catalog', [CatalogController::class, 'makes']);
+Route::get('/catalog/{makeId}', [CatalogController::class, 'make'])->whereNumber('makeId');
 Route::post('/filters/count', [FiltersController::class, 'count']);
-Route::get('/filters/trims', [FiltersController::class, 'trims']);
 Route::get('/filters/context', [FiltersController::class, 'context']);
 Route::get('/filters', [FiltersController::class, 'index']);

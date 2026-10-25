@@ -54,6 +54,11 @@ class FakeEncar:
             None  # (fake, q, offset), before answering
         )
         self.searches: list[tuple[str, int, int]] = []  # (q, offset, count)
+        # (q, offset, count) → HTTP status of that search, instead of search_status
+        self.search_status_for: Callable[[str, int, int], int] | None = None
+        self.global_makers: set[str] | None = None  # makers the unfiltered query reaches (None: all)
+        self.nav_status = 200
+        self.nav_makers: list[str] | None = None  # makers in the navigation (None: all of INVENTORY)
 
     def _search(self, request: httpx.Request) -> httpx.Response:
         q = unquote(request.url.params.get("q", ""))
@@ -64,9 +69,9 @@ class FakeEncar:
             self.on_search(self, q, offset)
 
         def matches(maker: str, group: str) -> bool:
-            return (
-                f"Manufacturer.{maker}." in q and (f"ModelGroup.{group}." in q or "ModelGroup" not in q)
-            ) or "Manufacturer" not in q
+            if "Manufacturer" not in q:
+                return self.global_makers is None or maker in self.global_makers
+            return f"Manufacturer.{maker}." in q and (f"ModelGroup.{group}." in q or "ModelGroup" not in q)
 
         results = [item(i, Manufacturer=mk, ModelGroup=g) for i, mk, g in self.top if matches(mk, g)]
         on_top = {i for i, _, _ in self.top}
@@ -78,17 +83,33 @@ class FakeEncar:
                         for i in ids
                         if i not in self.hidden and i not in on_top
                     ]
-        if self.search_status != 200:
-            return httpx.Response(self.search_status)
+        status = self.search_status_for(q, offset, count) if self.search_status_for else self.search_status
+        if status != 200:
+            return httpx.Response(status)
         return httpx.Response(
             200, json={"Count": len(results), "SearchResults": results[offset : offset + count]}
         )
+
+    def _nav(self) -> httpx.Response:
+        """The search navigation: makers nested under the selected CarType, as Encar nests them."""
+        if self.nav_status != 200:
+            return httpx.Response(self.nav_status)
+        makers = self.nav_makers if self.nav_makers is not None else list(INVENTORY)
+        counts = {mk: sum(len(ids) for ids in INVENTORY.get(mk, {}).values()) for mk in makers}
+        manufacturer = {
+            "Name": "Manufacturer",
+            "Facets": [{"Value": mk, "Count": n} for mk, n in counts.items()],
+        }
+        car_type = {"Value": "A", "Count": sum(counts.values()), "Refinements": {"Nodes": [manufacturer]}}
+        return httpx.Response(200, json={"iNav": {"Nodes": [{"Name": "CarType", "Facets": [car_type]}]}})
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
         self.calls.append(path)
         if path == "/search/car/list/mobile":
             return self._search(request)
+        if path == "/search/car/list/general":
+            return self._nav()
         if path == "/v1/readside/vehicles":
             if self.batch_fails:
                 return httpx.Response(400)

@@ -1,0 +1,74 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py).",
+  "korean": "테슬라",
+  "names": {
+    "모델 3": "Model 3",
+    "모델 S": "Model S",
+    "모델 X": "Model X",
+    "모델 Y": "Model Y",
+    "사이버트럭": "Cybertruck"
+  },
+  "encar_models": {
+    "모델 3": {
+      "model": "Model 3"
+    },
+    "모델 S": {
+      "model": "Model S"
+    },
+    "모델 X": {
+      "model": "Model X"
+    },
+    "모델 Y": {
+      "model": "Model Y"
+    },
+    "사이버트럭": {
+      "model": "Cybertruck"
+    }
+  },
+  "badge_groups": {
+    "모델 3": {
+      "RWD": "전기 2WD",
+      "롱 레인지 AWD": "전기 4WD",
+      "스탠다드 RWD": "전기 2WD",
+      "스탠다드 레인지 플러스 RWD": "전기 2WD",
+      "퍼포먼스 AWD": "전기 4WD",
+      "프리미엄 롱레인지 RWD": "전기 2WD"
+    },
+    "모델 S": {
+      "100D": "전기 4WD",
+      "75D": "전기 4WD",
+      "90D": "전기 4WD",
+      "AWD": "전기 4WD",
+      "P100D": "전기 4WD",
+      "롱 레인지": "전기 4WD",
+      "스탠다드 레인지": "전기 4WD",
+      "퍼포먼스": "전기 4WD",
+      "플래드": "전기 4WD"
+    },
+    "모델 X": {
+      "100D": "전기 4WD",
+      "75D": "전기 4WD",
+      "AWD": "전기 4WD",
+      "P100D": "전기 4WD",
+      "롱 레인지": "전기 4WD",
+      "스탠다드 레인지": "전기 4WD",
+      "퍼포먼스": "전기 4WD",
+      "플래드": "전기 4WD"
+    },
+    "모델 Y": {
+      "L 롱 레인지 AWD": "전기 4WD",
+      "RWD": "전기 2WD",
+      "롱 레인지 AWD": "전기 4WD",
+      "롱 레인지 런치에디션 AWD": "전기 4WD",
+      "스탠다드 레인지 RWD": "전기 2WD",
+      "퍼포먼스 AWD": "전기 4WD",
+      "프리미엄 RWD": "전기 2WD",
+      "프리미엄 롱 레인지 AWD": "전기 4WD"
+    },
+    "사이버트럭": {
+      "AWD": "전기",
+      "Cyberbeast": "전기",
+      "RWD": "전기"
+    }
+  }
+}

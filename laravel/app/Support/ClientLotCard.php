@@ -43,10 +43,11 @@ final class ClientLotCard
             ? null
             : (TaxonomyCatalog::labelMap($field, 'ru')[$v] ?? $v);
 
-        $model = $lot['modelEn'] ?: ($lot['modelGroupEn'] ?: $lot['model']);
-        $title = trim(implode(' ', array_filter([
-            (string) ($lot['year'] ?: ''), $lot['makeEn'] ?: $lot['make'], $model, $lot['trimEn'] ?? null,
-        ])));
+        // the reference catalog's names; Encar's own Korean ones only for a lot not on it
+        $place = $lot['catalog'] ?? null;
+        $title = trim(implode(' ', array_filter($place
+            ? [(string) ($lot['year'] ?: ''), $place['make'], $place['model'], $place['generation'], $place['modification'], $place['complectation']]
+            : [(string) ($lot['year'] ?: ''), $lot['make'] ?? null, $lot['model'] ?? null, $lot['trim'] ?? null])));
         $out = [['title', $title], ['price', '₩'.self::num((int) $lot['price'])]];
 
         $specs = array_filter([

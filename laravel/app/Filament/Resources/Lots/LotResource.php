@@ -87,7 +87,7 @@ class LotResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['id', 'vin', 'plate_number', 'model_en'];
+        return ['id', 'vin', 'plate_number', 'model'];
     }
 
     /** Same matching as the table search box. */

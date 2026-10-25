@@ -1,0 +1,867 @@
+{
+  "make": "BMW",
+  "rules": "bmw",
+  "complectations": [
+    "M Sport Pro",
+    "M Sport Plus",
+    "M Sport X",
+    "M Sport Performance",
+    "M Sport Design",
+    "M Sport",
+    "M Aerodynamic",
+    "M Performance",
+    "Sport Plus",
+    "Sport",
+    "Luxury Plus",
+    "Luxury",
+    "xLine",
+    "Advantage",
+    "Joy",
+    "Urban Pack 1",
+    "Urban",
+    "Premium",
+    "Prestige",
+    "Design Pure Excellence",
+    "Excellence",
+    "Exclusive",
+    "High",
+    "Light Package",
+    "Performance",
+    "Pro",
+    "Sol+",
+    "Sol",
+    "Lux"
+  ],
+  "editions": [
+    "M Performance Steering Wheel Edition",
+    "Performance Silencer Edition",
+    "Online Exclusive Edition",
+    "Online Exclusive",
+    "M Performance Edition",
+    "Competition Edition",
+    "Individual Edition",
+    "Special Edition",
+    "First Edition",
+    "Final Edition",
+    "Vision 100 Edition",
+    "B&O Edition",
+    "ED Edition",
+    "SAC Edition",
+    "Paintwork Edition",
+    "50 Jahre Edition",
+    "Storm Bay Edition",
+    "Classic Silver Edition",
+    "Best Seller Edition",
+    "Black Shadow",
+    "Black & White",
+    "Shadow",
+    "Individual",
+    "Limited",
+    "Prism",
+    "Carbon Package"
+  ],
+  "models": [
+    {
+      "name": "1 Series",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "F20",
+          "years": [
+            2011,
+            2019
+          ]
+        },
+        {
+          "code": "F40",
+          "years": [
+            2019,
+            2024
+          ]
+        },
+        {
+          "code": "F70",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Series",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "F22",
+          "years": [
+            2014,
+            2021
+          ]
+        },
+        {
+          "code": "G42",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Series Active Tourer",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "F45",
+          "years": [
+            2014,
+            2021
+          ]
+        },
+        {
+          "code": "U06",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Series Gran Coupe",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "F44",
+          "years": [
+            2019,
+            2024
+          ]
+        },
+        {
+          "code": "F74",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 Series",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "F30",
+          "years": [
+            2012,
+            2019
+          ]
+        },
+        {
+          "code": "G20",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 Series GT",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "F34",
+          "years": [
+            2013,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 Series",
+      "body": "coupe",
+      "bodies": {
+        "Gran Coupe": "liftback"
+      },
+      "generations": [
+        {
+          "code": "F32",
+          "years": [
+            2013,
+            2020
+          ],
+          "aliases": [
+            "F33",
+            "F36"
+          ]
+        },
+        {
+          "code": "G22",
+          "years": [
+            2020,
+            null
+          ],
+          "aliases": [
+            "G23",
+            "G26"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 Series",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "F10",
+          "years": [
+            2010,
+            2017
+          ],
+          "aliases": [
+            "F11"
+          ]
+        },
+        {
+          "code": "G30",
+          "years": [
+            2017,
+            2023
+          ],
+          "aliases": [
+            "G31"
+          ]
+        },
+        {
+          "code": "G60",
+          "years": [
+            2023,
+            null
+          ],
+          "aliases": [
+            "G61"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 Series GT",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "F07",
+          "years": [
+            2009,
+            2017
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 Series",
+      "body": "coupe",
+      "bodies": {
+        "Gran Coupe": "sedan"
+      },
+      "generations": [
+        {
+          "code": "F12",
+          "years": [
+            2011,
+            2018
+          ],
+          "aliases": [
+            "F06",
+            "F13"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 Series GT",
+      "body": "liftback",
+      "generations": [
+        {
+          "code": "G32",
+          "years": [
+            2017,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 Series",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "F01",
+          "years": [
+            2008,
+            2015
+          ],
+          "aliases": [
+            "F02"
+          ]
+        },
+        {
+          "code": "G11",
+          "years": [
+            2015,
+            2022
+          ],
+          "aliases": [
+            "G12"
+          ]
+        },
+        {
+          "code": "G70",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8 Series",
+      "body": "coupe",
+      "bodies": {
+        "Gran Coupe": "sedan"
+      },
+      "generations": [
+        {
+          "code": "G15",
+          "years": [
+            2018,
+            null
+          ],
+          "aliases": [
+            "G14",
+            "G16"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "i3",
+      "body": "hatchback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I01",
+          "years": [
+            2013,
+            2022
+          ]
+        }
+      ]
+    },
+    {
+      "name": "i4",
+      "body": "liftback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "G26",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "i5",
+      "body": "sedan",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "G60",
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "i7",
+      "body": "sedan",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "G70",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "i8",
+      "body": "coupe",
+      "fuel": "hybrid",
+      "generations": [
+        {
+          "code": "I12",
+          "years": [
+            2014,
+            2020
+          ],
+          "aliases": [
+            "I15"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "iX",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I20",
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "iX1",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "U11",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "iX2",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "U10",
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "iX3",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "G08",
+          "years": [
+            2020,
+            2025
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M2",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "F87",
+          "years": [
+            2016,
+            2021
+          ]
+        },
+        {
+          "code": "G87",
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M3",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "F80",
+          "years": [
+            2014,
+            2018
+          ]
+        },
+        {
+          "code": "G80",
+          "years": [
+            2020,
+            null
+          ],
+          "aliases": [
+            "G81"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M4",
+      "body": "coupe",
+      "generations": [
+        {
+          "code": "F82",
+          "years": [
+            2014,
+            2020
+          ],
+          "aliases": [
+            "F83"
+          ]
+        },
+        {
+          "code": "G82",
+          "years": [
+            2020,
+            null
+          ],
+          "aliases": [
+            "G83"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M5",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "F10",
+          "years": [
+            2011,
+            2016
+          ]
+        },
+        {
+          "code": "F90",
+          "years": [
+            2017,
+            2023
+          ]
+        },
+        {
+          "code": "G90",
+          "years": [
+            2024,
+            null
+          ],
+          "fuel": "hybrid",
+          "aliases": [
+            "G99"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M6",
+      "body": "coupe",
+      "bodies": {
+        "Gran Coupe": "sedan"
+      },
+      "generations": [
+        {
+          "code": "F12",
+          "years": [
+            2012,
+            2018
+          ],
+          "aliases": [
+            "F06",
+            "F13"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "M8",
+      "body": "coupe",
+      "bodies": {
+        "Gran Coupe": "sedan"
+      },
+      "generations": [
+        {
+          "code": "F92",
+          "years": [
+            2019,
+            null
+          ],
+          "aliases": [
+            "F91",
+            "F93"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X1",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "E84",
+          "years": [
+            2009,
+            2015
+          ]
+        },
+        {
+          "code": "F48",
+          "years": [
+            2015,
+            2022
+          ]
+        },
+        {
+          "code": "U11",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X2",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F39",
+          "years": [
+            2018,
+            2023
+          ]
+        },
+        {
+          "code": "U10",
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X3",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F25",
+          "years": [
+            2010,
+            2017
+          ]
+        },
+        {
+          "code": "G01",
+          "years": [
+            2017,
+            2024
+          ]
+        },
+        {
+          "code": "G45",
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X3 M",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F97",
+          "years": [
+            2019,
+            2024
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X4",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F26",
+          "years": [
+            2014,
+            2018
+          ]
+        },
+        {
+          "code": "G02",
+          "years": [
+            2018,
+            2025
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X4 M",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F98",
+          "years": [
+            2019,
+            2025
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X5",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F15",
+          "years": [
+            2013,
+            2018
+          ]
+        },
+        {
+          "code": "G05",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X5 M",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F85",
+          "years": [
+            2014,
+            2018
+          ]
+        },
+        {
+          "code": "F95",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X6",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F16",
+          "years": [
+            2014,
+            2019
+          ]
+        },
+        {
+          "code": "G06",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X6 M",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "F86",
+          "years": [
+            2014,
+            2019
+          ]
+        },
+        {
+          "code": "F96",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "X7",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "G07",
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XM",
+      "body": "suv",
+      "fuel": "hybrid",
+      "generations": [
+        {
+          "code": "G09",
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Z4",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "E89",
+          "years": [
+            2009,
+            2016
+          ]
+        },
+        {
+          "code": "G29",
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

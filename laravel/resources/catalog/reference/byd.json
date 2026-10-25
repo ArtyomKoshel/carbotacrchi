@@ -1,0 +1,123 @@
+{
+  "make": "BYD",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Base",
+    "Active",
+    "Plus",
+    "Basic",
+    "Dynamic"
+  ],
+  "editions": [],
+  "models": [
+    {
+      "name": "Atto 3",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dolphin",
+      "body": "hatchback",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Seal",
+      "body": "sedan",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sealion 6",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sealion 7",
+      "body": "suv_coupe",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "e6",
+      "generations": []
+    }
+  ]
+}

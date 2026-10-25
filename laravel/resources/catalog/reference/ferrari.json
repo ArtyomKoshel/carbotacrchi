@@ -1,0 +1,244 @@
+{
+ "make": "Ferrari",
+ "engine": {
+  "words": {
+   "V6": null,
+   "V8": null,
+   "V12": null,
+   "M": null,
+   "T": null
+  }
+ },
+ "complectations": [],
+ "editions": [],
+ "models": [
+  {
+   "name": "Portofino",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2017,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Roma",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Purosangue",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2022,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "GTC4 Lusso",
+   "body": "wagon",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2016,
+      2020
+     ]
+    }
+   ]
+  },
+  {
+   "name": "SF90 Spider",
+   "body": "convertible",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2020,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "SF90 Stradale",
+   "body": "coupe",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "296 GTB",
+   "body": "coupe",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2021,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "296 GTS",
+   "body": "convertible",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2022,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "F8 Spider",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "F8 Tributo",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "488 GTB",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2015,
+      2019
+     ]
+    }
+   ]
+  },
+  {
+   "name": "488 Spider",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2015,
+      2019
+     ]
+    }
+   ]
+  },
+  {
+   "name": "488 Pista",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2018,
+      2020
+     ]
+    }
+   ]
+  },
+  {
+   "name": "812 Superfast",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2017,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "812 GTS",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "California",
+   "body": "convertible",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2008,
+      2017
+     ]
+    }
+   ]
+  }
+ ]
+}

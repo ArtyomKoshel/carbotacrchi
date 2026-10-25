@@ -31,6 +31,7 @@ from collector.runner import (
     RunContext,
     build_pipeline,
     history_cutoff,
+    known_makers,
     load_rules,
     qualified,
     run_full,
@@ -183,6 +184,7 @@ class Service:
         )
         if job.type == "reparse":
             return await run_reparse(ctx, MySqlRawStore(self.db))
+        ctx.known_makers = await known_makers(self.db, self.settings.core_schema, job.source, exclude=job.id)
         return await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
 
     async def _until_stopped(self, work: Coroutine[Any, Any, str], job: Job, runlog: RunLog) -> str:

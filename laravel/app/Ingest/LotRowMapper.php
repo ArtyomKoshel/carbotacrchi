@@ -44,7 +44,6 @@ final class LotRowMapper
             'make' => $v['make'],
             'model' => $v['model'],
             'model_group' => $v['model_group'] ?? null,
-            'model_en' => $v['model_en'] ?? null,
             'year' => $v['year'],
             'price' => self::krw($l['price']),
             'mileage' => $l['mileage_km'],

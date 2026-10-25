@@ -1,0 +1,189 @@
+{
+  "_comment": "Genesis on Encar. names: Encar's model group → our model. encar_models: drafted by build_catalog_from_tree.py, read by a person.",
+  "korean": "제네시스",
+  "names": {
+    "EQ900": "EQ900",
+    "G70": "G70",
+    "G80": "G80",
+    "G90": "G90",
+    "GV60": "GV60",
+    "GV70": "GV70",
+    "GV80": "GV80"
+  },
+  "model_splits": {
+    "GV80 쿠페": "GV80 Coupe"
+  },
+  "encar_models": {
+    "EQ900": {
+      "model": "EQ900",
+      "generation": "I"
+    },
+    "G70": {
+      "model": "G70",
+      "generation": "I"
+    },
+    "G80": {
+      "model": "G80",
+      "generation": "I"
+    },
+    "G80 (RG3)": {
+      "model": "G80",
+      "generation": "RG3"
+    },
+    "G90": {
+      "model": "G90",
+      "generation": "I"
+    },
+    "G90 (RS4)": {
+      "model": "G90",
+      "generation": "RS4"
+    },
+    "GV60": {
+      "model": "GV60",
+      "generation": "I"
+    },
+    "GV70": {
+      "model": "GV70",
+      "generation": "I"
+    },
+    "GV80": {
+      "model": "GV80",
+      "generation": "I"
+    },
+    "GV80 쿠페": {
+      "model": "GV80 Coupe",
+      "generation": "I"
+    },
+    "더 뉴 G70": {
+      "model": "G70",
+      "generation": "I · The New"
+    },
+    "더 뉴 G70 슈팅브레이크": {
+      "model": "G70",
+      "generation": "I · The New (2022)",
+      "words": "Shooting Brake"
+    },
+    "일렉트리파이드 G80 (RG3)": {
+      "model": "G80",
+      "generation": "RG3",
+      "words": "Electrified"
+    },
+    "일렉트리파이드 GV70": {
+      "model": "GV70",
+      "generation": "I",
+      "words": "Electrified"
+    }
+  },
+  "badge_groups": {
+    "EQ900": {
+      "3.3 AWD 구조변경 (바이퓨얼)": "가솔린+LPG 4WD",
+      "3.3 T-GDI": "가솔린 2WD",
+      "3.3 T-GDI AWD": "가솔린 4WD",
+      "3.8 AWD 구조변경 (바이퓨얼)": "가솔린+LPG 4WD",
+      "3.8 GDI": "가솔린 2WD",
+      "3.8 GDI AWD": "가솔린 4WD",
+      "5.0 AWD 구조변경 (바이퓨얼)": "가솔린+LPG 4WD",
+      "5.0 GDI AWD": "가솔린 4WD",
+      "5.0 GDI AWD 리무진": "가솔린 4WD"
+    },
+    "G70": {
+      "2.0T": "가솔린 2WD",
+      "2.0T AWD": "가솔린 4WD",
+      "2.2D": "디젤 2WD",
+      "2.2D AWD": "디젤 4WD",
+      "3.3T 스포츠": "가솔린 2WD",
+      "3.3T 스포츠 AWD": "가솔린 4WD"
+    },
+    "G80": {
+      "2.2D": "디젤 2WD",
+      "2.2D AWD": "디젤 4WD",
+      "3.3 GDI": "가솔린 2WD",
+      "3.3 GDI AWD": "가솔린 4WD",
+      "3.3 GDI AWD 구조변경 (LPG)": "LPG 4WD",
+      "3.3 GDI 구조변경 (LPG)": "LPG 2WD",
+      "3.3 T-GDI": "가솔린 2WD",
+      "3.3 T-GDI AWD": "가솔린 4WD",
+      "3.3 T-GDI 구조변경 (LPG)": "LPG 2WD",
+      "3.8 GDI": "가솔린 2WD",
+      "3.8 GDI AWD": "가솔린 4WD",
+      "3.8 GDI AWD 구조변경 (LPG)": "LPG 4WD",
+      "3.8 GDI 구조변경 (LPG)": "LPG 2WD",
+      "5.0 AWD 수출형": "가솔린 4WD"
+    },
+    "G80 (RG3)": {
+      "가솔린 2.5 터보 2WD": "가솔린 2WD",
+      "가솔린 2.5 터보 AWD": "가솔린 4WD",
+      "가솔린 3.5 터보 2WD": "가솔린 2WD",
+      "가솔린 3.5 터보 AWD": "가솔린 4WD",
+      "디젤 2.2 2WD": "디젤 2WD",
+      "디젤 2.2 AWD": "디젤 4WD"
+    },
+    "G90": {
+      "3.3 T": "가솔린 2WD",
+      "3.3 T AWD": "가솔린 4WD",
+      "3.3 T AWD 구조변경 (바이퓨얼)": "가솔린+LPG 4WD",
+      "3.8": "가솔린 2WD",
+      "3.8 AWD": "가솔린 4WD",
+      "3.8 AWD 구조변경 (바이퓨얼)": "가솔린+LPG 4WD",
+      "3.8 구조변경 (바이퓨얼)": "가솔린+LPG 2WD",
+      "5.0 AWD": "가솔린 4WD",
+      "5.0 AWD 구조변경 (바이퓨얼)": "가솔린+LPG 4WD"
+    },
+    "G90 (RS4)": {
+      "가솔린 3.5 터보 2WD": "가솔린 2WD",
+      "가솔린 3.5 터보 AWD": "가솔린 4WD",
+      "가솔린 3.5 터보 e-S/C 2WD": "가솔린 2WD",
+      "가솔린 3.5 터보 e-S/C AWD": "가솔린 4WD",
+      "가솔린 3.5 터보 e-S/C AWD LWB": "가솔린 4WD"
+    },
+    "GV60": {
+      "마그마 AWD": "전기 4WD",
+      "스탠다드": "전기 2WD",
+      "스탠다드 AWD": "전기 4WD",
+      "퍼포먼스 AWD": "전기 4WD"
+    },
+    "GV70": {
+      "2.2 디젤 2WD": "디젤 2200cc",
+      "2.2 디젤 AWD": "디젤 2200cc",
+      "2.5T 가솔린 2WD": "가솔린 2500cc",
+      "2.5T 가솔린 AWD": "가솔린 2500cc",
+      "3.5T 가솔린 2WD": "가솔린 3500cc",
+      "3.5T 가솔린 AWD": "가솔린 3500cc"
+    },
+    "GV80": {
+      "2.5T 가솔린 2WD": "가솔린 2500cc",
+      "2.5T 가솔린 AWD": "가솔린 2500cc",
+      "3.0 디젤 2WD": "디젤 3000cc",
+      "3.0 디젤 AWD": "디젤 3000cc",
+      "3.5T 가솔린 2WD": "가솔린 3500cc",
+      "3.5T 가솔린 AWD": "가솔린 3500cc"
+    },
+    "GV80 쿠페": {
+      "2.5T 가솔린 AWD": "가솔린 2500cc",
+      "3.5T e-S/C 가솔린 AWD": "가솔린 3500cc",
+      "3.5T 가솔린 AWD": "가솔린 3500cc"
+    },
+    "더 뉴 G70": {
+      "가솔린 2.0T 2WD": "가솔린 2WD",
+      "가솔린 2.0T 4WD": "가솔린 4WD",
+      "가솔린 2.5T 2WD": "가솔린 2WD",
+      "가솔린 2.5T 4WD": "가솔린 4WD",
+      "가솔린 3.3T 2WD": "가솔린 2WD",
+      "가솔린 3.3T 4WD": "가솔린 4WD",
+      "디젤 2.2 2WD": "디젤 2WD",
+      "디젤 2.2 4WD": "디젤 4WD"
+    },
+    "더 뉴 G70 슈팅브레이크": {
+      "가솔린 2.0T 2WD": "가솔린 2WD",
+      "가솔린 2.0T 4WD": "가솔린 4WD",
+      "가솔린 2.5T 2WD": "가솔린 2WD",
+      "가솔린 2.5T 4WD": "가솔린 4WD"
+    },
+    "일렉트리파이드 G80 (RG3)": {
+      "e-AWD": "전기"
+    },
+    "일렉트리파이드 GV70": {
+      "e-AWD": "전기"
+    }
+  }
+}

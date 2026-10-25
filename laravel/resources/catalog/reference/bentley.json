@@ -1,0 +1,125 @@
+{
+ "make": "Bentley",
+ "engine": {
+  "words": {
+   "V8": null,
+   "W12": null,
+   "Speed": null,
+   "S": null,
+   "EWB": null,
+   "Plug-in": {
+    "fuel": "hybrid"
+   },
+   "HEV": {
+    "fuel": "hybrid",
+    "code": false
+   },
+   "GT": {
+    "code": false
+   },
+   "GTS": null
+  }
+ },
+ "complectations": [
+  "Azure",
+  "Mulliner",
+  "Base"
+ ],
+ "editions": [
+  "First Edition",
+  "Atelier Edition"
+ ],
+ "models": [
+  {
+   "name": "Bentayga",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "4V",
+     "number": 1,
+     "years": [
+      2016,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Continental GT",
+   "body": "coupe",
+   "bodies": {
+    "GTC": "convertible"
+   },
+   "generations": [
+    {
+     "code": "3W",
+     "number": 2,
+     "years": [
+      2011,
+      2018
+     ]
+    },
+    {
+     "code": "3S",
+     "number": 3,
+     "years": [
+      2018,
+      2024
+     ]
+    },
+    {
+     "code": "IV",
+     "number": 4,
+     "years": [
+      2024,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Flying Spur",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "3W",
+     "number": 2,
+     "years": [
+      2013,
+      2019
+     ]
+    },
+    {
+     "code": "3S",
+     "number": 3,
+     "years": [
+      2019,
+      2024
+     ]
+    },
+    {
+     "code": "IV",
+     "number": 4,
+     "years": [
+      2024,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Mulsanne",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "3Y",
+     "number": 1,
+     "years": [
+      2010,
+      2020
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -218,6 +218,10 @@ body.tg:not(.wide)[data-overlay="filters"] .filters-pane { padding-bottom: calc(
 .filter-body { padding-top: 8px; }
 .filter-body--hidden { display: none; }
 .filter-selects { display: grid; gap: 8px; }
+.filter-hint { color: var(--muted); font-size: 13px; padding: 6px 2px; }
+.cat-opt { display: flex; justify-content: space-between; gap: 10px; }
+.cat-opt__n { color: var(--muted); font: 12px/1.6 var(--f-data); }
+.cat-item__n { margin-left: 6px; }
 .filter-range-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .filter-range-row > *, .filter-input { min-width: 0; }
 .filter-input[type="date"] { font-size: 13px; padding-inline: 8px; }
@@ -289,8 +293,15 @@ body.wide .gallery__thumbs { display: flex; }
 .opts__group { display: grid; gap: 6px; }
 .opts__group h4 { font-size: 12px; color: var(--muted); font-weight: 600; }
 .opts__list { display: flex; flex-wrap: wrap; gap: 5px; }
-.opt { font-size: 12.5px; padding: 3px 8px; border-radius: 6px; background: var(--surface-2); }
+.opt { font-size: 12.5px; padding: 3px 8px 3px 5px; border-radius: 6px; background: var(--surface-2); display: inline-flex; align-items: center; gap: 5px; }
+.opt__icon { font-size: 17px; color: var(--muted); width: 17px; overflow: hidden; }
 .opt--match { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.opt--match .opt__icon { color: var(--accent); }
+/* what the search asked about */
+.facts > div.match b, .facts > div.match span { color: var(--accent); }
+.lot__price.match, .lot__trim.match { color: var(--accent); }
+.lt td.match { color: var(--accent); font-weight: 600; }
+.lt td.t-car.match b { color: var(--accent); }
 .lot__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .lot__tools { display: flex; gap: 8px; }
 .lot__tools .btn { flex: 1; min-height: 40px; font-size: 14px; }
@@ -393,6 +404,9 @@ body.wide .topnav { display: flex !important; gap: 4px; margin-left: auto; }
 .topnav .count--new:not(:empty) { color: #fff; background: var(--bad); border-radius: 99px; padding: 2px 5px; }
 body.wide .account-slot { display: block; }
 body.wide .tabbar { display: none; }
+/* the panes scroll, the page never: a pane is the containing block of what is absolutely placed in it
+   (Tom Select's hidden <select>, photo counters), or that would stretch the document below the screen */
+body.wide .filters-pane, body.wide .main, body.wide .lot-pane { position: relative; }
 body.wide .filters-pane { display: block; grid-area: side; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); padding-bottom: 24px; }
 body.wide .filters { padding: 0 16px; }
 body.wide .filter-input, body.wide .filter-select, body.wide .ts-wrapper .ts-control { min-height: 34px; font-size: 13.5px; padding-block: 5px; }
@@ -411,6 +425,20 @@ body.wide .lot .facts > div { background: var(--bg); }
 body.wide .gallery { padding: 0 18px; }
 body.wide .gallery__track { border-radius: var(--r); }
 body.wide .lot__actions { position: sticky; bottom: 0; background: var(--surface); padding: 12px 0 4px; }
+/* column borders the mouse can drag (js/app.js initSplits) */
+.split { display: none; }
+body.wide .split { display: block; position: fixed; top: var(--top-h, 57px); bottom: 0; width: 8px; z-index: 26; cursor: col-resize; }
+body.wide .split--side { left: calc(var(--side) - 4px); }
+body.wide .split--pane { right: calc(var(--pane) - 4px); }
+body.wide:not([data-overlay="lot"]) .split--pane { display: none; }
+body.wide .split:hover, body.splitting .split { background: var(--accent-soft); }
+body.splitting { cursor: col-resize; user-select: none; }
+/* the table's columns menu (js/results.js columnsMenu) */
+body.wide #columns-btn.off { display: none !important; }
+.colmenu { position: fixed; z-index: 60; width: 240px; max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 12px 32px var(--shade); padding: 6px; display: grid; gap: 1px; }
+.colmenu__item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13.5px; cursor: pointer; }
+.colmenu__item:hover { background: var(--surface-2); }
+.colmenu__reset { margin-top: 4px; padding: 7px 8px; border-top: 1px solid var(--line); text-align: left; font-size: 13px; color: var(--accent); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg__btn { padding: 5px 11px; font-size: 13px; color: var(--muted); }
 .seg__btn[aria-pressed="true"] { background: var(--text); color: var(--bg); }

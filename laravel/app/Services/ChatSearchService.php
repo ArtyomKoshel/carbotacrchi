@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Catalog\CatalogNames;
 use App\Models\BotFilterSetting;
 use App\Models\EncarOptionCatalog;
 use Illuminate\Support\Facades\Cache;
@@ -48,6 +49,13 @@ class ChatSearchService
                 $parsed['generation'] = $generation;
             }
         }
+        // "соната dn8": the model was not understood but the code names it
+        if (trim((string) ($parsed['model'] ?? '')) === '' && trim((string) ($parsed['generation'] ?? '')) !== '') {
+            $model = $this->modelOfGeneration((string) ($parsed['make'] ?? ''), (string) $parsed['generation']);
+            if ($model !== null) {
+                $parsed['model'] = $model;
+            }
+        }
 
         $query        = SearchQuery::fromArray($parsed);
         $query->limit = 50;
@@ -68,9 +76,9 @@ class ChatSearchService
 
     /**
      * Recover a chassis code the AI dropped ("bmw 3 g20 …" parsed without generation,
-     * so F30 cars got mixed in). A token like G20 / F30 / W213 / DN8 counts only if an
-     * active lot of the parsed make/model has it as "(CODE)" in model_en — random words
-     * never become a filter.
+     * so F30 cars got mixed in). A token like G20 / F30 / W213 / DN8 counts only if it is
+     * a generation code in the reference catalog of the parsed make/model with active
+     * lots — random words never become a filter.
      */
     private function detectGeneration(string $text, array $parsed): ?string
     {
@@ -78,16 +86,24 @@ class ChatSearchService
             return null;
         }
 
-        $make  = trim((string) ($parsed['make'] ?? ''));
-        $model = trim((string) ($parsed['model'] ?? ''));
+        $names  = app(CatalogNames::class);
+        $make   = trim((string) ($parsed['make'] ?? ''));
+        $model  = trim((string) ($parsed['model'] ?? ''));
+        $makeId = $make !== '' ? $names->make($make) : null;
+        $modelId = $model !== '' ? ($names->model($makeId, $model)['id'] ?? null) : null;
+        if (($make !== '' && $makeId === null) || ($model !== '' && $modelId === null)) {
+            return null;
+        }
 
         foreach (array_unique(array_map('strtoupper', $m[1])) as $code) {
             try {
-                $found = DB::table('lots')
-                    ->where('is_active', 1)
-                    ->where('model_en', 'like', '%(' . $code . ')%')
-                    ->when($make !== '', fn ($q) => $q->where('make_en', $make))
-                    ->when($model !== '', fn ($q) => $q->where('model_group_en', 'like', '%' . $model . '%'))
+                $found = DB::table('ref_generations as g')
+                    ->join('ref_models as m', 'm.id', '=', 'g.model_id')
+                    ->where(fn ($q) => $q->where('g.code', $code)->orWhere('g.code', 'like', $code . ' · %'))
+                    ->when($makeId !== null, fn ($q) => $q->where('m.make_id', $makeId))
+                    ->when($modelId !== null, fn ($q) => $q->where('m.id', $modelId))
+                    ->whereExists(fn ($q) => $q->selectRaw('1')->from('lots')
+                        ->whereColumn('lots.ref_generation_id', 'g.id')->where('lots.is_active', 1))
                     ->exists();
             } catch (\Throwable $e) {
                 Log::warning('[ChatSearch] detectGeneration: ' . $e->getMessage());
@@ -99,6 +115,25 @@ class ChatSearchService
         }
 
         return null;
+    }
+
+    /** The one model (of the make, if named) whose generation has that code and active lots. */
+    private function modelOfGeneration(string $make, string $code): ?string
+    {
+        $code = preg_match('/\(([^)]+)\)\s*$/u', $code, $m) ? $m[1] : trim($code);
+        $makeId = trim($make) !== '' ? app(CatalogNames::class)->make($make) : null;
+        if (trim($make) !== '' && $makeId === null) {
+            return null;
+        }
+        $models = DB::table('ref_generations as g')
+            ->join('ref_models as m', 'm.id', '=', 'g.model_id')
+            ->where(fn ($q) => $q->where('g.code', $code)->orWhere('g.code', 'like', $code . ' · %'))
+            ->when($makeId !== null, fn ($q) => $q->where('m.make_id', $makeId))
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('lots')
+                ->whereColumn('lots.ref_generation_id', 'g.id')->where('lots.is_active', 1))
+            ->distinct()->pluck('m.name');
+
+        return $models->count() === 1 ? (string) $models->first() : null;
     }
 
     private function parseQuery(string $text, ?array $prevState = null): ?array
@@ -655,8 +690,8 @@ class ChatSearchService
 21. "без страховых"/"0 страховых" → insuranceCountMax: 0
 22. "не затоплена"/"без утоплений" → floodHistory: false
 23. Если указано точное число для range-поля (пробег, цена, год, объем) БЕЗ слов "от/до", ставь Min и Max равными
-24. Комплектация/trim: всегда возвращай корейское значение из DB. Маппинг EN→KR: {$trimExamples}
-25. Поколение/generation: полное англ. название варианта модели (поиск по LIKE). Примеры: "G30", "W213", "The New K8", "A5 (F5)", "DN8" — пиши то, что указал пользователь → generation: "G30"
+24. Комплектация/trim: английское название комплектации, как в каталоге, только если пользователь её назвал. Примеры названий: {$trimExamples}
+25. Поколение/generation: код поколения или кузова, только если пользователь его назвал: "G30", "W213", "DN8", "F5" → generation: "G30". Не выводи поколение из года.
 26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi и т.д.
 27. "свежие"/"новые объявления"/"за последнюю неделю"/"за месяц" → listedAfter: "YYYY-MM-DD" (вычисли дату от текущей)
 28. Дата первой регистрации: "дата регистрации 2025"/"зарегистрирована в 2023"/"1 регистрация 2025"/"регистрация 2022"/"рег. 2024" → если конкретный год без "после/до" → firstRegAfter: "YYYY-01-01" И firstRegBefore: "YYYY-12-31"; "регистрация после 2022"→ firstRegAfter: "2022-01-01"; "регистрация до 2023"→ firstRegBefore: "2023-12-31"; "регистрация 2022-2024" → firstRegAfter: "2022-01-01" + firstRegBefore: "2024-12-31"
@@ -703,22 +738,23 @@ User: "регистрация после 2023"
 PROMPT;
     }
 
+    /** The reference catalog's complectations with the most active lots, as the AI must name them. */
     private function buildTrimExamplesForPrompt(): string
     {
-        try {
-            $map = \App\Models\Translation::promptMap('trim');
-            if (empty($map)) {
-                return '"Prestige"→"프레스티지", "Premium"→"프리미엄", "Noblesse"→"노블레스", "Luxury"→"럭셔리", "Signature"→"시그니처", "Modern"→"모던"';
+        return Cache::remember('chat_search_catalog_complectations', 600, function () {
+            try {
+                $names = DB::table('ref_variants as v')
+                    ->join('ref_complectations as c', 'c.id', '=', 'v.complectation_id')
+                    ->where('v.lots', '>', 0)
+                    ->groupBy('c.name')
+                    ->orderByRaw('SUM(v.lots) DESC')
+                    ->limit(50)
+                    ->pluck('c.name')->all();
+                return $names ? '"' . implode('", "', $names) . '"' : '"Prestige", "Premium", "Noblesse", "Signature"';
+            } catch (\Throwable) {
+                return '"Prestige", "Premium", "Noblesse", "Signature"';
             }
-            $parts = [];
-            foreach ($map as $en => $kr) {
-                $parts[] = '"' . $en . '"→"' . $kr . '"';
-                if (count($parts) >= 50) break;
-            }
-            return implode(', ', $parts);
-        } catch (\Throwable) {
-            return '"Prestige"→"프레스티지", "Premium"→"프리미엄", "Noblesse"→"노블레스", "Luxury"→"럭셔리", "Signature"→"시그니처", "Modern"→"모던"';
-        }
+        });
     }
 
     private function buildOptionsContext(): string
@@ -891,30 +927,32 @@ PROMPT;
             return self::$makesModels;
         }
 
-        self::$makesModels = Cache::remember('chat_search_makes_models', 600, function () {
+        // the reference catalog's makes and models that have active lots, most lots first
+        self::$makesModels = Cache::remember('chat_search_catalog_makes_models', 600, function () {
             try {
-                $rows = DB::table('lots')
-                    ->where('is_active', true)
-                    ->whereNotNull('make')
-                    ->where('make', '!=', '')
-                    ->select(['make', 'make_en', 'model_group_en', 'model'])
-                    ->distinct()
-                    ->orderByRaw("COALESCE(NULLIF(TRIM(make_en),''), make)")
-                    ->orderBy('model_group_en')
+                $rows = DB::table('ref_variants as v')
+                    ->join('ref_makes as k', 'k.id', '=', 'v.make_id')
+                    ->leftJoin('ref_models as m', 'm.id', '=', 'v.model_id')
+                    ->where('v.lots', '>', 0)
+                    ->groupBy('k.name', 'm.name')
+                    ->selectRaw('k.name AS make, m.name AS model, SUM(v.lots) AS n')
                     ->get();
 
-                $byMake = [];
+                $byMake = $lots = [];
                 foreach ($rows as $row) {
-                    $make = trim((string) ($row->make_en ?? '')) ?: trim((string) ($row->make ?? ''));
-                    if ($make === '') continue;
-                    $model = trim((string) ($row->model_group_en ?? ''));
-                    $byMake[$make] ??= [];
-                    if ($model !== '' && !in_array($model, $byMake[$make], true)) {
-                        $byMake[$make][] = $model;
+                    $lots[$row->make] = ($lots[$row->make] ?? 0) + (int) $row->n;
+                    $byMake[$row->make] ??= [];
+                    if ($row->model !== null) {
+                        $byMake[$row->make][$row->model] = (int) $row->n;
                     }
                 }
-                ksort($byMake);
-                return $byMake;
+                arsort($lots);
+                $out = [];
+                foreach (array_keys($lots) as $make) {
+                    arsort($byMake[$make]);
+                    $out[$make] = array_keys($byMake[$make]);
+                }
+                return $out;
             } catch (\Throwable) {
                 return [];
             }

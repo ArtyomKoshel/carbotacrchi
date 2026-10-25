@@ -45,7 +45,7 @@ class LotsTable
             ->defaultSort(fn (Builder $query, HasTable $livewire) => $livewire->getTableSortColumn()
                 ? $query
                 : $query->orderByDesc('listed_at')->orderByDesc('id'))
-            ->searchPlaceholder('ID, VIN, госномер, модель')
+            ->searchPlaceholder('ID, VIN, госномер, модель (как в справочнике или у Encar)')
             // Row click opens the slide-over (list + side panel), not the lot page
             ->recordUrl(null)
             ->recordAction('view')
@@ -166,7 +166,7 @@ class LotsTable
         ];
     }
 
-    /** Search box: id prefix (PK range), VIN, plate, English model name. */
+    /** Search box: id prefix (PK range), VIN, plate, the catalog's model name or Encar's Korean one. */
     public static function search(Builder $query, string $search): Builder
     {
         $search = trim($search);
@@ -176,7 +176,8 @@ class LotsTable
             ->where('id', 'like', addcslashes($search, '%_\\') . '%')
             ->orWhere('vin', 'like', $like)
             ->orWhere('plate_number', 'like', $like)
-            ->orWhere('model_en', 'like', $like));
+            ->orWhereIn('ref_model_id', DB::table('ref_models')->where('name', 'like', $like)->select('id'))
+            ->orWhere('model', 'like', $like));
     }
 
     /** @return array<\Filament\Tables\Filters\BaseFilter> */
@@ -222,67 +223,82 @@ class LotsTable
         ];
     }
 
-    /** Make → model group → model; the lower levels load for the chosen make only. */
+    /**
+     * Make → model → generation of the reference catalog; the lower levels load for the chosen
+     * make / model only. "Не разобрано" picks the lots the catalog could not place.
+     */
     private static function makeModelFilter(): Filter
     {
         return Filter::make('make_model')
             ->schema([
-                Select::make('make_en')
+                Select::make('ref_make_id')
                     ->label('Марка')
-                    ->options(fn () => DB::table('lots')->whereNotNull('make_en')
-                        ->distinct()->orderBy('make_en')->pluck('make_en', 'make_en')->all())
+                    ->options(fn () => ['none' => LotFormat::UNPLACED] + self::makes())
                     ->searchable()
                     ->live()
                     ->afterStateUpdated(function (Set $set) {
-                        $set('model_group_en', null);
-                        $set('model_en', null);
+                        $set('ref_model_id', null);
+                        $set('ref_generation_id', null);
                     }),
-                Select::make('model_group_en')
+                Select::make('ref_model_id')
                     ->label('Модель')
-                    ->options(fn (Get $get) => blank($get('make_en')) ? [] : self::modelGroups($get('make_en')))
+                    ->options(fn (Get $get) => is_numeric($get('ref_make_id')) ? self::models((int) $get('ref_make_id')) : [])
                     ->searchable()
                     ->live()
-                    ->afterStateUpdated(fn (Set $set) => $set('model_en', null))
-                    ->disabled(fn (Get $get) => blank($get('make_en'))),
-                Select::make('model_en')
+                    ->afterStateUpdated(fn (Set $set) => $set('ref_generation_id', null))
+                    ->disabled(fn (Get $get) => !is_numeric($get('ref_make_id'))),
+                Select::make('ref_generation_id')
                     ->label('Поколение')
-                    ->options(fn (Get $get) => blank($get('model_group_en')) ? [] : DB::table('lots')
-                        ->where('model_group_en', $get('model_group_en'))->whereNotNull('model_en')
-                        ->distinct()->orderBy('model_en')->pluck('model_en', 'model_en')->all())
+                    ->options(fn (Get $get) => filled($get('ref_model_id')) ? self::generations((int) $get('ref_model_id')) : [])
                     ->searchable()
-                    ->disabled(fn (Get $get) => blank($get('model_group_en'))),
+                    ->disabled(fn (Get $get) => blank($get('ref_model_id'))),
             ])
             ->columns(3)
             ->columnSpanFull()
             ->query(fn (Builder $query, array $data) => $query
-                ->when($data['make_en'] ?? null, fn (Builder $q, $v) => $q->where('make_en', $v))
-                ->when($data['model_group_en'] ?? null, fn (Builder $q, $v) => $q->where('model_group_en', $v))
-                ->when($data['model_en'] ?? null, fn (Builder $q, $v) => $q->where('model_en', $v)))
+                ->when($data['ref_make_id'] ?? null, fn (Builder $q, $v) => $v === 'none'
+                    ? $q->whereNull('ref_model_id')
+                    : $q->where('ref_make_id', (int) $v))
+                ->when($data['ref_model_id'] ?? null, fn (Builder $q, $v) => $q->where('ref_model_id', (int) $v))
+                ->when($data['ref_generation_id'] ?? null, fn (Builder $q, $v) => $q->where('ref_generation_id', (int) $v)))
             ->indicateUsing(function (array $data): array {
-                $labels = ['make_en' => 'Марка', 'model_group_en' => 'Модель', 'model_en' => 'Поколение'];
                 $indicators = [];
-                foreach ($labels as $field => $label) {
-                    if (filled($data[$field] ?? null)) {
-                        $indicators[] = Indicator::make("{$label}: {$data[$field]}")->removeField($field);
-                    }
+                if (filled($make = $data['ref_make_id'] ?? null)) {
+                    $name = $make === 'none' ? LotFormat::UNPLACED : (self::makes()[(int) $make] ?? $make);
+                    $indicators[] = Indicator::make("Марка: {$name}")->removeField('ref_make_id');
+                }
+                if (filled($model = $data['ref_model_id'] ?? null)) {
+                    $name = DB::table('ref_models')->where('id', (int) $model)->value('name') ?? $model;
+                    $indicators[] = Indicator::make("Модель: {$name}")->removeField('ref_model_id');
+                }
+                if (filled($generation = $data['ref_generation_id'] ?? null)) {
+                    $name = DB::table('ref_generations')->where('id', (int) $generation)->value('code') ?? $generation;
+                    $indicators[] = Indicator::make("Поколение: {$name}")->removeField('ref_generation_id');
                 }
 
                 return $indicators;
             });
     }
 
-    /**
-     * Model groups of a make (make_en index, then the rows of that make: ~0.2 s
-     * for Hyundai on prod; runs only when a make is picked).
-     *
-     * @return array<string, string>
-     */
-    private static function modelGroups(string $make): array
+    /** @return array<int, string> */
+    private static function makes(): array
     {
-        return DB::table('lots')
-            ->where('make_en', $make)->whereNotNull('model_group_en')
-            ->distinct()->orderBy('model_group_en')
-            ->pluck('model_group_en', 'model_group_en')->all();
+        return DB::table('ref_makes')->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /** @return array<int, string> */
+    private static function models(int $makeId): array
+    {
+        return DB::table('ref_models')->where('make_id', $makeId)->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /** @return array<int, string> */
+    private static function generations(int $modelId): array
+    {
+        return DB::table('ref_generations')->where('model_id', $modelId)->orderBy('year_from')
+            ->get(['id', 'code', 'year_from', 'year_to'])
+            ->mapWithKeys(fn ($g) => [$g->id => trim($g->code . ' · ' . LotFormat::years($g->year_from, $g->year_to), ' ·')])
+            ->all();
     }
 
     /** From/to numeric filter on one column, with one chip per bound. */

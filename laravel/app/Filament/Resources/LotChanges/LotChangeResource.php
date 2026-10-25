@@ -56,14 +56,12 @@ class LotChangeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('lot:id,make,make_en,model,model_en,model_group_en,year'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('lot:id,make,model,year,ref_make_id,ref_model_id,ref_generation_id'))
             ->defaultSort(fn (Builder $query) => $query->orderByDesc('recorded_at')->orderByDesc('id'))
             ->columns([
                 TextColumn::make('recorded_at')->label('Когда')->dateTime('d.m.Y H:i')->sortable(),
                 TextColumn::make('lot_id')->label('Лот')
-                    ->state(fn (LotChange $r) => $r->lot
-                        ? trim(($r->lot->make_en ?: $r->lot->make) . ' ' . ($r->lot->model_en ?: $r->lot->model_group_en ?: $r->lot->model))
-                        : $r->lot_id)
+                    ->state(fn (LotChange $r) => $r->lot ? LotFormat::title($r->lot) : $r->lot_id)
                     ->description(fn (LotChange $r) => $r->lot_id . ($r->lot?->year ? ' · ' . $r->lot->year : ''))
                     ->url(fn (LotChange $r) => $r->lot ? LotResource::getUrl('view', ['record' => $r->lot_id]) : null)
                     ->searchable(query: fn (Builder $query, string $search) => $query->where('lot_id', 'like', addcslashes(trim($search), '%_\\') . '%')),

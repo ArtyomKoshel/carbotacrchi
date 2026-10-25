@@ -24,9 +24,11 @@ class Settings:
     concurrency: int = 25  # requests in flight; the old parser ran ENCAR_WORKERS=15 threads
     history_concurrency: int = 25
     pipeline_depth: int = 3  # pages in flight: the next one loads while earlier histories finish
-    # A stored history older than this is fetched again, besides the oldest 1/history_every_runs
-    # (audit 23.10.2026: no real change missed under 3 days, ~1% at 3-7 days). 0 = by runs only.
-    history_max_age_hours: int = 48
+    # A stored history older than this is fetched again, besides the oldest 1/history_every_runs.
+    # 0 (default) = by runs only: runs are started by hand days apart, and any age limit then
+    # refetched nearly every history (run 18: 150k of 180k lots, ~2x traffic). A changed listing
+    # (mileage, price, plate) refetches at once anyway.
+    history_max_age_hours: int = 0
     # Encar answers in under 2 s; a request still open after this is a stuck proxy exit, and the
     # whole page waits for it. It is retried on a fresh proxy session instead.
     http_timeout: float = 12.0
@@ -49,7 +51,7 @@ class Settings:
             concurrency=_int("COLLECTOR_CONCURRENCY", 25),
             history_concurrency=_int("COLLECTOR_HISTORY_CONCURRENCY", 25),
             pipeline_depth=_int("COLLECTOR_PIPELINE_DEPTH", 3),
-            history_max_age_hours=_int("COLLECTOR_HISTORY_MAX_AGE_HOURS", 48),
+            history_max_age_hours=_int("COLLECTOR_HISTORY_MAX_AGE_HOURS", 0),
             http_timeout=float(_env("COLLECTOR_HTTP_TIMEOUT", "12")),
             history_every_runs=_int("ENCAR_HISTORY_EVERY_RUNS", 3),
             min_coverage_pct=float(_env("LOTS_LIFECYCLE_MIN_COVERAGE", "85")),

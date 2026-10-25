@@ -16,7 +16,6 @@ use Database\Factories\LotFactory;
 use Database\Factories\NotificationRecipientFactory;
 use Database\Factories\ParseFilterFactory;
 use Database\Factories\ParseJobFactory;
-use Database\Factories\TranslationFactory;
 use Database\Factories\AdminUserFactory;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
@@ -77,9 +76,6 @@ abstract class AdminTestCase extends TestCase
         ParseFilterFactory::new()->create(['name' => 'seed_rule_mileage']);
         ParseFilterFactory::new()->create(['name' => 'seed_rule_rental', 'field' => 'sell_type', 'operator' => 'eq', 'value' => '"rental"', 'priority' => 20]);
         FilterSkipLogFactory::new()->count(2)->create();
-
-        TranslationFactory::new()->count(3)->create();
-        TranslationFactory::new()->create(['source' => 'manual', 'category' => 'make', 'kr' => '현대', 'en' => 'Hyundai']);
 
         $user = BotUserFactory::new()->create();
         DB::table('searches')->insert(['user_id' => $user->id, 'make' => 'Hyundai', 'model' => 'Sonata', 'year_from' => 2019, 'year_to' => 2021,

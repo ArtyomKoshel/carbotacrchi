@@ -1,0 +1,170 @@
+{
+ "make": "Jaguar",
+ "engine": {
+  "codes": [
+   {
+    "re": "^\\d{2}d$",
+    "fuel": "diesel"
+   },
+   {
+    "re": "^\\d{2}t$",
+    "fuel": "gasoline"
+   },
+   {
+    "re": "^D\\d{3}$",
+    "fuel": "diesel"
+   },
+   {
+    "re": "^P\\d{3}$",
+    "fuel": "gasoline"
+   },
+   {
+    "re": "^EV\\d{3}$",
+    "fuel": "electric"
+   },
+   {
+    "re": "^\\d\\.\\dD$",
+    "fuel": "diesel"
+   },
+   {
+    "re": "^(SC|R|SVR)$",
+    "fuel": "gasoline"
+   },
+   {
+    "re": "^[LS]WB$"
+   }
+  ],
+  "drives": {
+   "AWD": "awd"
+  }
+ },
+ "complectations": [
+  "Premium Luxury",
+  "Luxury",
+  "Prestige",
+  "Portfolio",
+  "R-Sport",
+  "R-Dynamic HSE",
+  "R-Dynamic SE",
+  "R-Dynamic S",
+  "R-Dynamic",
+  "HSE",
+  "SE",
+  "S",
+  "Premium"
+ ],
+ "editions": [
+  "Checkered Flag Edition",
+  "First Edition",
+  "XJ50"
+ ],
+ "models": [
+  {
+   "name": "XE",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "X760",
+     "number": 1,
+     "years": [
+      2015,
+      2024
+     ]
+    }
+   ]
+  },
+  {
+   "name": "XF",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "X250",
+     "number": 1,
+     "years": [
+      2007,
+      2015
+     ]
+    },
+    {
+     "code": "X260",
+     "number": 2,
+     "years": [
+      2015,
+      2024
+     ]
+    }
+   ]
+  },
+  {
+   "name": "XJ",
+   "body": "sedan",
+   "generations": [
+    {
+     "code": "X351",
+     "number": 1,
+     "years": [
+      2009,
+      2019
+     ]
+    }
+   ]
+  },
+  {
+   "name": "F-PACE",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "X761",
+     "number": 1,
+     "years": [
+      2016,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "E-PACE",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "X540",
+     "number": 1,
+     "years": [
+      2017,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "I-PACE",
+   "body": "suv",
+   "fuel": "electric",
+   "generations": [
+    {
+     "code": "X590",
+     "number": 1,
+     "years": [
+      2018,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "F-TYPE",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "X152",
+     "number": 1,
+     "years": [
+      2013,
+      2024
+     ]
+    }
+   ]
+  }
+ ]
+}

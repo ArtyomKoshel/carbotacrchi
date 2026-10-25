@@ -32,3 +32,6 @@ analysis/after_normalize.json
 parser/tests/golden/
 collector/tests/golden/
 laravel/storage/framework/testing/
+
+# Encar trees scraped for the catalog (analysis/scrape_encar_inav_tree.py): Encar's data, not ours
+analysis/data/

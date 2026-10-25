@@ -40,14 +40,28 @@ const Fmt = (() => {
   const label = (field, v) => (v ? Taxonomy.label(field, v) : '');
   const lower = s => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
-  function make(lot) { return lot.makeEn || lot.make || ''; }
-  function model(lot) { return lot.modelEn || lot.modelGroupEn || lot.model || ''; }
-  /** "2021 Hyundai Sonata (DN8)" */
-  function title(lot) { return [lot.year, make(lot), model(lot)].filter(Boolean).join(' '); }
-  /** badge / trim line under the title: "2.0 Premium" */
+  // the reference catalog's names; a lot it has not placed shows Encar's own
+  function make(lot) { return lot.catalog?.make || lot.make || ''; }
+  function model(lot) {
+    const c = lot.catalog;
+    return c?.model ? [c.model, c.generation].filter(Boolean).join(' ') : (lot.model || '');
+  }
+  /** "2021 Hyundai Sonata DN8" */
+  function title(lot) {
+    const c = lot.catalog;
+    if (c?.model) return [lot.year, c.make, c.model, c.generation].filter(Boolean).join(' ');
+    return [lot.year, lot.make, lot.model].filter(Boolean).join(' ');
+  }
+  /**
+   * badge / trim line under the title: "2.0 Premium"; a lot on the reference catalog says it
+   * the catalog's way: "530i xDrive · M Sport Pro · Special Edition" (the generation is in the title).
+   */
   function trim(lot) {
-    const t = lot.trim ? Taxonomy.label('trim', lot.trim) : '';
-    return [lot.badgeEn, (t && t !== lot.trim ? t : (lot.trimEn || lot.trim))].filter(Boolean).join(' · ');
+    const c = lot.catalog;
+    if (c && (c.modification || c.complectation)) {
+      return [c.modification, c.complectation, ...(c.editions ?? [])].filter(Boolean).join(' · ');
+    }
+    return [lot.badge, lot.trimEn || lot.trim].filter(Boolean).join(' · ');
   }
   function engine(lot) {
     const v = Number(lot.engineVolume);
@@ -106,6 +120,27 @@ const Fmt = (() => {
   function sub(lot) {
     return [km(lot.mileage), lower(label('fuel', lot.fuel)), city(lot)].filter(s => s && s !== '—').join(' · ');
   }
+  /** The lot fields a search asked about: the table and the lot page highlight them. */
+  function matched(q) {
+    const out = new Set();
+    if (!q) return out;
+    const has = (...keys) => keys.some(k => {
+      const v = q[k];
+      return Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '';
+    });
+    const map = {
+      price: ['priceMin', 'priceMax'], mileage: ['mileageMin', 'mileageMax'], year: ['yearFrom', 'yearTo'],
+      engine: ['engineMin', 'engineMax'], fuel: ['fuelTypes'], transmission: ['transmissions'], drive: ['driveTypes'],
+      body: ['bodyTypes'], color: ['colors'], seats: ['seatCountMin', 'seatCountMax'],
+      owners: ['ownersCountMin', 'ownersCountMax'], insurance: ['insuranceCountMin', 'insuranceCountMax'],
+      accident: ['hasAccident'], flood: ['floodHistory'], totalLoss: ['totalLossHistory'],
+      model: ['refModelId', 'model'], generation: ['refGenerationIds', 'generation'], modification: ['refModificationIds', 'badge'],
+      complectation: ['refComplectationIds', 'trim'], listed: ['listedAfter', 'listedBefore'], firstReg: ['firstRegAfter', 'firstRegBefore'],
+      options: ['options'],
+    };
+    for (const [field, keys] of Object.entries(map)) if (has(...keys)) out.add(field);
+    return out;
+  }
   /** "AT · передний · 2.0 л" */
   function drive(lot) {
     return [label('transmission', lot.transmission), lower(label('drive_type', lot.driveType)), engine(lot)].filter(Boolean).join(' · ');
@@ -123,5 +158,5 @@ const Fmt = (() => {
     lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   };
 
-  return { owners, PLACEHOLDER, esc, num, won, km, plural, lots, month, day, shortDay, label, lower, make, model, title, trim, engine, city, photos, cover, photoCount, history, sub, drive, icon };
+  return { owners, PLACEHOLDER, esc, num, won, km, plural, lots, month, day, shortDay, label, lower, make, model, title, trim, engine, city, photos, cover, photoCount, history, sub, drive, matched, icon };
 })();

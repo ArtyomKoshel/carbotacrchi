@@ -1,0 +1,121 @@
+{
+ "make": "McLaren",
+ "engine": {},
+ "complectations": [],
+ "editions": [],
+ "models": [
+  {
+   "name": "570S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2015,
+      2021
+     ]
+    }
+   ]
+  },
+  {
+   "name": "570GT",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2016,
+      2021
+     ]
+    }
+   ]
+  },
+  {
+   "name": "600LT",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2018,
+      2020
+     ]
+    }
+   ]
+  },
+  {
+   "name": "650S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2014,
+      2017
+     ]
+    }
+   ]
+  },
+  {
+   "name": "720S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2017,
+      2023
+     ]
+    }
+   ]
+  },
+  {
+   "name": "750S",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2023,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "GT",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2019,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Artura",
+   "body": "coupe",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2021,
+      null
+     ]
+    }
+   ]
+  }
+ ]
+}

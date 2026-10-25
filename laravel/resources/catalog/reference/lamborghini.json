@@ -1,0 +1,69 @@
+{
+ "make": "Lamborghini",
+ "engine": {
+  "codes": [
+   {
+    "re": "^LP\\d{3}-[24]$",
+    "fuel": "gasoline"
+   }
+  ],
+  "words": {
+   "V8": null,
+   "V10": null,
+   "V12": null,
+   "S": null,
+   "SE": "hybrid",
+   "Performante": null,
+   "Evo": null,
+   "Tecnica": null,
+   "STO": null
+  }
+ },
+ "complectations": [],
+ "editions": [],
+ "models": [
+  {
+   "name": "Urus",
+   "body": "suv",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2018,
+      null
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Huracán",
+   "body": "coupe",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2014,
+      2024
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Revuelto",
+   "body": "coupe",
+   "fuel": "hybrid",
+   "generations": [
+    {
+     "code": "I",
+     "number": 1,
+     "years": [
+      2023,
+      null
+     ]
+    }
+   ]
+  }
+ ]
+}

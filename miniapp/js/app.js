@@ -238,6 +238,49 @@ const App = (() => {
     $('filters-count').textContent = chips.length || '';
     $('sort-select').value = s.query?.sort ?? 'date';
     document.querySelectorAll('.seg__btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === s.resultsView)));
+    $('columns-btn').classList.toggle('off', s.resultsView !== 'table');
+  }
+
+  // desktop: drag the border of the filters or of the lot pane; a double click puts the width back
+  const SPLIT_KEY = 'carbot_layout';
+  function initSplits() {
+    const root = document.documentElement.style;
+    const limits = k => k === 'side' ? [200, 520] : [340, Math.max(340, Math.min(960, innerWidth - 640))];
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(SPLIT_KEY) || '{}') || {}; } catch (_) {}
+    const save = () => { try { localStorage.setItem(SPLIT_KEY, JSON.stringify(saved)); } catch (_) {} };
+    for (const k of ['side', 'pane']) if (saved[k]) root.setProperty(`--${k}`, `${saved[k]}px`);
+    const topHeight = () => root.setProperty('--top-h', `${document.querySelector('.topbar')?.offsetHeight ?? 57}px`);
+    topHeight();
+    addEventListener('resize', topHeight);
+    for (const k of ['side', 'pane']) {
+      const h = document.createElement('div');
+      h.className = `split split--${k}`;
+      h.setAttribute('role', 'separator');
+      h.setAttribute('aria-orientation', 'vertical');
+      h.title = 'Потяните, чтобы изменить ширину. Двойной щелчок — по умолчанию';
+      document.body.appendChild(h);
+      h.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        h.setPointerCapture(e.pointerId);
+        document.body.classList.add('splitting');
+        const move = ev => {
+          const [min, max] = limits(k);
+          const w = Math.round(Math.max(min, Math.min(max, k === 'side' ? ev.clientX : innerWidth - ev.clientX)));
+          saved[k] = w;
+          root.setProperty(`--${k}`, `${w}px`);
+        };
+        const up = () => {
+          h.removeEventListener('pointermove', move);
+          h.removeEventListener('pointerup', up);
+          document.body.classList.remove('splitting');
+          save();
+        };
+        h.addEventListener('pointermove', move);
+        h.addEventListener('pointerup', up);
+      });
+      h.addEventListener('dblclick', () => { delete saved[k]; root.removeProperty(`--${k}`); save(); });
+    }
   }
 
   function setSort(sort) {
@@ -496,6 +539,8 @@ const App = (() => {
     $('filters-reset-btn').addEventListener('click', resetFilters);
     $('sort-select').addEventListener('change', e => setSort(e.target.value));
     $('subscribe-btn').addEventListener('click', () => Subscriptions.toggleSubscribe());
+    $('columns-btn').addEventListener('click', e => Results.columnsMenu(e.currentTarget, renderResults));
+    initSplits();
     document.querySelectorAll('.seg__btn').forEach(b => b.addEventListener('click', () => {
       s.resultsView = b.dataset.view;
       try { localStorage.setItem(VIEW_KEY, s.resultsView); } catch (_) {}

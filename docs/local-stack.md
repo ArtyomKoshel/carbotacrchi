@@ -43,7 +43,7 @@ docker compose -f docker/dev/compose.yml up -d --build     # или: make up
 - мини-апп: http://localhost:8100/miniapp/ → кнопка «Войти локально» (пользователь «Local tester», `100000001`);
 - админка: http://localhost:8100/dev/admin-login → `/admin` как супер-админ `local`.
 
-Вход без Telegram есть в коде ветки `feat/reference-catalog` (`laravel/routes/dev.php`). В `main` его пока нет.
+Вход без Telegram — `laravel/routes/dev.php`, подключается только при `APP_ENV=local`.
 
 ## Какой код обслуживается
 
