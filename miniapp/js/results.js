@@ -13,6 +13,72 @@ const Results = (() => {
     date: ['date', 'date'],
   };
 
+  // the table's optional columns, in order; `match` names the field of Fmt.matched() that lights the cell
+  const dash = v => (v === null || v === undefined || v === '' ? '—' : v);
+  const COLUMNS = [
+    { id: 'price', label: 'Цена, ₩', cls: 'r t-num', sort: 'price', match: 'price', cell: l => Fmt.num(l.price) },
+    { id: 'mileage', label: 'Пробег, км', cls: 'r t-num', sort: 'mileage', match: 'mileage', cell: l => Fmt.num(l.mileage) },
+    { id: 'year', label: 'Год', cls: 't-num', sort: 'year', match: 'year', cell: l => dash(l.year) },
+    { id: 'engine', label: 'Объём', cls: 'r t-num', match: 'engine', cell: l => dash(Fmt.engine(l)) },
+    { id: 'fuel', label: 'Топливо', match: 'fuel', cell: l => dash(Fmt.label('fuel', l.fuel)) },
+    { id: 'transmission', label: 'КПП', match: 'transmission', cell: l => dash(Fmt.label('transmission', l.transmission)) },
+    { id: 'drive', label: 'Привод', match: 'drive', cell: l => dash(Fmt.label('drive_type', l.driveType)) },
+    { id: 'body', label: 'Кузов', match: 'body', cell: l => dash(Fmt.label('body_type', l.bodyType)) },
+    { id: 'color', label: 'Цвет', match: 'color', cell: l => dash(Fmt.label('color', l.color)) },
+    { id: 'complectation', label: 'Комплектация', match: 'complectation', cell: l => dash(l.catalog?.complectation) },
+    { id: 'history', label: 'История', match: 'accident', html: true,
+      cell: l => { const h = Fmt.history(l); return `<span class="hist-dot hist-dot--${h.level}">${Fmt.esc(h.short)}</span>`; } },
+    { id: 'owners', label: 'Смен влад.', title: 'Смен владельца', cls: 'r t-num', match: 'owners', cell: l => dash(l.ownersCount) },
+    { id: 'insurance', label: 'Страх.', title: 'Страховые случаи', cls: 'r t-num', match: 'insurance', cell: l => dash(l.insuranceCount) },
+    { id: 'city', label: 'Город', cell: l => dash(Fmt.city(l)) },
+    { id: 'listed', label: 'Выставлен', cls: 't-num', sort: 'date', match: 'listed', cell: l => Fmt.shortDay(l.listedAt) },
+  ];
+  const DEFAULT_COLUMNS = ['price', 'mileage', 'year', 'history', 'owners', 'city', 'listed'];
+  const COLUMNS_KEY = 'carbot_table_columns';
+
+  function shownColumns() {
+    let ids = DEFAULT_COLUMNS;
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLUMNS_KEY) || 'null');
+      if (Array.isArray(saved)) ids = saved;
+    } catch (_) {}
+    return COLUMNS.filter(c => ids.includes(c.id));
+  }
+
+  function saveColumns(ids) {
+    try { localStorage.setItem(COLUMNS_KEY, JSON.stringify(ids)); } catch (_) {}
+  }
+
+  /** The «Колонки» menu under `anchor`: tick the table's columns; `onChange` redraws. */
+  function columnsMenu(anchor, onChange) {
+    document.querySelector('.colmenu')?.remove();
+    const shown = new Set(shownColumns().map(c => c.id));
+    const menu = document.createElement('div');
+    menu.className = 'colmenu';
+    menu.setAttribute('role', 'dialog');
+    menu.setAttribute('aria-label', 'Колонки таблицы');
+    menu.innerHTML = `${COLUMNS.map(c => `<label class="colmenu__item"><input type="checkbox" value="${c.id}" ${shown.has(c.id) ? 'checked' : ''}>
+        <span>${Fmt.esc(c.title || c.label)}</span></label>`).join('')}
+      <button type="button" class="colmenu__reset">По умолчанию</button>`;
+    const r = anchor.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 6}px`;
+    menu.style.left = `${Math.max(8, r.right - 240)}px`;
+    document.body.appendChild(menu);
+    const apply = ids => { saveColumns(ids); onChange(); };
+    menu.querySelectorAll('input').forEach(i => i.addEventListener('change', () =>
+      apply([...menu.querySelectorAll('input:checked')].map(x => x.value))));
+    menu.querySelector('.colmenu__reset').addEventListener('click', () => {
+      menu.querySelectorAll('input').forEach(i => { i.checked = DEFAULT_COLUMNS.includes(i.value); });
+      apply(DEFAULT_COLUMNS);
+    });
+    const close = e => {
+      if (menu.contains(e.target) || anchor.contains(e.target)) return;
+      menu.remove();
+      document.removeEventListener('mousedown', close);
+    };
+    setTimeout(() => document.addEventListener('mousedown', close), 0);
+  }
+
   function thumb(lot, eager) {
     const n = Fmt.photoCount(lot);
     return `<div class="thumb"><img src="${Fmt.esc(Fmt.cover(lot))}" alt="" ${eager ? '' : 'loading="lazy"'} decoding="async"
@@ -40,21 +106,15 @@ const Results = (() => {
     </div>`;
   }
 
-  function tableRow(lot, i, ctx) {
-    const h = Fmt.history(lot);
+  function tableRow(lot, i, ctx, columns, asked) {
     const sel = ctx.selectedId === lot.id;
+    const carAsked = ['model', 'generation', 'modification', 'complectation'].some(f => asked.has(f));
     return `<tr data-i="${i}" class="${sel ? 'sel' : ''}" aria-selected="${sel}">
       <td class="t-chk"><button type="button" class="cbx${Compare.has(lot.id) ? ' on' : ''}" data-cmp="${i}" aria-label="Сравнить" aria-pressed="${Compare.has(lot.id)}"></button></td>
       <td class="t-thumb">${thumb(lot, i < 12)}</td>
-      <td class="t-car"><b>${Fmt.esc([Fmt.make(lot), Fmt.model(lot)].filter(Boolean).join(' '))}${ctx.favorites?.has(lot.id) ? ' <span class="t-fav" title="В избранном">♥</span>' : ''}</b>
+      <td class="t-car${carAsked ? ' match' : ''}"><b>${Fmt.esc([Fmt.make(lot), Fmt.model(lot)].filter(Boolean).join(' '))}${ctx.favorites?.has(lot.id) ? ' <span class="t-fav" title="В избранном">♥</span>' : ''}</b>
         <small>${Fmt.esc([Fmt.trim(lot), Fmt.drive(lot)].filter(Boolean).join(' · '))}</small></td>
-      <td class="r t-num">${Fmt.num(lot.price)}</td>
-      <td class="r t-num">${Fmt.num(lot.mileage)}</td>
-      <td class="t-num">${Fmt.esc(lot.year || '—')}</td>
-      <td><span class="hist-dot hist-dot--${h.level}">${Fmt.esc(h.short)}</span></td>
-      <td class="r t-num">${Fmt.esc(lot.ownersCount ?? '—')}</td>
-      <td>${Fmt.esc(Fmt.city(lot) || '—')}</td>
-      <td class="t-num">${Fmt.esc(Fmt.shortDay(lot.listedAt))}</td>
+      ${columns.map(c => `<td class="${[c.cls, c.match && asked.has(c.match) ? 'match' : ''].filter(Boolean).join(' ')}">${c.html ? c.cell(lot) : Fmt.esc(c.cell(lot))}</td>`).join('')}
     </tr>`;
   }
 
@@ -70,11 +130,12 @@ const Results = (() => {
     </div>`;
   }
 
-  function sortHead(col, label, cls, sort) {
-    const keys = SORT_COLS[col];
+  function head(c, sort) {
+    const keys = c.sort && SORT_COLS[c.sort];
     const on = keys && keys.includes(sort);
     const arrow = on ? (sort.endsWith('_asc') ? ' ↑' : ' ↓') : '';
-    return `<th scope="col" class="${cls}${on ? ' sorted' : ''}" ${keys ? `data-sort="${col}"` : ''}>${label}${arrow}</th>`;
+    const cls = [(c.cls || '').includes('r') ? 'r' : '', on ? 'sorted' : ''].filter(Boolean).join(' ');
+    return `<th scope="col" class="${cls}" ${keys ? `data-sort="${c.sort}"` : ''} ${c.title ? `title="${Fmt.esc(c.title)}"` : ''}>${Fmt.esc(c.label)}${arrow}</th>`;
   }
 
   /**
@@ -85,11 +146,12 @@ const Results = (() => {
    */
   function render(mount, lots, ctx) {
     if (ctx.mode === 'table') {
+      const columns = shownColumns();
+      const asked = Fmt.matched(ctx.query);
       mount.innerHTML = `<div class="lt-wrap"><table class="lt"><thead><tr>
           <th class="t-chk"></th><th class="t-thumb"></th><th scope="col">Авто</th>
-          ${sortHead('price', 'Цена, ₩', 'r', ctx.sort)}${sortHead('mileage', 'Пробег, км', 'r', ctx.sort)}${sortHead('year', 'Год', '', ctx.sort)}
-          <th scope="col">История</th><th scope="col" class="r" title="Смен владельца">Смен влад.</th><th scope="col">Город</th>${sortHead('date', 'Выставлен', '', ctx.sort)}
-        </tr></thead><tbody>${lots.map((l, i) => tableRow(l, i, ctx)).join('')}</tbody></table></div>`;
+          ${columns.map(c => head(c, ctx.sort)).join('')}
+        </tr></thead><tbody>${lots.map((l, i) => tableRow(l, i, ctx, columns, asked)).join('')}</tbody></table></div>`;
       mount.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
         const [first, second] = SORT_COLS[th.dataset.sort];
         ctx.onSort?.(ctx.sort === first && first !== second ? second : first);
@@ -134,5 +196,5 @@ const Results = (() => {
     if (action) mount.querySelector('[data-empty-action]').addEventListener('click', action.run);
   }
 
-  return { render, skeleton, empty };
+  return { render, skeleton, empty, columnsMenu };
 })();
