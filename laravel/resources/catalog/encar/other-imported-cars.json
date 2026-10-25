@@ -1,0 +1,9 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "기타 수입차",
+  "names": {
+    "기타": "Other"
+  },
+  "encar_models": {},
+  "badge_groups": {}
+}

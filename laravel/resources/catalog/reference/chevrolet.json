@@ -477,6 +477,24 @@
       ]
     },
     {
+      "name": "Astro",
+      "body": "van",
+      "generations": [
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            1995,
+            2005
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Avalanche",
+      "generations": []
+    },
+    {
       "name": "Aveo",
       "generations": [
         {
@@ -755,6 +773,20 @@
       ]
     },
     {
+      "name": "Express",
+      "body": "van",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1996,
+            null
+          ]
+        }
+      ]
+    },
+    {
       "name": "G2X",
       "generations": [
         {
@@ -785,6 +817,19 @@
             2011
           ],
           "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "HHR",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2011
+          ]
         }
       ]
     },
@@ -1124,6 +1169,23 @@
       ]
     },
     {
+      "name": "SSR",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2003,
+            2006
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Silverado",
+      "generations": []
+    },
+    {
       "name": "Spark",
       "generations": [
         {
@@ -1164,6 +1226,11 @@
           "source": "encar"
         }
       ]
+    },
+    {
+      "name": "Suburban",
+      "body": "suv",
+      "generations": []
     },
     {
       "name": "Super Salon",

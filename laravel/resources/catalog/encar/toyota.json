@@ -1,0 +1,559 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "도요타",
+  "names": {
+    "4Runner": "4Runner",
+    "86": "86",
+    "C-HR": "C-HR",
+    "FJ 크루져": "FJ Cruiser",
+    "GR86": "GR86",
+    "MR-2": "MR2",
+    "MR-S": "MR-S",
+    "RAV4": "RAV4",
+    "WiLL": "WiLL",
+    "bB": "bB",
+    "iQ": "iQ",
+    "가이아": "Gaia",
+    "노아": "Noah",
+    "라움": "Raum",
+    "락티스": "Ractis",
+    "랜드크루저": "Land Cruiser",
+    "루미": "Roomy",
+    "마크2": "Mark II",
+    "마크X": "Mark X",
+    "매트릭스": "Matrix",
+    "베르소": "Verso",
+    "벤자": "Venza",
+    "벨파이어": "Vellfire",
+    "복시": "Voxy",
+    "비스타": "Vista",
+    "사이": "Sai",
+    "세라": "Sera",
+    "세콰이어": "Sequoia",
+    "셀리카": "Celica",
+    "셀시오": "Celsior",
+    "소아라": "Soarer",
+    "솔라라": "Camry Solara",
+    "수프라": "Supra",
+    "시에나": "Sienna",
+    "시엔타": "Sienta",
+    "아리스토": "Aristo",
+    "아발론": "Avalon",
+    "아이고": "Aygo",
+    "아이시스": "Isis",
+    "알테자": "Altezza",
+    "알파드": "Alphard",
+    "액스트라캡": "Xtracab",
+    "야리스(비츠)": "Yaris",
+    "에스콰이어": "Esquire",
+    "에스티마": "Estima",
+    "위시": "Wish",
+    "이스트": "ist",
+    "입섬": "Ipsum",
+    "체이서": "Chaser",
+    "카리나": "Carina",
+    "카미": "Cami",
+    "캠리": "Camry",
+    "코로나": "Corona",
+    "코롤라": "Corolla",
+    "코르사": "Corsa",
+    "크라운": "Crown",
+    "크라운 마제스타": "Crown Majesta",
+    "크라운 크로스오버": "Crown Crossover",
+    "타코마": "Tacoma",
+    "툰드라": "Tundra",
+    "파쏘": "Passo",
+    "펀 카고": "Funcargo",
+    "포르테": "Porte",
+    "프레미오": "Premio",
+    "프리비아": "Previa",
+    "프리우스": "Prius",
+    "프리우스 C": "Prius c",
+    "프리우스 V": "Prius v",
+    "프리우스 프라임": "Prius Prime",
+    "픽업": "Pickup",
+    "하이랜더": "Highlander",
+    "하이럭스 써프": "Hilux Surf",
+    "하이에이스": "HiAce",
+    "해리어": "Harrier"
+  },
+  "encar_models": {
+    "4Runner": {
+      "model": "4Runner"
+    },
+    "86": {
+      "model": "86"
+    },
+    "C-HR": {
+      "model": "C-HR"
+    },
+    "FJ 크루져": {
+      "model": "FJ Cruiser"
+    },
+    "GR86": {
+      "model": "GR86"
+    },
+    "MR-2": {
+      "model": "MR2"
+    },
+    "MR-S": {
+      "model": "MR-S"
+    },
+    "RAV4": {
+      "model": "RAV4"
+    },
+    "RAV4 5세대": {
+      "model": "RAV4",
+      "generation": "V"
+    },
+    "RAV4 6세대": {
+      "model": "RAV4",
+      "generation": "VI"
+    },
+    "WiLL": {
+      "model": "WiLL"
+    },
+    "bB": {
+      "model": "bB"
+    },
+    "iQ": {
+      "model": "iQ"
+    },
+    "가이아": {
+      "model": "Gaia"
+    },
+    "노아": {
+      "model": "Noah"
+    },
+    "뉴 캠리": {
+      "model": "Camry",
+      "generation": "XV50",
+      "manual": true
+    },
+    "라움": {
+      "model": "Raum"
+    },
+    "락티스": {
+      "model": "Ractis"
+    },
+    "랜드크루저": {
+      "model": "Land Cruiser"
+    },
+    "루미": {
+      "model": "Roomy"
+    },
+    "마크2": {
+      "model": "Mark II"
+    },
+    "마크X": {
+      "model": "Mark X"
+    },
+    "매트릭스": {
+      "model": "Matrix"
+    },
+    "베르소": {
+      "model": "Verso"
+    },
+    "벤자": {
+      "model": "Venza"
+    },
+    "벨파이어": {
+      "model": "Vellfire"
+    },
+    "복시": {
+      "model": "Voxy"
+    },
+    "비스타": {
+      "model": "Vista"
+    },
+    "사이": {
+      "model": "Sai"
+    },
+    "세라": {
+      "model": "Sera"
+    },
+    "세콰이어": {
+      "model": "Sequoia"
+    },
+    "셀리카": {
+      "model": "Celica"
+    },
+    "셀시오": {
+      "model": "Celsior"
+    },
+    "소아라": {
+      "model": "Soarer"
+    },
+    "솔라라": {
+      "model": "Camry Solara"
+    },
+    "수프라": {
+      "model": "Supra"
+    },
+    "수프라 5세대": {
+      "model": "Supra",
+      "generation": "V"
+    },
+    "시에나": {
+      "model": "Sienna"
+    },
+    "시에나 4세대": {
+      "model": "Sienna",
+      "generation": "IV"
+    },
+    "시엔타": {
+      "model": "Sienta"
+    },
+    "아리스토": {
+      "model": "Aristo"
+    },
+    "아발론": {
+      "model": "Avalon"
+    },
+    "아발론 5세대": {
+      "model": "Avalon",
+      "generation": "V"
+    },
+    "아이고": {
+      "model": "Aygo"
+    },
+    "아이시스": {
+      "model": "Isis"
+    },
+    "알테자": {
+      "model": "Altezza"
+    },
+    "알파드": {
+      "model": "Alphard"
+    },
+    "알파드 4세대": {
+      "model": "Alphard",
+      "generation": "IV"
+    },
+    "액스트라캡": {
+      "model": "Xtracab"
+    },
+    "야리스(비츠)": {
+      "model": "Yaris"
+    },
+    "에스콰이어": {
+      "model": "Esquire"
+    },
+    "에스티마": {
+      "model": "Estima"
+    },
+    "위시": {
+      "model": "Wish"
+    },
+    "이스트": {
+      "model": "ist"
+    },
+    "입섬": {
+      "model": "Ipsum"
+    },
+    "체이서": {
+      "model": "Chaser"
+    },
+    "카리나": {
+      "model": "Carina"
+    },
+    "카미": {
+      "model": "Cami"
+    },
+    "캠리": {
+      "model": "Camry"
+    },
+    "캠리 (XV70)": {
+      "model": "Camry",
+      "generation": "XV70"
+    },
+    "캠리 (XV80)": {
+      "model": "Camry",
+      "generation": "XV80"
+    },
+    "코로나": {
+      "model": "Corona"
+    },
+    "코롤라": {
+      "model": "Corolla"
+    },
+    "코르사": {
+      "model": "Corsa"
+    },
+    "크라운": {
+      "model": "Crown"
+    },
+    "크라운 마제스타": {
+      "model": "Crown Majesta"
+    },
+    "크라운 크로스오버": {
+      "model": "Crown Crossover"
+    },
+    "타코마": {
+      "model": "Tacoma"
+    },
+    "툰드라": {
+      "model": "Tundra"
+    },
+    "파쏘": {
+      "model": "Passo"
+    },
+    "펀 카고": {
+      "model": "Funcargo"
+    },
+    "포르테": {
+      "model": "Porte"
+    },
+    "프레미오": {
+      "model": "Premio"
+    },
+    "프리비아": {
+      "model": "Previa"
+    },
+    "프리우스": {
+      "model": "Prius"
+    },
+    "프리우스 4세대": {
+      "model": "Prius",
+      "generation": "IV"
+    },
+    "프리우스 5세대": {
+      "model": "Prius",
+      "generation": "V"
+    },
+    "프리우스 C": {
+      "model": "Prius c"
+    },
+    "프리우스 V": {
+      "model": "Prius v"
+    },
+    "프리우스 프라임": {
+      "model": "Prius Prime"
+    },
+    "픽업": {
+      "model": "Pickup"
+    },
+    "하이랜더": {
+      "model": "Highlander"
+    },
+    "하이랜더 4세대": {
+      "model": "Highlander",
+      "generation": "IV"
+    },
+    "하이럭스 써프": {
+      "model": "Hilux Surf"
+    },
+    "하이에이스": {
+      "model": "HiAce"
+    },
+    "해리어": {
+      "model": "Harrier"
+    }
+  },
+  "badge_groups": {
+    "4Runner": {
+      "V6 2WD LIMITED": "가솔린 2WD",
+      "V6 2WD SR5": "가솔린 2WD",
+      "V6 2WD SR5 Sport": "가솔린 2WD",
+      "V6 4WD LIMITED": "가솔린 4WD",
+      "V6 4WD SR5": "가솔린 4WD",
+      "V6 4WD SR5 Sport": "가솔린 4WD",
+      "V8 2WD LIMITED": "가솔린 2WD",
+      "V8 2WD SR5": "가솔린 2WD",
+      "V8 2WD SR5 Sport": "가솔린 2WD",
+      "V8 4WD LIMITED": "가솔린 4WD",
+      "V8 4WD SR5": "가솔린 4WD",
+      "V8 4WD SR5 Sport": "가솔린 4WD"
+    },
+    "86": {
+      "2.0": "가솔린 2000cc"
+    },
+    "FJ 크루져": {
+      "2WD V6": "가솔린 4000cc",
+      "4WD V6": "가솔린 4000cc"
+    },
+    "GR86": {
+      "2.4 스탠다드": "가솔린 2400cc",
+      "2.4 프리미엄": "가솔린 2400cc"
+    },
+    "RAV4": {
+      "2.0 2WD": "가솔린 2WD",
+      "2.0 4WD": "가솔린 4WD",
+      "2.4 2WD": "가솔린 2WD",
+      "2.4 4WD": "가솔린 4WD",
+      "2.5 2WD": "가솔린 2WD",
+      "2.5 2WD 하이브리드": "가솔린+전기 2WD",
+      "2.5 4WD": "가솔린 4WD",
+      "2.5 4WD 하이브리드": "가솔린+전기 4WD"
+    },
+    "RAV4 5세대": {
+      "2.5 2WD": "가솔린 2WD",
+      "2.5 2WD 하이브리드": "가솔린+전기 2WD",
+      "2.5 2WD 하이브리드 XLE": "가솔린+전기 2WD",
+      "2.5 4WD PHEV": "가솔린+전기 4WD",
+      "2.5 4WD PHEV XSE": "가솔린+전기 4WD",
+      "2.5 4WD 하이브리드": "가솔린+전기 4WD",
+      "2.5 4WD 하이브리드 LTD": "가솔린+전기 4WD"
+    },
+    "RAV4 6세대": {
+      "2.5 HEV 2WD": "가솔린+전기 2WD",
+      "2.5 HEV 4WD": "가솔린+전기 4WD",
+      "2.5 PHEV 4WD": "가솔린+전기 4WD"
+    },
+    "bB": {
+      "1.3": "가솔린 1300cc",
+      "1.5": "가솔린 1500cc",
+      "1.5 오픈데크": "가솔린 1500cc"
+    },
+    "iQ": {
+      "1.0": "가솔린 1000cc",
+      "1.3": "가솔린 1300cc"
+    },
+    "노아": {
+      "2.0": "가솔린"
+    },
+    "뉴 캠리": {
+      "2.5": "가솔린 2500cc",
+      "2.5 XLE": "가솔린 2500cc",
+      "3.5": "가솔린 3500cc",
+      "하이브리드 LE": "가솔린+전기 2500cc",
+      "하이브리드 XLE": "가솔린+전기 2500cc"
+    },
+    "마크2": {
+      "2.0": "가솔린 2000cc",
+      "2.5": "가솔린 2500cc"
+    },
+    "마크X": {
+      "2.4": "가솔린 2400cc",
+      "2.5": "가솔린 2500cc",
+      "3.5": "가솔린 3500cc"
+    },
+    "수프라 5세대": {
+      "GR 3.0": "가솔린 3000cc"
+    },
+    "시에나": {
+      "2.7": "가솔린 2WD",
+      "3.5": "가솔린 2WD",
+      "3.5 AWD": "가솔린 4WD"
+    },
+    "시에나 4세대": {
+      "2.5 하이브리드 2WD": "가솔린+전기 2WD",
+      "2.5 하이브리드 AWD": "가솔린+전기 4WD"
+    },
+    "아리스토": {
+      "3.0": "가솔린"
+    },
+    "아발론": {
+      "XL": "가솔린",
+      "XLS": "가솔린",
+      "리미티드": "가솔린",
+      "투어링": "가솔린"
+    },
+    "아발론 5세대": {
+      "2.5 하이브리드": "가솔린+전기 2500cc"
+    },
+    "알파드": {
+      "2.4 2WD": "가솔린 2WD",
+      "2.4 4WD": "가솔린 4WD",
+      "3.5 2WD": "가솔린 2WD",
+      "3.5 4WD": "가솔린 4WD"
+    },
+    "알파드 4세대": {
+      "2.5 HEV 이그제큐티브 AWD": "가솔린+전기 2500cc",
+      "2.5 HEV 프리미엄 AWD": "가솔린+전기 2500cc"
+    },
+    "야리스(비츠)": {
+      "1.0 가솔린": "가솔린",
+      "1.3 가솔린": "가솔린",
+      "1.4 디젤": "디젤",
+      "1.8 가솔린": "가솔린",
+      "GR 야리스": "가솔린"
+    },
+    "에스티마": {
+      "2.4": "가솔린 2400cc 이상",
+      "3.5": "가솔린 2400cc 이상"
+    },
+    "캠리": {
+      "2.4": "가솔린",
+      "2.5": "가솔린",
+      "LE": "가솔린",
+      "LE V6": "가솔린",
+      "SE V6": "가솔린",
+      "XLE": "가솔린",
+      "XLE V6": "가솔린",
+      "하이브리드": "가솔린+전기"
+    },
+    "캠리 (XV70)": {
+      "2.5": "가솔린 2500cc",
+      "2.5 LE 하이브리드": "가솔린+전기 2500cc",
+      "2.5 XLE 하이브리드": "가솔린+전기 2500cc",
+      "2.5 XSE 하이브리드": "가솔린+전기 2500cc",
+      "2.5 스포츠 에디션(모노톤)": "가솔린 2500cc",
+      "2.5 스포츠 에디션(투톤)": "가솔린 2500cc"
+    },
+    "캠리 (XV80)": {
+      "2.5 XLE 프리미엄 하이브리드": "가솔린+전기 2500cc",
+      "2.5 XLE 하이브리드": "가솔린+전기 2500cc"
+    },
+    "크라운 크로스오버": {
+      "2.4 4WD 듀얼 부스트 하이브리드": "가솔린+전기 2400cc",
+      "2.5 4WD 하이브리드": "가솔린+전기 2500cc"
+    },
+    "타코마": {
+      "2.7": "가솔린 2700cc",
+      "3.5": "가솔린 3500cc",
+      "4.0": "가솔린 4000cc"
+    },
+    "툰드라": {
+      "3.5": "가솔린",
+      "3.5 HEV": "가솔린+전기",
+      "4.0": "가솔린",
+      "4.6": "가솔린",
+      "4.7": "가솔린",
+      "5.7": "가솔린"
+    },
+    "프리우스": {
+      "1.5": "가솔린+전기 1500cc",
+      "1.5 S": "가솔린+전기 1500cc",
+      "1.8": "가솔린+전기 1800cc",
+      "1.8 E": "가솔린+전기 1800cc",
+      "1.8 M": "가솔린+전기 1800cc",
+      "1.8 PHV": "가솔린+전기 1800cc",
+      "1.8 S": "가솔린+전기 1800cc"
+    },
+    "프리우스 4세대": {
+      "1.8": "가솔린+전기 1800cc",
+      "1.8 AWD": "가솔린+전기 1800cc",
+      "1.8 E": "가솔린+전기 1800cc",
+      "1.8 S": "가솔린+전기 1800cc"
+    },
+    "프리우스 5세대": {
+      "2.0 LE": "가솔린+전기 2000cc",
+      "2.0 PHEV SE": "가솔린+전기 2000cc",
+      "2.0 PHEV XSE": "가솔린+전기 2000cc",
+      "2.0 XLE": "가솔린+전기 2000cc",
+      "2.0 XLE AWD": "가솔린+전기 2000cc"
+    },
+    "프리우스 C": {
+      "1.5": "가솔린+전기 1500cc",
+      "1.5 크로스오버": "가솔린+전기 1500cc"
+    },
+    "프리우스 V": {
+      "1.8": "가솔린+전기 1800cc"
+    },
+    "프리우스 프라임": {
+      "1.8": "가솔린+전기 1800cc"
+    },
+    "하이랜더": {
+      "기본형": "가솔린",
+      "리미티드": "가솔린",
+      "스포츠": "가솔린",
+      "하이브리드": "가솔린+전기",
+      "하이브리드 리미티드": "가솔린+전기"
+    },
+    "하이랜더 4세대": {
+      "2.5 4WD 리미티드": "가솔린+전기 4WD",
+      "2.5 4WD 플래티넘": "가솔린+전기 4WD"
+    }
+  }
+}

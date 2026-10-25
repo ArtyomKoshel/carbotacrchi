@@ -1,0 +1,119 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "닷지",
+  "names": {
+    "그랜드 캐러밴": "Grand Caravan",
+    "니트로": "Nitro",
+    "다코타": "Dakota",
+    "듀랑고": "Durango",
+    "램밴": "Ram Van",
+    "램픽업": "Ram Pickup",
+    "매그넘": "Magnum",
+    "바이퍼": "Viper",
+    "밴": "Van",
+    "어벤저": "Avenger",
+    "인트레피드": "Intrepid",
+    "차저": "Charger",
+    "챌린저": "Challenger",
+    "캐러밴": "Caravan",
+    "캘리버": "Caliber"
+  },
+  "encar_models": {
+    "그랜드 캐러밴": {
+      "model": "Grand Caravan"
+    },
+    "니트로": {
+      "model": "Nitro"
+    },
+    "다코타": {
+      "model": "Dakota"
+    },
+    "듀랑고": {
+      "model": "Durango"
+    },
+    "램밴": {
+      "model": "Ram Van"
+    },
+    "램픽업": {
+      "model": "Ram Pickup"
+    },
+    "매그넘": {
+      "model": "Magnum"
+    },
+    "바이퍼": {
+      "model": "Viper"
+    },
+    "밴": {
+      "model": "Van"
+    },
+    "어벤저": {
+      "model": "Avenger"
+    },
+    "인트레피드": {
+      "model": "Intrepid"
+    },
+    "차저": {
+      "model": "Charger"
+    },
+    "챌린저": {
+      "model": "Challenger"
+    },
+    "캐러밴": {
+      "model": "Caravan"
+    },
+    "캘리버": {
+      "model": "Caliber"
+    }
+  },
+  "badge_groups": {
+    "그랜드 캐러밴": {
+      "3.3": "가솔린 3300cc",
+      "3.6": "가솔린 3600cc",
+      "3.8": "가솔린 3800cc"
+    },
+    "다코타": {
+      "CLUB CAB 4X2": "가솔린 2WD",
+      "CLUB CAB 4X4": "가솔린 4WD",
+      "QUAD CAB 4X2": "가솔린 2WD",
+      "QUAD CAB 4X4": "가솔린 4WD",
+      "REGULAR CAB 4X2": "가솔린 2WD",
+      "REGULAR CAB 4X4": "가솔린 4WD"
+    },
+    "램밴": {
+      "3.6": "가솔린 5200cc 이하",
+      "3.9": "가솔린 5200cc 이하",
+      "5.2": "가솔린 5200cc 이하",
+      "5.4": "가솔린 5200cc 이상",
+      "5.7": "가솔린 5200cc 이상"
+    },
+    "램픽업": {
+      "3.0": "가솔린",
+      "3.6": "가솔린",
+      "4.7": "가솔린",
+      "5.7": "가솔린",
+      "6.2": "가솔린",
+      "6.4": "가솔린",
+      "SRT-10": "가솔린"
+    },
+    "차저": {
+      "2.7": "가솔린 3600cc 이하",
+      "3.5": "가솔린 3600cc 이하",
+      "3.6": "가솔린 3600cc 이상",
+      "5.7 HEMI": "가솔린 3600cc 이상",
+      "6.1 SRT-8": "가솔린 3600cc 이상",
+      "6.4 SRT-8": "가솔린 3600cc 이상"
+    },
+    "챌린저": {
+      "3.5": "가솔린 3600cc 이하",
+      "3.6": "가솔린 3600cc 이하",
+      "5.7": "가솔린 5700cc 이상",
+      "6.1": "가솔린 5700cc 이상",
+      "6.2": "가솔린 5700cc 이상",
+      "6.4": "가솔린 5700cc 이상"
+    },
+    "캘리버": {
+      "2.0": "가솔린 2000cc",
+      "2.0 플로리다 에디션": "가솔린 2000cc"
+    }
+  }
+}

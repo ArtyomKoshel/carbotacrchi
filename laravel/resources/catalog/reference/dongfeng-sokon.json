@@ -1,0 +1,101 @@
+{
+  "make": "Dongfeng Sokon",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Standard",
+    "Business",
+    "Single Cab"
+  ],
+  "editions": [],
+  "models": [
+    {
+      "name": "C31",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C32",
+      "body": "van",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C35",
+      "body": "van",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fengon ix5",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SX6",
+      "generations": []
+    }
+  ]
+}

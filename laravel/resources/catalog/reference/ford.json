@@ -1,0 +1,493 @@
+{
+  "make": "Ford",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "EcoBoost": null,
+      "SHO": null,
+      "GT": null,
+      "GT500": null,
+      "GT350": null,
+      "Shelby": null,
+      "Super Duty": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dL$"
+      }
+    ],
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Limited",
+    "Plus",
+    "Platinum",
+    "Premium",
+    "Titanium",
+    "Trend",
+    "Trendy",
+    "Sport",
+    "ST-Line",
+    "SEL",
+    "SE",
+    "XLT",
+    "Wildtrak",
+    "Raptor",
+    "Outer Banks",
+    "Tremor",
+    "King Ranch",
+    "Lariat"
+  ],
+  "editions": [
+    "First Edition"
+  ],
+  "models": [
+    {
+      "name": "Bronco",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            1992,
+            1996
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Contour",
+      "generations": []
+    },
+    {
+      "name": "E-Series",
+      "generations": []
+    },
+    {
+      "name": "EcoSport",
+      "generations": []
+    },
+    {
+      "name": "Econoline",
+      "generations": []
+    },
+    {
+      "name": "Escape",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2000,
+            2007
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2007,
+            2012
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2012,
+            2019
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Expedition",
+      "generations": []
+    },
+    {
+      "name": "Explorer",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2010,
+            2019
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Explorer Sport Trac",
+      "generations": []
+    },
+    {
+      "name": "F-150",
+      "generations": []
+    },
+    {
+      "name": "F-250",
+      "generations": []
+    },
+    {
+      "name": "F-350",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1998,
+            2007
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2007,
+            2010
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2010,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fiesta",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2008,
+            2017
+          ]
+        },
+        {
+          "code": "VII",
+          "number": 7,
+          "years": [
+            2017,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Five Hundred",
+      "generations": []
+    },
+    {
+      "name": "Flex",
+      "generations": []
+    },
+    {
+      "name": "Focus",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1998,
+            2004
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2004,
+            2011
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2010,
+            2018
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Freestyle",
+      "generations": []
+    },
+    {
+      "name": "Fusion",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2012
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2012,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "GT",
+      "generations": []
+    },
+    {
+      "name": "Kuga",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2008,
+            2012
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2012,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mondeo",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2007,
+            2014
+          ],
+          "source": "encar"
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2015,
+            null
+          ],
+          "source": "encar"
+        }
+      ]
+    },
+    {
+      "name": "Mustang",
+      "generations": [
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2004,
+            2014
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2014,
+            2023
+          ]
+        },
+        {
+          "code": "VII",
+          "number": 7,
+          "years": [
+            2023,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mustang Mach-E",
+      "generations": []
+    },
+    {
+      "name": "Probe",
+      "generations": []
+    },
+    {
+      "name": "Ranger",
+      "generations": [
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            1997,
+            2012
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2011,
+            2022
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "S-MAX",
+      "generations": []
+    },
+    {
+      "name": "Taurus",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2007,
+            2009
+          ]
+        },
+        {
+          "code": "VI",
+          "number": 6,
+          "years": [
+            2009,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Thunderbird",
+      "generations": []
+    },
+    {
+      "name": "Transit",
+      "body": "van",
+      "generations": [
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2013,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transit Connect",
+      "body": "van",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2002,
+            2013
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2013,
+            2023
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Windstar",
+      "generations": []
+    }
+  ]
+}

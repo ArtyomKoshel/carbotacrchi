@@ -135,7 +135,115 @@ class EncarMatcherTest extends TestCase
                 ['아우디', 'A3', '35 TDI 다이나믹 스포트백', '8V', 2018],
                 ['modification' => '35 TDI', 'complectation' => 'Dynamic', 'body' => 'hatchback'],
             ],
+            'Tesla: an electric model of one generation, the badge its powertrain' => [
+                ['테슬라', '모델 Y', '롱 레인지 AWD', '롱 레인지 AWD', 2023],
+                ['model' => 'Model Y', 'generation' => 'I', 'modification' => 'Long Range AWD', 'fuel' => 'electric', 'drive' => 'awd'],
+            ],
+            'Tesla: Premium is the complectation' => [
+                ['테슬라', '모델 Y', '프리미엄 롱 레인지 AWD', '프리미엄 롱 레인지 AWD', 2025],
+                ['modification' => 'Long Range AWD', 'complectation' => 'Premium'],
+            ],
+            'Jeep: Encar lumps Grand Cherokees, the BadgeDetail names the chassis' => [
+                ['지프', '그랜드 체로키', '3.0 디젤 오버랜드', 'WK2', 2016],
+                ['model' => 'Grand Cherokee', 'generation' => 'WK2', 'modification' => '3.0 Diesel', 'fuel' => 'diesel', 'complectation' => 'Overland'],
+            ],
+            'Jeep Wrangler: 4xe hybrid, doors are the body' => [
+                ['지프', '랭글러 (JL)', '2.0 오버랜드 파워 탑 4도어 4xe', '오버랜드 파워 탑 4도어 4xe', 2022],
+                ['generation' => 'JL', 'modification' => '2.0 4xe', 'fuel' => 'hybrid', 'complectation' => 'Overland Power Top', 'body' => 'suv'],
+            ],
+            'Ford Explorer: the generation number in BadgeDetail' => [
+                ['포드', '익스플로러', '2.3 리미티드 4WD', '5세대', 2018],
+                ['model' => 'Explorer', 'generation' => 'V', 'modification' => '2.3 4WD', 'drive' => '4wd', 'complectation' => 'Limited'],
+            ],
+            'Ford Mustang: generation in the model name' => [
+                ['포드', '머스탱 7세대', '2.3 에코부스트 프리미엄 쿠페', '에코부스트 프리미엄 쿠페', 2024],
+                ['generation' => 'VII', 'modification' => '2.3 EcoBoost', 'complectation' => 'Premium', 'body' => 'coupe'],
+            ],
+            'Lexus: the engine is in the model name' => [
+                ['렉서스', 'ES300h 7세대', '럭셔리 플러스', '럭셔리 플러스', 2021],
+                ['model' => 'ES', 'generation' => 'XV70', 'modification' => 'ES300h', 'fuel' => 'hybrid', 'complectation' => 'Luxury Plus'],
+            ],
+            'Lexus: an Encar model within one generation by its own dates' => [
+                ['렉서스', 'NX300h', '슈프림', '슈프림', 2017],
+                ['model' => 'NX', 'generation' => 'AZ10', 'modification' => 'NX300h', 'complectation' => 'Supreme'],
+            ],
+            'Toyota Camry: chassis in the model name, hybrid in the badge' => [
+                ['도요타', '캠리 (XV70)', '2.5 XLE 하이브리드', 'XLE 하이브리드', 2021],
+                ['generation' => 'XV70', 'modification' => '2.5 Hybrid', 'fuel' => 'hybrid', 'complectation' => 'XLE'],
+            ],
+            'Honda: "올뉴" glued to the name, generation in BadgeDetail' => [
+                ['혼다', '올뉴어코드', '2.4', '9세대', 2015],
+                ['model' => 'Accord', 'generation' => 'IX', 'modification' => '2.4'],
+            ],
+            'Lincoln Aviator: Black Label written together' => [
+                ['링컨', '에비에이터 2세대', '3.0 블랙라벨 AWD', '블랙라벨 AWD', 2021],
+                ['generation' => 'II', 'modification' => '3.0 AWD', 'drive' => 'awd', 'complectation' => 'Black Label'],
+            ],
+            'Cadillac Escalade: generation in BadgeDetail, then in the model name' => [
+                ['캐딜락', '에스컬레이드 5세대', '6.2', '스포츠 플래티넘', 2022],
+                ['generation' => 'V', 'modification' => '6.2', 'complectation' => 'Sport Platinum'],
+            ],
+            'Cadillac Escalade: ESV is the long body' => [
+                ['캐딜락', '에스컬레이드', '6.2 ESV', '4세대', 2018],
+                ['generation' => 'IV', 'modification' => '6.2 ESV'],
+            ],
+            'BYD: a complectation-only badge of an electric model' => [
+                ['BYD', '아토 3', '플러스', '플러스', 2025],
+                ['model' => 'Atto 3', 'modification' => 'Atto 3', 'fuel' => 'electric', 'complectation' => 'Plus'],
+            ],
+            'Nissan Altima: chassis in BadgeDetail' => [
+                ['닛산', '알티마', '2.5 스마트', 'L33', 2017],
+                ['generation' => 'L33', 'modification' => '2.5', 'complectation' => 'Smart'],
+            ],
+            'Infiniti Q50: d is diesel' => [
+                ['인피니티', 'Q50', '2.2d 프리미엄', '2.2d 프리미엄', 2016],
+                ['generation' => 'V37', 'modification' => '2.2d', 'fuel' => 'diesel', 'complectation' => 'Premium'],
+            ],
+            'Citroën/DS: one Encar make, one reference make' => [
+                ['시트로엥/DS', 'DS7 크로스백', '2.0 BlueHDi 그랜드 시크', 'BlueHDi 그랜드 시크', 2020],
+                ['make' => 'Citroën/DS', 'model' => 'DS7 Crossback', 'modification' => '2.0 BlueHDi', 'fuel' => 'diesel', 'complectation' => 'Grand Chic'],
+            ],
+            'Chevrolet imported: Encar\'s second make of Chevrolet' => [
+                ['쉐보레', '익스프레스밴', '6.0', null, 2015],
+                ['make' => 'Chevrolet', 'model' => 'Express', 'generation' => 'I', 'modification' => '6.0'],
+            ],
         ];
+    }
+
+    /**
+     * Encar's imported Chevrolet ("쉐보레") has a file of its own: its "콜벳" (1953–, every
+     * Corvette) is not GM Korea's "콜벳", and names no generation, so the model's only one
+     * does not take it.
+     */
+    public function test_a_second_encar_make_keeps_its_own_models(): void
+    {
+        $matcher = self::matcher();
+        $imported = $matcher->match(['make' => '쉐보레', 'model' => '콜벳', 'badge' => '쿠페', 'trim' => '쿠페']);
+        $korea = $matcher->match(['make' => '쉐보레(GM대우)', 'model' => '콜벳', 'badge' => '6.2 쿠페']);
+
+        $this->assertSame(['Chevrolet', 'Corvette', null, VariantMatch::UNMATCHED], [$imported->make, $imported->model, $imported->generation, $imported->status]);
+        $this->assertSame('I', $korea->generation);
+        $this->assertSame('쉐보레(GM대우)', $matcher->koreanMake('Chevrolet'));
+    }
+
+    /** An Encar model holding many generations ("머스탱" 1964–2024) names none: the listing stays at the model. */
+    public function test_a_lumped_encar_model_names_no_generation(): void
+    {
+        $match = self::matcher()->match(['make' => '포드', 'model' => '머스탱', 'badge' => 'GT 쿠페', 'trim' => 'GT 쿠페']);
+
+        $this->assertSame([VariantMatch::UNMATCHED, 'Mustang', null], [$match->status, $match->model, $match->generation]);
+    }
+
+    /** A make found by its name or its file's ("Citroën/DS", "citroen-ds"); Encar's "other" makes are makes too. */
+    public function test_every_encar_make_is_a_reference_make(): void
+    {
+        $root = dirname(__DIR__, 3) . '/resources/catalog';
+        $reference = new Reference("{$root}/reference");
+        $other = self::matcher()->match(['make' => '기타 제조사', 'model' => '기타', 'badge' => '기타 전기차']);
+
+        $this->assertSame('Citroën/DS', $reference->make('Citroën/DS')['make'] ?? null);
+        $this->assertSame('Citroën/DS', $reference->make('citroen-ds')['make'] ?? null);
+        $this->assertSame(['Other Manufacturers', 'Other'], [$other->make, $other->model]);
     }
 
     #[DataProvider('variants')]

@@ -82,7 +82,11 @@ class EncarMatcher
                 }
             }
         }
-        $generation = $model ? $this->reference->generation($model, $code) : null;
+        // a model of one generation answers for a listing that names none, unless Encar's model is
+        // written down as naming none ("generation": null: "콜벳" 1953– holds every Corvette)
+        $none = $code === null && array_key_exists('generation', $encar['encar_models'][$encarModel] ?? [])
+            && $encar['encar_models'][$encarModel]['generation'] === null;
+        $generation = $model && ! $none ? $this->reference->generation($model, $code) : null;
         // a BadgeDetail that names a generation of the model ("A6" + "C7") is never a complectation
         if ($model && $trim !== null && $this->reference->generation($model, self::generationKey($trim) ?? trim($trim))) {
             $trim = null;
@@ -288,7 +292,11 @@ class EncarMatcher
         return $this->encarMake('', $make)['korean'] ?? null;
     }
 
-    /** The Encar file of a make, by Encar's Korean make or else by our English one. */
+    /**
+     * The Encar file of a make, by Encar's Korean make or else by our English one. A file is
+     * named after its reference make; a second Encar make of it (the imported "쉐보레" beside
+     * "쉐보레(GM대우)") has a file of its own that names the reference make in "make".
+     */
     private function encarMake(string $korean, string $english): ?array
     {
         if ($this->makes === null) {
@@ -298,9 +306,9 @@ class EncarMatcher
                     continue;
                 }
                 $data = json_decode(file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
-                $ref = $this->reference->make(basename($file, '.json'));
+                $ref = $this->reference->make($data['make'] ?? basename($file, '.json'));
                 if ($ref !== null && isset($data['korean'])) {
-                    $this->makes[$data['korean']] = $data + ['make' => $ref['make']];
+                    $this->makes[$data['korean']] = ['make' => $ref['make'], 'second' => isset($data['make'])] + $data;
                 }
             }
         }
@@ -308,7 +316,7 @@ class EncarMatcher
             return $this->makes[trim($korean)];
         }
         foreach ($this->makes as $data) {
-            if (strcasecmp($data['make'], trim($english)) === 0) {
+            if (! $data['second'] && strcasecmp($data['make'], trim($english)) === 0) {
                 return $data;
             }
         }

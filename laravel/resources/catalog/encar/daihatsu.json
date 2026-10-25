@@ -1,0 +1,79 @@
+{
+  "_comment": "korean: Encar's make; names: Encar's Korean model (without chassis, number and facelift words) or ModelGroup → the official name. encar_models and badge_groups are drafted from Encar's tree (analysis/build_catalog_from_tree.py); entries marked manual are a person's.",
+  "korean": "다이하쯔",
+  "names": {
+    "마테리아": "Materia",
+    "무브": "Move",
+    "미라": "Mira",
+    "미라 코코아": "Mira Cocoa",
+    "미라지노": "Mira Gino",
+    "분": "Boon",
+    "에쎄": "Esse",
+    "웨이크": "Wake",
+    "캐스트": "Cast",
+    "코펜": "Copen",
+    "탄토": "Tanto",
+    "테리오스": "Terios"
+  },
+  "encar_models": {
+    "마테리아": {
+      "model": "Materia"
+    },
+    "무브": {
+      "model": "Move"
+    },
+    "미라": {
+      "model": "Mira"
+    },
+    "미라 코코아": {
+      "model": "Mira Cocoa"
+    },
+    "미라지노": {
+      "model": "Mira Gino"
+    },
+    "분": {
+      "model": "Boon"
+    },
+    "에쎄": {
+      "model": "Esse"
+    },
+    "웨이크": {
+      "model": "Wake"
+    },
+    "캐스트": {
+      "model": "Cast"
+    },
+    "코펜": {
+      "model": "Copen"
+    },
+    "탄토": {
+      "model": "Tanto"
+    },
+    "테리오스": {
+      "model": "Terios"
+    }
+  },
+  "badge_groups": {
+    "무브": {
+      "0.6": "가솔린 660cc",
+      "L": "가솔린 660cc",
+      "X": "가솔린 660cc",
+      "X Limited": "가솔린 660cc"
+    },
+    "미라 코코아": {
+      "0.6": "가솔린 660cc"
+    },
+    "미라지노": {
+      "0.6": "가솔린 660cc",
+      "1.0": "가솔린 1000cc"
+    },
+    "웨이크": {
+      "0.6 2WD": "가솔린 660cc",
+      "0.6 4WD": "가솔린 660cc"
+    },
+    "코펜": {
+      "0.6": "가솔린 660cc",
+      "1.3": "가솔린 1300cc"
+    }
+  }
+}

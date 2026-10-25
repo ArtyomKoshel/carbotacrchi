@@ -2,6 +2,8 @@
 
 namespace App\Catalog;
 
+use Illuminate\Support\Str;
+
 /**
  * The reference catalog: makes → models → generations, plus each make's names of
  * complectations (equipment lines such as "M Sport") and special editions.
@@ -16,7 +18,10 @@ class Reference
 
     public function __construct(private readonly ?string $dir = null) {}
 
-    /** By name, any case, a space or a hyphen alike ("Land Rover", "land-rover"). */
+    /**
+     * By name, any case, a space, a hyphen or a slash alike, accents dropped ("Land Rover",
+     * "land-rover"; "Citroën/DS", "citroen-ds" — the file's name).
+     */
     public function make(string $make): ?array
     {
         return $this->makes()[self::key($make)] ?? null;
@@ -24,7 +29,7 @@ class Reference
 
     private static function key(string $make): string
     {
-        return mb_strtolower(preg_replace('/[\s-]+/', '-', trim($make)));
+        return strtolower(preg_replace('/[\s\/-]+/', '-', Str::ascii(trim($make))));
     }
 
     /** @return list<string> */

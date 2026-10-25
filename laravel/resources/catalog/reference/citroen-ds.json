@@ -1,0 +1,297 @@
+{
+  "make": "Citroën/DS",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "BlueHDi": "diesel",
+      "B-HDI": "diesel",
+      "B-HDi": "diesel",
+      "e-HDi": "diesel",
+      "HDi": "diesel",
+      "PureTech": "gasoline",
+      "E-Tense": "electric",
+      "VTi": "gasoline",
+      "VTI": "gasoline"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Shine Pack",
+    "Shine+",
+    "Shine",
+    "Feel",
+    "Intensive Plus",
+    "Intensive",
+    "Exclusive",
+    "So Chic+",
+    "So Chic",
+    "Be Chic",
+    "Grand Chic",
+    "Chic",
+    "Trocadero",
+    "Live",
+    "Rivoli",
+    "Tech Pack",
+    "Opera"
+  ],
+  "editions": [
+    "One-Tone Edition"
+  ],
+  "models": [
+    {
+      "name": "C2",
+      "generations": []
+    },
+    {
+      "name": "C3",
+      "generations": []
+    },
+    {
+      "name": "C3 Aircross",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C4 Cactus",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2014,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C4 Picasso",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2006,
+            2013
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2013,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C5",
+      "generations": []
+    },
+    {
+      "name": "C5 Aircross",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C6",
+      "generations": []
+    },
+    {
+      "name": "DS3",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2009,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DS3 Cabrio",
+      "body": "convertible",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2013,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DS3 Crossback",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DS4",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2010,
+            2018
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2021,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DS4 Crossback",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2015,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DS5",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2011,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DS7 Crossback",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2017,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Grand C4 Picasso",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2006,
+            2013
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2013,
+            2018
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Grand C4 SpaceTourer",
+      "body": "minivan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            2022
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XM",
+      "generations": []
+    },
+    {
+      "name": "Xantia",
+      "generations": []
+    }
+  ]
+}

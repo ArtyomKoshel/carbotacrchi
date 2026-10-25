@@ -1,0 +1,139 @@
+{
+  "make": "Dodge",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg"
+    },
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "SXT",
+    "R/T",
+    "SRT",
+    "Scat Pack",
+    "Hellcat"
+  ],
+  "editions": [
+    "Florida Edition"
+  ],
+  "models": [
+    {
+      "name": "Avenger",
+      "generations": []
+    },
+    {
+      "name": "Caliber",
+      "body": "hatchback",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2006,
+            2012
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Caravan",
+      "generations": []
+    },
+    {
+      "name": "Challenger",
+      "body": "coupe",
+      "generations": []
+    },
+    {
+      "name": "Charger",
+      "body": "sedan",
+      "generations": []
+    },
+    {
+      "name": "Dakota",
+      "generations": []
+    },
+    {
+      "name": "Durango",
+      "generations": []
+    },
+    {
+      "name": "Grand Caravan",
+      "body": "minivan",
+      "generations": []
+    },
+    {
+      "name": "Intrepid",
+      "generations": []
+    },
+    {
+      "name": "Magnum",
+      "body": "wagon",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2004,
+            2008
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nitro",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2006,
+            2012
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ram Pickup",
+      "generations": []
+    },
+    {
+      "name": "Ram Van",
+      "generations": []
+    },
+    {
+      "name": "Van",
+      "generations": []
+    },
+    {
+      "name": "Viper",
+      "generations": []
+    }
+  ]
+}

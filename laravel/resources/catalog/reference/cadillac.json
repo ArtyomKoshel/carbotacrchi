@@ -1,0 +1,465 @@
+{
+  "make": "Cadillac",
+  "engine": {
+    "words": {
+      "Gasoline": {
+        "fuel": "gasoline"
+      },
+      "Diesel": {
+        "fuel": "diesel"
+      },
+      "Hybrid": "hybrid",
+      "Plug-in Hybrid": "hybrid",
+      "Plug-in": "hybrid",
+      "PHEV": "hybrid",
+      "HEV": "hybrid",
+      "Electric": "electric",
+      "EV": "electric",
+      "Turbo": null,
+      "LPG": "lpg",
+      "LPi": "lpg",
+      "ESV": null,
+      "EXT": null,
+      "V8": null,
+      "V": null,
+      "L": null
+    },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dL$"
+      },
+      {
+        "re": "^\\d\\.\\dT$"
+      },
+      {
+        "re": "^\\d\\.\\dD$",
+        "fuel": "diesel"
+      },
+      {
+        "re": "^\\d{2,3}HP$",
+        "i": true
+      }
+    ],
+    "drives": {
+      "AWD": "awd",
+      "4WD": "4wd",
+      "2WD": null,
+      "FWD": "fwd",
+      "RWD": "rwd",
+      "4x4": "4wd",
+      "4X4": "4wd",
+      "4X2": null,
+      "4x2": null
+    }
+  },
+  "complectations": [
+    "Premium Luxury",
+    "Premium Plus",
+    "Premium",
+    "Luxury",
+    "Platinum",
+    "Sport",
+    "Blackwing",
+    "Carbon Package",
+    "Supreme",
+    "Black",
+    "Limousine",
+    "Basic",
+    "Performance",
+    "Plus",
+    "Limited"
+  ],
+  "editions": [
+    "Platinum Edition"
+  ],
+  "models": [
+    {
+      "name": "ATS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2012,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ATS-V",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2015,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BLS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2010
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CT4",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CT5",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CT5-V",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CT6",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2016,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CT6-V",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            2020
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CTS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2002,
+            2007
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2007,
+            2014
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2013,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CTS-V",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2004,
+            2007
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2008,
+            2014
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2015,
+            2019
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Concours",
+      "generations": []
+    },
+    {
+      "name": "DTS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2005,
+            2011
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DeVille",
+      "generations": []
+    },
+    {
+      "name": "Eldorado",
+      "generations": []
+    },
+    {
+      "name": "Escalade",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            1998,
+            2000
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2001,
+            2006
+          ]
+        },
+        {
+          "code": "III",
+          "number": 3,
+          "years": [
+            2006,
+            2014
+          ]
+        },
+        {
+          "code": "IV",
+          "number": 4,
+          "years": [
+            2014,
+            2020
+          ]
+        },
+        {
+          "code": "V",
+          "number": 5,
+          "years": [
+            2020,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Escalade IQ",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2024,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fleetwood",
+      "generations": []
+    },
+    {
+      "name": "Lyriq",
+      "body": "suv",
+      "fuel": "electric",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2022,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SRX",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2003,
+            2009
+          ]
+        },
+        {
+          "code": "II",
+          "number": 2,
+          "years": [
+            2009,
+            2016
+          ]
+        }
+      ]
+    },
+    {
+      "name": "STS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2004,
+            2011
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Seville",
+      "generations": []
+    },
+    {
+      "name": "XLR",
+      "body": "roadster",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2003,
+            2009
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XT4",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2018,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XT5",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2016,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XT6",
+      "body": "suv",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2019,
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XTS",
+      "body": "sedan",
+      "generations": [
+        {
+          "code": "I",
+          "number": 1,
+          "years": [
+            2012,
+            2019
+          ]
+        }
+      ]
+    }
+  ]
+}
