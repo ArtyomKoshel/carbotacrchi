@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * How much of a make's Encar variants the reference catalog understands. Reads only:
- * the distinct (model_en, badge, trim) of active lots, or the same rows from a JSON
+ * the distinct Encar variants (make, model, badge group, badge, trim) of active lots, or the same rows from a JSON
  * export (--input), and prints coverage by variants and by lots, the variants it could
  * not read, and with --tree the resulting model → generation → modification → complectation tree.
  */
 class CatalogCoverage extends Command
 {
     protected $signature = 'catalog:coverage
-        {--make=BMW : make_en}
+        {--make=BMW : The reference make}
         {--input= : JSON rows {model|model_en, badge, trim, n, years|year, fuel} instead of the database}
         {--tree : Print the tree the variants make}
         {--dump= : Write every variant with its match to this JSON file}

@@ -117,7 +117,7 @@ class LotInfolist
                 $plain('seat_count'),
                 $taxonomy('color'),
                 TextEntry::make('seat_color')->label('Цвет салона')
-                    ->formatStateUsing(fn (?string $state) => LotFormat::taxonomy('color', $state))->placeholder('—'),
+                    ->formatStateUsing(fn (?string $state) => LotFormat::taxonomy('seat_color', $state))->placeholder('—'),
             ]),
             Section::make('Состояние')->columns(3)->compact()->schema([
                 $yesNo('has_accident', 'Были ДТП'),

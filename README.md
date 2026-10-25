@@ -49,20 +49,12 @@ make status    Container status
 # Run parser once (Python)
 docker compose exec parser python main.py --once
 
-# Normalize taxonomy for Encar lots (dry-run)
-php artisan lots:normalize-encar-taxonomy --limit=1000
+# Rebuild the reference catalog after editing resources/catalog
+php artisan catalog:remap
 
-# Apply normalization
-php artisan lots:normalize-encar-taxonomy --limit=1000 --apply
-
-# Bootstrap taxonomy rules from anomalies
-php artisan taxonomy:bootstrap-rules --source=encar --min-seen=5 --apply
-
-# AI-classify unrecognized tails
-php artisan taxonomy:classify-anomalies --source=encar --batch=20 --limit=200
-
-# Import catalog seed data
-php artisan catalog:import --file=../analysis/encar_taxonomy_raw.json --fresh --apply
+# Check it: files, years, and that the filters lose no car
+php artisan catalog:validate
+php artisan catalog:reconcile
 ```
 
 ## Telegram Setup

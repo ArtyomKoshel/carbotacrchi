@@ -46,7 +46,6 @@
 | `source` | const `"encar"` | const `"kbcha"` | 100% | 100% | |
 | `make` | `Manufacturer` → `ENCAR_MAKE` | `maker_code` → `KBCHA_MAKE` | 100% | 100% | Канонич. EN название |
 | `model` | `Model` | `title` (HTML) | 100% | 100% | Корейское название |
-| `model_en` | Resolved via `korean_model_names` | Resolved via `korean_model_names` | ~85% | ~80% | Английское; из словаря |
 | `generation` | Из `Model`/`ModelGroup` или бейджа | Из `title` | ~60% | ~50% | Код шасси (TL, NX4, G30…) |
 | `year` | `FormYear` / `Year` | `연식` cell | 100% | 100% | |
 | `vin` | `detail.vin` / `inspection.vin` | `차대번호` (inspection) | 100% | ~80% | |
@@ -83,16 +82,15 @@
 | `color` | `Color` / `spec.colorName` | `차량색상` | 100% | ~90% |
 | `seat_color` | `SeatColor` | `시트색상` | 100% | ~70% |
 
-> \* `cylinders` и `seat_count` заполняются **нормализацией через каталог** ([`05-catalog.md`](./05-catalog.md)), не напрямую из API.
+> \* `cylinders` и `seat_count` — только то, что прислал сборщик: нормализации через каталог больше нет. Места из бейджа («9인승») справочник хранит у варианта (`ref_variants.seats`), см. [13-catalog](./13-catalog.md).
 
-### Таксономия (заполняется нормализацией, не парсером)
+### Место в справочнике
 
-| Колонка | Источник | Покрытие | Примечание |
-|---------|----------|---------|-----------|
-| `trim` | API: `BadgeDetail` / KBCha `title` | ~60%+ | Пополняется через `GradeExtractorService` |
-| `generation` | API / каталог | ~65%+ | Код поколения/шасси |
-| `variant` | Taxonomy rules | ~20% | Подвариант грейда |
-| `package` | Taxonomy rules | ~15% | Пакет опций |
+| Колонка | Источник | Примечание |
+|---------|----------|-----------|
+| `trim` | API: `BadgeDetail` / KBCha `title` | Как прислал Encar; непустое новое значение заменяет старое |
+| `trim_en` | API: `gradeDetailEnglishName` | Английское название BadgeDetail от Encar |
+| `ref_make_id` … `ref_complectation_id` | Справочник (`catalog:remap`, приём) | Марка, модель, поколение, модификация, комплектация — [13-catalog](./13-catalog.md) |
 
 ### История и состояние
 
@@ -134,7 +132,7 @@
 
 | Колонка | Описание |
 |---------|----------|
-| `raw_data` | JSON-blob: всё остальное из API + `pre_norm` snapshot |
+| `raw_data` | JSON-blob: всё остальное из API (`model_kr_raw`, `ad_status`, …) |
 | `is_active` | `0` = отфильтрован `parse_filters` или снят с продажи (delist); не показывается в поиске |
 | `parsed_at` | Время последнего парсинга |
 | `fetched_at` | Время получения detail |
@@ -158,7 +156,6 @@
 | `diagnosis_center` | diagnosis | Центр Encar-диагностики |
 | `domestic` | detail | Отечественная/иностранная (bool, не хранится как колонка) |
 | `origin_price` | detail | Цена нового авто в 만원 (до пересчёта) |
-| `pre_norm` | — | Снимок значений **до** первой нормализации (необратимо) |
 
 ---
 
@@ -169,7 +166,6 @@
 | `inspection_type` | Тип инспекции (`kb_popup`/`url`/`none`) |
 | `car_seq` | Числовой ID KBCha |
 | `maker_code` | Код марки |
-| `pre_norm` | Снимок до нормализации |
 
 ---
 
@@ -215,10 +211,8 @@
 | Поле | Encar | KBCha |
 |------|-------|-------|
 | make / model / year | ✅ 100% | ✅ 100% |
-| model_en | ✅ ~85% | ✅ ~80% |
 | generation | ✅ ~60% | ✅ ~50% |
 | trim | ✅ ~65%¹ | ✅ ~70% |
-| variant / package | ⚠️ ~20%¹ | ⚠️ ~15%¹ |
 | vin | ✅ 100% | ✅ ~80% |
 | plate_number | ✅ 100% | ✅ ~90% |
 | mileage / price | ✅ 100% | ✅ 100% |
@@ -247,7 +241,7 @@
 | engine_code (raw_data) | ✅ ~60% | ❌ нет |
 | recall (raw_data) | ✅ ~60% | ❌ нет |
 
-> ¹ Заполняется через нормализацию каталога, не напрямую из API  
+> ¹ Нормализации больше нет: только то, что прислал сборщик  
 > ² Encar: `spec.drivingMethodName` (только сертификация) + badge-токены  
 > ³ Только при `openData=true` у дилера  
 > ⁴ Encar: дефолт `"clean"` когда данных нет  
@@ -305,7 +299,7 @@ CVT → cvt               DCT / 듀얼클러치 → dct
 | 3 | **성능점검** — акт техосмотра есть у ~50–60% лотов Encar. Бюджетные дилеры не загружают |
 | 4 | **Encar diagnosis** — только у сертифицированных машин Encar (~10–15%) |
 | 5 | **KBCha anti-bot** — нужен User-Agent rotation + задержки. Proxy обязателен в production |
-| 6 | **cylinders / seat_count** — нет в обоих API; заполняются через `catalog_grades` при нормализации |
+| 6 | **cylinders / seat_count** — нет в обоих API; нормализация через каталог, которая их заполняла, удалена |
 | 7 | **Encar drive_type** — `spec.drivingMethodName` только для сертифицированных; badge-токены дают ещё ~30% |
 
 ---

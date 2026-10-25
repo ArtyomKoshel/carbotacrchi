@@ -314,6 +314,21 @@ final class TaxonomyCatalog
                 '4wd' => '4WD',
                 '2wd' => '2WD',
             ],
+            // Encar's seat colour groups (closed set)
+            'seat_color' => [
+                '갈색 계열' => 'Коричневый',
+                '검정색 계열' => 'Чёрный',
+                '노란색 계열' => 'Жёлтый',
+                '녹색 계열' => 'Зелёный',
+                '베이지색 계열' => 'Бежевый',
+                '보라색 계열' => 'Фиолетовый',
+                '빨간색 계열' => 'Красный',
+                '주황색 계열' => 'Оранжевый',
+                '청색 계열' => 'Синий',
+                '회색 계열' => 'Серый',
+                '흰색 계열' => 'Белый',
+                '은색 계열' => 'Серебристый',
+            ],
             'color' => [
                 'black' => 'Чёрный',
                 'white' => 'Белый',
@@ -481,6 +496,21 @@ final class TaxonomyCatalog
                 'awd' => 'AWD',
                 '4wd' => '4WD',
                 '2wd' => '2WD',
+            ],
+            // Encar's seat colour groups (closed set)
+            'seat_color' => [
+                '갈색 계열' => 'Brown',
+                '검정색 계열' => 'Black',
+                '노란색 계열' => 'Yellow',
+                '녹색 계열' => 'Green',
+                '베이지색 계열' => 'Beige',
+                '보라색 계열' => 'Purple',
+                '빨간색 계열' => 'Red',
+                '주황색 계열' => 'Orange',
+                '청색 계열' => 'Blue',
+                '회색 계열' => 'Gray',
+                '흰색 계열' => 'White',
+                '은색 계열' => 'Silver',
             ],
             'color' => [
                 'black' => 'Black',

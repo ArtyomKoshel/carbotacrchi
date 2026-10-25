@@ -18,7 +18,7 @@ final class CatalogLinkTest extends TestCase
     private function lot(string $id, string $make, string $model, string $badge, ?string $trim = null): void
     {
         LotFactory::new()->create(['id' => $id, 'source' => 'encar', 'make' => $make, 'model' => $model, 'badge' => $badge,
-            'trim' => $trim, 'badge_group' => null, 'make_en' => null, 'model_en' => null, 'is_active' => true]);
+            'trim' => $trim, 'badge_group' => null, 'is_active' => true]);
     }
 
     public function test_remap_places_lots_by_encar_fields_and_the_filters_find_them(): void

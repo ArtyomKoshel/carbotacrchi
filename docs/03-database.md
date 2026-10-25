@@ -14,23 +14,15 @@ flowchart LR
         CHG[(lot_changes)]
     end
 
-    subgraph CAT["Каталог"]
-        CM[(catalog_models)]
-        CG[(catalog_grades)]
-        CGN[(catalog_model\ngenerations)]
-        CT[(catalog_trims)]
-        CTM[(catalog_token\nmaps)]
-        CSG[(catalog_sub\ngrades)]
-        CB[(catalog_badges)]
-        EOC[(encar_option\ncatalog)]
-        TR[(translations)]
-    end
-
-    subgraph TAX["Taxonomy"]
-        TRU[(taxonomy_rules)]
-        TRH[(taxonomy_rule\nhits)]
-        TAQ[(taxonomy_anomaly\nqueue)]
-        TT[(taxonomy_terms)]
+    subgraph REF["Справочник"]
+        RM[(ref_makes)]
+        RMO[(ref_models)]
+        RG[(ref_generations)]
+        RD[(ref_modifications)]
+        RC[(ref_complectations)]
+        RV[(ref_variants)]
+        EOC[(encar_option
+catalog)]
     end
 
     subgraph SYS["Система"]
@@ -53,10 +45,10 @@ flowchart LR
 
     LOTS ---|1:1| INSP
     LOTS ---|1:N| CHG
-    CM ---|1:N| CG
-    CM ---|1:N| CGN
-    CG ---|1:N| CSG
-    TRU ---|1:N| TRH
+    RM ---|1:N| RMO
+    RMO ---|1:N| RG
+    RG ---|1:N| RD
+    RV ---|N:1| LOTS
     U ---|1:N| F
     U ---|1:N| SUB
     SUB ---|N:M| SSL
@@ -66,19 +58,19 @@ flowchart LR
 
 ## Таблица `lots` — иерархия Encar iNav
 
-Encar организует данные в 6 уровней (iNav). Каждый уровень хранится отдельными колонками:
+Encar организует данные в 6 уровней (iNav). Лот хранит их как прислал Encar, по-корейски:
 
-| Уровень | Колонка KR | Колонка EN | Пример EN |
-|---------|-----------|-----------|-----------|
-| 1 · Марка | `make` | `make_en` | `Hyundai` |
-| 2 · ModelGroup | `model_group` | `model_group_en` | `Sonata` |
-| 3 · Model (вариант) | `model` | `model_en` | `Sonata (DN8)` |
-| 4 · BadgeGroup | `badge_group` | `badge_group_en` | `Gasoline 2000cc` |
-| 5 · Badge | `badge` | `badge_en` | `2.0 Turbo` |
-| 6 · BadgeDetail | `trim` | `trim_en` | `Prestige` |
+| Уровень | Колонка | Пример |
+|---------|---------|--------|
+| 1 · Марка | `make` | `현대` |
+| 2 · ModelGroup | `model_group` | `쏘나타` |
+| 3 · Model (вариант) | `model` (полное название — `raw_data.model_kr_raw`) | `쏘나타 디 엣지(DN8)` |
+| 4 · BadgeGroup | `badge_group` | `가솔린 2000cc` |
+| 5 · Badge | `badge` | `2.0 터보` |
+| 6 · BadgeDetail | `trim`, английское от Encar — `trim_en` | `프레스티지` / `Prestige` |
 
-> `model_group_en` — бывший `model_en`.  
-> `model_en` (Level 3) — конкретный вариант модели с кодом шасси; заполняется `translate:run`.
+Английские названия марки, модели, поколения, модификации и комплектации — только из справочника
+(`ref_*`, см. [13-catalog](./13-catalog.md)): лот ссылается на него колонками `ref_*_id`.
 
 ---
 
@@ -89,17 +81,12 @@ Encar организует данные в 6 уровней (iNav). Каждый
 | `id` | VARCHAR(100) PK | ID лота из источника |
 | `source` | VARCHAR(20) | `encar` \| `kbcha` |
 | `make` | VARCHAR(60) | Марка (корейская) |
-| `make_en` | VARCHAR(60) | Марка (английская, канонич.) |
 | `model` | VARCHAR(60) | Модель Level-3 (корейская) |
 | `model_group` | VARCHAR(100) | ModelGroup Level-2 (корейская) |
-| `model_group_en` | VARCHAR(100) | ModelGroup Level-2 (английская) |
-| `model_en` | VARCHAR(100) | Model Level-3 (английская), `translate:run` |
 | `badge` | VARCHAR(150) | Badge Level-5 (корейская) |
-| `badge_en` | VARCHAR(200) | Badge Level-5 (английская) |
 | `badge_group` | VARCHAR(150) | BadgeGroup Level-4 (корейская) |
-| `badge_group_en` | VARCHAR(150) | BadgeGroup Level-4 (английская) |
 | `trim` | VARCHAR(40) | BadgeDetail Level-6 (корейская комплектация) |
-| `trim_en` | VARCHAR(100) | BadgeDetail Level-6 (английская комплектация) |
+| `trim_en` | VARCHAR(100) | BadgeDetail по-английски, как прислал Encar (`gradeDetailEnglishName`) |
 | `year` | SMALLINT | Год выпуска |
 | `price` | INT | Цена в KRW |
 | `mileage` | INT | Пробег в км |
@@ -136,7 +123,9 @@ Encar организует данные в 6 уровней (iNav). Каждый
 | `options` | JSON | Коды опций Encar (`["001","014",…]`) |
 | `options_mask` | BIGINT UNSIGNED | Те же коды битами (`encar_option_catalog.bit`); поиск: `(options_mask & m) = m` |
 | `paid_options` | JSON | Платные опции |
-| `raw_data` | JSON | Сырые данные API + `pre_norm` snapshot |
+| `raw_data` | JSON | Сырые поля Encar, которых нет в колонках (`model_kr_raw`, `ad_status`, …) |
+| `ref_variant_id` | INT | Вариант Encar в справочнике (`ref_variants`, хэш полей Encar) |
+| `ref_make_id` … `ref_complectation_id` | INT | Место в справочнике: марка, модель, поколение, модификация, комплектация; NULL — не указано |
 | `is_active` | BOOLEAN | `0` = отфильтрован `parse_filters` или снят с продажи (не найден последним успешным полным прогоном, см. [04-parser](./04-parser.md#жизненный-цикл-лота)) |
 | `parsed_at` | TIMESTAMP | Время парсинга |
 | `history_checked_at` | TIMESTAMP | Когда парсер последний раз получил историю (record + inspection), UTC; очередь перепроверки, см. [04-parser](./04-parser.md#история-лота-не-каждый-прогон) |
@@ -144,84 +133,14 @@ Encar организует данные в 6 уровней (iNav). Каждый
 
 ---
 
-## Каталог (`catalog_*`)
+## Справочник (`ref_*`)
 
-### `catalog_models`
+Пишется из `resources/catalog/reference/*.json` командой `catalog:remap`; подробно — [13-catalog](./13-catalog.md).
 
-Эталонное дерево Encar iNav: make → model_group → model.
-
-```
-id | make_kr | make_en | model_group_kr | model_group_en | model_kr           | generation
----+---------+---------+----------------+----------------+--------------------+-----------
- 1 | 현대     | Hyundai | 쏘나타          | Sonata         | 쏘나타(DN8)19-23   | DN8
- 2 | 현대     | Hyundai | 쏘나타          | Sonata         | 쏘나타(LF)14-19    | LF
-```
-
-### `catalog_badges`
-
-Badge KR → технические характеристики. Fallback когда detail API не вернул данные.
-
-```
-badge_kr         | fuel     | engine_volume | drive_type | is_turbo
------------------+----------+---------------+------------+---------
-2.0 터보 4WD     | gasoline | 2.0           | awd        | true
-디젤 2.2 4WD     | diesel   | 2.2           | awd        | false
-```
-
-Заполняется: `catalog:build-badges ../analysis/encar_inav_tree.json --apply`
-
-### `catalog_grades`
-
-```
-id | model_id | grade_kr              | fuel_type | drive_type | engine_volume | body_hint | seat_count
----+----------+-----------------------+-----------+------------+---------------+-----------+----------
- 5 |        1 | 투싼 2.0 가솔린 2WD  | gasoline  | fwd        | 2.0           | suv       | 5
-```
-
-### `catalog_model_generations`
-
-Список известных chassis-кодов для модели.
-
-```
-id | model_id | code
----+----------+-----
-12 |        1 | DN8
-13 |        1 | LF
-```
-
-### `catalog_trims`
-
-```
-id | make_en | trim_kr    | trim_en  | priority
----+---------+------------+----------+---------
- 1 | Hyundai | 프레스티지  | Prestige |      10
- 2 | *       | 모던        | Modern   |      20
-```
-
-### `catalog_token_maps`
-
-```
-token  | token_type      | mapped_value
--------+-----------------+-------------
-디젤   | fuel            | diesel
-2wd    | drive           | fwd
-세단   | body            | sedan
-ev     | gen_non_chassis | NULL
-v6     | cylinder_config | NULL
-```
-
----
-
-## `translations`
-
-KR→EN кэш переводов. Используется `translate:run` для заполнения `*_en` колонок в `lots`.
-
-| Колонка | Описание |
-|---------|----------|
-| `category` | `make` \| `model` \| `model_group` \| `badge_group` \| `trim` \| `color` \| `seat_color` |
-| `kr` | Исходное корейское значение |
-| `en` | Английский перевод |
-| `source` | `ai` \| `manual` \| `catalog` |
+| Таблица | Назначение |
+|---------|-----------|
+| `ref_makes`, `ref_models`, `ref_generations`, `ref_modifications`, `ref_complectations` | Марка → модель → поколение (код, годы) → модификация (код, топливо, привод) → комплектация |
+| `ref_variants` | Вариант Encar (хэш `make, model, badge_group, badge, trim`): статус `matched` / `no_engine` / `unmatched`, место в справочнике, ручная разметка, число активных лотов |
 
 ---
 
@@ -240,17 +159,6 @@ KR→EN кэш переводов. Используется `translate:run` дл
 | `category` | `exterior` \| `safety` \| `convenience` \| `interior` |
 
 Заполняется: `options:import-encar` (коды) + `options:name-by-ai` (переводы).
-
----
-
-## Taxonomy (`taxonomy_*`)
-
-| Таблица | Назначение |
-|---------|-----------|
-| `taxonomy_rules` | Правила матчинга и корректировки полей |
-| `taxonomy_rule_hits` | Аудит: какое правило и какой лот затронуло |
-| `taxonomy_anomaly_queue` | Нераспознанные хвосты грейдов, ожидающие классификации |
-| `taxonomy_terms` | Иерархическое дерево терминов |
 
 ---
 

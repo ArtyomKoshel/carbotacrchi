@@ -1,6 +1,6 @@
 # 04 · Парсер (Python)
 
-> [← Database](./03-database.md) · [Index](./index.md) · [Catalog →](./05-catalog.md)
+> [← Database](./03-database.md) · [Index](./index.md) · [API →](./08-api.md)
 
 ---
 
@@ -239,4 +239,4 @@ Purge:
 
 ---
 
-[← Database](./03-database.md) · [Index](./index.md) · [Catalog →](./05-catalog.md)
+[← Database](./03-database.md) · [Index](./index.md) · [API →](./08-api.md)

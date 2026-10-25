@@ -73,7 +73,7 @@ class AccessTest extends AdminTestCase
         $this->get('/admin/lots')->assertOk();
         $this->get('/admin/logs')->assertOk();
 
-        foreach (['/admin', '/admin/platforms/encar', '/admin/translations', '/admin/translation-review', '/admin/field-coverage',
+        foreach (['/admin', '/admin/platforms/encar', '/admin/field-coverage',
             '/admin/lot-changes', '/admin/search-settings', '/admin/pickers', '/admin/admin-users', '/admin/notifications',
             '/admin/encar-options'] as $url) {
             $this->get($url)->assertForbidden();

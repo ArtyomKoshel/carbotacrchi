@@ -111,7 +111,7 @@ final class LotRowMapperTest extends TestCase
     public function test_every_mapped_column_has_an_upsert_rule(): void
     {
         $insertOnly = ['id', 'source', 'photo_codes', 'created_at'];
-        $ruled = [...LotUpsert::LOT_OVERWRITE, ...LotUpsert::LOT_COALESCE, ...LotUpsert::LOT_KEEP, ...LotUpsert::PHOTO_GROUP, ...$insertOnly];
+        $ruled = [...LotUpsert::LOT_OVERWRITE, ...LotUpsert::LOT_COALESCE, ...LotUpsert::PHOTO_GROUP, ...$insertOnly];
         $columns = array_keys(LotRowMapper::lotRow(self::fixture(), self::mask(...)) + ['is_active' => 1, 'history_checked_at' => null, 'ingest_hash' => '']);
 
         $this->assertSame([], array_values(array_diff($columns, $ruled)), 'column without an ON DUPLICATE KEY rule');

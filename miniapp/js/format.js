@@ -40,13 +40,17 @@ const Fmt = (() => {
   const label = (field, v) => (v ? Taxonomy.label(field, v) : '');
   const lower = s => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
-  function make(lot) { return lot.makeEn || lot.make || ''; }
-  function model(lot) { return lot.modelEn || lot.modelGroupEn || lot.model || ''; }
-  /** "2021 Hyundai Sonata (DN8)" */
+  // the reference catalog's names; a lot it has not placed shows Encar's own
+  function make(lot) { return lot.catalog?.make || lot.make || ''; }
+  function model(lot) {
+    const c = lot.catalog;
+    return c?.model ? [c.model, c.generation].filter(Boolean).join(' ') : (lot.model || '');
+  }
+  /** "2021 Hyundai Sonata DN8" */
   function title(lot) {
-    const c = lot.catalog; // on the reference catalog: its names, also for lots not translated yet
+    const c = lot.catalog;
     if (c?.model) return [lot.year, c.make, c.model, c.generation].filter(Boolean).join(' ');
-    return [lot.year, make(lot), model(lot)].filter(Boolean).join(' ');
+    return [lot.year, lot.make, lot.model].filter(Boolean).join(' ');
   }
   /**
    * badge / trim line under the title: "2.0 Premium"; a lot on the reference catalog says it
@@ -57,8 +61,7 @@ const Fmt = (() => {
     if (c && (c.modification || c.complectation)) {
       return [c.modification, c.complectation, ...(c.editions ?? [])].filter(Boolean).join(' · ');
     }
-    const t = lot.trim ? Taxonomy.label('trim', lot.trim) : '';
-    return [lot.badgeEn, (t && t !== lot.trim ? t : (lot.trimEn || lot.trim))].filter(Boolean).join(' · ');
+    return [lot.badge, lot.trimEn || lot.trim].filter(Boolean).join(' · ');
   }
   function engine(lot) {
     const v = Number(lot.engineVolume);

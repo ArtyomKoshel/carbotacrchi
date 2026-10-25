@@ -1,6 +1,6 @@
 # 08 · API & Admin Panel
 
-> [← Taxonomy](./07-taxonomy.md) · [Index](./index.md) · [Bot →](./09-bot.md)
+> [← Parser](./04-parser.md) · [Index](./index.md) · [Bot →](./09-bot.md)
 
 ---
 
@@ -70,10 +70,8 @@ Filament 5 (Livewire 4), `App\Providers\Filament\AdminPanelProvider`. В 2026-10
 | Страница | Класс | Ключ права | Что делает |
 |----------|-------|-----------|------------|
 | `/admin` Обзор | `Pages\Overview` + виджеты | `dashboard` | Площадки: активные лоты и график 14 дней (точки — `result.db_count` прогонов), последний успешный полный прогон (правила `lots:lifecycle`), новые и снятые за 24 ч, заполненность полей; открытые инциденты; балансы прокси и DeepSeek (последняя проверка `notifications:watch`, если старше часа — запрос к API) |
-| `/admin/lots` Лоты | `Resources\Lots\LotResource` | `lots-browse` (перепарсинг — `lots`) | Таблица с фильтрами-чипами и вкладками (Все активные, Новые сегодня, Снятые за 24 ч, Без комплектации, Все; счётчики грузятся после таблицы), поиск по ID (префикс), VIN, госномеру, `model_en`; карточка справа и `/admin/lots/{id}`: Данные, История (`lot_changes`), Осмотр, Сырые данные; «Перепарсить» (до 500 лотов, `App\Services\LotReparseQueue` → `parse_jobs` `type=reparse`) |
+| `/admin/lots` Лоты | `Resources\Lots\LotResource` | `lots-browse` (перепарсинг — `lots`) | Таблица с фильтрами-чипами и вкладками (Все активные, Новые сегодня, Снятые за 24 ч, Без комплектации, Все; счётчики грузятся после таблицы), фильтр «марка → модель → поколение» по `ref_*`, поиск по ID (префикс), VIN, госномеру, модели справочника и корейской модели Encar; карточка справа и `/admin/lots/{id}`: Данные, История (`lot_changes`), Осмотр, Сырые данные; «Перепарсить» (до 500 лотов, `App\Services\LotReparseQueue` → `parse_jobs` `type=reparse`) |
 | `/admin/platforms/{source}` Площадка | `Pages\Platform` + `Livewire\Platform\*` | `jobs`, `schedules`, `filters`, `filter-skip-log`, `fields` по вкладкам | «Прогоны»: текущий прогон (опрос раз в 5 с), «Остановить», история с пометкой «засчитан», подробности и хвост лога задачи; «Запустить парсинг» — полный, тестовый (5 страниц) или выбранные марки (по задаче на марку) с оценкой трафика прокси. «Расписание» (`parser_schedules`). «Правила отбора» (`parse_filters`: фразой, порядок перетаскиванием = `priority`, группы И, значения по типу поля, имя генерируется, сколько активных лотов попадёт, срабатывания из `filter_skip_log`). «Лог пропусков». «Поля» (`field_coverage_stats`) |
-| `/admin/translation-review` Проверка переводов | `Pages\TranslationReview` | `taxonomy` | Очередь словаря KR→EN: «Ждут проверки» (`source=ai`), «Проверены», «Без перевода»; клавиши J/K, A, E, D. Исправление пишется в лоты со старым переводом или пустым полем, отклонение очищает их, чтобы `translate:run` перевёл заново (`App\Services\TranslationCatalog`). Заменяет очередь аномалий старого regex-пайплайна (таблицы удалены 2026-06-01) |
-| `/admin/translations` Переводы | `Resources\Translations\TranslationResource` | `taxonomy` | Весь словарь `translations` с правкой, добавлением, удалением |
 | `/admin/encar-options` Опции Encar | `Resources\EncarOptions\EncarOptionResource` | `taxonomy` | Названия и группы опций (`encar_option_catalog`), после правки сбрасывается кэш каталога |
 | `/admin/field-coverage` Покрытие полей | `Pages\FieldCoverage` | `fields` | Матрица поле × площадка, «Пересчитать» (`fields:compute-coverage`) |
 | `/admin/lot-changes` Изменения лотов | `Resources\LotChanges\LotChangeResource` | `changes` | `lot_changes` с фильтрами (период, событие, поле, площадка), график по дням и самые изменчивые лоты |
@@ -163,7 +161,7 @@ JS модули:
 
 ---
 
-[← Taxonomy](./07-taxonomy.md) · [Index](./index.md) · [Bot →](./09-bot.md)
+[← Parser](./04-parser.md) · [Index](./index.md) · [Bot →](./09-bot.md)
 
 ---
 
@@ -233,10 +231,8 @@ Filament 5 (Livewire 4), `App\Providers\Filament\AdminPanelProvider`. В 2026-10
 | Страница | Класс | Ключ права | Что делает |
 |----------|-------|-----------|------------|
 | `/admin` Обзор | `Pages\Overview` + виджеты | `dashboard` | Площадки: активные лоты и график 14 дней (точки — `result.db_count` прогонов), последний успешный полный прогон (правила `lots:lifecycle`), новые и снятые за 24 ч, заполненность полей; открытые инциденты; балансы прокси и DeepSeek (последняя проверка `notifications:watch`, если старше часа — запрос к API) |
-| `/admin/lots` Лоты | `Resources\Lots\LotResource` | `lots-browse` (перепарсинг — `lots`) | Таблица с фильтрами-чипами и вкладками (Все активные, Новые сегодня, Снятые за 24 ч, Без комплектации, Все; счётчики грузятся после таблицы), поиск по ID (префикс), VIN, госномеру, `model_en`; карточка справа и `/admin/lots/{id}`: Данные, История (`lot_changes`), Осмотр, Сырые данные; «Перепарсить» (до 500 лотов, `App\Services\LotReparseQueue` → `parse_jobs` `type=reparse`) |
+| `/admin/lots` Лоты | `Resources\Lots\LotResource` | `lots-browse` (перепарсинг — `lots`) | Таблица с фильтрами-чипами и вкладками (Все активные, Новые сегодня, Снятые за 24 ч, Без комплектации, Все; счётчики грузятся после таблицы), фильтр «марка → модель → поколение» по `ref_*`, поиск по ID (префикс), VIN, госномеру, модели справочника и корейской модели Encar; карточка справа и `/admin/lots/{id}`: Данные, История (`lot_changes`), Осмотр, Сырые данные; «Перепарсить» (до 500 лотов, `App\Services\LotReparseQueue` → `parse_jobs` `type=reparse`) |
 | `/admin/platforms/{source}` Площадка | `Pages\Platform` + `Livewire\Platform\*` | `jobs`, `schedules`, `filters`, `filter-skip-log`, `fields` по вкладкам | «Прогоны»: текущий прогон (опрос раз в 5 с), «Остановить», история с пометкой «засчитан», подробности и хвост лога задачи; «Запустить парсинг» — полный, тестовый (5 страниц) или выбранные марки (по задаче на марку) с оценкой трафика прокси. «Расписание» (`parser_schedules`). «Правила отбора» (`parse_filters`: фразой, порядок перетаскиванием = `priority`, группы И, значения по типу поля, имя генерируется, сколько активных лотов попадёт, срабатывания из `filter_skip_log`). «Лог пропусков». «Поля» (`field_coverage_stats`) |
-| `/admin/translation-review` Проверка переводов | `Pages\TranslationReview` | `taxonomy` | Очередь словаря KR→EN: «Ждут проверки» (`source=ai`), «Проверены», «Без перевода»; клавиши J/K, A, E, D. Исправление пишется в лоты со старым переводом или пустым полем, отклонение очищает их, чтобы `translate:run` перевёл заново (`App\Services\TranslationCatalog`). Заменяет очередь аномалий старого regex-пайплайна (таблицы удалены 2026-06-01) |
-| `/admin/translations` Переводы | `Resources\Translations\TranslationResource` | `taxonomy` | Весь словарь `translations` с правкой, добавлением, удалением |
 | `/admin/encar-options` Опции Encar | `Resources\EncarOptions\EncarOptionResource` | `taxonomy` | Названия и группы опций (`encar_option_catalog`), после правки сбрасывается кэш каталога |
 | `/admin/field-coverage` Покрытие полей | `Pages\FieldCoverage` | `fields` | Матрица поле × площадка, «Пересчитать» (`fields:compute-coverage`) |
 | `/admin/lot-changes` Изменения лотов | `Resources\LotChanges\LotChangeResource` | `changes` | `lot_changes` с фильтрами (период, событие, поле, площадка), график по дням и самые изменчивые лоты |
@@ -315,4 +311,4 @@ JS модули:
 
 ---
 
-[← Taxonomy](./07-taxonomy.md) · [Index](./index.md) · [Bot →](./09-bot.md)
+[← Parser](./04-parser.md) · [Index](./index.md) · [Bot →](./09-bot.md)

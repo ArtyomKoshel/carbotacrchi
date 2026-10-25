@@ -142,7 +142,6 @@ class LotsController extends Controller
             'source'                  => $source,
             'make'                    => $lot['make']             ?? null,
             'model'                   => $lot['model']            ?? null,
-            'model_en'                => $lot['model_en']         ?? null,
             'model_group'             => $lot['model_group']      ?? null,
             'badge_group'             => $lot['badge_group']      ?? null,
             'year'                    => isset($lot['year'])    ? (int) $lot['year']    : null,

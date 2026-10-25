@@ -12,7 +12,8 @@ carbot/
 ├── 📁 laravel/                    Laravel 11 — API, Admin, Bot webhook
 │   ├── app/
 │   │   ├── AuctionProviders/      Адаптеры источников (Encar, KBChacha)
-│   │   ├── Console/Commands/      Artisan-команды (нормализация, каталог, AI)
+│   │   ├── Catalog/               Справочник: EncarMatcher, CatalogLinker, CatalogNames, правила марок
+│   │   ├── Console/Commands/      Artisan-команды (справочник, приём, жизненный цикл, AI)
 │   │   ├── Dto/                   Data Transfer Objects
 │   │   ├── Http/
 │   │   │   ├── Controllers/Api/   REST-контроллеры Mini App
@@ -21,16 +22,14 @@ carbot/
 │   │   │   └── Middleware/        TelegramAuth, AdminAuth
 │   │   ├── Models/                Eloquent-модели
 │   │   ├── Providers/             AppServiceProvider, AuctionServiceProvider
-│   │   └── Services/
-│   │       ├── Catalog/           GradeExtractorService, CatalogLookupService
-│   │       └── Taxonomy/          TaxonomyRuleEngine, TaxonomySuggestionService
+│   │   └── Services/              Поиск (ProviderAggregator, SearchQuery), ИИ-поиск, бот, уведомления
 │   ├── config/
 │   │   ├── auction.php            Bot token, источники
 │   │   ├── ai.php                 Groq / Claude API keys
 │   │   └── search_tolerance.php   Дефолтные погрешности (fallback)
 │   ├── database/
 │   │   ├── migrations/            ~60 миграций
-│   │   └── seeders/               BotFilterSettingsSeeder, CatalogTokenMapSeeder
+│   │   └── seeders/               BotFilterSettingsSeeder
 │   ├── resources/views/
 │   │   └── filament/, livewire/   Шаблоны админ-панели (Filament, /admin)
 │   ├── routes/
@@ -96,9 +95,7 @@ carbot/
 
 | Модуль | Расположение | Что делает |
 |--------|-------------|------------|
-| **GradeExtractorService** | `laravel/app/Services/Catalog/` | 6-стадийное позитивное извлечение из текста грейда |
-| **TaxonomyRuleEngine** | `laravel/app/Services/Taxonomy/` | Применяет правила из `taxonomy_rules` к лотам |
-| **TaxonomySuggestionService** | `laravel/app/Services/Taxonomy/` | Эвристические предложения для аномалий |
+| **Справочник** | `laravel/app/Catalog/`, `laravel/resources/catalog/` | Ставит варианты Encar в марку → модель → поколение → модификацию → комплектацию ([13-catalog](./13-catalog.md)) |
 | **ProviderAggregator** | `laravel/app/Services/` | Объединяет результаты от всех провайдеров |
 | **ChatSearchService** | `laravel/app/Services/` | AI-парсинг текста → `SearchQuery` |
 | **FieldMappingsService** | `laravel/app/Services/` | Читает метаданные полей из JSON или Python |

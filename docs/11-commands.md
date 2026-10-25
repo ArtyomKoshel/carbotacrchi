@@ -4,149 +4,6 @@
 
 ---
 
-## Каталог
-
-### `catalog:import`
-
-Импортирует сырой JSON-дамп Encar в таблицы `catalog_*`.
-
-```bash
-php artisan catalog:import --file=PATH [--fresh] [--apply]
-
-  --file=PATH    Путь к JSON-файлу с данными каталога
-  --fresh        Очистить catalog_models, catalog_grades перед импортом
-  --apply        Записать в БД (дефолт: dry-run)
-```
-
-**Пример:**
-```bash
-php artisan catalog:import \
-  --file=../analysis/encar_taxonomy_raw.json \
-  --fresh --apply
-```
-
----
-
-## Нормализация
-
-### `lots:normalize-encar-taxonomy`
-
-Главная команда нормализации. Запускает [GradeExtractorService](./05-catalog.md) + [TaxonomyRuleEngine](./07-taxonomy.md).
-
-```bash
-php artisan lots:normalize-encar-taxonomy [OPTIONS]
-
-  --apply           Сохранить изменения (дефолт: dry-run)
-  --source=encar    Фильтр по источнику
-  --limit=N         Максимум лотов (0 = все)
-  --chunk=2000      Размер батча
-  --random          Случайный порядок
-  --only-empty      Только лоты с NULL в trim
-  --dump-trims=PATH Записать предложенные тримы в файл
-```
-
-**Примеры:**
-```bash
-# Dry-run: посмотреть что изменится
-php artisan lots:normalize-encar-taxonomy --source=encar --limit=5000
-
-# Применить
-php artisan lots:normalize-encar-taxonomy --source=encar --limit=5000 --apply
-
-# Только лоты без трима
-php artisan lots:normalize-encar-taxonomy --only-empty --apply
-
-# Выгрузить аномальные тримы для анализа
-php artisan lots:normalize-encar-taxonomy --dump-trims=/tmp/trims.txt
-```
-
----
-
-## Taxonomy
-
-### `taxonomy:classify-anomalies`
-
-Классифицирует строки из `taxonomy_anomaly_queue` через Claude API.
-
-```bash
-php artisan taxonomy:classify-anomalies [OPTIONS]
-
-  --source=encar    Источник
-  --batch=20        Записей на один API-вызов
-  --limit=200       Максимум записей
-  --dry-run         Показать ответ AI без сохранения
-```
-
-**Пример:**
-```bash
-php artisan taxonomy:classify-anomalies --source=encar --batch=20 --limit=200
-```
-
----
-
-### `taxonomy:ai-classify-patterns`
-
-Классифицирует уникальные паттерны `(make, model_kr_raw, badge_kr)` и создаёт правила.
-
-```bash
-php artisan taxonomy:ai-classify-patterns [OPTIONS]
-
-  --source=encar    Источник
-  --make=BMW        Фильтр по марке (опционально)
-  --limit=50        Уникальных паттернов
-  --confidence=70   Порог для авто-создания правила (0–100)
-  --dry-run         Не сохранять
-  --sleep=4         Секунды между API-вызовами (лимит TPM)
-```
-
-**Пример:**
-```bash
-# Посмотреть предложения без записи
-php artisan taxonomy:ai-classify-patterns --source=encar --limit=50 --dry-run
-
-# Создать правила с confidence >= 70%
-php artisan taxonomy:ai-classify-patterns --source=encar --limit=50 --confidence=70
-```
-
----
-
-### `taxonomy:bootstrap-rules`
-
-Создаёт `taxonomy_rules` из аномалий с высоким confidence.
-
-```bash
-php artisan taxonomy:bootstrap-rules [OPTIONS]
-
-  --source=encar          Источник
-  --min-seen=5            Минимум seen_count
-  --min-confidence=0.80   Минимальный confidence (0.0–1.0)
-  --actions=set_trim      CSV допустимых actions
-  --apply                 Создать правила в БД
-```
-
-**Пример:**
-```bash
-# Dry-run: посмотреть какие правила будут созданы
-php artisan taxonomy:bootstrap-rules \
-  --source=encar --min-seen=5 --min-confidence=0.80
-
-# Применить
-php artisan taxonomy:bootstrap-rules \
-  --source=encar --min-seen=5 --min-confidence=0.80 --apply
-```
-
----
-
-### `taxonomy:ingest-anomalies`
-
-Просмотр аномалий по статусу.
-
-```bash
-php artisan taxonomy:ingest-anomalies --source=encar --status=new
-```
-
----
-
 ## Каталог опций
 
 ### `options:import-encar`
@@ -356,14 +213,17 @@ php artisan catalog:validate
 php artisan catalog:validate --no-data
 ```
 
-### `catalog:encar-names`
+### `catalog:reconcile`
 
-Корейские названия моделей Encar → английские для `resources/catalog/encar/{make}.json` (`names`),
-по лотам, где у Encar есть оба и поколение совпадает. Без `--write` только показывает новые.
+Только чтение: фильтры справочника не теряют ни одной машины. Проверяет, что каждый активный лот
+связан с вариантом, лоты марки справочника стоят на этой марке, ячейки `/api/catalog/{make}` в сумме дают
+активные лоты марки и поиск по каждой ячейке находит ровно столько же. С `--tree` сверяет число лотов
+по моделям Encar с деревом Encar. Код выхода 1, если не прошли проверки 1–3.
 
 ```bash
-php artisan catalog:encar-names
-php artisan catalog:encar-names --make=BMW --write
+php artisan catalog:reconcile
+php artisan catalog:reconcile --make=BMW --sample=20
+php artisan catalog:reconcile --tree=D:\work\carbot\analysis\data\encar_tree_2026-10.json
 ```
 
 ### `catalog:coverage`
@@ -392,17 +252,6 @@ php artisan subscriptions:to-catalog --apply  # записать
 ```
 
 
-### `lots:ai-model-en-backfill`
-
-Заполняет `model_en` через AI для лотов с NULL.
-
-```bash
-php artisan lots:ai-model-en-backfill \
-  --source=encar \
-  --limit=200 \
-  --apply
-```
-
 ### `lots:compact-backfill`
 
 Разовое заполнение компактных колонок из старых pivot-таблиц: `lots.options_mask` из `lots.options`,
@@ -415,12 +264,12 @@ php artisan lots:compact-backfill --only=photos   # только фото
 php artisan lots:compact-backfill --verify        # сверить с lot_options / lot_photos без записи
 ```
 
-### `lots:compute-field-coverage`
+### `fields:compute-coverage`
 
 Вычисляет процент заполненности каждого поля. Пишет в `field_coverage_stats`.
 
 ```bash
-php artisan lots:compute-field-coverage --source=encar
+php artisan fields:compute-coverage --source=encar
 ```
 
 ### `export:fields-schema`
@@ -432,37 +281,18 @@ php artisan lots:compute-field-coverage --source=encar
 php artisan export:fields-schema
 ```
 
-### `taxonomy:classify-anomalies` (AI classify)
-
-```bash
-php artisan taxonomy:classify-anomalies --source=encar --batch=20
-```
-
 ---
 
-## Типичный полный цикл после парсинга
+## После правки справочника
+
+Новые лоты встают в справочник сами при приёме (`ingest:consume`). После правки
+`resources/catalog` (эталон, словари, правила марок):
 
 ```bash
-# 1. Запустить парсер (Python)
-docker compose exec parser python main.py --once
-
-# 2. Нормализовать (dry-run сначала)
-php artisan lots:normalize-encar-taxonomy --source=encar --limit=10000
-
-# 3. Применить нормализацию
-php artisan lots:normalize-encar-taxonomy --source=encar --limit=10000 --apply
-
-# 4. Классифицировать аномалии через AI
-php artisan taxonomy:classify-anomalies --source=encar --limit=200
-
-# 5. Создать правила из уверенных предложений
-php artisan taxonomy:bootstrap-rules --source=encar --min-seen=3 --min-confidence=0.75 --apply
-
-# 6. Повторно нормализовать с новыми правилами
-php artisan lots:normalize-encar-taxonomy --source=encar --limit=10000 --apply
-
-# 7. Статистика покрытия полей
-php artisan lots:compute-field-coverage --source=encar
+php artisan catalog:remap                   # перечитать варианты и переставить лоты
+php artisan catalog:validate                # файлы и годы поколений против лотов
+php artisan catalog:reconcile               # фильтры не теряют ни одной машины
+php artisan catalog:coverage --make=Kia     # что осталось неразобранным у марки
 ```
 
 ---
