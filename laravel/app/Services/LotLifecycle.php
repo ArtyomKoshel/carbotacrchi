@@ -374,17 +374,26 @@ class LotLifecycle
                 $now = now()->utc()->toDateTimeString();
                 DB::statement(
                     "INSERT INTO lots_archive
-                        (id, source, make_en, model_group_en, model_en, year, mileage, price,
-                         first_seen, last_seen, sold_detected_at, archived_at)
-                     SELECT l.id, l.source, l.make_en, l.model_group_en, l.model_en, l.year, l.mileage, l.price,
-                            l.created_at, l.parsed_at,
+                        (id, source, make_name, model_name, generation_name,
+                         ref_make_id, ref_model_id, ref_generation_id, ref_modification_id, ref_complectation_id,
+                         year, mileage, price, first_seen, last_seen, sold_detected_at, archived_at)
+                     SELECT l.id, l.source, k.name, m.name, g.code,
+                            l.ref_make_id, l.ref_model_id, l.ref_generation_id, l.ref_modification_id, l.ref_complectation_id,
+                            l.year, l.mileage, l.price, l.created_at, l.parsed_at,
                             (SELECT MAX(c.recorded_at) FROM lot_changes c
                               WHERE c.lot_id = l.id AND c.event = 'delisted'),
                             ?
-                       FROM lots l WHERE l.id IN ({$in})
+                       FROM lots l
+                       LEFT JOIN ref_makes k ON k.id = l.ref_make_id
+                       LEFT JOIN ref_models m ON m.id = l.ref_model_id
+                       LEFT JOIN ref_generations g ON g.id = l.ref_generation_id
+                      WHERE l.id IN ({$in})
                      ON DUPLICATE KEY UPDATE
-                        source = VALUES(source), make_en = VALUES(make_en),
-                        model_group_en = VALUES(model_group_en), model_en = VALUES(model_en),
+                        source = VALUES(source), make_name = VALUES(make_name),
+                        model_name = VALUES(model_name), generation_name = VALUES(generation_name),
+                        ref_make_id = VALUES(ref_make_id), ref_model_id = VALUES(ref_model_id),
+                        ref_generation_id = VALUES(ref_generation_id), ref_modification_id = VALUES(ref_modification_id),
+                        ref_complectation_id = VALUES(ref_complectation_id),
                         year = VALUES(year), mileage = VALUES(mileage), price = VALUES(price),
                         first_seen = COALESCE(LEAST(lots_archive.first_seen, VALUES(first_seen)), lots_archive.first_seen, VALUES(first_seen)),
                         last_seen = VALUES(last_seen), sold_detected_at = VALUES(sold_detected_at),

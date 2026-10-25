@@ -265,7 +265,7 @@ KR→EN кэш переводов. Используется `translate:run` дл
 | `field_coverage_stats` | Процент заполненности каждого поля |
 | `admin_users` | Пользователи админ-панели |
 | `subscription_seen_lots` | Просмотренные лоты по подпискам |
-| `lots_archive` | Компактная строка (~200 байт) удалённого `lots:lifecycle` лота: `id, source, make_en, model_group_en, model_en, year, mileage, price, first_seen, last_seen, sold_detected_at` — история цен проданных машин |
+| `lots_archive` | Компактная строка (~200 байт) удалённого `lots:lifecycle` лота: `id, source, make_name, model_name, generation_name, ref_*_id, year, mileage, price, first_seen, last_seen, sold_detected_at` — история цен проданных машин. Названия и `ref_*_id` — из справочника на момент удаления; строки, архивированные до 2026-10-25, хранят старые переводы и `ref_*_id = NULL` |
 | `notification_recipients` | Получатели Telegram-уведомлений админам: chat id, типы, флаг enabled |
 | `notification_settings` | Пороги уведомлений (key → value) |
 | `notification_events` | Дедупликация: отправленные события и открытые/закрытые инциденты |
