@@ -32,6 +32,9 @@
         "re": "^[A-Z]{1,2}\\d{2}$"
       },
       {
+        "re": "^QX\\d$"
+      },
+      {
         "re": "^\\d\\.\\dd$",
         "fuel": "diesel"
       }
@@ -60,10 +63,16 @@
     "Blue Sport",
     "Sensory",
     "Smart Package",
-    "Style"
+    "Style",
+    "Standard",
+    "X",
+    "P-Grade",
+    "Pure",
+    "Gallery White"
   ],
   "editions": [
-    "Special Edition"
+    "Special Edition",
+    "Sport Edition"
   ],
   "models": [
     {

@@ -38,7 +38,9 @@
     "Scat Pack",
     "Hellcat"
   ],
-  "editions": [],
+  "editions": [
+    "Florida Edition"
+  ],
   "models": [
     {
       "name": "Avenger",

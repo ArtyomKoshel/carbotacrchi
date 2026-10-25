@@ -44,13 +44,22 @@
     "Bolero",
     "Rafeet",
     "C+C",
-    "14RS"
+    "14RS",
+    "GT-R",
+    "GTR",
+    "GT-T",
+    "GTS-T",
+    "GTS",
+    "GT",
+    "STD",
+    "Twin Turbo"
   ],
   "editions": [
     "Special Edition",
     "Black Edition",
     "Midnight Opal Edition",
-    "Krom Edition"
+    "Krom Edition",
+    "Premium Edition"
   ],
   "models": [
     {

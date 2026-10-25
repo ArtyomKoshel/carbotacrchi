@@ -17,8 +17,17 @@
       "EV": "electric",
       "Turbo": null,
       "LPG": "lpg",
-      "LPi": "lpg"
+      "LPi": "lpg",
+      "HEMI": null,
+      "SRT8": null,
+      "SRT-6": null,
+      "SRT-8": null
     },
+    "codes": [
+      {
+        "re": "^\\d\\.\\dL$"
+      }
+    ],
     "drives": {
       "AWD": "awd",
       "4WD": "4wd",
@@ -35,7 +44,10 @@
     "C",
     "Limited",
     "Prestige",
-    "Touring"
+    "Touring",
+    "Signature",
+    "Limousine",
+    "Cabrio"
   ],
   "editions": [],
   "models": [

@@ -24,7 +24,9 @@
       "e-HDi": "diesel",
       "HDi": "diesel",
       "PureTech": "gasoline",
-      "E-Tense": "electric"
+      "E-Tense": "electric",
+      "VTi": "gasoline",
+      "VTI": "gasoline"
     },
     "drives": {
       "AWD": "awd",
@@ -50,9 +52,16 @@
     "So Chic",
     "Be Chic",
     "Grand Chic",
-    "Trocadero"
+    "Chic",
+    "Trocadero",
+    "Live",
+    "Rivoli",
+    "Tech Pack",
+    "Opera"
   ],
-  "editions": [],
+  "editions": [
+    "One-Tone Edition"
+  ],
   "models": [
     {
       "name": "C2",

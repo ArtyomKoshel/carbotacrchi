@@ -19,7 +19,8 @@
       "LPG": "lpg",
       "LPi": "lpg",
       "4xe": "hybrid",
-      "L": null
+      "L": null,
+      "HEMI": null
     },
     "drives": {
       "AWD": "awd",
@@ -47,9 +48,14 @@
     "Altitude",
     "High",
     "Power Top",
-    "S"
+    "S",
+    "Laredo",
+    "Latitude"
   ],
   "editions": [
+    "High Velocity Edition",
+    "Black Edition",
+    "70th Anniversary",
     "80th Anniversary Edition",
     "80th Anniversary",
     "75th Special Edition",
