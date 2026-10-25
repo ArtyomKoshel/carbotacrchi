@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Catalog\CatalogLinker;
+use App\Http\Controllers\Api\FiltersController;
 use App\Catalog\CatalogStore;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -66,6 +67,8 @@ class CatalogRemap extends Command
         }
         Cache::forget('api_catalog_makes');
         Cache::forget('catalog_names');
+        // the filters' makes list is read from the catalog too
+        FiltersController::forgetCache();
 
         $this->summary();
         return self::SUCCESS;

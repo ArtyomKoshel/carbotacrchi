@@ -18,6 +18,21 @@ class FiltersController extends Controller
 {
     public function __construct(private readonly ProviderAggregator $aggregator) {}
 
+    /**
+     * Every cached filters answer is dropped at once: the version is part of each key, so the
+     * old answers are never read again and run out on their own (the context has a key per
+     * make and model). catalog:remap calls it — the makes list comes from the catalog.
+     */
+    public static function forgetCache(): void
+    {
+        Cache::forever('api_filters_version', self::cacheVersion() + 1);
+    }
+
+    private static function cacheVersion(): int
+    {
+        return (int) Cache::get('api_filters_version', 0);
+    }
+
     public function count(Request $request): JsonResponse
     {
         $query = SearchQuery::fromArray($request->input('query', []));
@@ -31,7 +46,7 @@ class FiltersController extends Controller
         $sources     = array_values(is_array($sourcesCfg) ? $sourcesCfg : ['encar', 'kbcha']);
         $currentYear = (int) date('Y');
 
-        $cacheKey = 'api_filters_' . $locale . '_' . implode('_', $sources);
+        $cacheKey = 'api_filters_' . $locale . '_' . implode('_', $sources) . '_v' . self::cacheVersion();
 
         $data = Cache::remember($cacheKey, 600, function () use ($locale, $sources, $currentYear) {
             $makes         = [];
@@ -90,7 +105,7 @@ class FiltersController extends Controller
         $search = SearchQuery::fromArray($request->only(['make', 'refMakeId', 'refModelId']));
 
         $columns = ['body_type', 'fuel', 'drive_type', 'transmission', 'color'];
-        $key = "api_filters_context_{$search->refMakeId}_{$search->refModelId}_" . (int) $search->matchesNothing;
+        $key = "api_filters_context_{$search->refMakeId}_{$search->refModelId}_" . (int) $search->matchesNothing . '_v' . self::cacheVersion();
         // one pass over the make's lots for all five lists
         $values = Cache::remember($key, 600, function () use ($search, $columns) {
             $base = DB::table('lots')->where('is_active', true);

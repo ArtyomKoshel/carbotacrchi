@@ -397,6 +397,9 @@ body.wide .topnav { display: flex !important; gap: 4px; margin-left: auto; }
 .topnav .count--new:not(:empty) { color: #fff; background: var(--bad); border-radius: 99px; padding: 2px 5px; }
 body.wide .account-slot { display: block; }
 body.wide .tabbar { display: none; }
+/* the panes scroll, the page never: a pane is the containing block of what is absolutely placed in it
+   (Tom Select's hidden <select>, photo counters), or that would stretch the document below the screen */
+body.wide .filters-pane, body.wide .main, body.wide .lot-pane { position: relative; }
 body.wide .filters-pane { display: block; grid-area: side; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); padding-bottom: 24px; }
 body.wide .filters { padding: 0 16px; }
 body.wide .filter-input, body.wide .filter-select, body.wide .ts-wrapper .ts-control { min-height: 34px; font-size: 13.5px; padding-block: 5px; }

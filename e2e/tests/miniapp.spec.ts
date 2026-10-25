@@ -19,6 +19,13 @@ test.describe('signed in', () => {
     await openMiniapp(page);
   });
 
+  test('on a wide screen only the panes scroll, never the page', async ({ page }) => {
+    await page.setViewportSize({ width: 1185, height: 911 });
+    await page.waitForLoadState('networkidle');
+    const { doc, screen } = await page.evaluate(() => ({ doc: document.documentElement.scrollHeight, screen: innerHeight }));
+    expect(doc, 'the document is exactly the screen high').toBeLessThanOrEqual(screen);
+  });
+
   for (const make of ['Kia', 'Hyundai', 'BMW', 'Ford']) {
     test(`${make}: the models add up to the make, and each finds its own count`, async ({ page }) => {
       const makeTotal = await shown(page, () => choose(page, '#filter-make', make));
