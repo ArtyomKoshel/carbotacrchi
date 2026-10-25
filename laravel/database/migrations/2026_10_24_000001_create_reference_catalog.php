@@ -38,7 +38,7 @@ return new class extends Migration
         Schema::create('ref_generations', function (Blueprint $t) {
             $t->increments('id');
             $t->unsignedInteger('model_id');
-            $t->string('code', 20);
+            $t->string('code', 40);  // Korean makes name a facelift with its generation: "Gen 2 · New Impression"
             $t->unsignedTinyInteger('number')->nullable();
             $t->unsignedSmallInteger('year_from')->nullable();
             $t->unsignedSmallInteger('year_to')->nullable();
