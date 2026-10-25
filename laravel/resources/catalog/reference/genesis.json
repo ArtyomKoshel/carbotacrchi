@@ -56,7 +56,9 @@
       "Plug-in": "hybrid",
       "DCT": null,
       "LPGi": "lpg",
-      "FCEV": "hydrogen"
+      "FCEV": "hydrogen",
+      "D": null,
+      "EL240H": null
     },
     "codes": [
       {
@@ -383,7 +385,16 @@
     "Panorama",
     "Star",
     "Summer",
-    "Leisure Pack"
+    "Leisure Pack",
+    "Libig",
+    "City Run",
+    "C Type",
+    "Standard LED Pack",
+    "City",
+    "RE25",
+    "TUIX",
+    "Crayon",
+    "GX"
   ],
   "editions": [
     "White Edition",
@@ -447,7 +458,9 @@
     "My Trip Edition",
     "Edge Edition",
     "Red Edition",
-    "Tattoo Edition"
+    "Tattoo Edition",
+    "Bow Edition",
+    "Trunk"
   ],
   "models": [
     {

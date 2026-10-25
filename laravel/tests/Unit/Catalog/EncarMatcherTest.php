@@ -135,6 +135,22 @@ class EncarMatcherTest extends TestCase
                 ['아우디', 'A3', '35 TDI 다이나믹 스포트백', '8V', 2018],
                 ['modification' => '35 TDI', 'complectation' => 'Dynamic', 'body' => 'hatchback'],
             ],
+            'BMW: a badge that is the complectation alone takes the engine from Encar\'s badge group' => [
+                ['BMW', '2시리즈 액티브 투어러 (F45)', '조이', '조이', 2018],
+                ['generation' => 'F45', 'modification' => 'Diesel 2.0', 'fuel' => 'diesel', 'drive' => null, 'complectation' => 'Joy'],
+            ],
+            'Renault Korea SM5 D: "D" is part of the engine name, as Encar writes it in English' => [
+                ['르노코리아(삼성)', 'SM5 노바', '디젤 D 프리미엄', '디젤 D 프리미엄', 2015],
+                ['modification' => 'Diesel D', 'fuel' => 'diesel', 'complectation' => 'Premium'],
+            ],
+            'Chevrolet Damas: Encar\'s English names the complectation (리빅 → Libig)' => [
+                ['쉐보레(GM대우)', '뉴 다마스', '5인승 코치', '리빅', 2018],
+                ['modification' => 'LPG 0.8', 'complectation' => 'Coach Libig', 'seats' => 5],
+            ],
+            'Volvo V60: Encar\'s model of 2010–2018 lies inside one generation' => [
+                ['볼보', 'V60', '폴스타', '폴스타', 2016],
+                ['generation' => 'I', 'modification' => 'Polestar'],
+            ],
             'Tesla: an electric model of one generation, the badge its powertrain' => [
                 ['테슬라', '모델 Y', '롱 레인지 AWD', '롱 레인지 AWD', 2023],
                 ['model' => 'Model Y', 'generation' => 'I', 'modification' => 'Long Range AWD', 'fuel' => 'electric', 'drive' => 'awd'],
@@ -296,6 +312,15 @@ class EncarMatcherTest extends TestCase
         $this->assertSame('B5 얼티메이트 브라이트', EncarMatcher::text('B5 얼티메이트 브라이트', 'B6 얼티메이트 브라이트'), 'a stale copy of another engine is not added');
     }
 
+    /** Encar's model 머스탱 runs 1964–2024: its badges ("쿠페") name no generation, so none is given. */
+    public function test_a_model_across_generations_stays_without_one(): void
+    {
+        $match = self::matcher()->match(['make' => '포드', 'model' => '머스탱', 'badge' => '쿠페', 'trim' => '쿠페', 'year' => 2020]);
+
+        $this->assertSame(VariantMatch::UNMATCHED, $match->status);
+        $this->assertSame(['Mustang', null], [$match->model, $match->generation]);
+    }
+
     public function test_the_year_never_picks_a_generation(): void
     {
         $match = self::matcher()->match(['make' => '아우디', 'model' => 'A5', 'badge' => '40 TFSI 콰트로 쿠페', 'year' => 2016]);
@@ -312,9 +337,10 @@ class EncarMatcherTest extends TestCase
         $this->assertSame(['지포스'], $match->leftover);
     }
 
+    /** No engine word and no badge group in Encar's tree for it (F45's "조이" has one: see variants()). */
     public function test_a_badge_without_engine(): void
     {
-        $match = self::matcher()->match(['make' => 'BMW', 'model' => '2시리즈 액티브 투어러 (F45)', 'badge' => '조이', 'year' => 2018]);
+        $match = self::matcher()->match(['make' => 'BMW', 'model' => '2시리즈 액티브 투어러 (U06)', 'badge' => '조이', 'year' => 2023]);
 
         $this->assertSame(VariantMatch::NO_ENGINE, $match->status);
         $this->assertSame('Joy', $match->complectation);

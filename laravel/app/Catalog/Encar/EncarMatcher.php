@@ -32,6 +32,12 @@ class EncarMatcher
         'bmw' => BmwRules::class, 'mercedes' => MercedesRules::class, 'audi' => AudiRules::class, 'porsche' => PorscheRules::class,
     ];
 
+    /** The words badgeGroup() writes, for makes whose own rules read only their codes */
+    private const GROUP_ENGINE = [
+        'words' => ['Gasoline' => ['fuel' => 'gasoline'], 'Diesel' => ['fuel' => 'diesel'], 'LPG' => 'lpg', 'Hybrid' => 'hybrid', 'Electric' => 'electric'],
+        'drives' => ['4WD' => '4wd', '2WD' => null],
+    ];
+
     /** Encar's marketing words before a model name, the ones the collector cuts (mapping.py _MODEL_PREFIXES) */
     private const MARKETING = '/^(?:더 ?뉴 더 ?뉴|더 ?뉴|올 ?뉴|완전변경|부분변경|신형|뉴)\s+/u';
 
@@ -113,6 +119,10 @@ class EncarMatcher
             if ($words !== null) {
                 $withGroup = BadgeGrammar::read("{$words} {$english}", $ref, $model);
                 $groupMod = $this->rules($ref)->modification($withGroup['rest'], $model, $generation);
+                // a make with rules of its own reads its codes ("520d"), not the group's words ("Diesel 2.0")
+                if (($groupMod['leftover'] !== [] || $groupMod['code'] === null) && ($ref['rules'] ?? 'generic') !== 'generic') {
+                    $groupMod = (new GenericRules(self::GROUP_ENGINE))->modification($withGroup['rest'], $model, $generation);
+                }
                 if ($groupMod['leftover'] === [] && $groupMod['code'] !== null) {
                     [$read, $mod] = [$withGroup, $groupMod];
                 }
