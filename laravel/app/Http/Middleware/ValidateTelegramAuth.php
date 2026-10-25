@@ -11,15 +11,8 @@ class ValidateTelegramAuth
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (app()->environment('local', 'development')) {
-            return $next($request);
-        }
-
-        if (config('app.miniapp_dev_bypass') && !app()->environment('production')) {
-            return $next($request);
-        }
-
-        // Browser mode: authenticate via a linked browser_token
+        // Browser mode: authenticate via a linked browser_token — locally too, so the local
+        // sign-in (routes/dev.php) acts as the user it linked, like the bot's link in production
         $browserToken = (string) ($request->input('browser_token') ?? '');
         if ($browserToken !== '') {
             $record = BrowserLinkToken::findValid($browserToken);
@@ -28,7 +21,13 @@ class ValidateTelegramAuth
                 $request->merge(['user_id' => $record->chat_id]);
                 return $next($request);
             }
-            return response()->json(['ok' => false, 'error' => 'Browser token not linked or expired'], 401);
+            if (!$this->bypassed()) {
+                return response()->json(['ok' => false, 'error' => 'Browser token not linked or expired'], 401);
+            }
+        }
+
+        if ($this->bypassed()) {
+            return $next($request);
         }
 
         // Telegram WebApp mode: validate initData HMAC
@@ -47,6 +46,13 @@ class ValidateTelegramAuth
         $request->merge(['user_id' => (int) $user['id']]);
 
         return $next($request);
+    }
+
+    /** Locally, and where MINIAPP_DEV_BYPASS is set outside production, an unsigned request passes. */
+    private function bypassed(): bool
+    {
+        return app()->environment('local', 'development')
+            || (config('app.miniapp_dev_bypass') && !app()->environment('production'));
     }
 
     private function validate(string $initData): bool

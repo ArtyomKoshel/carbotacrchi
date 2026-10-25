@@ -118,6 +118,11 @@ const API = (() => {
     return request('POST', '/auth/browser-init');
   }
 
+  /** Local sign-in as the test user: exists only when the server runs with APP_ENV=local. */
+  function browserAuthDevLogin() {
+    return request('POST', '/auth/dev-login');
+  }
+
   function browserAuthStatus(token) {
     return request('GET', `/auth/browser-status?token=${encodeURIComponent(token)}`);
   }
@@ -228,7 +233,7 @@ const API = (() => {
   return {
     getLot, shareLot,
     getFilters, invalidateFiltersCache, isFiltersCached,
-    browserAuthInit, browserAuthStatus, isAuthError,
+    browserAuthInit, browserAuthStatus, browserAuthDevLogin, isAuthError,
     search,
     searchChat, resetChat,
     getCount, getContext,

@@ -10,6 +10,12 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            // sign-in without Telegram or a password, for local work and the UI tests only
+            if (app()->environment('local')) {
+                require __DIR__.'/../routes/dev.php';
+            }
+        },
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(at: '*');
