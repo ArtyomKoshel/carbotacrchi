@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Catalog\CatalogLinker;
 use App\Models\LotInspection;
 use App\Services\SearchQuery;
 use App\Services\TelegramBot;
@@ -40,13 +41,14 @@ final class LotApiTest extends TestCase
     private function sonata(): string
     {
         LotFactory::new()->create([
-            'id' => '41536978', 'year' => 2021, 'price' => 18_900_000, 'mileage' => 45_210, 'model_en' => 'Sonata (DN8)',
-            'trim_en' => 'Premium', 'drive_type' => 'fwd', 'engine_volume' => 2.0, 'owners_count' => 1, 'insurance_count' => 0,
+            'id' => '41536978', 'year' => 2021, 'price' => 18_900_000, 'mileage' => 45_210,
+            'model' => '쏘나타 (DN8)', 'badge' => '2.0', 'trim' => '프리미엄', 'badge_group' => null, 'drive_type' => 'fwd', 'engine_volume' => 2.0, 'owners_count' => 1, 'insurance_count' => 0,
             'has_accident' => false, 'first_reg_date' => '2021-03-02', 'vin' => 'KMHL341CBMA123456', 'plate_number' => '12가3456',
             'lot_url' => 'https://fem.encar.com/cars/detail/41536978', 'image_url' => 'https://ci.encar.com/x.jpg',
             'photo_dir' => 7, 'photo_base_id' => 41536978, 'photo_codes' => '001,002,021', 'photo_ext_upper' => 0, 'photo_urls' => null,
         ]);
         LotInspection::create(['lot_id' => '41536978', 'inspection_date' => '2026-09-10', 'outer_detail' => 'окрас: бампер']);
+        app(CatalogLinker::class)->link(['41536978']);
 
         return '41536978';
     }
@@ -99,7 +101,7 @@ final class LotApiTest extends TestCase
         $id = $this->sonata();
         $text = $this->postJson("/api/lots/{$id}/share", ['mode' => 'text', 'init_data' => self::initData(777)])->json('data.text');
 
-        $this->assertStringContainsString('2021 Hyundai Sonata (DN8) Premium', $text);
+        $this->assertStringContainsString('2021 Hyundai Sonata DN8 2.0 Premium', $text);
         $this->assertStringContainsString('₩18 900 000', $text);
         $this->assertStringContainsString('45 210 км · бензин', $text);
         $this->assertStringContainsString('История: без ДТП · смен владельца: 1 · страховых случаев: 0', $text);
@@ -107,7 +109,7 @@ final class LotApiTest extends TestCase
         foreach (['encar', '41536978', 'KMHL341CBMA123456', '12가3456'] as $leak) {
             $this->assertStringNotContainsStringIgnoringCase($leak, $text);
         }
-        $this->assertLessThanOrEqual(1024, mb_strlen(ClientLotCard::html(['year' => 2021, 'make' => 'x', 'makeEn' => null, 'model' => str_repeat('y', 2000), 'modelEn' => null, 'modelGroupEn' => null, 'price' => 1, 'mileage' => 1])));
+        $this->assertLessThanOrEqual(1024, mb_strlen(ClientLotCard::html(['year' => 2021, 'make' => 'x', 'model' => str_repeat('y', 2000), 'catalog' => null, 'price' => 1, 'mileage' => 1])));
     }
 
     public function test_pickers_can_sort_by_mileage_and_year(): void
