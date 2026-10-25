@@ -1,4 +1,4 @@
-Use the `mysql-carbot` MCP to inspect a lot from the production database.
+Use the `railway-prod-db` skill (`prod-sql.sh carbot`, read-only) to inspect a lot from the production database.
 
 The user will provide a lot ID (e.g. `40897028` or `k-123456`). Run this query:
 

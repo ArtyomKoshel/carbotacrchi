@@ -1,4 +1,4 @@
-Use the `mysql-carbot` MCP to inspect the taxonomy anomaly queue.
+Use the `railway-prod-db` skill (`prod-sql.sh carbot`, read-only) to inspect the taxonomy anomaly queue.
 
 ```sql
 SELECT 

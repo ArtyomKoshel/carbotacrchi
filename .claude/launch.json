@@ -2,11 +2,30 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "carbot",
+      "url": "http://localhost:8100"
+    },
+    {
       "name": "miniapp",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "miniapp"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "miniapp-release",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "D:/work/carbot/.claude/worktrees/release/miniapp"],
+      "port": 5174,
+      "autoPort": true
+    },
+    {
+      "name": "catalog-local",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["-d", "extension=pdo_mysql", "-d", "memory_limit=512M", "-S", "127.0.0.1:8095",
+        "-t", "D:/work/carbot/.claude/worktrees/release/laravel/public",
+        "C:/Users/Archi/AppData/Local/Temp/claude/D--work-carbot/b53ad00e-37bf-44e4-9ce4-ff33f86ba73c/scratchpad/router.php"],
+      "port": 8095
     }
   ]
 }

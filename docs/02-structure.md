@@ -76,16 +76,15 @@ carbot/
 │       └── filters.css
 │
 ├── 📁 docker/                     Docker-конфиги
-│   ├── nginx/default.conf         Nginx: Mini App + PHP-FPM proxy
-│   └── php/
-│       ├── Dockerfile             PHP 8.4-FPM + Composer
-│       ├── entrypoint.sh          Bootstrap: composer install, migrate, key:generate
-│       └── php.ini
+│   ├── dev/                       Локальный стек: mysql (все базы) + redis + web на подмонтированном коде (docs/local-stack.md)
+│   ├── railway/                   start.sh, supervisord.conf прод-образа
+│   ├── nginx/railway.conf         Nginx прод-образа: /miniapp/, Laravel, PHP-FPM
+│   └── php/php.ini
 │
 ├── 📁 docs/                       Техническая документация (этот раздел)
 │
-├── docker-compose.yml
-├── Makefile
+├── Dockerfile                     Прод-образ (Railway)
+├── Makefile                       Команды локального стека
 ├── README.md
 └── FIELD_MAP.md                   Словарь полей: API-пути, покрытие, нормализация
 ```

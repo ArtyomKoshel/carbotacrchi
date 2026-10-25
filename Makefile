@@ -1,50 +1,46 @@
-ifeq ($(OS),Windows_NT)
-    COPY_ENV = if not exist .env copy .env.example .env
-else
-    COPY_ENV = test -f .env || cp .env.example .env
-endif
+# Local stack: docker/dev (docs/local-stack.md)
+DC = docker compose -f docker/dev/compose.yml
 
-.PHONY: up down build restart logs shell migrate fresh status help
+.PHONY: up down build restart logs shell migrate dump status help
 
 help:
 	@echo ""
-	@echo "  CarBot — Telegram Auction Mini App"
+	@echo "  CarBot local stack (docs/local-stack.md) — http://localhost:8100"
 	@echo ""
-	@echo "  make up        Start all containers (detached)"
-	@echo "  make down      Stop and remove containers"
-	@echo "  make build     Rebuild images (no cache)"
-	@echo "  make restart   Restart PHP + Nginx"
-	@echo "  make logs      Tail logs from all services"
-	@echo "  make shell     Open shell in PHP container"
+	@echo "  make up        Start the stack (detached)"
+	@echo "  make down      Stop the stack, keep the data"
+	@echo "  make build     Rebuild the web image"
+	@echo "  make restart   Restart web (runs migrations)"
+	@echo "  make logs      Tail web logs"
+	@echo "  make shell     Shell in the web container"
 	@echo "  make migrate   Run Laravel migrations"
-	@echo "  make fresh     Fresh migration (drops all tables)"
+	@echo "  make dump      Reload the database carbot from prod (read only, needs railway login)"
 	@echo "  make status    Show container status"
 	@echo ""
 
 up:
-	$(COPY_ENV)
-	docker compose up -d
+	$(DC) up -d --build
 
 down:
-	docker compose down
+	$(DC) stop
 
 build:
-	docker compose build --no-cache
+	$(DC) build web
 
 restart:
-	docker compose restart php nginx
+	$(DC) restart web
 
 logs:
-	docker compose logs -f
+	$(DC) logs -f web
 
 shell:
-	docker compose exec php sh
+	$(DC) exec web sh
 
 migrate:
-	docker compose exec php php artisan migrate --force
+	$(DC) exec web php artisan migrate --force
 
-fresh:
-	docker compose exec php php artisan migrate:fresh --force
+dump:
+	bash docker/dev/load-dump.sh prod
 
 status:
-	docker compose ps
+	$(DC) ps

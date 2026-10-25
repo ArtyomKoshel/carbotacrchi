@@ -26,6 +26,12 @@ Full docs are in `docs/` — read them before touching unfamiliar areas:
 | [docs/10-filters.md](docs/10-filters.md) | PRE/POST filter phases, lot exclusion rules |
 | [docs/11-commands.md](docs/11-commands.md) | All artisan commands with options and examples |
 | [docs/12-field-map.md](docs/12-field-map.md) | Field reference: API paths, coverage, normalization |
+| [docs/local-stack.md](docs/local-stack.md) | Local Docker stack: the only one to use; which checkout it serves, prod dump, other containers |
+
+**Local stack:** `docker compose -f docker/dev/compose.yml up -d` → http://localhost:8100 (`/miniapp/`, `/admin`, `/api`),
+MySQL `127.0.0.1:3318` — the one local server: `carbot` = prod dump (root/`root-local`), `prodbak`, and the test DBs
+`carbot_test*`/`collector_test*` (carbot/carbot) that phpunit.xml and CI expect. Artisan: `docker compose -f docker/dev/compose.yml exec web php artisan …`.
+Do not start other CarBot stacks or MySQL containers; read docs/local-stack.md before touching containers.
 
 @docs/01-overview.md
 
@@ -35,9 +41,11 @@ Full docs are in `docs/` — read them before touching unfamiliar areas:
 
 ---
 
-## MCP: Production Database
+## Production Database
 
-The `mysql-carbot` MCP server connects directly to the production Railway MySQL.  
+Prod is Railway MySQL 9 (service `MySQL-6oyM`, db `railway`). Query it through the user-level
+`railway-prod-db` skill (`prod-sql.sh carbot`): it runs inside the DB container via `railway ssh`,
+read-only by default, no credentials stored anywhere.  
 Use it for inspection and debugging — never for destructive operations without confirmation.
 
 **🔒 Правило:** Claude может делать SELECT-запросы для анализа и диагностики.

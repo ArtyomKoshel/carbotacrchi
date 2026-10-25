@@ -1,0 +1,106 @@
+# Persistent dev stand. MySQL and redis stay up for good (restart: unless-stopped); the web
+# container serves the code of CARBOT_SRC — the repo root by default, or any worktree — so a
+# new feature needs only the web container recreated, never a rebuild or a new database.
+#
+#   docker compose -f docker/dev/compose.yml up -d --build                      # first time
+#   $env:CARBOT_SRC="D:/work/carbot/.claude/worktrees/<name>"; docker compose -f docker/dev/compose.yml up -d web
+#   docker compose -f docker/dev/compose.yml exec web php artisan ...
+#   docker compose -f docker/dev/compose.yml --profile collector up -d collector  # needs FLOPPY_* in env
+#
+# Web http://localhost:8100 · MySQL 127.0.0.1:3318 (the port the tests and CI use) — docs/local-stack.md
+name: carbot-dev
+
+services:
+  mysql:
+    image: mysql:9.1
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root-local
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports: ["3318:3306"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot-local"]
+      interval: 5s
+      retries: 40
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+
+  web:
+    build: { context: ../.., dockerfile: docker/dev/Dockerfile }
+    image: carbot-dev-web
+    restart: unless-stopped
+    depends_on: { mysql: { condition: service_healthy }, redis: { condition: service_started } }
+    ports: ["8100:8080"]
+    volumes:
+      - ${CARBOT_SRC:-../..}/laravel:/var/www/html
+      - ${CARBOT_SRC:-../..}/miniapp:/var/www/html/miniapp
+      - ${CARBOT_SRC:-../..}/contracts:/var/www/contracts:ro
+      - ${CARBOT_SRC:-../..}/analysis:/var/www/analysis:ro
+      - vendor:/var/www/html/vendor
+      - node_modules:/var/www/html/node_modules
+      - bootstrap_cache:/var/www/html/bootstrap/cache
+      - composer_cache:/composer
+      - ./grants.sql:/grants.sql:ro
+    environment:
+      CARBOT_SRC_LABEL: ${CARBOT_SRC:-repo root}
+      DEV_SCHEDULER: ${DEV_SCHEDULER:-false}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8100
+      APP_KEY: base64:nGJgIZ2iQIJk0thB2b7thGAItcM/jSEpimGvJAxgGyc=  # throwaway key of local stands only
+      LOG_CHANNEL: stack
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: carbot
+      DB_USERNAME: root
+      DB_PASSWORD: root-local
+      MYSQL_ROOT_PASSWORD: root-local
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      CACHE_STORE: redis
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+      COLLECTOR_MODE: primary
+      COLLECTOR_DB_DATABASE: collector
+      PARSER_ENABLED: "false"
+      ENCAR_ENABLED: "false"
+      KBCHA_ENABLED: "false"
+      # keeps the real bot token from laravel/.env out of the local stand
+      TELEGRAM_BOT_TOKEN: ""
+
+  collector:
+    profiles: [collector]
+    build:
+      context: ${CARBOT_SRC:-../..}/collector
+    image: carbot-dev-collector
+    restart: unless-stopped
+    depends_on: { mysql: { condition: service_healthy } }
+    stop_grace_period: 40s
+    volumes:
+      - ${CARBOT_SRC:-../..}/collector/src:/app/src:ro
+    environment:
+      COLLECTOR_DATABASE_URL: mysql+aiomysql://collector:collector-local@mysql:3306/collector
+      COLLECTOR_CORE_SCHEMA: carbot
+      COLLECTOR_CLAIM: all
+      COLLECTOR_POLL_SECONDS: "5"
+      COLLECTOR_CONCURRENCY: "4"
+      COLLECTOR_PROXY_SESSIONS: "4"
+      LOG_LEVEL: INFO
+      FLOPPY_USERNAME: ${FLOPPY_USERNAME:-}
+      FLOPPY_PASSWORD: ${FLOPPY_PASSWORD:-}
+      FLOPPY_HOST: ${FLOPPY_HOST:-}
+
+volumes:
+  mysql:
+  redis:
+  vendor:
+  node_modules:
+  bootstrap_cache:
+  composer_cache:

@@ -1,4 +1,4 @@
-Use the `mysql-carbot` MCP to fetch a quick status overview of the production database.
+Use the `railway-prod-db` skill (`prod-sql.sh carbot`, read-only) to fetch a quick status overview of the production database.
 
 Run these queries in order:
 

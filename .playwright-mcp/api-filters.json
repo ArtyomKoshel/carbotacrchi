@@ -1,0 +1,1718 @@
+{
+  "ok": true,
+  "data": {
+    "makes": {
+      "Audi": [
+        "A1",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A6 e-tron",
+        "A7",
+        "A8",
+        "Q2",
+        "Q3",
+        "Q4 e-tron",
+        "Q5",
+        "Q6 e-tron",
+        "Q7",
+        "Q8",
+        "Q8 e-tron",
+        "R8",
+        "RS e-tron GT",
+        "RS3",
+        "RS5",
+        "RS6",
+        "RS7",
+        "RSQ8",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8",
+        "SQ5",
+        "SQ6 e-tron",
+        "SQ7",
+        "SQ8",
+        "TT",
+        "TTS",
+        "e-tron",
+        "e-tron GT"
+      ],
+      "BMW": [
+        "1 Series",
+        "2 Series",
+        "3 Series",
+        "4 Series",
+        "5 Series",
+        "6 Series",
+        "7 Series",
+        "8 Series",
+        "GranTurismo (GT)",
+        "M2",
+        "M3",
+        "M4",
+        "M5",
+        "M6",
+        "M8",
+        "X1",
+        "X2",
+        "X3",
+        "X3M",
+        "X4",
+        "X4M",
+        "X5",
+        "X5M",
+        "X6",
+        "X6M",
+        "X7",
+        "XM",
+        "Z4",
+        "i3",
+        "i4",
+        "i5",
+        "i7",
+        "i8",
+        "iX",
+        "iX1",
+        "iX2",
+        "iX3"
+      ],
+      "BYD": [
+        "Atto 3",
+        "Dolphin",
+        "Seal",
+        "Sealion 7"
+      ],
+      "Bentley": [
+        "Bentayga",
+        "Continental",
+        "Flying Spur",
+        "Mulsanne"
+      ],
+      "Cadillac": [
+        "ATS",
+        "ATS-V",
+        "CT4",
+        "CT5",
+        "CT5-V",
+        "CT6",
+        "CTS",
+        "Escalade",
+        "Lyriq",
+        "XT4",
+        "XT5",
+        "XT6"
+      ],
+      "Chevrolet": [
+        "Corvette",
+        "Express Van",
+        "Suburban",
+        "Tahoe"
+      ],
+      "Chevrolet (GM Daewoo)": [
+        "Alpheon",
+        "Aveo",
+        "Bolt EUV",
+        "Bolt EV",
+        "Camaro",
+        "Captiva",
+        "Colorado",
+        "Corvette",
+        "Cruze",
+        "Damas",
+        "Equinox",
+        "Impala",
+        "Labo",
+        "Malibu",
+        "Orlando",
+        "Spark",
+        "Tahoe",
+        "Trailblazer",
+        "Traverse",
+        "Trax",
+        "Volt"
+      ],
+      "Chrysler": [
+        "Grand Voyager"
+      ],
+      "Citroën/DS": [
+        "C3 Aircross",
+        "C4 Cactus",
+        "C4 Picasso",
+        "C4 SpaceTourer",
+        "C5 Aircross",
+        "DS3",
+        "DS4",
+        "DS7"
+      ],
+      "Dodge": [
+        "Challenger",
+        "Charger",
+        "Grand Caravan",
+        "Ram Pickup"
+      ],
+      "Ferrari": [
+        "California",
+        "F8",
+        "GTC4 Lusso",
+        "Portofino",
+        "Purosangue",
+        "Roma",
+        "SF90"
+      ],
+      "Fiat": [
+        "Ducato"
+      ],
+      "Ford": [
+        "Bronco",
+        "Escape",
+        "Expedition",
+        "Explorer",
+        "F150",
+        "F250",
+        "F350",
+        "Focus",
+        "Fusion",
+        "Kuga",
+        "Mondeo",
+        "Mustang",
+        "Ranger",
+        "Taurus",
+        "Transit"
+      ],
+      "Genesis": [
+        "EQ900",
+        "G70",
+        "G80",
+        "G90",
+        "GV60",
+        "GV70",
+        "GV80"
+      ],
+      "Honda": [
+        "Accord",
+        "CR-V",
+        "Civic",
+        "HR-V",
+        "N-BOX",
+        "N-WGN",
+        "Odyssey",
+        "Pilot",
+        "S660"
+      ],
+      "Hyundai": [
+        "Accent",
+        "Aslan",
+        "Avante",
+        "Casper",
+        "Equus",
+        "Genesis",
+        "Grandeur",
+        "Ioniq",
+        "Ioniq 5",
+        "Ioniq 6",
+        "Ioniq 9",
+        "Kona",
+        "Maxcruz",
+        "Nexo",
+        "Palisade",
+        "ST1",
+        "Santa Fe",
+        "Solati",
+        "Sonata",
+        "Starex",
+        "Staria",
+        "Tucson",
+        "Veloster",
+        "Venue",
+        "Veracruz",
+        "i30",
+        "i40"
+      ],
+      "Infiniti": [
+        "Q30",
+        "Q50",
+        "Q60",
+        "Q70",
+        "QX30",
+        "QX50",
+        "QX60",
+        "QX70",
+        "QX80"
+      ],
+      "Jaguar": [
+        "E-PACE",
+        "F-PACE",
+        "F-TYPE",
+        "I-PACE",
+        "XE",
+        "XF",
+        "XJ"
+      ],
+      "Jeep": [
+        "Avenger",
+        "Cherokee",
+        "Compass",
+        "Gladiator",
+        "Renegade",
+        "Wrangler"
+      ],
+      "KG Mobility (SsangYong)": [
+        "Actyon",
+        "Chairman",
+        "Korando",
+        "Musso",
+        "Rexton",
+        "Tivoli",
+        "Torres"
+      ],
+      "Kia": [
+        "Carens",
+        "Carnival",
+        "EV3",
+        "EV4",
+        "EV5",
+        "EV6",
+        "EV9",
+        "K3",
+        "K5",
+        "K7",
+        "K8",
+        "K9",
+        "Mohave",
+        "Morning",
+        "Niro",
+        "PV5",
+        "Pride",
+        "Ray",
+        "Seltos",
+        "Sorento",
+        "Soul",
+        "Sportage",
+        "Stinger",
+        "Stonic",
+        "Tasman"
+      ],
+      "Lamborghini": [
+        "Huracán",
+        "Revuelto",
+        "Urus"
+      ],
+      "Land Rover": [
+        "Defender",
+        "Discovery",
+        "Discovery Sport",
+        "Range Rover",
+        "Range Rover Evoque",
+        "Range Rover Sport",
+        "Range Rover Velar"
+      ],
+      "Lexus": [
+        "CT200h",
+        "ES",
+        "GS",
+        "GX",
+        "IS",
+        "LM",
+        "LS",
+        "LX",
+        "NX",
+        "RC",
+        "RX",
+        "RZ",
+        "UX"
+      ],
+      "Lincoln": [
+        "Aviator",
+        "Continental",
+        "Corsair",
+        "MKC",
+        "MKS",
+        "MKT",
+        "MKX",
+        "MKZ",
+        "Nautilus",
+        "Navigator"
+      ],
+      "Maserati": [
+        "Ghibli",
+        "GranCabrio",
+        "GranTurismo",
+        "Grecale",
+        "Levante",
+        "MC20",
+        "Quattroporte"
+      ],
+      "McLaren": [
+        "650S",
+        "720S",
+        "750S",
+        "Artura",
+        "GT"
+      ],
+      "Mercedes-Benz": [
+        "A-Class",
+        "AMG GT",
+        "B-Class",
+        "C-Class",
+        "CLA-Class",
+        "CLE-Class",
+        "CLS-Class",
+        "E-Class",
+        "EQA",
+        "EQB",
+        "EQC",
+        "EQE",
+        "EQS",
+        "G-Class",
+        "GL-Class",
+        "GLA-Class",
+        "GLB-Class",
+        "GLC-Class",
+        "GLE-Class",
+        "GLK-Class",
+        "GLS-Class",
+        "M-Class",
+        "S-Class",
+        "SL-Class",
+        "SLC-Class",
+        "SLK-Class",
+        "Sprinter",
+        "V-Class"
+      ],
+      "Mini": [
+        "Aceman",
+        "Clubman",
+        "Cooper",
+        "Cooper Convertible",
+        "Countryman",
+        "Coupe",
+        "Roadster"
+      ],
+      "Nissan": [
+        "Altima",
+        "Cashcai",
+        "Cube",
+        "Juke",
+        "Leaf",
+        "Maxima",
+        "Murano",
+        "Pathfinder",
+        "Rogue",
+        "Sentra",
+        "X-Trail"
+      ],
+      "Other Imported Cars": [
+        "Golf"
+      ],
+      "Other Manufacturers": [
+        "Other Passenger Cars"
+      ],
+      "Polestar": [
+        "Polestar 2",
+        "Polestar 4"
+      ],
+      "Porsche": [
+        "Boxster",
+        "Cayenne",
+        "Cayman",
+        "Macan",
+        "Panamera",
+        "Taycan"
+      ],
+      "Renault Korea (Samsung)": [
+        "Arkana",
+        "Captur",
+        "Clio",
+        "Filante",
+        "Grand Koleos",
+        "Master",
+        "QM3",
+        "QM5",
+        "QM6",
+        "SM3",
+        "SM5",
+        "SM6",
+        "SM7",
+        "Scenic",
+        "Twizy",
+        "XM3",
+        "Zoe"
+      ],
+      "Rolls-Royce": [
+        "Cullinan",
+        "Dawn",
+        "Ghost",
+        "Phantom",
+        "Spectre",
+        "Wraith"
+      ],
+      "Tesla": [
+        "Cybertruck",
+        "Model 3",
+        "Model S",
+        "Model X",
+        "Model Y"
+      ],
+      "Toyota": [
+        "Alphard",
+        "Avalon",
+        "Camry",
+        "Crown",
+        "FJ Cruiser",
+        "Highlander",
+        "Prius",
+        "RAV4",
+        "Sienna",
+        "Supra",
+        "Tacoma",
+        "Tundra",
+        "Yaris (Vitz)"
+      ],
+      "Volkswagen": [
+        "Arteon",
+        "Atlas",
+        "Beetle",
+        "CC",
+        "Golf",
+        "ID.4",
+        "ID.5",
+        "Jetta",
+        "Passat",
+        "Polo",
+        "Scirocco",
+        "T-Roc",
+        "Tiguan",
+        "Touareg"
+      ],
+      "Volvo": [
+        "C40",
+        "EX30",
+        "S60",
+        "S80",
+        "S90",
+        "V40",
+        "V60",
+        "V90",
+        "XC40",
+        "XC60",
+        "XC70",
+        "XC90"
+      ],
+      "Xinyuan": [
+        "ET Van"
+      ]
+    },
+    "makeOptions": [
+      {
+        "value": "Audi",
+        "label": "Audi"
+      },
+      {
+        "value": "BMW",
+        "label": "BMW"
+      },
+      {
+        "value": "BYD",
+        "label": "BYD"
+      },
+      {
+        "value": "Bentley",
+        "label": "Bentley"
+      },
+      {
+        "value": "Cadillac",
+        "label": "Cadillac"
+      },
+      {
+        "value": "Chevrolet",
+        "label": "Chevrolet"
+      },
+      {
+        "value": "Chevrolet (GM Daewoo)",
+        "label": "Chevrolet (GM Daewoo)"
+      },
+      {
+        "value": "Chrysler",
+        "label": "Chrysler"
+      },
+      {
+        "value": "Citroën/DS",
+        "label": "Citroën/DS"
+      },
+      {
+        "value": "Dodge",
+        "label": "Dodge"
+      },
+      {
+        "value": "Ferrari",
+        "label": "Ferrari"
+      },
+      {
+        "value": "Fiat",
+        "label": "Fiat"
+      },
+      {
+        "value": "Ford",
+        "label": "Ford"
+      },
+      {
+        "value": "Genesis",
+        "label": "Genesis"
+      },
+      {
+        "value": "Honda",
+        "label": "Honda"
+      },
+      {
+        "value": "Hyundai",
+        "label": "Hyundai"
+      },
+      {
+        "value": "Infiniti",
+        "label": "Infiniti"
+      },
+      {
+        "value": "Jaguar",
+        "label": "Jaguar"
+      },
+      {
+        "value": "Jeep",
+        "label": "Jeep"
+      },
+      {
+        "value": "KG Mobility (SsangYong)",
+        "label": "KG Mobility (SsangYong)"
+      },
+      {
+        "value": "Kia",
+        "label": "Kia"
+      },
+      {
+        "value": "Lamborghini",
+        "label": "Lamborghini"
+      },
+      {
+        "value": "Land Rover",
+        "label": "Land Rover"
+      },
+      {
+        "value": "Lexus",
+        "label": "Lexus"
+      },
+      {
+        "value": "Lincoln",
+        "label": "Lincoln"
+      },
+      {
+        "value": "Maserati",
+        "label": "Maserati"
+      },
+      {
+        "value": "McLaren",
+        "label": "McLaren"
+      },
+      {
+        "value": "Mercedes-Benz",
+        "label": "Mercedes-Benz"
+      },
+      {
+        "value": "Mini",
+        "label": "Mini"
+      },
+      {
+        "value": "Nissan",
+        "label": "Nissan"
+      },
+      {
+        "value": "Other Imported Cars",
+        "label": "Other Imported Cars"
+      },
+      {
+        "value": "Other Manufacturers",
+        "label": "Other Manufacturers"
+      },
+      {
+        "value": "Polestar",
+        "label": "Polestar"
+      },
+      {
+        "value": "Porsche",
+        "label": "Porsche"
+      },
+      {
+        "value": "Renault Korea (Samsung)",
+        "label": "Renault Korea (Samsung)"
+      },
+      {
+        "value": "Rolls-Royce",
+        "label": "Rolls-Royce"
+      },
+      {
+        "value": "Tesla",
+        "label": "Tesla"
+      },
+      {
+        "value": "Toyota",
+        "label": "Toyota"
+      },
+      {
+        "value": "Volkswagen",
+        "label": "Volkswagen"
+      },
+      {
+        "value": "Volvo",
+        "label": "Volvo"
+      },
+      {
+        "value": "Xinyuan",
+        "label": "Xinyuan"
+      }
+    ],
+    "sources": [
+      {
+        "key": "encar",
+        "name": "Encar"
+      }
+    ],
+    "cardFields": [
+      "source",
+      "make",
+      "model",
+      "trim",
+      "generation",
+      "year",
+      "first_reg_date",
+      "listed_at",
+      "price",
+      "mileage",
+      "engine_volume",
+      "seat_count",
+      "fuel",
+      "transmission",
+      "body_type",
+      "drive_type",
+      "color",
+      "has_accident",
+      "flood_history",
+      "total_loss_history",
+      "insurance_count",
+      "plate_number",
+      "owners_count",
+      "title",
+      "lien_status",
+      "seizure_status",
+      "options",
+      "inspection_count",
+      "accident_max_cost",
+      "badge",
+      "lot_url",
+      "model_group",
+      "registration_date",
+      "seat_color",
+      "sell_type"
+    ],
+    "filterFields": [
+      {
+        "name": "source",
+        "label": "Источники",
+        "dtype": "enum",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "make",
+        "label": "Марка / Модель / Комплектация",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "model",
+        "label": "Модель",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "trim",
+        "label": "Комплектация",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "generation",
+        "label": "Поколение",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "year",
+        "label": "Год выпуска",
+        "dtype": "int",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "first_reg_date",
+        "label": "Первая регистрация",
+        "dtype": "date",
+        "category": "dates",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "listed_at",
+        "label": "Дата публикации",
+        "dtype": "date",
+        "category": "dates",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "price",
+        "label": "Цена (₩)",
+        "dtype": "int",
+        "category": "price",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "mileage",
+        "label": "Пробег (км)",
+        "dtype": "int",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "engine_volume",
+        "label": "Объём двигателя (л)",
+        "dtype": "float",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "seat_count",
+        "label": "Мест в салоне",
+        "dtype": "int",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "fuel",
+        "label": "Тип топлива",
+        "dtype": "enum",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "transmission",
+        "label": "Коробка передач",
+        "dtype": "enum",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "body_type",
+        "label": "Тип кузова",
+        "dtype": "enum",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "drive_type",
+        "label": "Привод",
+        "dtype": "enum",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "color",
+        "label": "Цвет",
+        "dtype": "string",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "has_accident",
+        "label": "История ДТП",
+        "dtype": "bool",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "flood_history",
+        "label": "Подтопление",
+        "dtype": "bool",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "total_loss_history",
+        "label": "Тотальная потеря",
+        "dtype": "bool",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "insurance_count",
+        "label": "Страховых случаев",
+        "dtype": "int",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "plate_number",
+        "label": "Номерной знак",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "owners_count",
+        "label": "Владельцев",
+        "dtype": "int",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "title",
+        "label": "Title",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "lien_status",
+        "label": "Залог",
+        "dtype": "enum",
+        "category": "legal",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "seizure_status",
+        "label": "Арест",
+        "dtype": "enum",
+        "category": "legal",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "repair_cost",
+        "label": "Стоимость ремонта",
+        "dtype": "int",
+        "category": "price",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "retail_value",
+        "label": "Розничная стоимость",
+        "dtype": "int",
+        "category": "price",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "options",
+        "label": "Опции / Комплектация",
+        "dtype": "json",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "is_domestic",
+        "label": "Is Domestic",
+        "dtype": "bool",
+        "category": "identity",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "import_type",
+        "label": "Import Type",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "paid_options",
+        "label": "Платные опции",
+        "dtype": "json",
+        "category": "specs",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "inspection_count",
+        "label": "Inspection Count",
+        "dtype": "int",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "accident_max_cost",
+        "label": "Accident Max Cost",
+        "dtype": "int",
+        "category": "condition",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "total_accident_cost",
+        "label": "Total Accident Cost",
+        "dtype": "int",
+        "category": "condition",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "inspection_has_accident",
+        "label": "Inspection Has Accident",
+        "dtype": "bool",
+        "category": "condition",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "inspection_has_flood",
+        "label": "Inspection Has Flood",
+        "dtype": "bool",
+        "category": "condition",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "badge",
+        "label": "Badge",
+        "dtype": "string",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "location",
+        "label": "Регион",
+        "dtype": "string",
+        "category": "identification",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "lot_url",
+        "label": "Ссылка на лот",
+        "dtype": "string",
+        "category": "links",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "model_group",
+        "label": "Группа моделей",
+        "dtype": "string",
+        "category": "vehicle",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "registration_date",
+        "label": "Дата регистрации",
+        "dtype": "date",
+        "category": "identity",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "registration_year_month",
+        "label": "Год/месяц регистрации",
+        "dtype": "int",
+        "category": "identity",
+        "enabled": false,
+        "displayInCard": false
+      },
+      {
+        "name": "seat_color",
+        "label": "Цвет салона",
+        "dtype": "string",
+        "category": "specs",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "sell_type",
+        "label": "Тип продажи",
+        "dtype": "enum",
+        "category": "sales",
+        "enabled": true,
+        "displayInCard": true
+      },
+      {
+        "name": "vin",
+        "label": "VIN",
+        "dtype": "string",
+        "category": "identity",
+        "enabled": false,
+        "displayInCard": false
+      }
+    ],
+    "years": [
+      2026,
+      2025,
+      2024,
+      2023,
+      2022,
+      2021,
+      2020,
+      2019,
+      2018,
+      2017,
+      2016,
+      2015,
+      2014,
+      2013,
+      2012,
+      2011,
+      2010,
+      2009,
+      2008,
+      2007,
+      2006,
+      2005,
+      2004,
+      2003,
+      2002,
+      2001,
+      2000
+    ],
+    "bodyTypes": [
+      "coupe",
+      "kei",
+      "sedan",
+      "suv"
+    ],
+    "bodyTypeOptions": [
+      {
+        "value": "suv",
+        "label": "SUV"
+      },
+      {
+        "value": "coupe",
+        "label": "Купе"
+      },
+      {
+        "value": "kei",
+        "label": "Малолитражка"
+      },
+      {
+        "value": "sedan",
+        "label": "Седан"
+      }
+    ],
+    "transmissions": [
+      "automatic",
+      "cvt",
+      "manual"
+    ],
+    "transmissionOptions": [
+      {
+        "value": "automatic",
+        "label": "Автомат"
+      },
+      {
+        "value": "cvt",
+        "label": "Вариатор"
+      },
+      {
+        "value": "manual",
+        "label": "Механика"
+      }
+    ],
+    "fuelTypes": [
+      "diesel",
+      "electric",
+      "gasoline",
+      "hybrid",
+      "hydrogen",
+      "lpg"
+    ],
+    "fuelTypeOptions": [
+      {
+        "value": "lpg",
+        "label": "LPG"
+      },
+      {
+        "value": "gasoline",
+        "label": "Бензин"
+      },
+      {
+        "value": "hydrogen",
+        "label": "Водород"
+      },
+      {
+        "value": "hybrid",
+        "label": "Гибрид"
+      },
+      {
+        "value": "diesel",
+        "label": "Дизель"
+      },
+      {
+        "value": "electric",
+        "label": "Электро"
+      }
+    ],
+    "driveTypes": [
+      "awd",
+      "fwd",
+      "rwd"
+    ],
+    "driveTypeOptions": [
+      {
+        "value": "rwd",
+        "label": "Задний"
+      },
+      {
+        "value": "fwd",
+        "label": "Передний"
+      },
+      {
+        "value": "awd",
+        "label": "Полный"
+      }
+    ],
+    "colors": [
+      "Black",
+      "Black Two-Tone",
+      "Blue",
+      "Brown",
+      "Brown Two-Tone",
+      "Gold",
+      "Gold Two-Tone",
+      "Gray",
+      "Green",
+      "Orange",
+      "Pearl Two-Tone",
+      "Purple",
+      "Red",
+      "Silver",
+      "Silver Two-Tone",
+      "White",
+      "White Two-Tone",
+      "Yellow",
+      "갈대색",
+      "담녹색",
+      "분홍색",
+      "은하색",
+      "자주색",
+      "청옥색",
+      "하늘색"
+    ],
+    "colorOptions": [
+      {
+        "value": "White",
+        "label": "Белый"
+      },
+      {
+        "value": "White Two-Tone",
+        "label": "Двухцветный (белый)"
+      },
+      {
+        "value": "Gold Two-Tone",
+        "label": "Двухцветный (золотой)"
+      },
+      {
+        "value": "Brown Two-Tone",
+        "label": "Двухцветный (коричневый)"
+      },
+      {
+        "value": "Pearl Two-Tone",
+        "label": "Двухцветный (перламутр)"
+      },
+      {
+        "value": "Silver Two-Tone",
+        "label": "Двухцветный (серебристый)"
+      },
+      {
+        "value": "Black Two-Tone",
+        "label": "Двухцветный (чёрный)"
+      },
+      {
+        "value": "Yellow",
+        "label": "Жёлтый"
+      },
+      {
+        "value": "Green",
+        "label": "Зелёный"
+      },
+      {
+        "value": "담녹색",
+        "label": "Зелёный"
+      },
+      {
+        "value": "Gold",
+        "label": "Золотой"
+      },
+      {
+        "value": "Brown",
+        "label": "Коричневый"
+      },
+      {
+        "value": "갈대색",
+        "label": "Коричневый"
+      },
+      {
+        "value": "Red",
+        "label": "Красный"
+      },
+      {
+        "value": "Orange",
+        "label": "Оранжевый"
+      },
+      {
+        "value": "분홍색",
+        "label": "Розовый"
+      },
+      {
+        "value": "Silver",
+        "label": "Серебристый"
+      },
+      {
+        "value": "은하색",
+        "label": "Серебристый"
+      },
+      {
+        "value": "Gray",
+        "label": "Серый"
+      },
+      {
+        "value": "Blue",
+        "label": "Синий"
+      },
+      {
+        "value": "청옥색",
+        "label": "Синий"
+      },
+      {
+        "value": "하늘색",
+        "label": "Синий"
+      },
+      {
+        "value": "Purple",
+        "label": "Фиолетовый"
+      },
+      {
+        "value": "자주색",
+        "label": "Фиолетовый"
+      },
+      {
+        "value": "Black",
+        "label": "Чёрный"
+      }
+    ],
+    "options": [
+      {
+        "value": "010",
+        "label": "Люк",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-1.png",
+        "category": "exterior"
+      },
+      {
+        "value": "029",
+        "label": "Фары HID",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-2.png",
+        "category": "exterior"
+      },
+      {
+        "value": "075",
+        "label": "Фары LED",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-2.png",
+        "category": "exterior"
+      },
+      {
+        "value": "059",
+        "label": "Электропривод багажника",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-3.png",
+        "category": "exterior"
+      },
+      {
+        "value": "080",
+        "label": "Мягкое закрытие дверей",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-4.png",
+        "category": "exterior"
+      },
+      {
+        "value": "024",
+        "label": "Складные зеркала",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-5.png",
+        "category": "exterior"
+      },
+      {
+        "value": "017",
+        "label": "Литые диски",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-6.png",
+        "category": "exterior"
+      },
+      {
+        "value": "062",
+        "label": "Рейлинги",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-7.png",
+        "category": "exterior"
+      },
+      {
+        "value": "082",
+        "label": "Подогрев руля",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-8.png",
+        "category": "exterior"
+      },
+      {
+        "value": "083",
+        "label": "Электрорегулировка руля",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-9.png",
+        "category": "exterior"
+      },
+      {
+        "value": "084",
+        "label": "Подрулевые лепестки",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-10.png",
+        "category": "exterior"
+      },
+      {
+        "value": "031",
+        "label": "Кнопки на руле",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-11.png",
+        "category": "exterior"
+      },
+      {
+        "value": "030",
+        "label": "Автозатемнение зеркала",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-12.png",
+        "category": "exterior"
+      },
+      {
+        "value": "074",
+        "label": "Hi-Pass (транспондер)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-13.png",
+        "category": "exterior"
+      },
+      {
+        "value": "006",
+        "label": "Центральный замок",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-14.png",
+        "category": "exterior"
+      },
+      {
+        "value": "008",
+        "label": "Усилитель руля",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-15.png",
+        "category": "exterior"
+      },
+      {
+        "value": "007",
+        "label": "Электростёкла",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option1-16.png",
+        "category": "exterior"
+      },
+      {
+        "value": "026",
+        "label": "Подушка водителя",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-1.png",
+        "category": "safety"
+      },
+      {
+        "value": "027",
+        "label": "Подушка пассажира",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-1.png",
+        "category": "safety"
+      },
+      {
+        "value": "020",
+        "label": "Боковые подушки",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-2.png",
+        "category": "safety"
+      },
+      {
+        "value": "056",
+        "label": "Шторки безопасности",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-3.png",
+        "category": "safety"
+      },
+      {
+        "value": "001",
+        "label": "ABS",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-4.png",
+        "category": "safety"
+      },
+      {
+        "value": "019",
+        "label": "TCS",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-5.png",
+        "category": "safety"
+      },
+      {
+        "value": "055",
+        "label": "ESC",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-6.png",
+        "category": "safety"
+      },
+      {
+        "value": "033",
+        "label": "TPMS",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-7.png",
+        "category": "safety"
+      },
+      {
+        "value": "088",
+        "label": "Контроль полосы (LDWS)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-8.png",
+        "category": "safety"
+      },
+      {
+        "value": "002",
+        "label": "Активная подвеска (ECS)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-9.png",
+        "category": "safety"
+      },
+      {
+        "value": "085",
+        "label": "Парктроник передний",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-10.png",
+        "category": "safety"
+      },
+      {
+        "value": "032",
+        "label": "Парктроник задний",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-10.png",
+        "category": "safety"
+      },
+      {
+        "value": "086",
+        "label": "Контроль мёртвых зон",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-11.png",
+        "category": "safety"
+      },
+      {
+        "value": "058",
+        "label": "Камера заднего вида",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-12.png",
+        "category": "safety"
+      },
+      {
+        "value": "087",
+        "label": "Камера 360°",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option2-13.png",
+        "category": "safety"
+      },
+      {
+        "value": "068",
+        "label": "Круиз-контроль",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-1.png",
+        "category": "convenience"
+      },
+      {
+        "value": "079",
+        "label": "Адаптивный круиз (ACC)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-1.png",
+        "category": "convenience"
+      },
+      {
+        "value": "095",
+        "label": "HUD (проекция на стекло)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-2.png",
+        "category": "convenience"
+      },
+      {
+        "value": "094",
+        "label": "Электропарковочный тормоз (EPB)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-3.png",
+        "category": "convenience"
+      },
+      {
+        "value": "023",
+        "label": "Климат-контроль",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-4.png",
+        "category": "convenience"
+      },
+      {
+        "value": "057",
+        "label": "Смарт-ключ",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-5.png",
+        "category": "convenience"
+      },
+      {
+        "value": "015",
+        "label": "Дистанционный замок",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-6.png",
+        "category": "convenience"
+      },
+      {
+        "value": "081",
+        "label": "Датчик дождя",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-7.png",
+        "category": "convenience"
+      },
+      {
+        "value": "097",
+        "label": "Автосвет",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-8.png",
+        "category": "convenience"
+      },
+      {
+        "value": "092",
+        "label": "Шторки задних дверей",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-9.png",
+        "category": "convenience"
+      },
+      {
+        "value": "093",
+        "label": "Шторка заднего стекла",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-9.png",
+        "category": "convenience"
+      },
+      {
+        "value": "005",
+        "label": "Навигация",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-10.png",
+        "category": "convenience"
+      },
+      {
+        "value": "004",
+        "label": "Монитор (передний)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-11.png",
+        "category": "convenience"
+      },
+      {
+        "value": "054",
+        "label": "Монитор (задний)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-12.png",
+        "category": "convenience"
+      },
+      {
+        "value": "096",
+        "label": "Bluetooth",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-13.png",
+        "category": "convenience"
+      },
+      {
+        "value": "003",
+        "label": "CD-проигрыватель",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-14.png",
+        "category": "convenience"
+      },
+      {
+        "value": "072",
+        "label": "USB",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-15.png",
+        "category": "convenience"
+      },
+      {
+        "value": "071",
+        "label": "AUX",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option3-16.png",
+        "category": "convenience"
+      },
+      {
+        "value": "014",
+        "label": "Кожаный салон",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-1.png",
+        "category": "interior"
+      },
+      {
+        "value": "021",
+        "label": "Электросиденье водителя",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-2.png",
+        "category": "interior"
+      },
+      {
+        "value": "035",
+        "label": "Электросиденье пассажира",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-2.png",
+        "category": "interior"
+      },
+      {
+        "value": "089",
+        "label": "Электросиденья задние",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-3.png",
+        "category": "interior"
+      },
+      {
+        "value": "022",
+        "label": "Подогрев сидений (перед)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-4.png",
+        "category": "interior"
+      },
+      {
+        "value": "063",
+        "label": "Подогрев сидений (зад)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-4.png",
+        "category": "interior"
+      },
+      {
+        "value": "051",
+        "label": "Память сиденья",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-5.png",
+        "category": "interior"
+      },
+      {
+        "value": "078",
+        "label": "Память сиденья пассажира",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-5.png",
+        "category": "interior"
+      },
+      {
+        "value": "034",
+        "label": "Вентиляция сидений (перед)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-6.png",
+        "category": "interior"
+      },
+      {
+        "value": "077",
+        "label": "Вентиляция сидений (пасс)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-6.png",
+        "category": "interior"
+      },
+      {
+        "value": "090",
+        "label": "Вентиляция сидений (зад)",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-7.png",
+        "category": "interior"
+      },
+      {
+        "value": "091",
+        "label": "Массаж сидений",
+        "icon_url": "https://www.encar.com/carsdata/option_images/option4-8.png",
+        "category": "interior"
+      }
+    ],
+    "damageTypes": [],
+    "titleTypes": []
+  }
+}

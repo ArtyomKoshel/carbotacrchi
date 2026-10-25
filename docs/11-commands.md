@@ -384,8 +384,8 @@ php artisan taxonomy:classify-anomalies --source=encar --batch=20
 ## Типичный полный цикл после парсинга
 
 ```bash
-# 1. Запустить парсер (Python)
-docker compose exec parser python main.py --once
+# 1. Запустить прогон: админка → Площадки → Encar → «Запустить прогон» (его выполняет сборщик)
+# Локально команды artisan — через docker compose -f docker/dev/compose.yml exec web php artisan … (docs/local-stack.md)
 
 # 2. Нормализовать (dry-run сначала)
 php artisan lots:normalize-encar-taxonomy --source=encar --limit=10000

@@ -1,0 +1,44 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]: Загрузка…
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - link "CarBot" [ref=e7] [cursor=pointer]:
+        - /url: "#"
+      - search [ref=e8]:
+        - 'searchbox "ИИ-поиск: опишите машину словами или вставьте ссылку Encar"'
+        - generic [aria-hidden] [ref=e12]: ИИ
+        - generic [ref=e13]: /
+        - text: → → →
+      - navigation "Разделы" [ref=e14]:
+        - link "Поиск" [ref=e15] [cursor=pointer]:
+          - /url: "#"
+        - link "Избранное" [ref=e16] [cursor=pointer]:
+          - /url: "#favorites"
+        - link "Сравнение" [ref=e17] [cursor=pointer]:
+          - /url: "#compare"
+        - link "Подписки" [ref=e18] [cursor=pointer]:
+          - /url: "#alerts"
+      - generic [ref=e20]:
+        - generic [ref=e21]: Войдите через Telegram, чтобы искать и сохранять
+        - button "Войти через Telegram" [ref=e22] [cursor=pointer]
+    - complementary "Фильтры" [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: Фильтры
+        - button "Сбросить" [ref=e26] [cursor=pointer]
+    - main [ref=e27]:
+      - region "Результаты поиска" [ref=e28]:
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: Сортировка
+            - combobox "Сортировка" [ref=e33] [cursor=pointer]:
+              - option "Сначала новые" [selected]
+              - option "Дешевле"
+              - option "Дороже"
+              - option "Меньше пробег"
+              - option "Новее год"
+              - option "Старше год"
+              - option "Больше пробег"
+          - group "Вид" [ref=e34]:
+            - button "Таблица" [pressed] [ref=e35] [cursor=pointer]
+            - button "Карточки" [ref=e36] [cursor=pointer]
+    - status
