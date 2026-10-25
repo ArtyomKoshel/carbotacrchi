@@ -87,23 +87,25 @@ class LotInfolist
         $plain = fn (string $field, ?string $label = null) => TextEntry::make($field)
             ->label($label ?? AdminUiLabels::field($field))
             ->placeholder('—');
-        // English value with the Korean original from the platform below it
-        $level = fn (string $en, string $kr, string $label) => TextEntry::make($en)
+        // the reference catalog's level, with what Encar wrote below it
+        $level = fn (string $key, string $label, string ...$encar) => TextEntry::make("catalog_{$key}")
             ->label($label)
-            ->state(fn (Lot $record) => $record->getAttribute($en) ?: $record->getAttribute($kr))
-            ->belowContent(fn (Lot $record) => $record->getAttribute($en) && $record->getAttribute($kr) !== $record->getAttribute($en)
-                ? $record->getAttribute($kr)
-                : null)
-            ->placeholder('—');
+            ->state(fn (Lot $record) => LotFormat::place($record)[$key])
+            ->belowContent(function (Lot $record) use ($encar) {
+                $kr = implode(' / ', array_filter(array_map(fn (string $f) => $record->getAttribute($f), $encar)));
+                return $kr !== '' ? "как у Encar: {$kr}" : null;
+            })
+            ->placeholder(fn (Lot $record) => $record->ref_model_id ? 'не указано' : LotFormat::UNPLACED);
 
         return [
             Section::make('Модель')->columns(3)->compact()->schema([
-                $level('make_en', 'make', 'Марка'),
-                $level('model_group_en', 'model_group', 'Модель'),
-                $level('model_en', 'model', 'Поколение'),
-                $level('badge_group_en', 'badge_group', 'Группа версий'),
-                $level('badge_en', 'badge', 'Версия'),
-                $level('trim_en', 'trim', 'Комплектация'),
+                $level('make', 'Марка', 'make'),
+                $level('model', 'Модель', 'model_group'),
+                $level('generation', 'Поколение', 'model'),
+                $level('modification', 'Модификация', 'badge_group', 'badge'),
+                $level('complectation', 'Комплектация', 'trim'),
+                TextEntry::make('catalog_status')->label('Справочник')
+                    ->state(fn (Lot $record) => LotFormat::placeStatus($record)),
             ]),
             Section::make('Характеристики')->columns(3)->compact()->schema([
                 $taxonomy('fuel'),

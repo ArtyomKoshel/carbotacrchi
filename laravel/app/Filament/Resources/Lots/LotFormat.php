@@ -4,24 +4,80 @@ namespace App\Filament\Resources\Lots;
 
 use App\Models\Lot;
 use App\Support\Taxonomy\TaxonomyLocalizer;
+use Illuminate\Support\Facades\DB;
 
 /** Display formats for lots in the panel. Prices are KRW integers, shown in ₩. */
 class LotFormat
 {
     private const NBSP = "\u{00A0}";
 
+    public const UNPLACED = 'не разобрано';
+
+    /** @var array<string, array<int, object>> ref_* rows by id, one query per table per request */
+    private static array $ref = [];
+
+    /** Make and model from the reference catalog; Encar's own Korean names for a lot not on it. */
     public static function title(Lot $lot): string
     {
-        $make  = $lot->make_en ?: $lot->make;
-        $model = $lot->model_en ?: ($lot->model_group_en ?: $lot->model);
+        $make = self::ref('ref_makes', $lot->ref_make_id)?->name ?? $lot->make;
+        $model = self::ref('ref_models', $lot->ref_model_id)?->name ?? $lot->model;
+        $generation = self::ref('ref_generations', $lot->ref_generation_id)?->code;
 
-        return trim("{$make} {$model}") ?: $lot->id;
+        return trim("{$make} {$model} {$generation}") ?: $lot->id;
     }
 
-    /** Trim (or badge when there is no trim) and the lot id. */
+    /** Modification and complectation of the catalog (or "не разобрано") and the lot id. */
     public static function subtitle(Lot $lot): string
     {
-        return implode(' · ', array_filter([$lot->trim_en ?: $lot->badge_en, $lot->id]));
+        $place = $lot->ref_model_id
+            ? [self::ref('ref_modifications', $lot->ref_modification_id)?->code, self::ref('ref_complectations', $lot->ref_complectation_id)?->name]
+            : [self::UNPLACED];
+
+        return implode(' · ', array_filter([...$place, $lot->id]));
+    }
+
+    /**
+     * The lot's place in the catalog, level by level (null where Encar did not state it).
+     *
+     * @return array{make: ?string, model: ?string, generation: ?string, modification: ?string, complectation: ?string}
+     */
+    public static function place(Lot $lot): array
+    {
+        $generation = self::ref('ref_generations', $lot->ref_generation_id);
+        $modification = self::ref('ref_modifications', $lot->ref_modification_id);
+
+        return [
+            'make' => self::ref('ref_makes', $lot->ref_make_id)?->name,
+            'model' => self::ref('ref_models', $lot->ref_model_id)?->name,
+            'generation' => $generation ? trim($generation->code . ' · ' . self::years($generation->year_from, $generation->year_to), ' ·') : null,
+            'modification' => $modification ? implode(', ', array_filter([
+                $modification->code,
+                $modification->fuel ? TaxonomyLocalizer::label('fuel', $modification->fuel) : null,
+                $modification->drive ? TaxonomyLocalizer::label('drive_type', $modification->drive) : null,
+            ])) : null,
+            'complectation' => self::ref('ref_complectations', $lot->ref_complectation_id)?->name,
+        ];
+    }
+
+    /** How the catalog read the lot's variant: placed, no engine, unplaced, or placed by hand. */
+    public static function placeStatus(Lot $lot): string
+    {
+        $variant = $lot->ref_variant_id
+            ? DB::table('ref_variants')->where('id', $lot->ref_variant_id)->first(['status', 'manual', 'reason'])
+            : null;
+
+        return match (true) {
+            $variant === null || $lot->ref_model_id === null => self::UNPLACED . ($variant?->reason ? " ({$variant->reason})" : ''),
+            (bool) $variant->manual => 'размечен вручную',
+            $variant->status === 'no_engine' => 'разобран, двигатель не указан',
+            $variant->status === 'unmatched' => 'частично: ' . ($variant->reason ?: 'есть непонятые слова'),
+            default => 'разобран',
+        };
+    }
+
+    public static function years(?int $from, ?int $to): string
+    {
+        return $from ? $from . '–' . ($to ?? '') : '';
     }
 
     public static function won(mixed $value): string
@@ -66,5 +122,15 @@ class LotFormat
             is_scalar($v)                                                  => (string) $v,
             default                                                        => json_encode($v, JSON_UNESCAPED_UNICODE),
         };
+    }
+
+    private static function ref(string $table, mixed $id): ?object
+    {
+        if (!$id) {
+            return null;
+        }
+        self::$ref[$table] ??= DB::table($table)->get()->keyBy('id')->all();
+
+        return self::$ref[$table][(int) $id] ?? null;
     }
 }
