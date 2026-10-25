@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FiltersController extends Controller
 {
@@ -48,7 +49,8 @@ class FiltersController extends Controller
 
         $cacheKey = 'api_filters_' . $locale . '_' . implode('_', $sources) . '_v' . self::cacheVersion();
 
-        $data = Cache::remember($cacheKey, 600, function () use ($locale, $sources, $currentYear) {
+        $data = Cache::get($cacheKey);
+        if ($data === null) {
             $makes         = [];
             $bodyTypes     = [];
             $transmissions = [];
@@ -57,6 +59,7 @@ class FiltersController extends Controller
             $colors        = [];
             $filterFields  = [];
             $optionItems   = [];
+            $failed        = false;
 
             try {
                 $makes         = $this->catalogMakes();
@@ -67,10 +70,12 @@ class FiltersController extends Controller
                 $colors        = $this->distinctValues('color', $sources);
                 $filterFields  = $this->buildFilterFieldsMeta();
                 $optionItems   = $this->buildOptionItems($locale);
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                $failed = true;
+                Log::warning('[filters] ' . $e->getMessage());
             }
 
-            return [
+            $data = [
                 'makeOptions'         => array_map(static fn (string $v) => ['value' => $v, 'label' => $v], $makes),
                 'sources'             => $this->buildSourceOptions($sources),
                 'cardFields'          => BotFilterSetting::getCardFields(),
@@ -90,7 +95,12 @@ class FiltersController extends Controller
                 'damageTypes'         => [],
                 'titleTypes'          => [],
             ];
-        });
+            // an answer without makes (the catalog not written yet, mid-deploy) or a failed one is
+            // not kept: the next request asks again instead of serving an empty list for 10 minutes
+            if (! $failed && $makes !== []) {
+                Cache::put($cacheKey, $data, 600);
+            }
+        }
 
         return response()->json(['ok' => true, 'data' => $data]);
     }

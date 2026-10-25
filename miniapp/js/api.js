@@ -1,6 +1,6 @@
 const API = (() => {
   const BASE = '/api';
-  const FILTERS_CACHE_KEY = 'carbot_filters_v5'; // v5: Russian labels
+  const FILTERS_CACHE_KEY = 'carbot_filters_v6'; // v6: makes from the reference catalog
   const FILTERS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes in ms
 
   async function request(method, path, body = null) {
@@ -39,14 +39,18 @@ const API = (() => {
       const raw = localStorage.getItem(FILTERS_CACHE_KEY);
       if (!raw) return null;
       const { ts, data } = JSON.parse(raw);
-      if (Date.now() - ts > FILTERS_CACHE_TTL) return null;
+      if (Date.now() - ts > FILTERS_CACHE_TTL || !_hasMakes(data)) return null;
       return data;
     } catch (_) {
       return null;
     }
   }
 
+  // an answer without makes (the server mid-deploy) is shown once, never kept
+  const _hasMakes = data => Array.isArray(data?.makeOptions) && data.makeOptions.length > 0;
+
   function _writeFiltersCache(data) {
+    if (!_hasMakes(data)) return;
     try {
       localStorage.setItem(FILTERS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
     } catch (_) {}
