@@ -2,7 +2,6 @@
 
 namespace App\Search\Specifications;
 
-use App\Models\Translation;
 use App\Services\SearchQuery;
 use App\Support\OptionBits;
 use Illuminate\Database\Query\Builder;
@@ -34,20 +33,6 @@ class OptionsSpec implements LotSpecification
 
             foreach ($jsonOnly as $code) {
                 $query->whereRaw('? MEMBER OF (lots.options)', [$code]);
-            }
-        }
-
-        if ($search->trim) {
-            $krVariants = Translation::resolveKorean($search->trim, 'trim');
-            if (!empty($krVariants)) {
-                $query->where(function (Builder $sub) use ($search, $krVariants): void {
-                    $sub->whereIn('trim', $krVariants)->orWhere('trim', $search->trim);
-                });
-            } else {
-                $query->where(function (Builder $sub) use ($search): void {
-                    $sub->where('trim', $search->trim)
-                        ->orWhere('trim', 'like', '%' . $search->trim . '%');
-                });
             }
         }
 

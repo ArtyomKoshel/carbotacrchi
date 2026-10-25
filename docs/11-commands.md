@@ -379,6 +379,19 @@ php artisan catalog:coverage --make=Mercedes-Benz --tree --limit=80
 
 ## Утилиты
 
+### `subscriptions:to-catalog`
+
+Разово записывает id справочника (`refMakeId`, `refModelId`, …) в сохранённые подписки, где марка, модель, поколение
+или комплектация названы текстом. Текст читается так же, как при поиске (`App\Catalog\CatalogNames`): старое значение
+`trim` вида «530e M 스포츠» становится модификацией 530e + комплектацией M Sport. Подписка с названием, которого нет
+в справочнике, после перехода не находит ничего — команда показывает такие строки отдельно.
+
+```bash
+php artisan subscriptions:to-catalog          # показать, что изменится
+php artisan subscriptions:to-catalog --apply  # записать
+```
+
+
 ### `lots:ai-model-en-backfill`
 
 Заполняет `model_en` через AI для лотов с NULL.

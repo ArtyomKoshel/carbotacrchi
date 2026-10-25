@@ -109,10 +109,16 @@ Audi, Porsche, Mini, Land Rover, Volkswagen, Volvo — 99,5–100%; остато
 |---|---|
 | `GET /api/catalog` | марки справочника с активными лотами |
 | `GET /api/catalog/{makeId}` | модели, поколения, модификации, комплектации и `cells` — `[model, generation, modification, complectation, lots]` |
-| `POST /api/search` | `refMakeId`, `refModelId`, `refGenerationIds[]`, `refModificationIds[]`, `refComplectationIds[]`; марка из справочника заменяет `make`/`model`/`badge`/`trim` |
+| `POST /api/search` | `refMakeId`, `refModelId`, `refGenerationIds[]`, `refModificationIds[]`, `refComplectationIds[]` |
 
-Мини-приложение: для марки из справочника — каскад `js/catalog-filter.js`, для остальных —
-прежние «Модель / Серия / Комплектация».
+Поиск фильтрует только по `ref_*`. Запрос, где машина названа текстом (ИИ-поиск, бот, сохранённые подписки, старые ссылки:
+`make`, `model`, `generation`, `badge`, `trim`), переводится в id на входе — `App\Catalog\CatalogNames` из `SearchQuery::fromArray`:
+- марка и модель — по имени без учёта регистра; модель без марки — если такое имя одно; точное имя раньше вхождения («Carnival» ≠ «Grand Carnival»);
+- поколение — по коду, вместе с рестайлингами («DN8» → DN8 и «DN8 · The Edge»), также «Sonata (DN8)»;
+- `trim` — комплектации марки в тексте (корейский — через словарь), остаток — код модификации («530e M 스포츠» → 530e + M Sport);
+- название, которого справочник не знает, не находит ничего (`SearchQuery::matchesNothing`): подписка не превращается в «все машины».
+
+Мини-приложение: каскад `js/catalog-filter.js` для всех марок. Старые «Модель / Серия / Комплектация» и `/api/filters/trims` убраны.
 
 ---
 

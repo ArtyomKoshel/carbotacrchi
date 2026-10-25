@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Catalog\CatalogLinker;
 use App\Catalog\CatalogStore;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -59,6 +60,12 @@ class CatalogRemap extends Command
             }
         } while (count($ids) === $chunk);
         $this->info(sprintf('Lots: %d seen, %d changed (%.1f s)', $seen, $written, microtime(true) - $started));
+
+        foreach (DB::table('ref_makes')->pluck('id') as $id) {
+            Cache::forget("api_catalog_make_{$id}");
+        }
+        Cache::forget('api_catalog_makes');
+        Cache::forget('catalog_names');
 
         $this->summary();
         return self::SUCCESS;

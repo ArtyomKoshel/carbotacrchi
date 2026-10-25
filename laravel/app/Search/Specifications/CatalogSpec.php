@@ -14,6 +14,10 @@ class CatalogSpec implements LotSpecification
 {
     public function apply(Builder $query, SearchQuery $search): void
     {
+        if ($search->matchesNothing) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
         if ($search->refMakeId) {
             $query->where('ref_make_id', $search->refMakeId);
         }

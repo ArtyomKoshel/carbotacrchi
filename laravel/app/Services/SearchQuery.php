@@ -20,6 +20,8 @@ class SearchQuery
     public array $refModificationIds = [];
     /** @var int[] */
     public array $refComplectationIds = [];
+    /** A make / model / generation / … named as text that the catalog does not know (App\Catalog\CatalogNames). */
+    public bool $matchesNothing = false;
     public int $yearFrom = 0;
     public int $yearTo = 0;
     public int $priceMax = 0;
@@ -146,6 +148,10 @@ class SearchQuery
 
         if (!empty($data['sources']) && is_array($data['sources'])) {
             $q->sources = array_map('strval', $data['sources']);
+        }
+
+        if ($q->make !== '' || $q->model !== '' || $q->generation !== '' || $q->badge !== '' || $q->trim !== '') {
+            app(\App\Catalog\CatalogNames::class)->resolve($q);
         }
 
         return $q;
@@ -296,12 +302,7 @@ class SearchQuery
         if ($this->driveTypes) $parts[] = implode('/', $this->driveTypes);
         if ($this->bodyTypes)  $parts[] = implode('/', $this->bodyTypes);
         if ($this->colors) $parts[] = 'цвет: ' . implode('/', $this->colors);
-        if ($this->trim) {
-            $trimLabel = \App\Models\Translation::where('category', 'trim')
-                ->where('kr', $this->trim)
-                ->value('en') ?? $this->trim;
-            $parts[] = 'комплектация: ' . $trimLabel;
-        }
+        if ($this->trim) $parts[] = 'комплектация: ' . $this->trim;
         if ($this->listedAfter)   $parts[] = "объявления от {$this->listedAfter}";
         if ($this->listedBefore)  $parts[] = "объявления до {$this->listedBefore}";
         if ($this->firstRegAfter) $parts[] = "регистрация от {$this->firstRegAfter}";

@@ -8,7 +8,6 @@ use App\Search\Specifications\ConditionSpec;
 use App\Search\Specifications\DateRangeSpec;
 use App\Search\Specifications\EngineRangeSpec;
 use App\Search\Specifications\LotSpecification; // phpstan: used as return type hint in docblock
-use App\Search\Specifications\MakeModelSpec;
 use App\Search\Specifications\MileageRangeSpec;
 use App\Search\Specifications\OptionsSpec;
 use App\Search\Specifications\PriceRangeSpec;
@@ -135,7 +134,6 @@ class ProviderAggregator
     private function specifications(): array
     {
         return [
-            new MakeModelSpec(),
             new CatalogSpec(),
             new YearRangeSpec(),
             new PriceRangeSpec(),
