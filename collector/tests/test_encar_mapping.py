@@ -76,6 +76,13 @@ def test_color_strips_a_trailing_note_and_keeps_unknown_labels() -> None:
     assert m.color("") is None
 
 
+def test_color_knows_the_old_parser_names() -> None:
+    # without them a stored "Silver" came back as "은회색" and logged a change
+    assert m.color("은회색") == "Silver"
+    assert m.color("하늘색") == "Blue"
+    assert m.color("흰색투톤") == "White Two-Tone"
+
+
 def test_price_from_man_won() -> None:
     assert m.price_krw_from_man(1890) == 18_900_000
     assert m.price_krw_from_man("12.5") == 125_000

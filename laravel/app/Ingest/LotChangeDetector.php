@@ -2,6 +2,8 @@
 
 namespace App\Ingest;
 
+use App\Support\Taxonomy\TaxonomyCatalog;
+
 /**
  * Stored row vs incoming row → one `lot_changes` entry (or none), with the
  * old parser's tracked fields and diff format: {"field": {"old": …, "new": …}}.
@@ -54,11 +56,23 @@ final class LotChangeDetector
         return 'update';
     }
 
-    /** One representation per value, whatever PDO or JSON decoding produced. */
+    /** Encar's "no complectation" in BadgeDetail: the same as none. */
+    private const NO_TRIM = '(세부등급 없음)';
+
+    /**
+     * One representation per value, whatever PDO or JSON decoding produced. A colour is
+     * compared in English: "은회색" is the "Silver" stored before, not a new colour.
+     */
     private static function canonical(string $field, mixed $value): mixed
     {
         if ($value === null) {
             return null;
+        }
+        if ($field === 'trim' && trim((string) $value) === self::NO_TRIM) {
+            return null;
+        }
+        if ($field === 'color' && is_string($value)) {
+            return self::englishColor($value);
         }
         if ($field === 'options') {
             $list = is_string($value) ? json_decode($value, true) : $value;
@@ -73,5 +87,14 @@ final class LotChangeDetector
         }
 
         return $value;
+    }
+
+    private static function englishColor(string $value): string
+    {
+        static $map = null;
+        $map ??= array_change_key_case(TaxonomyCatalog::labelMap('color', 'en'), CASE_LOWER);
+        $clean = trim($value);
+
+        return $map[mb_strtolower($clean)] ?? $clean;
     }
 }

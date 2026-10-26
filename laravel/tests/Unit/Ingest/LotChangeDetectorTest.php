@@ -61,4 +61,14 @@ final class LotChangeDetectorTest extends TestCase
     {
         $this->assertNull(LotChangeDetector::detect(self::stored(), [...self::stored(), 'vin' => 'X', 'location' => 'Seoul']));
     }
+
+    /** A colour in Korean is the English one stored before; Encar's "no complectation" is none. */
+    public function test_a_language_or_a_placeholder_is_not_a_change(): void
+    {
+        $this->assertNull(LotChangeDetector::detect(self::stored(['color' => 'Silver', 'trim' => null]),
+            [...self::stored(), 'color' => '은회색', 'trim' => '(세부등급 없음)']));
+
+        $change = LotChangeDetector::detect(self::stored(['color' => 'Silver']), [...self::stored(), 'color' => '하늘색']);
+        $this->assertSame(['color' => ['old' => 'Silver', 'new' => 'Blue']], $change['changes']);
+    }
 }
