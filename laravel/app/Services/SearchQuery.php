@@ -79,6 +79,7 @@ class SearchQuery
     /** @var string[] */
     public array $sources = ['encar'];
     public string $sort = 'date';
+    public string $sort2 = '';
 
     /** Orders a picker can choose: newest, price, mileage, year. */
     public const SORTS = ['date', 'price_asc', 'price_desc', 'mileage_asc', 'mileage_desc', 'year_desc', 'year_asc'];
@@ -143,6 +144,8 @@ class SearchQuery
         $q->sort = in_array($data['sort'] ?? '', self::SORTS, true)
             ? $data['sort']
             : 'date';
+        $sort2 = $data['sort2'] ?? '';
+        $q->sort2 = (in_array($sort2, self::SORTS, true) && $sort2 !== $q->sort) ? $sort2 : '';
         $q->limit = min((int) ($data['limit'] ?? 20), 100);
         $q->offset = max((int) ($data['offset'] ?? 0), 0);
 
@@ -361,6 +364,9 @@ class SearchQuery
         if ($this->firstRegBefore) $data['firstRegBefore'] = $this->firstRegBefore;
         if ($this->sources !== ['encar', 'kbcha']) {
             $data['sources'] = $this->sources;
+        }
+        if ($this->sort2) {
+            $data['sort2'] = $this->sort2;
         }
         return $data;
     }

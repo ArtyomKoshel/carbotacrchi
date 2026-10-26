@@ -18,75 +18,108 @@ final class ClientLotCard
      * @param  array<string, mixed>  $lot  LotDTO::toArray()
      * @param  array<string, mixed>|null  $inspection  lot_inspections row
      */
-    public static function html(array $lot, ?array $inspection = null): string
+    public static function html(array $lot, ?array $inspection = null, string $username = ''): string
     {
-        $lines = array_map(
-            fn (array $l) => $l[0] === 'title' ? '<b>'.e($l[1]).'</b>' : ($l[0] === 'price' ? '<b>'.e($l[1]).'</b>' : e($l[1])),
-            self::lines($lot, $inspection),
-        );
+        $parts = [];
+        foreach (self::lines($lot, $inspection, $username) as [$kind, $text]) {
+            $parts[] = match ($kind) {
+                'header' => $text,
+                'title'  => '<b>'.e($text).'</b>',
+                'spec'   => e($text),
+                'price'  => '<b>'.e($text).'</b>',
+                'contact' => $text,
+                default  => e($text),
+            };
+        }
 
-        return mb_substr(implode("\n", $lines), 0, self::CAPTION_MAX);
+        return mb_substr(implode("\n", $parts), 0, self::CAPTION_MAX);
     }
 
     /** @param array<string, mixed> $lot */
-    public static function text(array $lot, ?array $inspection = null): string
+    public static function text(array $lot, ?array $inspection = null, string $username = ''): string
     {
-        return implode("\n", array_map(fn (array $l) => $l[1], self::lines($lot, $inspection)));
+        return implode("\n", array_map(fn (array $l) => $l[1], self::lines($lot, $inspection, $username)));
     }
 
     /**
      * @return list<array{0: string, 1: string}> [kind, text]
      */
-    private static function lines(array $lot, ?array $inspection): array
+    private static function lines(array $lot, ?array $inspection, string $username = ''): array
     {
         $label = fn (string $field, ?string $v) => $v === null || $v === ''
             ? null
             : (TaxonomyCatalog::labelMap($field, 'ru')[$v] ?? $v);
 
-        // the reference catalog's names; Encar's own Korean ones only for a lot not on it
         $place = $lot['catalog'] ?? null;
-        $title = trim(implode(' ', array_filter($place
-            ? [(string) ($lot['year'] ?: ''), $place['make'], $place['model'], $place['generation'], $place['modification'], $place['complectation']]
-            : [(string) ($lot['year'] ?: ''), $lot['make'] ?? null, $lot['model'] ?? null, $lot['trim'] ?? null])));
-        $out = [['title', $title], ['price', '₩'.self::num((int) $lot['price'])]];
 
-        $specs = array_filter([
-            $lot['mileage'] ? self::num((int) $lot['mileage']).' км' : null,
-            mb_strtolower((string) $label('fuel', $lot['fuel'] ?? null)) ?: null,
-            mb_strtolower((string) $label('transmission', $lot['transmission'] ?? null)) ?: null,
-            mb_strtolower((string) $label('drive_type', $lot['driveType'] ?? null)) ?: null,
-            ! empty($lot['engineVolume']) && $lot['engineVolume'] >= 0.5 ? rtrim(rtrim(number_format((float) $lot['engineVolume'], 1, '.', ''), '0'), '.').' л' : null,
-        ]);
-        if ($specs) {
-            $out[] = ['line', implode(' · ', $specs)];
+        // Car title in uppercase: "BMW 5 SERIES (G60) 520I M SPORT"
+        $titleParts = [];
+        if ($place) {
+            if (!empty($place['make'])) $titleParts[] = mb_strtoupper((string) $place['make']);
+            if (!empty($place['model'])) $titleParts[] = mb_strtoupper((string) $place['model']);
+            if (!empty($place['generation'])) $titleParts[] = '(' . mb_strtoupper((string) $place['generation']) . ')';
+            if (!empty($place['modification'])) $titleParts[] = mb_strtoupper((string) $place['modification']);
+            if (!empty($place['complectation'])) $titleParts[] = mb_strtoupper((string) $place['complectation']);
+        } else {
+            if (!empty($lot['make'])) $titleParts[] = mb_strtoupper((string) $lot['make']);
+            if (!empty($lot['model'])) $titleParts[] = mb_strtoupper((string) $lot['model']);
+            if (!empty($lot['trim'])) $titleParts[] = mb_strtoupper((string) $lot['trim']);
         }
-        $about = array_filter([
-            ($c = $label('color', $lot['color'] ?? null)) ? 'цвет: '.mb_strtolower($c) : null,
-            ! empty($lot['firstRegDate']) ? 'регистрация: '.self::month((string) $lot['firstRegDate']) : null,
-        ]);
-        if ($about) {
-            $out[] = ['line', self::ucfirst(implode(' · ', $about))];
+        $title = trim(implode(' ', array_filter($titleParts)));
+
+        $out = [
+            ['header', 'АВТО ИЗ КОРЕИ 🇰🇷'],
+            ['blank', ''],
+            ['title', $title],
+            ['blank', ''],
+        ];
+
+        // Specs with 🔶
+        if (! empty($lot['firstRegDate'])) {
+            $out[] = ['spec', '🔶 Регистрация: ' . self::month((string) $lot['firstRegDate'])];
+        }
+        if (! empty($lot['mileage'])) {
+            $out[] = ['spec', '🔶 Пробег: ' . self::num((int) $lot['mileage']) . ' км'];
+        }
+        $fuelLabel = $label('fuel', $lot['fuel'] ?? null);
+        $engine = (! empty($lot['engineVolume']) && $lot['engineVolume'] >= 0.5)
+            ? rtrim(rtrim(number_format((float) $lot['engineVolume'], 1, '.', ''), '0'), '.') . ' л'
+            : null;
+        if ($fuelLabel || $engine) {
+            $engineLine = implode(' ', array_filter([
+                $fuelLabel ? mb_strtolower((string) $fuelLabel) : null,
+                $engine,
+            ]));
+            $out[] = ['spec', '🔶 Двигатель: ' . $engineLine];
+        }
+        $driveLabel = $label('drive_type', $lot['driveType'] ?? null);
+        if ($driveLabel) {
+            $out[] = ['spec', '🔶 Привод: ' . mb_strtolower((string) $driveLabel)];
+        }
+        $transLabel = $label('transmission', $lot['transmission'] ?? null);
+        if ($transLabel) {
+            $out[] = ['spec', '🔶 КПП: ' . mb_strtolower((string) $transLabel)];
         }
 
-        $history = array_filter([
+        // History
+        $historyParts = array_filter([
             match ($lot['hasAccident'] ?? null) { true => 'было ДТП', false => 'без ДТП', default => null },
-            // Encar counts changes of owner: 0 = still the first owner
-            isset($lot['ownersCount']) ? ((int) $lot['ownersCount'] === 0 ? 'первый владелец' : 'смен владельца: '.$lot['ownersCount']) : null,
-            isset($lot['insuranceCount']) ? 'страховых случаев: '.$lot['insuranceCount'] : null,
-            ($lot['floodHistory'] ?? null) === true ? 'было затопление' : null,
-            ($lot['totalLossHistory'] ?? null) === true ? 'признан тотальным' : null,
-            ! empty($lot['repairCost']) ? 'ремонт по страховым: ₩'.self::num((int) $lot['repairCost']) : null,
+            isset($lot['ownersCount']) ? ((int) $lot['ownersCount'] === 0 ? 'первый владелец' : 'смен владельца: ' . $lot['ownersCount']) : null,
         ]);
-        if ($history) {
-            $out[] = ['line', 'История: '.implode(' · ', $history)];
+        if ($historyParts) {
+            $out[] = ['spec', '🔶 История: ' . implode(' · ', $historyParts)];
         }
-        if ($inspection) {
-            $marks = array_filter([$inspection['accident_detail'] ?? null, $inspection['outer_detail'] ?? null]);
-            $out[] = ['line', 'Осмотр'.(! empty($inspection['inspection_date']) ? ' '.self::day((string) $inspection['inspection_date']) : '')
-                .': '.($marks ? implode('; ', $marks) : 'замечаний нет')];
-        }
-        if (! empty($lot['options']) && is_array($lot['options'])) {
-            $out[] = ['line', 'Опций: '.count($lot['options'])];
+
+        // Price
+        $out[] = ['blank', ''];
+        $out[] = ['price', '❗ ЦЕНА: ₩' . self::num((int) $lot['price'])];
+
+        // Contact
+        $out[] = ['blank', ''];
+        $contactName = $username ? '@' . ltrim($username, '@') : '';
+        $out[] = ['contact', '😊 Заинтересовал автомобиль? | Для уточнения деталей:'];
+        if ($contactName) {
+            $out[] = ['contact', $contactName . ' 🤝'];
         }
 
         return $out;

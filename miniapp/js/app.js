@@ -63,7 +63,7 @@ const App = (() => {
     const out = {};
     for (const [k, v] of Object.entries(q ?? {})) {
       if (k === 'limit' || k === 'offset' || v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
-      if ((k === 'sort' && v === 'date') || k === 'sources') continue; // every platform is the default
+      if ((k === 'sort' && v === 'date') || k === 'sort2' || k === 'sources') continue; // defaults/secondary
       out[k] = v;
     }
     return out;
@@ -237,6 +237,7 @@ const App = (() => {
     }));
     $('filters-count').textContent = chips.length || '';
     $('sort-select').value = s.query?.sort ?? 'date';
+    $('sort2-select').value = s.query?.sort2 ?? '';
     document.querySelectorAll('.seg__btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === s.resultsView)));
     $('columns-btn').classList.toggle('off', s.resultsView !== 'table');
   }
@@ -285,6 +286,13 @@ const App = (() => {
 
   function setSort(sort) {
     Filters.setSort(sort);
+    // keep secondary in sync (secondary may be cleared if it matched primary)
+    $('sort2-select').value = Filters.getQuery().sort2 ?? '';
+    search(Filters.getQuery());
+  }
+
+  function setSort2(sort2) {
+    Filters.setSort2(sort2);
     search(Filters.getQuery());
   }
 
@@ -541,6 +549,7 @@ const App = (() => {
     $('filters-apply-btn').addEventListener('click', applyFilters);
     $('filters-reset-btn').addEventListener('click', resetFilters);
     $('sort-select').addEventListener('change', e => setSort(e.target.value));
+    $('sort2-select').addEventListener('change', e => setSort2(e.target.value));
     $('subscribe-btn').addEventListener('click', () => Subscriptions.toggleSubscribe());
     $('columns-btn').addEventListener('click', e => Results.columnsMenu(e.currentTarget, renderResults));
     initSplits();

@@ -26,6 +26,20 @@ class LotPhotos
     public const COLUMNS = ['photo_dir', 'photo_base_id', 'photo_codes', 'photo_ext_upper', 'photo_urls'];
 
     /**
+     * Same as urls() but without the impolicy query — full-resolution, no CDN overlay.
+     * Used when sending to Telegram (CDN impolicy may add the encar.com watermark badge).
+     *
+     * @return list<string>
+     */
+    public static function rawUrls(array|object $lot): array
+    {
+        return array_map(
+            fn (string $url) => (string) strtok($url, '?'),
+            self::urls($lot),
+        );
+    }
+
+    /**
      * Ordered photo URLs of a lots row (array or stdClass).
      *
      * @return list<string>

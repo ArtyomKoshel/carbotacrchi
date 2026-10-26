@@ -83,6 +83,19 @@
               <option value="mileage_desc">Больше пробег</option>
             </select>
           </label>
+          <label class="sort sort--secondary">
+            <span class="visually-hidden">Затем по</span>
+            <select id="sort2-select" class="sort__select sort__select--secondary">
+              <option value="">— затем —</option>
+              <option value="price_asc">дешевле</option>
+              <option value="price_desc">дороже</option>
+              <option value="mileage_asc">меньше пробег</option>
+              <option value="mileage_desc">больше пробег</option>
+              <option value="year_desc">новее год</option>
+              <option value="year_asc">старше год</option>
+              <option value="date">сначала новые</option>
+            </select>
+          </label>
           <button class="chip wide-only" id="columns-btn" type="button" aria-haspopup="dialog">Колонки</button>
           <div class="seg wide-only" role="group" aria-label="Вид">
             <button type="button" class="seg__btn" data-view="table" aria-pressed="true">Таблица</button>

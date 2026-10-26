@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Catalog\CatalogPlaces;
 use App\Http\Controllers\Controller;
 use App\Models\LotInspection;
+use App\Models\User;
 use App\Services\OptionEnricher;
 use App\Services\ProviderAggregator;
 use App\Services\TelegramBot;
 use App\Support\ClientLotCard;
+use App\Support\LotPhotos;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,24 +45,32 @@ class LotController extends Controller
             return response()->json(['ok' => false, 'error' => 'Лот не найден или снят с продажи'], 404);
         }
         $inspection = $this->inspection($lotId);
-        $text = ClientLotCard::text($lot, $inspection);
         $mode = (string) $request->input('mode', 'text');
         $userId = (int) $request->input('user_id'); // set by ValidateTelegramAuth from the signed data
-        $photos = $lot['photos'] ?: array_filter([$lot['imageUrl']]);
+        $username = $userId > 0 ? (User::find($userId)?->username ?? '') : '';
+
+        $text = ClientLotCard::text($lot, $inspection, $username);
+
+        // For Telegram, use raw URLs (no impolicy) to avoid CDN watermark overlay; limit to 7 photos
+        $rawPhotos = $lot['photos'] ? LotPhotos::rawUrls(DB::table('lots')->where('id', $lotId)->first() ?? []) : [];
+        if (! $rawPhotos && $lot['imageUrl']) {
+            $rawPhotos = [(string) strtok((string) $lot['imageUrl'], '?')];
+        }
+        $telegramPhotos = array_slice($rawPhotos, 0, 7);
 
         if ($mode === 'text' || $userId <= 0 || ! $bot->isConfigured()) {
             return response()->json(['ok' => true, 'data' => ['text' => $text]]);
         }
 
-        $caption = ClientLotCard::html($lot, $inspection);
-        if ($mode === 'prepare' && $photos) {
-            $prepared = $bot->savePreparedInlineMessage($userId, $photos[0], $caption);
+        $caption = ClientLotCard::html($lot, $inspection, $username);
+        if ($mode === 'prepare' && $telegramPhotos) {
+            $prepared = $bot->savePreparedInlineMessage($userId, $telegramPhotos[0], $caption);
             if (! empty($prepared['ok']) && ! empty($prepared['result']['id'])) {
                 return response()->json(['ok' => true, 'data' => ['prepared_message_id' => $prepared['result']['id'], 'text' => $text]]);
             }
         }
 
-        $sent = $photos ? $bot->sendMediaGroup($userId, $photos, $caption) : $bot->sendMessage($userId, $caption);
+        $sent = $telegramPhotos ? $bot->sendMediaGroup($userId, $telegramPhotos, $caption) : $bot->sendMessage($userId, $caption);
 
         return response()->json(['ok' => ! empty($sent['ok']), 'data' => ['sent_to_chat' => ! empty($sent['ok']), 'text' => $text]]);
     }

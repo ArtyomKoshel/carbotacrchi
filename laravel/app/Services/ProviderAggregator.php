@@ -84,7 +84,7 @@ class ProviderAggregator
 
         $total = (clone $builder)->count();
 
-        $this->applyDbSort($builder, $query->sort);
+        $this->applyDbSort($builder, $query->sort, $query->sort2);
 
         $rows = $builder
             ->offset($query->offset)
@@ -115,7 +115,7 @@ class ProviderAggregator
         ));
     }
 
-    private function applyDbSort(Builder $builder, string $sort): void
+    private function applyDbSort(Builder $builder, string $sort, string $sort2 = ''): void
     {
         // every order the miniapp offers (SearchQuery::SORTS); id last keeps pages stable
         match ($sort) {
@@ -127,6 +127,18 @@ class ProviderAggregator
             'year_asc' => $builder->orderBy('year', 'asc')->orderBy('mileage', 'asc'),
             default => $builder->orderBy('listed_at', 'desc'),
         };
+        if ($sort2 !== '' && $sort2 !== $sort) {
+            match ($sort2) {
+                'price_asc' => $builder->orderBy('price', 'asc'),
+                'price_desc' => $builder->orderBy('price', 'desc'),
+                'mileage_asc' => $builder->orderBy('mileage', 'asc'),
+                'mileage_desc' => $builder->orderBy('mileage', 'desc'),
+                'year_desc' => $builder->orderBy('year', 'desc'),
+                'year_asc' => $builder->orderBy('year', 'asc'),
+                'date' => $builder->orderBy('listed_at', 'desc'),
+                default => null,
+            };
+        }
         $builder->orderBy('id', 'desc');
     }
 
