@@ -8,6 +8,7 @@ const Filters = (() => {
   let _onCount  = null;   // (n | null) → shown on the "Показать N лотов" button
   let _catalogRestore = null; // ref* fields of an applied query, picked once the make's catalog loads
   const SORTS = ['date', 'price_asc', 'price_desc', 'mileage_asc', 'mileage_desc', 'year_desc', 'year_asc'];
+  const SORTS2 = ['', ...SORTS];
   const COUNT_DEBOUNCE_MS = 700;
   const CONTEXT_DEBOUNCE_MS = 400;
 
@@ -48,6 +49,7 @@ const Filters = (() => {
     firstRegAfter:    '',
     firstRegBefore:   '',
     sort:             'date',
+    sort2:            '',
     options:          [],
   };
 
@@ -73,7 +75,7 @@ const Filters = (() => {
     state.insuranceCountMin = ''; state.insuranceCountMax = '';
     state.listedAfter = ''; state.listedBefore = '';
     state.firstRegAfter = ''; state.firstRegBefore = '';
-    state.sort = 'date'; state.options = [];
+    state.sort = 'date'; state.sort2 = ''; state.options = [];
     CatalogFilter.reset();
   }
 
@@ -591,6 +593,7 @@ const Filters = (() => {
       options:          state.options.length   ? state.options  : undefined,
       sources:          state.sources.length ? state.sources : undefined,
       sort:             state.sort,
+      sort2:            state.sort2 || undefined,
       limit:            40,
     };
   }
@@ -626,6 +629,7 @@ const Filters = (() => {
       if (kept.length) state.sources = kept;
     }
     if (q.sort)             state.sort             = SORTS.includes(q.sort) ? q.sort : 'date';
+    if (q.sort2 !== undefined) state.sort2 = SORTS2.includes(q.sort2) && q.sort2 !== state.sort ? q.sort2 : '';
     if (q.ownersCountMin !== undefined)    state.ownersCountMin    = String(q.ownersCountMin ?? '');
     if (q.ownersCountMax !== undefined)    state.ownersCountMax    = String(q.ownersCountMax ?? '');
     if (q.insuranceCountMin !== undefined) state.insuranceCountMin = String(q.insuranceCountMin ?? '');
@@ -661,6 +665,7 @@ const Filters = (() => {
     setEl('filter-first-reg-after',  q.firstRegAfter);
     setEl('filter-first-reg-before', q.firstRegBefore);
     setEl('sort-select', state.sort);
+    setEl('sort2-select', state.sort2);
 
     // Keep reset button state in sync when query is applied from cache/deeplink
     // (without user interaction events).
@@ -673,6 +678,12 @@ const Filters = (() => {
 
   function setSort(sort) {
     state.sort = SORTS.includes(sort) ? sort : 'date';
+    // clear secondary if it now conflicts
+    if (state.sort2 === state.sort) state.sort2 = '';
+  }
+
+  function setSort2(sort2) {
+    state.sort2 = (SORTS2.includes(sort2) && sort2 !== state.sort) ? sort2 : '';
   }
 
   // ── Live count ─────────────────────────────────────────────────────────────
@@ -842,5 +853,5 @@ const Filters = (() => {
   function onCount(fn) { _onCount = fn; }
   function refreshCount() { _updateCount(); }
 
-  return { init, getQuery, getCardFields, setSort, applyQuery, reset, hasActive, activeChips, clear, onChange, onCount, refreshCount, SORTS, notifyChange: _scheduleCountUpdate };
+  return { init, getQuery, getCardFields, setSort, setSort2, applyQuery, reset, hasActive, activeChips, clear, onChange, onCount, refreshCount, SORTS, notifyChange: _scheduleCountUpdate };
 })();

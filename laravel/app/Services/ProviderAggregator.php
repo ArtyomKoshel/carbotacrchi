@@ -118,28 +118,38 @@ class ProviderAggregator
     private function applyDbSort(Builder $builder, string $sort, string $sort2 = ''): void
     {
         // every order the miniapp offers (SearchQuery::SORTS); id last keeps pages stable
+        $then = $sort2 !== '' && $sort2 !== $sort;
         match ($sort) {
             'price_asc' => $builder->orderBy('price', 'asc'),
             'price_desc' => $builder->orderBy('price', 'desc'),
             'mileage_asc' => $builder->orderBy('mileage', 'asc'),
             'mileage_desc' => $builder->orderBy('mileage', 'desc'),
-            'year_desc' => $builder->orderBy('year', 'desc')->orderBy('mileage', 'asc'),
-            'year_asc' => $builder->orderBy('year', 'asc')->orderBy('mileage', 'asc'),
-            default => $builder->orderBy('listed_at', 'desc'),
+            'year_desc' => $builder->orderBy('year', 'desc'),
+            'year_asc' => $builder->orderBy('year', 'asc'),
+            // listing times almost never tie, so a second order would never apply: "newest" goes by day then
+            default => $then ? $builder->orderByRaw('DATE(listed_at) DESC') : $builder->orderBy('listed_at', 'desc'),
         };
-        if ($sort2 !== '' && $sort2 !== $sort) {
-            match ($sort2) {
-                'price_asc' => $builder->orderBy('price', 'asc'),
-                'price_desc' => $builder->orderBy('price', 'desc'),
-                'mileage_asc' => $builder->orderBy('mileage', 'asc'),
-                'mileage_desc' => $builder->orderBy('mileage', 'desc'),
-                'year_desc' => $builder->orderBy('year', 'desc'),
-                'year_asc' => $builder->orderBy('year', 'asc'),
-                'date' => $builder->orderBy('listed_at', 'desc'),
-                default => null,
-            };
+        if ($then) {
+            $this->applySecondarySort($builder, $sort2);
+        }
+        if (in_array($sort, ['year_desc', 'year_asc'], true) && ! in_array($sort2, ['mileage_asc', 'mileage_desc'], true)) {
+            $builder->orderBy('mileage', 'asc');
         }
         $builder->orderBy('id', 'desc');
+    }
+
+    private function applySecondarySort(Builder $builder, string $sort2): void
+    {
+        match ($sort2) {
+            'price_asc' => $builder->orderBy('price', 'asc'),
+            'price_desc' => $builder->orderBy('price', 'desc'),
+            'mileage_asc' => $builder->orderBy('mileage', 'asc'),
+            'mileage_desc' => $builder->orderBy('mileage', 'desc'),
+            'year_desc' => $builder->orderBy('year', 'desc'),
+            'year_asc' => $builder->orderBy('year', 'asc'),
+            'date' => $builder->orderBy('listed_at', 'desc'),
+            default => null,
+        };
     }
 
     /** @return LotSpecification[] */

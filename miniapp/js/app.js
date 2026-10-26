@@ -63,7 +63,7 @@ const App = (() => {
     const out = {};
     for (const [k, v] of Object.entries(q ?? {})) {
       if (k === 'limit' || k === 'offset' || v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
-      if ((k === 'sort' && v === 'date') || k === 'sort2' || k === 'sources') continue; // defaults/secondary
+      if ((k === 'sort' && v === 'date') || k === 'sources') continue; // every platform is the default
       out[k] = v;
     }
     return out;
@@ -237,7 +237,7 @@ const App = (() => {
     }));
     $('filters-count').textContent = chips.length || '';
     $('sort-select').value = s.query?.sort ?? 'date';
-    $('sort2-select').value = s.query?.sort2 ?? '';
+    syncSort2(s.query);
     document.querySelectorAll('.seg__btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === s.resultsView)));
     $('columns-btn').classList.toggle('off', s.resultsView !== 'table');
   }
@@ -286,9 +286,16 @@ const App = (() => {
 
   function setSort(sort) {
     Filters.setSort(sort);
-    // keep secondary in sync (secondary may be cleared if it matched primary)
-    $('sort2-select').value = Filters.getQuery().sort2 ?? '';
+    syncSort2(Filters.getQuery());
     search(Filters.getQuery());
+  }
+
+  // the second order cannot repeat the first one
+  function syncSort2(q) {
+    const sel = $('sort2-select');
+    const first = q?.sort ?? 'date';
+    for (const o of sel.options) o.disabled = o.value !== '' && o.value === first;
+    sel.value = q?.sort2 ?? '';
   }
 
   function setSort2(sort2) {
