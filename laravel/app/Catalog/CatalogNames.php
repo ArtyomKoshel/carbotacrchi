@@ -86,6 +86,45 @@ class CatalogNames
         return [$ids, trim(preg_replace('/\s+/u', ' ', $text))];
     }
 
+    /**
+     * The model's modifications named in a text as whole words: "45 tfsi quattro", "40d" for
+     * xDrive40d. A longer code named wins over the one it holds ("40 TFSI quattro", not also
+     * "40 TFSI"); a code's start names all codes that start so ("45 tfsi" → "45 TFSI quattro").
+     *
+     * @return list<int>
+     */
+    public function modificationsIn(int $modelId, string $text, array $generationIds = []): array
+    {
+        $text = ' ' . self::latin(mb_strtolower($text)) . ' ';
+        $rows = DB::table('ref_modifications as d')->join('ref_generations as g', 'g.id', '=', 'd.generation_id')
+            ->where('g.model_id', $modelId)
+            ->when($generationIds !== [], fn ($q) => $q->whereIn('g.id', $generationIds))
+            ->get(['d.id', 'd.code'])->all();
+        $said = fn (string $phrase) => $phrase !== ''
+            && preg_match('/(?<![\p{L}\p{N}.])' . preg_quote($phrase, '/') . '(?![\p{L}\p{N}])/u', $text);
+
+        $byCode = [];
+        foreach ($rows as $r) {
+            $code = mb_strtolower(trim($r->code));
+            // a bare volume ("2.0") is the engine filter's, not a modification named
+            if (!preg_match('/^\d+(?:[.,]\d+)?$/', $code)) {
+                $byCode[$code][] = (int) $r->id;
+            }
+        }
+        $named = array_filter(array_keys($byCode), fn (string $code) => $said($code)
+            || $said((string) preg_replace('/^[xs]drive\s*/u', '', $code)));
+        $named = array_filter($named, fn (string $code) => !array_filter($named,
+            fn (string $other) => $other !== $code && str_contains($other, $code)));
+        if ($named === []) {
+            // "45 tfsi": the codes that start with the two words named
+            $named = array_filter(array_keys($byCode), function (string $code) use ($said) {
+                $words = explode(' ', $code);
+                return count($words) > 2 && $said($words[0] . ' ' . $words[1]);
+            });
+        }
+        return array_values(array_merge(...array_map(fn (string $code) => $byCode[$code], array_values($named)) ?: [[]]));
+    }
+
     public function make(string $name): ?int
     {
         return $this->index()['makes'][self::key($name)] ?? null;
@@ -142,6 +181,20 @@ class CatalogNames
 
     private static function key(string $name): string
     {
-        return mb_strtolower(preg_replace('/\s+/u', ' ', trim($name)));
+        return self::latin(mb_strtolower(preg_replace('/\s+/u', ' ', trim($name))));
+    }
+
+    /**
+     * Cyrillic look-alikes typed in a Latin name ("А5", "Х5", "К5" on a Russian keyboard) as
+     * Latin letters. Only words that hold a digit or a Latin letter: "Соната" stays as it is.
+     */
+    public static function latin(string $text): string
+    {
+        static $map = ['а' => 'a', 'в' => 'b', 'е' => 'e', 'к' => 'k', 'м' => 'm', 'н' => 'h', 'о' => 'o',
+            'р' => 'p', 'с' => 'c', 'т' => 't', 'у' => 'y', 'х' => 'x', 'і' => 'i',
+            'А' => 'A', 'В' => 'B', 'Е' => 'E', 'К' => 'K', 'М' => 'M', 'Н' => 'H', 'О' => 'O',
+            'Р' => 'P', 'С' => 'C', 'Т' => 'T', 'У' => 'Y', 'Х' => 'X', 'І' => 'I'];
+        return preg_replace_callback('/[\p{L}\p{N}]+/u',
+            fn (array $w) => preg_match('/[0-9a-z]/i', $w[0]) ? strtr($w[0], $map) : $w[0], $text);
     }
 }

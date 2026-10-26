@@ -141,9 +141,10 @@ const API = (() => {
 
   // ── AI Chat search ─────────────────────────────────────────────────────────
 
-  async function searchChat(text) {
+  // current: the filters now; the words refine them ({} starts a new search)
+  async function searchChat(text, current = {}) {
     _requireAuth();
-    return request('POST', '/search-chat', { ..._authBody(), text });
+    return request('POST', '/search-chat', { ..._authBody(), text, current });
   }
 
   async function resetChat() {

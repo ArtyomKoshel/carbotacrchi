@@ -72,6 +72,16 @@ final class CatalogNamesTest extends TestCase
         }
     }
 
+    /** "К5" typed on a Russian keyboard is K5; a Cyrillic word stays a word. */
+    public function test_cyrillic_look_alikes_in_a_latin_name(): void
+    {
+        $k5 = DB::table('ref_models')->insertGetId(['make_id' => $this->id['kia'], 'name' => 'K5', 'created_at' => now(), 'updated_at' => now()]);
+        \Illuminate\Support\Facades\Cache::flush();
+
+        $this->assertSame($k5, SearchQuery::fromArray(['make' => 'Kia', 'model' => 'К5'])->refModelId);
+        $this->assertSame('соната x5', \App\Catalog\CatalogNames::latin('соната х5'));
+    }
+
     public function test_ids_from_the_catalog_win_over_text(): void
     {
         $q = SearchQuery::fromArray(['make' => 'Some Old Name', 'refMakeId' => $this->id['kia']]);

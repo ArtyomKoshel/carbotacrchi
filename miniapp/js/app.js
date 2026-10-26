@@ -323,7 +323,9 @@ const App = (() => {
     const form = $('ask-form');
     form.classList.add('busy');
     try {
-      const res = await API.searchChat(t);
+      // the words refine the filters set ("+ люк"); with none set it is a new search
+      const { sort, limit, ...current } = Filters.getQuery();
+      const res = await API.searchChat(t, Filters.hasActive() ? current : {});
       if (res?.query) {
         Filters.applyQuery({ ...res.query, sort: s.query?.sort });
         $('ask-input').value = '';
@@ -333,7 +335,8 @@ const App = (() => {
         // what the AI understood stays above the results until the next search
         const chips = Filters.activeChips().map(c => c.label).join(' · ');
         const banner = $('results-banner');
-        banner.innerHTML = `<b>ИИ понял:</b> ${Fmt.esc(chips || res.message || 'без фильтров')}. Поправьте фильтры, если что-то не так.`;
+        const said = res.refined ? 'ИИ добавил к фильтрам, теперь' : 'ИИ понял';
+        banner.innerHTML = `<b>${said}:</b> ${Fmt.esc(chips || res.message || 'без фильтров')}. Поправьте фильтры, если что-то не так.`;
         banner.className = 'banner banner--ai';
         banner.hidden = false;
       } else {

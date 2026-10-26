@@ -15,7 +15,7 @@ class SearchChatController extends Controller
     /**
      * POST /api/search-chat
      *
-     * Body: { text: string, user_id: int|string, init_data: string }
+     * Body: { text: string, user_id: int|string, init_data: string, current?: object (the filters now) }
      *
      * Response:
      *   ok + data: { query: object, message: string, refined: bool }
@@ -30,8 +30,16 @@ class SearchChatController extends Controller
             return response()->json(['ok' => false, 'error' => 'text is required'], 422);
         }
 
+        // the mini app sends its filters: the words refine them ("+ панорамный люк"), as the bot
+        // refines its last search; no filters set is a new search
         $prevState = ConversationState::get($userId);
-        $parsed    = $this->chatSearch->parseAndSearch($text, $prevState);
+        if ($request->has('current')) {
+            $current = array_filter((array) $request->input('current', []),
+                fn ($v, $k) => $v !== null && $v !== '' && $v !== [] && !in_array($k, ['sort', 'limit', 'offset'], true),
+                ARRAY_FILTER_USE_BOTH);
+            $prevState = $current === [] ? null : ['query' => $current, 'total' => 0, 'description' => ''];
+        }
+        $parsed = $this->chatSearch->parseAndSearch($text, $prevState);
 
         if ($parsed === null) {
             return response()->json(['ok' => true, 'data' => [

@@ -129,7 +129,7 @@ const LotView = (() => {
       <div class="card opts">${order.map(g => `<div class="opts__group"><h4>${OPTION_GROUPS[g] ?? 'Прочее'}</h4>
         <div class="opts__list">${groups.get(g)
           .sort((a, b) => (wanted.has(b.code) ? 1 : 0) - (wanted.has(a.code) ? 1 : 0))
-          .map(o => `<span class="opt${wanted.has(o.code) ? ' opt--match' : ''}"><span class="material-symbols-outlined opt__icon" aria-hidden="true">${optionIcon(o)}</span>${Fmt.esc(o.name_ru || o.name_en || o.name_kr || o.code)}</span>`).join('')}</div></div>`).join('')}
+          .map(o => `<span class="opt${wanted.has(o.code) ? ' opt--match' : ''}"><span class="material-symbols-outlined opt__icon" aria-hidden="true">${optionIcon(o)}</span><span class="opt__name">${Fmt.esc(o.name_ru || o.name_en || o.name_kr || o.code)}</span></span>`).join('')}</div></div>`).join('')}
       </div></section>`;
   }
 

@@ -57,8 +57,14 @@ class ChatSearchService
             }
         }
 
+        // the AI's trim/badge ("Premium 45 TFSI") is read with the words against the catalog,
+        // not as one exact name: a part it got wrong must not make the search empty
+        $said = trim($text . ' ' . ($parsed['trim'] ?? '') . ' ' . ($parsed['badge'] ?? ''));
+        unset($parsed['trim'], $parsed['badge']);
+
         $query        = SearchQuery::fromArray($parsed);
         $query->limit = 50;
+        $this->catalogWords($query, $said);
 
         $tolerantQuery = $query->withBotTolerance();
         $description   = $query->describeForChat();
@@ -72,6 +78,40 @@ class ChatSearchService
             'isAi'          => $this->lastParseWasAi,
             'refined'       => $this->lastParseWasRefinement,
         ];
+    }
+
+    /**
+     * The modification and complectation named in the words ("а5 45 tfsi quattro s line"), by the
+     * reference catalog of the model and make found: neither the AI nor the keywords know them.
+     * Named words win over the filters already set; a modification outside the generations
+     * set drops those generations.
+     */
+    private function catalogWords(SearchQuery $query, string $text): void
+    {
+        if ($query->matchesNothing) {
+            return;
+        }
+        $names = app(CatalogNames::class);
+        try {
+            if ($query->refModelId > 0) {
+                $mods = $names->modificationsIn($query->refModelId, $text, $query->refGenerationIds);
+                if ($mods === [] && $query->refGenerationIds !== []
+                    && ($mods = $names->modificationsIn($query->refModelId, $text)) !== []) {
+                    $query->refGenerationIds = [];
+                }
+                if ($mods !== []) {
+                    $query->refModificationIds = $mods;
+                }
+            }
+            if ($query->refMakeId > 0) {
+                [$complectations] = $names->complectationsIn($query->refMakeId, $text);
+                if ($complectations !== []) {
+                    $query->refComplectationIds = $complectations;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[ChatSearch] catalogWords: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -139,13 +179,8 @@ class ChatSearchService
     private function parseQuery(string $text, ?array $prevState = null): ?array
     {
         if (!$this->isAvailable()) {
-            $this->lastParseWasAi          = false;
-            $this->lastParseWasRefinement  = false;
-            $parsed = $this->fallbackParse($text);
-            if ($parsed !== null && $prevState !== null) {
-                return $this->mergeWithPrevious($prevState['query'], $parsed);
-            }
-            return $parsed;
+            $this->lastParseWasAi = false;
+            return $this->fallbackWithPrevious($text, $prevState);
         }
 
         try {
@@ -172,7 +207,7 @@ class ChatSearchService
                 ])
                 ->post($this->apiUrl, [
                     'model'           => $this->model,
-                    'max_tokens'      => config('ai.max_tokens', 300),
+                    'max_tokens'      => max(600, (int) config('ai.max_tokens', 300)),
                     'temperature'     => config('ai.temperature', 0),
                     'response_format' => ['type' => 'json_object'],
                     'messages'        => $messages,
@@ -181,8 +216,7 @@ class ChatSearchService
             if (!$response->successful()) {
                 Log::warning('[ChatSearch] API error: ' . $response->status() . ' ' . $response->body());
                 $this->lastParseWasAi         = false;
-                $this->lastParseWasRefinement = false;
-                return $this->fallbackParse($text);
+                return $this->fallbackWithPrevious($text, $prevState);
             }
 
             $content = $response->json('choices.0.message.content', '');
@@ -193,6 +227,7 @@ class ChatSearchService
             }
 
             unset($json['not_a_search']);
+            $json = $this->fillGaps($json, $text, $prevState['query']['make'] ?? null);
             $this->lastParseWasAi = true;
 
             // Detect if this is a refinement or a new search
@@ -210,10 +245,16 @@ class ChatSearchService
             return $json;
         } catch (\Throwable $e) {
             Log::error('[ChatSearch] ' . $e->getMessage());
-            $this->lastParseWasAi         = false;
-            $this->lastParseWasRefinement = false;
-            return $this->fallbackParse($text);
+            $this->lastParseWasAi = false;
+            return $this->fallbackWithPrevious($text, $prevState);
         }
+    }
+
+    private function fallbackWithPrevious(string $text, ?array $prevState): ?array
+    {
+        $parsed = $this->fallbackParse($text, $prevState['query']['make'] ?? null);
+        $this->lastParseWasRefinement = $parsed !== null && $prevState !== null && !$this->isDefinitelyNewSearch($parsed, $prevState);
+        return $this->lastParseWasRefinement ? $this->mergeWithPrevious($prevState['query'], $parsed) : $parsed;
     }
 
     /**
@@ -253,6 +294,7 @@ class ChatSearchService
 
     private function mergeWithPrevious(array $base, array $delta): array
     {
+        $base = $this->dropReplacedCatalog($base, $delta);
         $merged = $base;
         foreach ($delta as $key => $value) {
             if ($value === null || $value === '' || $value === []) {
@@ -263,6 +305,43 @@ class ChatSearchService
         // Always reset pagination
         unset($merged['limit'], $merged['offset']);
         return $merged;
+    }
+
+    /**
+     * The current filters pick the car by ids (refModelId, refGenerationIds …); a new make,
+     * model or generation in the words replaces that part of the pick and what lies under it.
+     * "а5" over an A5 already picked keeps its generations.
+     */
+    private function dropReplacedCatalog(array $base, array $delta): array
+    {
+        $levels = [
+            'make'       => ['make', 'refMakeId', 'model', 'refModelId', 'generation', 'refGenerationIds', 'badge', 'refModificationIds', 'trim', 'refComplectationIds'],
+            'model'      => ['model', 'refModelId', 'generation', 'refGenerationIds', 'badge', 'refModificationIds', 'trim', 'refComplectationIds'],
+            'generation' => ['generation', 'refGenerationIds', 'badge', 'refModificationIds'],
+            'badge'      => ['badge', 'refModificationIds'],
+            'trim'       => ['trim', 'refComplectationIds'],
+        ];
+        $names = app(CatalogNames::class);
+        foreach ($levels as $field => $drop) {
+            $said = trim((string) ($delta[$field] ?? ''));
+            if ($said === '') {
+                continue;
+            }
+            $same = match ($field) {
+                'make'  => mb_strtolower($said) === mb_strtolower(trim((string) ($base['make'] ?? '')))
+                    || (($base['refMakeId'] ?? 0) > 0 && $names->make($said) === (int) $base['refMakeId']),
+                'model' => mb_strtolower($said) === mb_strtolower(trim((string) ($base['model'] ?? '')))
+                    || ($base['refModelId'] ?? 0) > 0
+                    && ($names->model(($base['refMakeId'] ?? 0) ?: null, $said)['id'] ?? null) === (int) $base['refModelId'],
+                default => false,
+            };
+            if (!$same) {
+                foreach ($drop as $key) {
+                    unset($base[$key]);
+                }
+            }
+        }
+        return $base;
     }
 
     private function extractJson(string $text): ?array
@@ -288,7 +367,8 @@ class ChatSearchService
         return null;
     }
 
-    private function fallbackParse(string $text): ?array
+    /** $knownMake: the make already picked, so "а5" alone is that make's A5. */
+    private function fallbackParse(string $text, ?string $knownMake = null): ?array
     {
         $text   = mb_strtolower(trim($text));
         $result = [];
@@ -357,6 +437,10 @@ class ChatSearchService
                 }
             }
         }
+        if (!$detectedMake && $knownMake !== null && trim($knownMake) !== '') {
+            $detectedMake = array_values(array_filter(array_keys($makes),
+                fn ($m) => mb_strtolower($m) === mb_strtolower(trim($knownMake))))[0] ?? null;
+        }
 
         if ($detectedMake) {
             $result['make'] = $detectedMake;
@@ -372,129 +456,134 @@ class ChatSearchService
                 }
             }
 
-            // Numeric series (BMW 7 → 7 Series)
-            if (empty($result['model']) && isset($numericSeries[$makeLower])) {
-                foreach ($numericSeries[$makeLower] as $digit => $series) {
-                    if (preg_match('/\b' . preg_quote($digit, '/') . '\b/', $text)) {
-                        $result['model'] = $series;
-                        break;
-                    }
-                }
-            }
-
-            // English model names from JSON
+            // English model names from JSON; "ауди а5" typed in Cyrillic is A5
             if (empty($result['model'])) {
+                $latin = CatalogNames::latin($text);
                 foreach (($makes[$detectedMake] ?? []) as $model) {
-                    if (mb_stripos($text, mb_strtolower($model)) !== false) {
+                    if (mb_stripos($latin, mb_strtolower($model)) !== false) {
                         $result['model'] = $model;
                         break;
                     }
                 }
             }
-        }
 
-        // ── Year ──────────────────────────────────────────────────────────────
-        if (preg_match('/(\d{4})\s*[-–]\s*(\d{4})/', $text, $m)) {
-            $result['yearFrom'] = (int) $m[1];
-            $result['yearTo']   = (int) $m[2];
-        } elseif (preg_match('/(?:от|from|с)\s*(\d{4})\s*(?:г|год|года)?/u', $text, $m)) {
-            $result['yearFrom'] = (int) $m[1];
-        } elseif (preg_match('/(?:до|по|to)\s*(\d{4})\s*(?:г|год|года)?/u', $text, $m)) {
-            $result['yearTo'] = (int) $m[1];
-        } elseif (preg_match('/(\d{4})\s*(?:г|год|года)/u', $text, $m)) {
-            $yr = (int) $m[1];
-            if ($yr >= 1990 && $yr <= (int) date('Y') + 1) {
-                $result['yearFrom'] = $yr;
-                $result['yearTo']   = $yr;
+            // Numeric series (BMW 7 → 7 Series), after the names: "х5" is X5, not 5 Series
+            if (empty($result['model']) && isset($numericSeries[$makeLower])) {
+                foreach ($numericSeries[$makeLower] as $digit => $series) {
+                    if (preg_match('/(?<![\p{L}\p{N}])' . preg_quote((string) $digit, '/') . '(?![\p{L}\p{N}])/u', $text)) {
+                        $result['model'] = $series;
+                        break;
+                    }
+                }
             }
+        } elseif ($found = $this->modelWithoutMake($text, $makes)) {
+            // "соната дизель", "камри гибрид", "x5 40d": the model names its make
+            [$result['make'], $result['model']] = $found;
         }
 
-        // ── Price ─────────────────────────────────────────────────────────────
-        if (preg_match('/(?:цена?|price|стоим\w*)\s*до\s*[\$₩]?\s*([\d\s,]+)/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 1000) $result['priceMax'] = $val;
-        } elseif (preg_match('/до\s*[\$₩]?\s*([\d\s,]+)\s*(?:\$|₩|долл|usd|krw)/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 1000) $result['priceMax'] = $val;
-        }
-        if (preg_match('/(?:цена?|price|стоим\w*)\s*от\s*[\$₩]?\s*([\d\s,]+)/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 1000) $result['priceMin'] = $val;
-        } elseif (preg_match('/(?:цена?|price|стоим\w*)\s*[\$₩]?\s*([\d\s,]+)\s*(?:\$|₩|долл|usd|krw)?/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 1000) {
-                $result['priceMin'] = $val;
-                $result['priceMax'] = $val;
+        // ── Year: "2018-2021", "с 2018 по 2021", "от 2018 до 2021", "не старше 2019", "2020 года" ──
+        $year = '((?:19|20)\d{2})(?![\d.,]|\s*(?:км|km|тыс|млн|\$|₩|вон))';
+        if (preg_match("/(?<!\d)$year\s*(?:г\.?|года?)?\s*(?:-|–|—|до|по)\s*$year/u", $text, $m)) {
+            [$result['yearFrom'], $result['yearTo']] = [(int) $m[1], (int) $m[2]];
+        } else {
+            if (preg_match("/(?:от|from|с|не\s+старше|после|(?<!не\s)новее)\s*$year/u", $text, $m)) {
+                $result['yearFrom'] = (int) $m[1];
+            }
+            if (preg_match("/(?:до|по|to|не\s+новее|(?<!не\s)старше)\s*$year/u", $text, $m)) {
+                $result['yearTo'] = (int) $m[1];
+            }
+            if (!isset($result['yearFrom']) && !isset($result['yearTo'])
+                && preg_match("/(?<!\d)$year\s*(?:г\.?|года?|year)(?!\p{L})/u", $text, $m)) {
+                $result['yearFrom'] = $result['yearTo'] = (int) $m[1];
             }
         }
 
-        // ── Mileage ───────────────────────────────────────────────────────────
-        // "пробег от 100 000" / "пробег 100000 км" / "100 000 пробег"
-        if (preg_match('/(?:пробег|mileage)[^\d]*([\d\s,]+)\s*[-–]\s*([\d\s,]+)/ui', $text, $m)) {
-            $result['mileageMin'] = (int) preg_replace('/[\s,]/', '', $m[1]);
-            $result['mileageMax'] = (int) preg_replace('/[\s,]/', '', $m[2]);
-        } elseif (preg_match('/(?:пробег|mileage)\s*(?:от|from|min)\s*([\d\s,]+)/ui', $text, $m)) {
-            $result['mileageMin'] = (int) preg_replace('/[\s,]/', '', $m[1]);
-        } elseif (preg_match('/(?:пробег|mileage)\s*(?:до|to|max)\s*([\d\s,]+)/ui', $text, $m)) {
-            $result['mileageMax'] = (int) preg_replace('/[\s,]/', '', $m[1]);
-        } elseif (preg_match('/(?:пробег|mileage)\s*([\d][\d\s,]*)/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 100 && $val < 1000000) {
-                $result['mileageMin'] = $val;
-                $result['mileageMax'] = $val;
-            }
-        } elseif (preg_match('/([\d][\d\s,]*)\s*(?:пробег|км|km)\s*пробег/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 100 && $val < 1000000) {
-                $result['mileageMin'] = $val;
-                $result['mileageMax'] = $val;
-            }
-        } elseif (preg_match('/([\d][\d\s,]+)\s*(?:пробег)/ui', $text, $m)) {
-            $val = (int) preg_replace('/[\s,]/', '', $m[1]);
-            if ($val > 100 && $val < 1000000) {
-                $result['mileageMin'] = $val;
-                $result['mileageMax'] = $val;
-            }
-        }
+        // ── Price: "до 30 млн", "от 20 до 30 млн", "20-30 млн вон", "цена до 25000000", "до 20000$" ──
+        [$lo, $hi] = $this->rangeIn($text, 'цен\w*|стоим\w*|бюджет\w*|price',
+            fn (string $unit, string $cur, string $after) => preg_match('/^млн|^миллион/u', $unit) || $cur !== ''
+                || preg_match('/^\s*(?:вон|krw|₩|\$|долл|usd)/u', $after),
+            function (string $num, string $unit, string $cur, bool $led): ?int {
+                $v = $this->amount($num, $unit);
+                if (preg_match('/\$|долл|usd/u', $cur)) {
+                    $v *= 1300;                     // the prompt's rate: 1$ ≈ 1300₩
+                } elseif ($unit === '' && $led && $v > 0 && $v < 1000) {
+                    $v *= 1_000_000;                // "цена до 30" is 30 млн вон
+                }
+                return $v >= 100_000 ? (int) round($v) : null;
+            });
+        if ($lo !== null) $result['priceMin'] = $lo;
+        if ($hi !== null) $result['priceMax'] = $hi;
 
-        // ── Fuel ─────────────────────────────────────────────────────────────
-        $fuelMap = [
-            'бензин' => 'Gasoline', 'бенз' => 'Gasoline', 'gasoline' => 'Gasoline', 'petrol' => 'Gasoline',
-            'дизель' => 'Diesel', 'diesel' => 'Diesel',
-            'гибрид' => 'Hybrid', 'hybrid' => 'Hybrid',
-            'электр' => 'Electric', 'electric' => 'Electric',
+        // ── Mileage: "пробег до 100 тыс", "пробег 50-100 тыс км", "до 80000 км" ──
+        [$lo, $hi] = $this->rangeIn($text, 'пробег\w*|mileage|пробегом',
+            fn (string $unit, string $cur, string $after) => $cur === '' && preg_match('/^\s*(?:км|km|т\.?\s*км)/u', $after),
+            function (string $num, string $unit, string $cur, bool $led): ?int {
+                $v = $this->amount($num, $unit);
+                if ($unit === '' && $v > 0 && $v < 1000) {
+                    $v *= 1000;                     // "пробег до 100" is 100 тыс км
+                }
+                return $v > 0 && $v < 2_000_000 ? (int) round($v) : null;
+            });
+        if ($lo !== null) $result['mileageMin'] = $lo;
+        if ($hi !== null) $result['mileageMax'] = $hi;
+
+        // ── Fuel, gearbox, drive, body: the first phrase of each list that the text has ──
+        $lists = [
+            'fuelTypes' => [
+                '/плагин|plug.?in|подключаем\w*\s+гибрид/u' => 'plugin_hybrid',
+                '/гибрид|hybrid/u' => 'hybrid',
+                '/электр|electric|\bev\b|электромобил/u' => 'electric',
+                '/дизел|diesel|\bдиз\b/u' => 'diesel',
+                '/бенз|gasoline|petrol/u' => 'gasoline',
+                '/\bгаз\b|газов|\blpg\b|\blpi\b|пропан/u' => 'lpg',
+                '/водород|hydrogen/u' => 'hydrogen',
+            ],
+            'transmissions' => [
+                '/вариатор|\bcvt\b/u' => 'cvt',
+                '/робот|\bdct\b|преселектив/u' => 'dct',
+                '/механ|мкпп|manual|ручн\w*\s+коробк/u' => 'manual',
+                '/автомат|акпп|automatic/u' => 'automatic',
+            ],
+            'driveTypes' => [
+                // not "quattro"/"xDrive": that names the modification, and many lots state no drive
+                '/полн\w*\s*привод|полноприв|\b4x4\b|\b4wd\b|\bawd\b/u' => 'awd',
+                '/передн\w*\s*привод|переднеприв|\bfwd\b|\b2wd\b/u' => 'fwd',
+                '/задн\w*\s*привод|заднеприв|\brwd\b/u' => 'rwd',
+            ],
+            'bodyTypes' => [
+                '/седан|sedan/u' => 'sedan',
+                '/кроссовер|внедорожник|паркетник|джип|\bsuv\b/u' => 'suv',
+                '/хэтчбек|хетчбек|хечбек|hatchback/u' => 'hatchback',
+                '/универсал|wagon|touring|avant/u' => 'wagon',
+                '/купе|coupe/u' => 'coupe',
+                '/кабриолет|convertible|cabrio/u' => 'convertible',
+                '/минив[эе]н|minivan|\bвэн\b|\bvan\b/u' => 'van',
+                '/пикап|pickup/u' => 'pickup',
+            ],
         ];
-        foreach ($fuelMap as $keyword => $value) {
-            if (mb_stripos($text, $keyword) !== false) {
-                $result['fuelTypes'] = [$value];
-                break;
+        foreach ($lists as $field => $patterns) {
+            foreach ($patterns as $pattern => $value) {
+                if (preg_match($pattern, $text)) {
+                    $result[$field] = [$value];
+                    break;
+                }
             }
         }
 
-        // ── Transmission ─────────────────────────────────────────────────────
-        $transMap = [
-            'автомат' => 'Automatic', 'акпп' => 'Automatic', 'automatic' => 'Automatic',
-            'механик' => 'Manual', 'мкпп' => 'Manual', 'manual' => 'Manual',
-        ];
-        foreach ($transMap as $keyword => $value) {
-            if (mb_stripos($text, $keyword) !== false) {
-                $result['transmissions'] = [$value];
-                break;
+        // ── Engine volume: "2.0", "2,5 л", "2.0-3.0", "от 2 до 3 литров" ──
+        $vol = '(\d(?:[.,]\d)?)(?![\d])(?!\s*(?:млн|миллион|тыс|k\b|к\b|\$|₩|вон|км|km))';
+        if (preg_match("/(?:двигател\w*|объ[её]м\w*|мотор\w*|engine)?\s*(?:от\s*)?(?<![\d.,])(\d[.,]\d)\s*(?:л|l)?\s*(?:-|–|—|до)\s*(\d[.,]\d)(?!\d|\s*(?:млн|миллион|тыс|\\$|₩|вон))/u", $text, $m)
+            || preg_match("/(?:двигател\w*|объ[её]м\w*|мотор\w*|engine)\s*(?:от\s*)?$vol\s*(?:л|l|литр\w*)?\s*(?:-|–|—|до)\s*$vol/u", $text, $m)
+            || preg_match("/(?:от\s*)?(?<![\d.,])$vol\s*(?:-|–|—|до)\s*$vol\s*(?:л|l|литр\w*)(?!\p{L})/u", $text, $m)) {
+            [$lo, $hi] = [(float) str_replace(',', '.', $m[1]), (float) str_replace(',', '.', $m[2])];
+            if ($lo >= 0.5 && $hi <= 9.0 && $lo <= $hi) {
+                [$result['engineMin'], $result['engineMax']] = [$lo, $hi];
             }
-        }
-
-        // ── Engine volume ─────────────────────────────────────────────────────
-        if (preg_match('/(\d+[.,]\d+)\s*(?:л|l|литр|litr)?/ui', $text, $m)) {
-            $vol = (float) str_replace(',', '.', $m[1]);
-            if ($vol >= 0.5 && $vol <= 9.0) {
-                $result['engineMin'] = $vol;
-                $result['engineMax'] = $vol;
-            }
-        } elseif (preg_match('/(?:двигатель|объём|объем|мотор|engine)[\s:]+(\d+)/ui', $text, $m)) {
-            $vol = (float) $m[1];
-            if ($vol >= 1 && $vol <= 9) {
-                $result['engineMin'] = $vol;
-                $result['engineMax'] = $vol;
+        } elseif (preg_match('/(?<![\d.,])(\d[.,]\d)(?![\d])(?!\s*(?:млн|миллион|тыс|k\b|к\b|\$|₩|вон|км|km))/u', $text, $m)
+            || preg_match('/(?:двигател\w*|объ[её]м\w*|мотор\w*|engine)[\s:]+(\d)(?![\d.,])/u', $text, $m)) {
+            $v = (float) str_replace(',', '.', $m[1]);
+            if ($v >= 0.5 && $v <= 9.0) {
+                $result['engineMin'] = $result['engineMax'] = $v;
             }
         }
 
@@ -505,19 +594,23 @@ class ChatSearchService
             $result['insuranceCountMax'] = 0;
         }
 
-        if (preg_match('/(\d+)\s*(?:владел|хозя|owner)/u', $text, $m)) {
+        if (preg_match('/(\d+|один|одн\w*|перв\w*)\s*(?:владел|хозя|owner)/u', $text, $m)) {
+            $result['ownersCountMax'] = ctype_digit($m[1]) ? (int) $m[1] : 1;
+        } elseif (preg_match('/(?:владел\w*|хозя\w*)\s*(?:не\s+более|до|max)?\s*(\d+)/u', $text, $m)) {
             $result['ownersCountMax'] = (int) $m[1];
         }
 
-        if (preg_match('/без\s*(?:дтп|авар|accident)/ui', $text)) {
+        if (preg_match('/без\s*(?:дтп|авар|удар|accident)|не\s*бит|небит|не\s+был\w*\s+в\s+дтп|no\s+accident|accident.?free/ui', $text)) {
             $result['hasAccident'] = false;
-        }
-        if (preg_match('/(?:с\s*дтп|были\s*авар|has.*accident)/ui', $text)) {
+        } elseif (preg_match('/(?:с|после|был\w*\s+в)\s*дтп|были\s*авар|(?<!не\s)(?<!не)бит(?:ая|ый|ые)|has.*accident/ui', $text)) {
             $result['hasAccident'] = true;
         }
 
-        if (preg_match('/без\s*(?:затопл|утопл|flood)/ui', $text)) {
+        if (preg_match('/без\s*(?:затопл|утопл|flood)|не\s*(?:утоплен|затоплен|топлен)/ui', $text)) {
             $result['floodHistory'] = false;
+        }
+        if (preg_match('/без\s*тотал|не\s*тотал|не\s+признан\w*\s+тотал/ui', $text)) {
+            $result['totalLossHistory'] = false;
         }
 
         if (preg_match('/без\s*(?:залог|обременен|lien)/ui', $text)) {
@@ -525,17 +618,20 @@ class ChatSearchService
         }
 
         $colorMap = [
-            'белый' => 'White', 'белая' => 'White', 'white' => 'White',
-            'черный' => 'Black', 'черная' => 'Black', 'black' => 'Black',
-            'серый' => 'Gray', 'серая' => 'Gray', 'серебр' => 'Silver',
-            'красный' => 'Red', 'красная' => 'Red', 'red' => 'Red',
-            'синий' => 'Blue', 'синяя' => 'Blue', 'blue' => 'Blue',
+            '/бел(?:ый|ая|ое|ые|ого)|white/u' => 'White', '/ч[её]рн|black/u' => 'Black',
+            '/сер(?:ый|ая|ое|ые|ого)|графит|gr[ae]y/u' => 'Gray', '/серебр|silver/u' => 'Silver',
+            '/красн|бордов|red\b/u' => 'Red', '/син(?:ий|яя|ее|ие|его)|голуб|blue/u' => 'Blue',
+            '/зел[её]н|green/u' => 'Green', '/коричн|brown/u' => 'Brown', '/ж[её]лт|yellow/u' => 'Yellow',
+            '/золот|gold/u' => 'Gold', '/оранж|orange/u' => 'Orange', '/фиолет|пурпур|purple/u' => 'Purple',
         ];
-        foreach ($colorMap as $keyword => $value) {
-            if (mb_stripos($text, $keyword) !== false) {
-                $result['colors'] = [$value];
-                break;
+        $colors = [];
+        foreach ($colorMap as $pattern => $value) {
+            if (preg_match($pattern, $text)) {
+                $colors[] = $value;
             }
+        }
+        if ($colors) {
+            $result['colors'] = $colors;
         }
 
         // ── Date filters (listed_at / first_reg_date) ───────────────────────
@@ -553,7 +649,200 @@ class ChatSearchService
             $result['firstRegBefore'] = $m[1] . '-12-31';
         }
 
+        if ($options = $this->optionsIn($text)) {
+            $result['options'] = $options;
+        }
+
         return empty($result) ? null : $result;
+    }
+
+    /**
+     * A model named with no make: Russian names of the popular ones, then the catalog's Latin
+     * names as whole words ("x5", "camry"). Only a name that one make has.
+     *
+     * @param array<string, list<string>> $makes
+     * @return array{0: string, 1: string}|null
+     */
+    private function modelWithoutMake(string $text, array $makes): ?array
+    {
+        $aliases = [
+            'соната' => ['Hyundai', 'Sonata'], 'грандеур' => ['Hyundai', 'Grandeur'], 'грандер' => ['Hyundai', 'Grandeur'],
+            'гранжер' => ['Hyundai', 'Grandeur'], 'авант' => ['Hyundai', 'Avante'], 'элантр' => ['Hyundai', 'Avante'],
+            'туссан' => ['Hyundai', 'Tucson'], 'туксон' => ['Hyundai', 'Tucson'], 'санта фе' => ['Hyundai', 'Santa Fe'],
+            'санта-фе' => ['Hyundai', 'Santa Fe'], 'сантафе' => ['Hyundai', 'Santa Fe'], 'палисад' => ['Hyundai', 'Palisade'],
+            'старекс' => ['Hyundai', 'Starex'], 'стария' => ['Hyundai', 'Staria'], 'кона' => ['Hyundai', 'Kona'],
+            'спортейдж' => ['Kia', 'Sportage'], 'спортэйдж' => ['Kia', 'Sportage'], 'соренто' => ['Kia', 'Sorento'],
+            'карнивал' => ['Kia', 'Carnival'], 'морнинг' => ['Kia', 'Morning'], 'мохав' => ['Kia', 'Mohave'],
+            'селтос' => ['Kia', 'Seltos'], 'стингер' => ['Kia', 'Stinger'], 'камри' => ['Toyota', 'Camry'],
+            'королл' => ['Toyota', 'Corolla'], 'рав4' => ['Toyota', 'RAV4'], 'рав 4' => ['Toyota', 'RAV4'],
+            'крузак' => ['Toyota', 'Land Cruiser'], 'ленд крузер' => ['Toyota', 'Land Cruiser'],
+            'кайен' => ['Porsche', 'Cayenne'], 'макан' => ['Porsche', 'Macan'], 'панамер' => ['Porsche', 'Panamera'],
+            'тигуан' => ['Volkswagen', 'Tiguan'], 'пассат' => ['Volkswagen', 'Passat'], 'гольф' => ['Volkswagen', 'Golf'],
+            'туарег' => ['Volkswagen', 'Touareg'], 'аркана' => ['Renault Korea', 'Arkana'],
+        ];
+        foreach ($aliases as $alias => [$make, $model]) {
+            if (mb_strpos($text, $alias) !== false && isset($makes[$make]) && in_array($model, $makes[$make], true)) {
+                return [$make, $model];
+            }
+        }
+        $latin = CatalogNames::latin($text);
+        $found = [];
+        foreach ($makes as $make => $models) {
+            foreach ($models as $model) {
+                $name = mb_strtolower($model);
+                // a short word ("ray", "one") is too common to name a car alone
+                if ((mb_strlen($name) >= 4 || preg_match('/\d/', $name))
+                    && preg_match('/(?<![\p{L}\p{N}])' . preg_quote($name, '/') . '(?![\p{L}\p{N}])/u', $latin)) {
+                    $found[$make . "\0" . $model] = [$make, $model];
+                }
+            }
+        }
+        // the longest name: "grand carnival" over "carnival"
+        uasort($found, fn ($a, $b) => mb_strlen($b[1]) <=> mb_strlen($a[1]));
+        $first = reset($found);
+        return $first !== false && count(array_filter($found, fn ($f) => mb_strlen($f[1]) === mb_strlen($first[1]))) === 1 ? $first : null;
+    }
+
+    /** "2,5" + "млн" → 2 500 000; "100" + "тыс" → 100 000; "100 000" → 100000. */
+    private function amount(string $num, string $unit): float
+    {
+        $v = (float) str_replace([' ', "\u{00A0}", ','], ['', '', '.'], $num);
+        return match (true) {
+            (bool) preg_match('/^(?:млн|миллион)/u', $unit) => $v * 1_000_000,
+            (bool) preg_match('/^(?:тыс|т\.?$|k$|к$)/u', $unit) => $v * 1000,
+            default => $v,
+        };
+    }
+
+    /**
+     * [min, max] of one range in the text: "от 20 до 30 млн", "20-30 млн", "до 30 млн", "от 2 млн".
+     * $lead: the words that name it before the numbers ("цена", "пробег"). Without them, $isIt
+     * decides by the unit, the currency or the word right after ("20-30 млн", "до 100 тыс км").
+     * $value turns a number into the filter's value, null when it is not one.
+     *
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function rangeIn(string $text, string $lead, callable $isIt, callable $value): array
+    {
+        $n = '(\d{1,3}(?:[ \x{00A0}]\d{3})+(?!\d)|\d+(?:[.,]\d+)?)\s*(млн\w*|миллион\w*|тыс\w*|т\.|k(?![a-z])|к(?!\p{L}))?\.?\s*(\$|долл\w*|usd|₩|вон\w*|krw)?';
+        $after = '(?=(\s*\S{0,6}))';
+        $range = "(?:от\s*)?$n\s*(?:-|–|—|до|по)\s*$n$after";
+        foreach (["/(?:$lead)\D{0,12}?$range/u" => true, "/(?<![\d.,])$range/u" => false] as $re => $led) {
+            preg_match_all($re, $text, $all, PREG_SET_ORDER);
+            foreach ($all as $m) {
+                $m = array_pad($m, 8, '');
+                // "20-30 млн": the first number takes the second's unit and currency
+                [$unit, $cur] = [$m[5] ?: $m[2], $m[6] ?: $m[3]];
+                // "не старше 2020 до 20000$": a year is not the price's low end
+                $isYear = $m[2] === '' && $m[3] === '' && preg_match('/^(?:19|20)\d{2}$/', $m[1]);
+                if (!$isYear && ($led || $isIt($unit, $cur, $m[7]))) {
+                    $lo = $value($m[1], $m[2] ?: $unit, $cur, $led);
+                    $hi = $value($m[4], $unit, $cur, $led);
+                    if ($lo !== null && $hi !== null && $lo <= $hi) {
+                        return [$lo, $hi];
+                    }
+                }
+            }
+        }
+        $out = [null, null];
+        $sides = [0 => 'от|from|min|не\s+меньше|не\s+менее|больше|более|свыше', 1 => 'до|to|max|under|не\s+больше|не\s+более|меньше|менее|дешевле'];
+        foreach ($sides as $side => $words) {
+            foreach (["/(?:$lead)\D{0,12}?(?<!\p{L})(?:$words)\s*$n$after/u" => true, "/(?<!\p{L})(?:$words)\s*$n$after/u" => false] as $re => $led) {
+                preg_match_all($re, $text, $all, PREG_SET_ORDER);
+                foreach ($all as $m) {
+                    $m = array_pad($m, 5, '');
+                    if (($led || $isIt($m[2], $m[3], $m[4])) && ($v = $value($m[1], $m[2], $m[3], $led)) !== null) {
+                        $out[$side] = $v;
+                        continue 3;
+                    }
+                }
+            }
+        }
+        // "пробег 50000", "цена 25 млн": one number after the word is the most
+        if ($out === [null, null] && preg_match("/(?:$lead)(?!\p{L})\s*:?\s*$n/u", $text, $m)) {
+            $m = array_pad($m, 4, '');
+            $out[1] = $value($m[1], $m[2], $m[3], true);
+        }
+        return $out;
+    }
+
+    /**
+     * Encar option codes named in the text ("панорамный люк" → 010). The AI gets the whole
+     * option list in its prompt; this is the same for the fallback and for what the AI missed.
+     *
+     * @return list<string>
+     */
+    private function optionsIn(string $text): array
+    {
+        $text = mb_strtolower($text);
+        $patterns = [
+            '010' => '/люк|пан?орам|понорам|понарам|sunroof|panoram/u',
+            '014' => '/кож[аеуи]|кожан|leather/u',
+            '005' => '/навигац|навигатор|navigation/u',
+            '082' => '/подогрев\w*\s+рул|руль\s+с\s+подогрев|heated\s+steering/u',
+            '063' => '/подогрев\w*\s+задн/u',
+            '022' => '/подогрев\w*+(?!\s+(?:рул|задн))|heated\s+seat/u',
+            '090' => '/вентиляц\w*\s+задн/u',
+            '034' => '/вентиляц|ventilated/u',
+            '087' => '/камер\w*\s*360|360\s*(?:камер|обзор)|кругов\w*\s+обзор|around\s*view/u',
+            '058' => '/камер\w*\s+задн|задн\w*\s+камер|rear\s+camera/u',
+            '079' => '/адаптивн\w*\s+круиз|\bacc\b|adaptive\s+cruise/u',
+            '068' => '/круиз|cruise/u',
+            '095' => '/\bhud\b|проекц|head.?up/u',
+            '057' => '/смарт.?ключ|бесключ|smart\s*key/u',
+            '032' => '/парктроник|датчик\w*\s+парков|parking\s+sensor/u',
+            '059' => '/электро\s*багажник|электропривод\w*\s+багажник|power\s+trunk/u',
+            '091' => '/массаж|massage/u',
+            '062' => '/рейлинг|roof\s+rail/u',
+            '086' => '/мертв\w*\s+зон|blind\s+spot/u',
+            '094' => '/электроручник|электронн\w*\s+ручник|\bepb\b/u',
+            '096' => '/bluetooth|блютуз/u',
+        ];
+        $codes = [];
+        foreach ($patterns as $code => $pattern) {
+            if (preg_match($pattern, $text)) {
+                $codes[] = (string) $code;
+            }
+        }
+        // "адаптивный круиз" is 079, not also plain cruise control
+        if (in_array('079', $codes, true)) {
+            $codes = array_values(array_diff($codes, ['068']));
+        }
+        return $codes;
+    }
+
+    /** Only codes of the option catalog: the AI may copy a placeholder or invent one. */
+    private function knownOptions(array $codes): array
+    {
+        try {
+            $known = EncarOptionCatalog::getCached()->pluck('code')->map(fn ($c) => (string) $c)->all();
+        } catch (\Throwable) {
+            return array_values(array_map('strval', $codes));
+        }
+        return $known === [] ? array_values(array_map('strval', $codes))
+            : array_values(array_intersect(array_map('strval', $codes), $known));
+    }
+
+    /**
+     * What the AI left out but the words name for sure: the model ("ауди А5" parsed as just
+     * Audi) and options ("панорамный люк"). Never overrides what the AI said.
+     */
+    private function fillGaps(array $json, string $text, ?string $knownMake = null): array
+    {
+        $fallback = $this->fallbackParse($text, trim((string) ($json['make'] ?? '')) ?: $knownMake) ?? [];
+        $make = trim((string) ($json['make'] ?? ''));
+        if (trim((string) ($json['model'] ?? '')) === '' && !empty($fallback['model'])
+            && ($make === '' || mb_strtolower($make) === mb_strtolower((string) ($fallback['make'] ?? '')))) {
+            $json['make']  = $fallback['make'];
+            $json['model'] = $fallback['model'];
+        }
+        $options = $this->knownOptions(array_merge((array) ($json['options'] ?? []), $fallback['options'] ?? []));
+        if ($options !== []) {
+            $json['options'] = array_values(array_unique($options));
+        } else {
+            unset($json['options']);
+        }
+        return $json;
     }
 
     private function buildToleranceNote(SearchQuery $original, SearchQuery $tolerant): string
@@ -680,19 +969,22 @@ class ChatSearchService
 11. "передний привод"/"FWD" → driveTypes: ["FWD"]
 12. "задний привод"/"RWD" → driveTypes: ["RWD"]
 13. "седан"/"sedan" → bodyTypes: ["Sedan"]; "кроссовер"/"SUV" → bodyTypes: ["SUV"]; "хэтчбек"/"hatchback" → bodyTypes: ["Hatchback"]; "универсал"/"wagon" → bodyTypes: ["Wagon"]; "купе"/"coupe" → bodyTypes: ["Coupe"]; "минивэн"/"van" → bodyTypes: ["Van"]
-14. Числа 1.6, 2.0, 2.5, 3.0 и т.д. рядом с маркой/моделью — объём двигателя → engineMin и engineMax
-15. "от X" → Min поле, "до X" → Max поле
-16. Пробег определяй по контексту: "пробег от 10000" → mileageMin: 10000
-17. Цену определяй по контексту. Цены хранятся в ₩ (KRW). 1$ ≈ 1300₩. "до 15000$" → priceMax: 19500000; "до 20 млн вон" → priceMax: 20000000
-18. "без ДТП"/"без аварий" → hasAccident: false; "с ДТП" → hasAccident: true
-19. "без залога"/"чистая" → lienStatuses: ["clean"]
-20. "1 владелец"/"один хозяин" → ownersCountMax: 1
-21. "без страховых"/"0 страховых" → insuranceCountMax: 0
-22. "не затоплена"/"без утоплений" → floodHistory: false
-23. Если указано точное число для range-поля (пробег, цена, год, объем) БЕЗ слов "от/до", ставь Min и Max равными
-24. Комплектация/trim: английское название комплектации, как в каталоге, только если пользователь её назвал. Примеры названий: {$trimExamples}
+14. Числа 1.6, 2.0, 2.5, 3.0 и т.д. рядом с маркой/моделью — объём двигателя → engineMin и engineMax; "2.0-3.0"/"от 2 до 3 литров" → engineMin: 2.0, engineMax: 3.0
+15. Диапазоны в любой форме: "от X до Y", "X-Y", "X–Y", "с X по Y", "между X и Y" → Min и Max; "от X"/"не меньше X"/"свыше X" → только Min; "до X"/"не больше X"/"не дороже X"/"дешевле X" → только Max
+16. Пробег: "пробег до 100 тыс"/"до 100к км" → mileageMax: 100000; "50-100 тыс км" → mileageMin: 50000, mileageMax: 100000; "небольшой пробег"/"малый пробег" → mileageMax: 60000. "тыс"/"т.км"/"к" = ×1000
+17. Цена в ₩ (KRW). "млн" = ×1 000 000, "тыс" = ×1000. 1$ ≈ 1300₩. "до 15000$" → priceMax: 19500000; "до 20 млн" → priceMax: 20000000; "от 20 до 30 млн"/"20-30 млн" → priceMin: 20000000, priceMax: 30000000; "цена до 25" без единиц — это миллионы вон
+18. ДТП в любой формулировке: "без ДТП"/"без аварий"/"не битая"/"небитый"/"не был в ДТП"/"чистая история" → hasAccident: false; "с ДТП"/"битая"/"после аварии" → hasAccident: true
+19. "без залога"/"без обременений"/"без кредита" → lienStatuses: ["clean"]; "без ареста" → seizureStatuses: ["clean"]
+20. "1 владелец"/"один хозяин"/"первый владелец" → ownersCountMax: 1; "до 2 владельцев" → ownersCountMax: 2
+21. "без страховых"/"0 страховых"/"без страховых случаев" → insuranceCountMax: 0; "не больше 2 страховых" → insuranceCountMax: 2
+22. "не затоплена"/"без утоплений"/"не утопленник" → floodHistory: false; "не тотал"/"без тотала" → totalLossHistory: false
+23. Одно число без "от/до": год → yearFrom и yearTo равны; объём → engineMin и engineMax равны; пробег и цена → только Max ("пробег 50000" → mileageMax: 50000, "за 25 млн" → priceMax: 25000000). "не старше 2019"/"от 2019" → yearFrom: 2019; "2018-2021" → yearFrom: 2018, yearTo: 2021
+24. Комплектация/trim: комплектация латиницей, как в каталоге, если пользователь её назвал (премиум → Premium, эс лайн → S line, м спорт → M Sport). Код двигателя модификации ("45 TFSI quattro", "530e", "2.0T", "40d") тоже клади в trim. Примеры комплектаций: {$trimExamples}
 25. Поколение/generation: код поколения или кузова, только если пользователь его назвал: "G30", "W213", "DN8", "F5" → generation: "G30". Не выводи поколение из года.
-26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi и т.д.
+26. Марку и модель пиши ТОЧНО как в списке доступных (см. ниже). Русские и кириллические варианты маппи: мерседес→Mercedes-Benz, бмв→BMW, хендай/хёндай→Hyundai, тойота→Toyota, порше→Porsche, ауди→Audi; модель кириллицей или транслитом — латиницей из списка: "А5"→"A5", "Х5"→"X5", "камри"→"Camry", "соната"→"Sonata", "е класс"→"E-Class", "5 серия"/"пятёрка"→"5 Series". Если модели нет в списке, всё равно верни её латиницей
+30. Цвет colors[] — только из: "White", "Black", "Gray", "Silver", "Blue", "Red", "Green", "Brown", "Yellow", "Gold", "Orange", "Purple"; можно несколько ("белая или чёрная" → ["White", "Black"])
+31. Привод driveTypes: "awd" (полный, 4WD, AWD), "fwd" (передний), "rwd" (задний) — только если привод назван словами; quattro/xDrive/4MATIC — часть модификации, клади в trim, не в driveTypes. Кузов bodyTypes: "sedan", "suv" (кроссовер, внедорожник, джип), "hatchback", "wagon" (универсал), "coupe", "convertible", "van" (минивэн), "pickup". Топливо fuelTypes: "gasoline", "diesel", "hybrid", "plugin_hybrid", "electric", "lpg" (газ), "hydrogen". КПП transmissions: "automatic", "manual", "cvt", "dct"
+32. Опции (люк, панорама, кожа, подогревы, вентиляция, камеры, круиз, HUD, навигация, смарт-ключ и т.д.) — options[] с кодами из списка опций; несколько опций → несколько кодов
 27. "свежие"/"новые объявления"/"за последнюю неделю"/"за месяц" → listedAfter: "YYYY-MM-DD" (вычисли дату от текущей)
 28. Дата первой регистрации: "дата регистрации 2025"/"зарегистрирована в 2023"/"1 регистрация 2025"/"регистрация 2022"/"рег. 2024" → если конкретный год без "после/до" → firstRegAfter: "YYYY-01-01" И firstRegBefore: "YYYY-12-31"; "регистрация после 2022"→ firstRegAfter: "2022-01-01"; "регистрация до 2023"→ firstRegBefore: "2023-12-31"; "регистрация 2022-2024" → firstRegAfter: "2022-01-01" + firstRegBefore: "2024-12-31"
 29. Текущая дата: {$today}
@@ -716,7 +1008,13 @@ User: "хендай соната 2020 автомат до 15000$"
 → {"make": "Hyundai", "model": "Sonata", "yearFrom": 2020, "yearTo": 2020, "transmissions": ["Automatic"], "priceMax": 19500000}
 
 User: "бмв 5 серия g30 дизель пробег до 100000"
-→ {"make": "BMW", "model": "5 Series", "generation": "G30", "fuelTypes": ["Diesel"], "mileageMax": 100000}
+→ {"make": "BMW", "model": "5 Series", "generation": "G30", "fuelTypes": ["diesel"], "mileageMax": 100000}
+
+User: "ауди А5 понарамный люк 2018-2021 от 20 до 30 млн пробег до 100 тыс не битая"
+→ {"make": "Audi", "model": "A5", "options": ["010"], "yearFrom": 2018, "yearTo": 2021, "priceMin": 20000000, "priceMax": 30000000, "mileageMax": 100000, "hasAccident": false}
+
+User: "x5 40d xdrive m sport чёрный кожа вентиляция"
+→ {"make": "BMW", "model": "X5", "trim": "40d M Sport", "colors": ["Black"], "options": ["014", "034"]}
 
 User: "кроссовер до 20 млн вон без дтп 1 владелец"
 → {"bodyTypes": ["SUV"], "priceMax": 20000000, "hasAccident": false, "ownersCountMax": 1}
@@ -780,7 +1078,7 @@ PROMPT;
                     $lines[] = sprintf('  "%s" → %s%s', $opt->code, $label, $suffix);
                 }
 
-                $lines[] = 'Пример: пользователь "с кожаным салоном и люком" → options: ["CODE_LEATHER", "CODE_SUNROOF"]';
+                $lines[] = 'Пример: пользователь "с кожаным салоном и (панорамным) люком" → options: ["014", "010"]';
 
                 return implode("\n", $lines);
             } catch (\Throwable) {
@@ -797,16 +1095,9 @@ PROMPT;
         }
 
         $lines = ['Доступные марки и модели (используй ТОЛЬКО эти названия):'];
-        $count = 0;
         foreach ($makes as $make => $models) {
-            if ($count >= 50) {
-                $lines[] = '... и другие';
-                break;
-            }
-            $modelsList = implode(', ', array_slice($models, 0, 15));
-            $extra      = count($models) > 15 ? ' ...' : '';
-            $lines[]    = "- {$make}: {$modelsList}{$extra}";
-            $count++;
+            // every model: a model left out of the list was dropped by the AI ("ауди а5" → just Audi)
+            $lines[] = "- {$make}: " . implode(', ', $models);
         }
 
         return implode("\n", $lines);
