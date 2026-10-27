@@ -171,6 +171,7 @@ const LotView = (() => {
           ${ctx.closable ? '' : `<button class="btn fav${ctx.favorite ? ' on' : ''}" type="button" data-fav aria-pressed="${!!ctx.favorite}">${Fmt.icon.heart}<span>${ctx.favorite ? 'В избранном' : 'В избранное'}</span></button>`}
           <button class="btn${ctx.compared ? ' on' : ''}" type="button" data-compare aria-pressed="${!!ctx.compared}">${Fmt.icon.compare}<span>${ctx.compared ? 'В сравнении' : 'Сравнить'}</span></button>
         </div>
+        <div data-calc></div>
         ${historyBlock(lot, ctx.inspection, asked)}
         ${specsBlock(lot, asked)}
         ${optionsBlock(lot, q)}

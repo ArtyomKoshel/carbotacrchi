@@ -49,7 +49,8 @@ class LotController extends Controller
         $userId = (int) $request->input('user_id'); // set by ValidateTelegramAuth from the signed data
         $username = $userId > 0 ? (User::find($userId)?->username ?? '') : '';
 
-        $text = ClientLotCard::text($lot, $inspection, $username);
+        $calc = self::calcLines($request->input('calc'));
+        $text = ClientLotCard::text($lot, $inspection, $username, $calc);
 
         // For Telegram, use raw URLs (no impolicy) to avoid CDN watermark overlay; limit to 7 photos
         $rawPhotos = $lot['photos'] ? LotPhotos::rawUrls(DB::table('lots')->where('id', $lotId)->first() ?? []) : [];
@@ -62,7 +63,7 @@ class LotController extends Controller
             return response()->json(['ok' => true, 'data' => ['text' => $text]]);
         }
 
-        $caption = ClientLotCard::html($lot, $inspection, $username);
+        $caption = ClientLotCard::html($lot, $inspection, $username, $calc);
         if ($mode === 'prepare' && $telegramPhotos) {
             $prepared = $bot->savePreparedInlineMessage($userId, $telegramPhotos[0], $caption);
             if (! empty($prepared['ok']) && ! empty($prepared['result']['id'])) {
@@ -73,6 +74,36 @@ class LotController extends Controller
         $sent = $telegramPhotos ? $bot->sendMediaGroup($userId, $telegramPhotos, $caption) : $bot->sendMessage($userId, $caption);
 
         return response()->json(['ok' => ! empty($sent['ok']), 'data' => ['sent_to_chat' => ! empty($sent['ok']), 'text' => $text]]);
+    }
+
+    /**
+     * The mini app's landed-cost lines (Calc.shareLines) as plain text: at most 12 lines of
+     * 160 characters, no control characters; '' is a blank line (one at a time, none at the
+     * ends). Anything else is dropped.
+     *
+     * @return list<string>
+     */
+    private static function calcLines(mixed $calc): array
+    {
+        if (! is_array($calc)) {
+            return [];
+        }
+        $lines = [];
+        foreach (array_slice(array_values($calc), 0, 12) as $line) {
+            $line ??= ''; // the request turns a blank line into null
+            if (! is_string($line)) {
+                continue;
+            }
+            $clean = mb_substr(trim((string) preg_replace('/[\x00-\x1F\x7F]/u', '', $line)), 0, 160);
+            if ($clean !== '' || ($lines !== [] && end($lines) !== '')) {
+                $lines[] = $clean;
+            }
+        }
+        while ($lines !== [] && end($lines) === '') {
+            array_pop($lines);
+        }
+
+        return $lines;
     }
 
     /** @return array<string, mixed>|null */

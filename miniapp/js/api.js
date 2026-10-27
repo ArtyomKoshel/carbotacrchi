@@ -229,14 +229,23 @@ const API = (() => {
     return request('GET', `/lots/${encodeURIComponent(lotId)}?${_authQuery()}`);
   }
 
-  /** mode: 'prepare' (Telegram chat picker), 'chat' (to the picker's own chat), 'text' (copy). */
-  async function shareLot(lotId, mode) {
+  /**
+   * mode: 'prepare' (Telegram chat picker), 'chat' (to the picker's own chat), 'text' (copy).
+   * calc: the landed-cost lines to add to the card (Calc.shareLines), or null.
+   */
+  async function shareLot(lotId, mode, calc = null) {
     _requireAuth();
-    return request('POST', `/lots/${encodeURIComponent(lotId)}/share`, { ..._authBody(), mode });
+    return request('POST', `/lots/${encodeURIComponent(lotId)}/share`, { ..._authBody(), mode, ...(calc ? { calc } : {}) });
+  }
+
+  /** The calculator's Bithumb rate and the team's defaults (/admin/calculator). */
+  async function getCalculator() {
+    _requireAuth();
+    return request('GET', `/calculator?${_authQuery()}`);
   }
 
   return {
-    getLot, shareLot,
+    getLot, shareLot, getCalculator,
     getFilters, invalidateFiltersCache, isFiltersCached,
     browserAuthInit, browserAuthStatus, browserAuthDevLogin, isAuthError,
     search,

@@ -21,6 +21,7 @@ class AdminPagePermission extends Model
         'schedules'       => 'Расписания',
         'filters'         => 'Фильтры',
         'bot-filters'     => 'Бот-фильтры',
+        'calculator'      => 'Калькулятор: значения по умолчанию',
         'filter-skip-log' => 'Лог пропусков',
         'fields'          => 'Поля',
         'lots'            => 'Репарсинг',

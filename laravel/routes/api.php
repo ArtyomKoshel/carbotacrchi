@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BrowserAuthController;
+use App\Http\Controllers\Api\CalculatorController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\FavoritesController;
 use App\Http\Controllers\Api\FiltersController;
@@ -22,6 +23,7 @@ Route::middleware('telegram.auth')->group(function () {
     Route::post('/search',                    [SearchController::class,       'search']);
     Route::get('/lots/{lotId}',               [LotController::class,          'show']);
     Route::post('/lots/{lotId}/share',        [LotController::class,          'share']);
+    Route::get('/calculator',                 [CalculatorController::class,   'show']);
     Route::post('/search-chat',               [SearchChatController::class,   'chat']);
     Route::post('/search-chat/reset',         [SearchChatController::class,   'reset']);
     Route::get('/favorites',                  [FavoritesController::class,    'index']);

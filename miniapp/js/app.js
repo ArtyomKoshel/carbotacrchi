@@ -1,6 +1,6 @@
 /**
  * The shell. Decides the interface (Telegram / browser / desktop work place), routes between
- * views (#favorites, #compare, #alerts) and overlays (#filters, #lot-<id>), keeps the search
+ * views (#favorites, #compare, #alerts, #calc) and overlays (#filters, #lot-<id>), keeps the search
  * in the URL (?q=…, a link to send or bookmark) and wires Telegram's own buttons.
  */
 const App = (() => {
@@ -94,7 +94,7 @@ const App = (() => {
     if (lotId) { if (!s.lot || s.lot.id !== lotId) openLot(lotId, { fromRoute: true }); else setOverlay('lot'); return; }
     if (h === 'filters' && !s.wide) { setOverlay('filters'); return; }
     setOverlay(null);
-    const view = ['favorites', 'compare', 'alerts'].includes(h) ? h : 'search';
+    const view = ['favorites', 'compare', 'alerts', 'calc'].includes(h) ? h : 'search';
     showView(view);
   }
 
@@ -106,11 +106,13 @@ const App = (() => {
   function showView(view) {
     if (view !== s.view) { if (s.wide) $('main').scrollTop = 0; else window.scrollTo(0, 0); }
     s.view = view;
-    for (const v of ['search', 'favorites', 'compare', 'alerts']) $(`view-${v}`).hidden = v !== view;
+    for (const v of ['search', 'favorites', 'compare', 'alerts', 'calc']) $(`view-${v}`).hidden = v !== view;
     document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === view));
     if (view === 'favorites') loadFavorites();
     if (view === 'compare') Compare.render($('compare'), { onOpen: lot => openLot(lot) });
     if (view === 'alerts') Subscriptions.loadAndRender();
+    // mounted once; again while it has not loaded (opened before signing in, Bithumb or the API down)
+    if (view === 'calc' && !$('calc-view').querySelector('.calc')) Calc.mount($('calc-view'), { id: 'manual', priceKrw: 0 });
     syncTelegramButtons();
   }
 
@@ -406,6 +408,8 @@ const App = (() => {
       onFav: () => toggleFavorite(s.lot),
       onCompare: () => toggleCompare(s.lot),
     });
+    const calc = mount.querySelector('[data-calc]');
+    if (calc) Calc.mount(calc, { id: s.lot.id, priceKrw: s.lot.price, lot: true });
     const track = mount.querySelector('.gallery__track');
     if (track && keep) track.scrollLeft = keep;
     if (s.wide) $('lot-pane').scrollTop = 0;
@@ -429,14 +433,15 @@ const App = (() => {
     if (!lot) return;
     TG.haptic('impact', 'medium');
     try {
+      const calc = Calc.shareLines(lot.id, lot.price);
       if (s.tg) {
-        const res = await API.shareLot(lot.id, TG.canShare() ? 'prepare' : 'chat');
+        const res = await API.shareLot(lot.id, TG.canShare() ? 'prepare' : 'chat', calc);
         if (res.prepared_message_id && await TG.share(res.prepared_message_id)) { toast('Отправлено'); return; }
         if (res.prepared_message_id) return; // the picker closed Telegram's chat list
         toast(res.sent_to_chat ? 'Отправил карточку вам в чат — перешлите клиенту' : 'Не удалось отправить', 3200);
         return;
       }
-      const res = await API.shareLot(lot.id, BrowserAuth.isLinked() ? 'chat' : 'text');
+      const res = await API.shareLot(lot.id, BrowserAuth.isLinked() ? 'chat' : 'text', calc);
       let copied = false;
       try { await navigator.clipboard.writeText(res.text); copied = true; } catch (_) {}
       toast(res.sent_to_chat

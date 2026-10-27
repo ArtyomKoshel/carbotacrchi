@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Catalog\CatalogLinker;
+use App\Models\CalculatorSetting;
 use App\Models\LotInspection;
 use App\Models\User;
 use App\Services\SearchQuery;
@@ -11,6 +12,7 @@ use App\Support\ClientLotCard;
 use Database\Factories\BotUserFactory;
 use Database\Factories\LotFactory;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\RefreshesDatabaseOnce;
 use Tests\TestCase;
@@ -117,11 +119,11 @@ final class LotApiTest extends TestCase
         $id = $this->sonata();
         $text = $this->postJson("/api/lots/{$id}/share", ['mode' => 'text', 'init_data' => self::initData(777)])->json('data.text');
 
-        $this->assertStringContainsString('2021 Hyundai Sonata DN8 2.0 Premium', $text);
+        $this->assertStringContainsString('HYUNDAI SONATA (DN8) 2.0 PREMIUM', $text);
         $this->assertStringContainsString('₩18 900 000', $text);
-        $this->assertStringContainsString('45 210 км · бензин', $text);
-        $this->assertStringContainsString('История: без ДТП · смен владельца: 1 · страховых случаев: 0', $text);
-        $this->assertStringContainsString('Осмотр 10.09.2026: окрас: бампер', $text);
+        $this->assertStringContainsString('🔶 Пробег: 45 210 км', $text);
+        $this->assertStringContainsString('🔶 Двигатель: бензин 2 л', $text);
+        $this->assertStringContainsString('🔶 История: без ДТП · смен владельца: 1', $text);
         foreach (['encar', '41536978', 'KMHL341CBMA123456', '12가3456'] as $leak) {
             $this->assertStringNotContainsStringIgnoringCase($leak, $text);
         }
@@ -134,5 +136,39 @@ final class LotApiTest extends TestCase
             $this->assertSame($sort, SearchQuery::fromArray(['sort' => $sort])->sort);
         }
         $this->assertSame('date', SearchQuery::fromArray(['sort' => 'id; drop'])->sort);
+    }
+
+    /** The picker's landed-cost lines go into the card as plain text, after the price. */
+    public function test_the_client_card_can_carry_the_calculation(): void
+    {
+        $id = $this->sonata();
+        $calc = ['🧾 Расчёт стоимости:', "Таможня — 4 100 $\u{0007}", '', '', 'Итого: 24 477 $', ...array_fill(0, 20, 'x')];
+        $text = $this->postJson("/api/lots/{$id}/share", ['mode' => 'text', 'calc' => $calc, 'init_data' => self::initData(777)])->json('data.text');
+
+        $this->assertStringContainsString("🧾 Расчёт стоимости:\nТаможня — 4 100 $\n\nИтого: 24 477 $", $text, 'one blank line kept');
+        $this->assertLessThan(strpos($text, '🧾'), strpos($text, '₩18 900 000'), 'after the price');
+        $this->assertSame(7, substr_count($text, "\nx"), 'at most 12 lines');
+
+        $plain = $this->postJson("/api/lots/{$id}/share", ['mode' => 'text', 'calc' => 'not a list', 'init_data' => self::initData(777)])->json('data.text');
+        $this->assertStringNotContainsString('Расчёт', $plain);
+    }
+
+    /** One Bithumb rate for everyone and the team's defaults; the last rate when Bithumb is down. */
+    public function test_the_calculator_gives_the_rate_and_the_team_defaults(): void
+    {
+        Cache::flush();
+        CalculatorSetting::create(['key' => 'delivery_usd', 'value' => '5500']);
+        Http::fake(['api.bithumb.com/*' => Http::sequence()
+            ->push(['status' => '0000', 'data' => ['closing_price' => '1400']])
+            ->push('down', 503)]);
+        $url = '/api/calculator?' . http_build_query(['init_data' => self::initData(777)]);
+
+        $data = $this->getJson($url)->assertOk()->json('data');
+        $this->assertSame([1400, false], [(int) $data['rate']['rate'], $data['rate']['stale']]);
+        $this->assertEquals([5500, 4100], [$data['defaults']['delivery_usd'], $data['defaults']['customs_usd']]);
+
+        Cache::forget('calculator:bithumb');
+        $rate = $this->getJson($url)->json('data.rate');
+        $this->assertSame([1400, true], [(int) $rate['rate'], $rate['stale']]);
     }
 }

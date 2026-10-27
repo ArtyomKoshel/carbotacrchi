@@ -17,16 +17,18 @@ final class ClientLotCard
     /**
      * @param  array<string, mixed>  $lot  LotDTO::toArray()
      * @param  array<string, mixed>|null  $inspection  lot_inspections row
+     * @param  list<string>  $calc  the landed-cost lines the picker chose to add (mini app calculator)
      */
-    public static function html(array $lot, ?array $inspection = null, string $username = ''): string
+    public static function html(array $lot, ?array $inspection = null, string $username = '', array $calc = []): string
     {
         $parts = [];
-        foreach (self::lines($lot, $inspection, $username) as [$kind, $text]) {
+        foreach (self::lines($lot, $inspection, $username, $calc) as [$kind, $text]) {
             $parts[] = match ($kind) {
                 'header' => $text,
                 'title'  => '<b>'.e($text).'</b>',
                 'spec'   => e($text),
                 'price'  => '<b>'.e($text).'</b>',
+                'total'  => '<b>'.e($text).'</b>',
                 'contact' => $text,
                 default  => e($text),
             };
@@ -35,16 +37,19 @@ final class ClientLotCard
         return mb_substr(implode("\n", $parts), 0, self::CAPTION_MAX);
     }
 
-    /** @param array<string, mixed> $lot */
-    public static function text(array $lot, ?array $inspection = null, string $username = ''): string
+    /**
+     * @param  array<string, mixed>  $lot
+     * @param  list<string>  $calc
+     */
+    public static function text(array $lot, ?array $inspection = null, string $username = '', array $calc = []): string
     {
-        return implode("\n", array_map(fn (array $l) => $l[1], self::lines($lot, $inspection, $username)));
+        return implode("\n", array_map(fn (array $l) => $l[1], self::lines($lot, $inspection, $username, $calc)));
     }
 
     /**
      * @return list<array{0: string, 1: string}> [kind, text]
      */
-    private static function lines(array $lot, ?array $inspection, string $username = ''): array
+    private static function lines(array $lot, ?array $inspection, string $username = '', array $calc = []): array
     {
         $label = fn (string $field, ?string $v) => $v === null || $v === ''
             ? null
@@ -113,6 +118,14 @@ final class ClientLotCard
         // Price
         $out[] = ['blank', ''];
         $out[] = ['price', '❗ ЦЕНА: ₩' . self::num((int) $lot['price'])];
+
+        // Landed cost, as the picker's calculator counted it
+        if ($calc !== []) {
+            $out[] = ['blank', ''];
+            foreach ($calc as $line) {
+                $out[] = [match (true) { $line === '' => 'blank', str_starts_with($line, 'Итого') => 'total', default => 'calc' }, $line];
+            }
+        }
 
         // Contact
         $out[] = ['blank', ''];
