@@ -118,18 +118,25 @@ const LotView = (() => {
     const opts = Array.isArray(lot.options) ? lot.options.filter(o => o && typeof o === 'object') : [];
     if (!opts.length) return '';
     const wanted = new Set(q?.options ?? []);
+    const tile = o => `<span class="opt${wanted.has(o.code) ? ' opt--match' : ''}"><span class="material-symbols-outlined opt__icon" aria-hidden="true">${optionIcon(o)}</span><span class="opt__name">${Fmt.esc(o.name_ru || o.name_en || o.name_kr || o.code)}</span></span>`;
+    // on top: the options the search asked for (all of them), filled up to 3 in the order they come
+    const asked = opts.filter(o => wanted.has(o.code));
+    const top = [...asked, ...opts.filter(o => !wanted.has(o.code))].slice(0, Math.max(3, asked.length));
+    const rest = opts.filter(o => !top.includes(o));
     const groups = new Map();
-    for (const o of opts) {
+    for (const o of rest) {
       const g = OPTION_GROUPS[o.category] ? o.category : 'other';
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push(o);
     }
     const order = [...Object.keys(OPTION_GROUPS), 'other'].filter(g => groups.has(g));
     return `<section class="sect"><h3 class="sect__title"><span>Опции</span><span class="num">${opts.length}</span></h3>
-      <div class="card opts">${order.map(g => `<div class="opts__group"><h4>${OPTION_GROUPS[g] ?? 'Прочее'}</h4>
-        <div class="opts__list">${groups.get(g)
-          .sort((a, b) => (wanted.has(b.code) ? 1 : 0) - (wanted.has(a.code) ? 1 : 0))
-          .map(o => `<span class="opt${wanted.has(o.code) ? ' opt--match' : ''}"><span class="material-symbols-outlined opt__icon" aria-hidden="true">${optionIcon(o)}</span><span class="opt__name">${Fmt.esc(o.name_ru || o.name_en || o.name_kr || o.code)}</span></span>`).join('')}</div></div>`).join('')}
+      <div class="card opts">
+        <div class="opts__list">${top.map(tile).join('')}</div>
+        ${rest.length ? `<details class="opts__more"><summary>Ещё ${rest.length} ${Fmt.plural(rest.length, 'опция', 'опции', 'опций')}</summary>
+          ${order.map(g => `<div class="opts__group"><h4>${OPTION_GROUPS[g] ?? 'Прочее'}</h4>
+            <div class="opts__list">${groups.get(g).map(tile).join('')}</div></div>`).join('')}
+        </details>` : ''}
       </div></section>`;
   }
 
