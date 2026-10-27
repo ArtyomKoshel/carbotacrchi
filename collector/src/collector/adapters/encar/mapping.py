@@ -344,10 +344,11 @@ def apply_record(lot: EncarDraft, rec: dict[str, Any]) -> InspectionDraft:
     lot.lien_status = "lien" if int(rec.get("loan") or 0) > 0 else "clean"
     lot.seizure_status = "seizure" if int(rec.get("robberCnt") or 0) > 0 else "clean"
 
+    # myAccidentCost: repairs of this car (accident types 1, 2); otherAccidentCost: the damage it
+    # did to other cars (type 3), not a repair of this one. 0 when the history has none.
     my_cost = int(rec.get("myAccidentCost") or 0)
     other_cost = int(rec.get("otherAccidentCost") or 0)
-    if my_cost + other_cost > 0:
-        lot.repair_cost = my_cost + other_cost
+    lot.repair_cost = my_cost
     if rec.get("firstDate") and not lot.first_reg_date:
         lot.first_reg_date = rec["firstDate"]
 

@@ -179,7 +179,7 @@ def test_record_enrichment() -> None:
     assert lot.total_loss_history is False
     assert lot.lien_status == "clean"
     assert lot.seizure_status == "clean"
-    assert lot.repair_cost == 450_000
+    assert lot.repair_cost == 350_000  # this car only: the 100 000 went to another car
     assert lot.first_reg_date == "2021-03-02"
     assert record.accident_detail == "2023-05-01 [my-fault] ₩350,000\n2024-01-10 [other-fault] ₩100,000"
     assert record.my_accident_cost == 350_000
@@ -253,7 +253,7 @@ def test_full_draft_becomes_a_valid_carlot() -> None:
     assert carlot.listing.price.amount == 18_900_000
     assert carlot.listing.listed_at == datetime(2026, 9, 14, tzinfo=m.KST)
     assert carlot.history.repair_cost is not None
-    assert carlot.history.repair_cost.amount == 450_000
+    assert carlot.history.repair_cost.amount == 350_000
     assert carlot.inspection is not None
     assert carlot.inspection.own_damage_cost is not None
     assert carlot.inspection.own_damage_cost.amount == 350_000

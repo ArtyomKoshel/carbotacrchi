@@ -76,15 +76,20 @@ const LotView = (() => {
     add('ДТП по страховым', yesNo(lot.hasAccident) ?? ['нет данных', ''], asked.has('accident'));
     if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: asked.has('owners') ? 'match' : '' }]);
     if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: asked.has('insurance') ? 'match' : '' }]);
-    if (lot.repairCost) rows.push(['Ремонт по страховым', Fmt.won(lot.repairCost), { value: 'num warn' }]);
+    // this car's repairs only: what it did to other cars is not its damage
+    const repair = Damage.ownRepairCost(lot, inspection);
+    if (repair) rows.push(['Ремонт по страховым', Fmt.won(repair), { value: 'num warn' }]);
     add('Затопление', yesNo(lot.floodHistory), asked.has('flood'));
     add('Тотал', yesNo(lot.totalLossHistory), asked.has('totalLoss'));
     if (lot.lienStatus) rows.push(['Залог', lot.lienStatus === 'clean' ? 'нет' : 'есть', { value: lot.lienStatus === 'clean' ? 'ok' : 'bad' }]);
     if (lot.seizureStatus) rows.push(['Арест', lot.seizureStatus === 'clean' ? 'нет' : 'есть', { value: lot.seizureStatus === 'clean' ? 'ok' : 'bad' }]);
     if (inspection) {
-      const marks = [inspection.accident_detail, inspection.outer_detail].filter(Boolean);
+      // the panels and the claims have their own sections below; the row says what the inspection found
+      const body = Damage.summary(inspection);
+      const outerOld = !body && inspection.outer_detail; // an inspection stored before details.outer_parts
       rows.push([`Осмотр${inspection.inspection_date ? ' ' + Fmt.day(inspection.inspection_date) : ''}`,
-        marks.length ? Fmt.esc(marks.join('; ')) : 'замечаний нет', { value: inspection.accident_detail ? 'bad' : marks.length ? 'warn' : 'ok' }]);
+        body ? Fmt.esc(body) : outerOld ? Fmt.esc(outerOld) : 'замечаний по кузову нет',
+        { value: body || outerOld ? 'warn' : 'ok' }]);
       if (inspection.inspection_mileage) rows.push(['Пробег по осмотру', Fmt.km(inspection.inspection_mileage), { value: 'num' }]);
       if (inspection.valid_until) rows.push(['Осмотр действует до', Fmt.day(inspection.valid_until), { value: 'num' }]);
       const note = inspection.details?.inspector_note;
@@ -180,6 +185,8 @@ const LotView = (() => {
         </div>
         <div data-calc></div>
         ${historyBlock(lot, ctx.inspection, asked)}
+        ${Damage.bodyBlock(ctx.inspection)}
+        ${Damage.claimsBlock(ctx.inspection)}
         ${specsBlock(lot, asked)}
         ${optionsBlock(lot, q)}
         <div class="lot__actions">
