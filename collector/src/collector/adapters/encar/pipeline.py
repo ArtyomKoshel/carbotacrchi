@@ -279,8 +279,10 @@ class EncarPipeline:
                 continue
             apply_stored(lot.draft, state, DRIVE_FIELDS, DRIVE_RAW_KEYS)
             condition = tuple(sorted(lot.draft.raw_data.get("condition") or []))
-            missing = ("Record" in condition or "Inspection" in condition) and all(
-                state.fields.get(f) is None for f in _HISTORY_BEARING
+            # The inspection fills has_accident / flood_history too, so a record Encar did not open
+            # yet (openData false) is told by insurance_count alone: it is fetched again next run.
+            missing = ("Record" in condition and state.fields.get("insurance_count") is None) or (
+                "Inspection" in condition and all(state.fields.get(f) is None for f in _HISTORY_BEARING)
             )
             changed = listing_changed(lot.draft, state)
             if state.checked_at < cutoff or state.condition != condition or missing or changed:

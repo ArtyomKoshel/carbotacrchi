@@ -36,6 +36,8 @@ class SearchQuery
     public ?int $ownersCountMin = null;
     public ?int $ownersCountMax = null;
     public ?bool $hasAccident = null;
+    /** hasAccident: 'unknown' — no insurance record yet, «Нет данных» in the mini app */
+    public bool $accidentUnknown = false;
     public ?bool $floodHistory = null;
     public ?bool $totalLossHistory = null;
 
@@ -122,7 +124,8 @@ class SearchQuery
         $q->seatCountMin = (int) ($data['seatCountMin'] ?? 0);
         $q->seatCountMax = (int) ($data['seatCountMax'] ?? 0);
 
-        $q->hasAccident = self::toNullableBool($data['hasAccident'] ?? null);
+        $q->accidentUnknown = ($data['hasAccident'] ?? null) === 'unknown';
+        $q->hasAccident = $q->accidentUnknown ? null : self::toNullableBool($data['hasAccident'] ?? null);
         $q->floodHistory = self::toNullableBool($data['floodHistory'] ?? null);
         $q->totalLossHistory = self::toNullableBool($data['totalLossHistory'] ?? null);
 
@@ -297,6 +300,7 @@ class SearchQuery
         if ($this->ownersCountMin !== null) $parts[] = "владельцев от {$this->ownersCountMin}";
         if ($this->ownersCountMax !== null) $parts[] = "владельцев до {$this->ownersCountMax}";
         if ($this->hasAccident !== null) $parts[] = $this->hasAccident ? 'с ДТП' : 'без ДТП';
+        if ($this->accidentUnknown) $parts[] = 'ДТП: нет данных';
         if ($this->floodHistory !== null) $parts[] = $this->floodHistory ? 'с затоплением' : 'без затоплений';
         if ($this->lienStatuses) $parts[] = 'залог: ' . implode('/', $this->lienStatuses);
         if ($this->seizureStatuses) $parts[] = 'арест: ' . implode('/', $this->seizureStatuses);
@@ -345,6 +349,7 @@ class SearchQuery
         if ($this->seatCountMin) $data['seatCountMin'] = $this->seatCountMin;
         if ($this->seatCountMax) $data['seatCountMax'] = $this->seatCountMax;
         if ($this->hasAccident !== null) $data['hasAccident'] = $this->hasAccident;
+        if ($this->accidentUnknown) $data['hasAccident'] = 'unknown';
         if ($this->floodHistory !== null) $data['floodHistory'] = $this->floodHistory;
         if ($this->totalLossHistory !== null) $data['totalLossHistory'] = $this->totalLossHistory;
         if ($this->fuelTypes)     $data['fuelTypes']     = $this->fuelTypes;

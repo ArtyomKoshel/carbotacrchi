@@ -96,7 +96,7 @@
 
 | Колонка | Encar | KBCha | Покр. Encar | Покр. KBCha |
 |---------|-------|-------|-------------|-------------|
-| `has_accident` | `myAccidentCnt + otherAccidentCnt > 0` | `사고이력` inspection | ~50% | ~80% |
+| `has_accident` | `myAccidentCnt + otherAccidentCnt > 0`; без record — `true`, если `master.accdient` | `사고이력` inspection | ~50% | ~80% |
 | `flood_history` | `floodTotalLossCnt + floodPartLossCnt > 0` | `침수` inspection | ~50% | ~60% |
 | `total_loss_history` | `record.totalLossCnt > 0` | — | ~50% | — |
 | `owners_count` | `record.ownerChangeCnt` | `소유자변경` cell | ~50% | ~80% |

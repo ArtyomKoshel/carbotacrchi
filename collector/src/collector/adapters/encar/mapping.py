@@ -406,8 +406,11 @@ def apply_inspection(lot: EncarDraft, insp: dict[str, Any], record: InspectionDr
     detail = master.get("detail") or {}
 
     if master.get("accdient") is not None:  # sic: the API's spelling
-        if lot.has_accident is None:
-            lot.has_accident = master["accdient"]
+        # An undamaged frame is not «no claims»: only an accident the inspection found reaches the
+        # lot. A false here would also overwrite the record's accident once the seller hides the
+        # record (lot 41436905: 3 claims, ₩16M); the inspection keeps its own answer.
+        if lot.has_accident is None and master["accdient"]:
+            lot.has_accident = True
         record.has_accident = master["accdient"]
     if detail.get("waterlog") is not None:
         lot.flood_history = detail["waterlog"]

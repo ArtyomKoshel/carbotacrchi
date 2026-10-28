@@ -89,6 +89,7 @@ const Fmt = (() => {
     const raise = l => { const order = { none: 0, ok: 1, warn: 2, bad: 3 }; if (order[l] > order[level]) level = l; };
     if (lot.hasAccident === true) { flags.push({ text: 'ДТП', cls: 'bad' }); raise('bad'); }
     else if (lot.hasAccident === false) { flags.push({ text: 'Без ДТП', cls: 'ok' }); raise('ok'); }
+    else flags.push({ text: 'ДТП: нет данных', cls: '' }); // no insurance record yet (or the seller hid it)
     if (lot.floodHistory) { flags.push({ text: 'Затопление', cls: 'bad' }); raise('bad'); }
     if (lot.totalLossHistory) { flags.push({ text: 'Тотал', cls: 'bad' }); raise('bad'); }
     // ownersCount is Encar's ownerChangeCnt: changes of owner, 0 = still the first owner
@@ -106,7 +107,7 @@ const Fmt = (() => {
       : lot.floodHistory ? 'затопление'
       : lot.totalLossHistory ? 'тотал'
       : lot.insuranceCount ? `${lot.insuranceCount} ${plural(lot.insuranceCount, 'страховой', 'страховых', 'страховых')}`
-      : lot.hasAccident === false ? 'чистая' : '—';
+      : lot.hasAccident === false ? 'чистая' : 'нет данных';
     return { level, short, flags };
   }
 

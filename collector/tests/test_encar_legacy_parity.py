@@ -78,6 +78,10 @@ def test_lot_fields_match_the_old_parser(legacy: Any, case: str) -> None:
     detail, record, insp = copy.deepcopy(CASES[case])
     old_lot, _ = _old(legacy, copy.deepcopy(detail), copy.deepcopy(record), copy.deepcopy(insp))
     new_lot, _ = _new(detail, record, insp)
+    if record is None and insp is not None and old_lot.has_accident is False:
+        # Departure: the old parser took the inspection's undamaged frame for «no accident».
+        assert new_lot.has_accident is None
+        old_lot.has_accident = None
 
     for f in dataclasses.fields(m.EncarDraft):
         assert getattr(new_lot, f.name) == getattr(old_lot, f.name), f.name

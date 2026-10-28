@@ -36,7 +36,7 @@ class EncarProvider extends AbstractDbProvider
                 engineVolume: isset($raw['engine_volume']) ? (float) $raw['engine_volume'] : null,
                 trim:         $raw['trim']          ?? null,
                 trimEn:       $raw['trim_en']       ?? null,
-                hasAccident:      isset($raw['has_accident'])      ? (bool) $raw['has_accident']      : null,
+                hasAccident:      self::hasAccident($raw),
                 floodHistory:     isset($raw['flood_history'])     ? (bool) $raw['flood_history']     : null,
                 totalLossHistory: isset($raw['total_loss_history']) ? (bool) $raw['total_loss_history'] : null,
                 ownersCount:      isset($raw['owners_count'])      ? (int)  $raw['owners_count']      : null,
@@ -52,5 +52,20 @@ class EncarProvider extends AbstractDbProvider
                                   : null,
                 photos:       LotPhotos::urls($raw) ?: array_values(array_filter([$raw['image_url'] ?? null])),
         );
+    }
+
+    /**
+     * «No accident» needs the insurance record with no claims: without it has_accident=0 comes from the
+     * inspection, which only says the frame is undamaged, not that no claim was paid (lot 43020329).
+     * Claims count as an accident even when a later inspection wrote has_accident=0 over them, after the
+     * record closed (lot 41436905: 3 claims, ₩16M). An accident the inspection reports stands either way.
+     */
+    private static function hasAccident(array $raw): ?bool
+    {
+        $claims = isset($raw['insurance_count']) ? (int) $raw['insurance_count'] : null;
+        if (!empty($raw['has_accident']) || $claims > 0) {
+            return true;
+        }
+        return $claims === 0 ? false : null;
     }
 }

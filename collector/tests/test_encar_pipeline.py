@@ -197,6 +197,21 @@ async def test_record_without_open_data_is_no_data_not_a_failure() -> None:
     assert ("encar", "1") in store.data
 
 
+async def test_a_record_not_open_yet_is_asked_again_next_run() -> None:
+    """The inspection's flood flag does not stand in for the record: lot 43020329."""
+    fake = FakeEncar()
+    fake.record = {"openData": False}
+    pipe, _, store = pipeline(fake)
+    await pipe.process([item(1)])
+    assert store.data[("encar", "1")].fields["flood_history"] is not None, "set by the inspection"
+    fake.calls.clear()
+
+    report = await pipe.process([item(1)], history_cutoff=NOW - timedelta(days=1))
+
+    assert report.history_stored == 0
+    assert sum(c.endswith("/open") for c in fake.calls) == 1
+
+
 async def test_batch_failure_falls_back_to_single_details() -> None:
     fake = FakeEncar()
     fake.batch_fails = True

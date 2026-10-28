@@ -73,7 +73,7 @@ const LotView = (() => {
   function historyBlock(lot, inspection, asked) {
     const rows = [];
     const add = (label, pair, match) => pair && rows.push([label, Fmt.esc(pair[0]), { value: pair[1], row: match ? 'match' : '' }]);
-    add('ДТП по страховым', yesNo(lot.hasAccident), asked.has('accident'));
+    add('ДТП по страховым', yesNo(lot.hasAccident) ?? ['нет данных', ''], asked.has('accident'));
     if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: asked.has('owners') ? 'match' : '' }]);
     if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: asked.has('insurance') ? 'match' : '' }]);
     if (lot.repairCost) rows.push(['Ремонт по страховым', Fmt.won(lot.repairCost), { value: 'num warn' }]);

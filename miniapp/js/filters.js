@@ -99,7 +99,7 @@ const Filters = (() => {
     body_type:          { type: 'chips',      stateKey: 'bodyTypes',     optionsKey: 'bodyTypeOptions',     fallbackKey: 'bodyTypes' },
     drive_type:         { type: 'chips',      stateKey: 'driveTypes',    optionsKey: 'driveTypeOptions',    fallbackKey: 'driveTypes' },
     color:              { type: 'chips',      stateKey: 'colors',        optionsKey: 'colorOptions',        fallbackKey: 'colors' },
-    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Любые'},{value:'false',label:'Без ДТП'},{value:'true',label:'Было ДТП'}] },
+    has_accident:       { type: 'bool_chips', stateKey: 'hasAccident',       options: [{value:'',label:'Любые'},{value:'false',label:'Без ДТП'},{value:'true',label:'Было ДТП'},{value:'unknown',label:'Нет данных'}] },
     flood_history:      { type: 'bool_chips', stateKey: 'floodHistory',       options: [{value:'',label:'Любые'},{value:'false',label:'Не тонул'},{value:'true',label:'Было затопление'}] },
     total_loss_history: { type: 'bool_chips', stateKey: 'totalLossHistory',   options: [{value:'',label:'Любые'},{value:'false',label:'Не тотал'},{value:'true',label:'Тотал'}] },
     insurance_count:    { type: 'range',      idMin: 'filter-insurance-min',   idMax: 'filter-insurance-max',  inputType: 'number', min: 0 },
@@ -436,7 +436,7 @@ const Filters = (() => {
     container.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const v = btn.dataset.value;
-        state[stateKey] = v === '' ? null : v === 'true';
+        state[stateKey] = v === '' ? null : v === 'unknown' ? v : v === 'true';
         container.querySelectorAll('.filter-chip').forEach(b =>
           b.classList.toggle('selected', b.dataset.value === v));
         TG.haptic('selection');
@@ -819,7 +819,7 @@ const Filters = (() => {
     many('driveTypes', q.driveTypes, 'drive_type');
     many('bodyTypes', q.bodyTypes, 'body_type');
     many('colors', q.colors, 'color');
-    if (q.hasAccident !== undefined) add('hasAccident', q.hasAccident ? 'было ДТП' : 'без ДТП');
+    if (q.hasAccident !== undefined) add('hasAccident', q.hasAccident === 'unknown' ? 'ДТП: нет данных' : q.hasAccident ? 'было ДТП' : 'без ДТП');
     if (q.floodHistory !== undefined) add('floodHistory', q.floodHistory ? 'было затопление' : 'не тонул');
     if (q.totalLossHistory !== undefined) add('totalLossHistory', q.totalLossHistory ? 'тотал' : 'не тотал');
     if (q.lienStatuses?.length) add('lienStatuses', 'без залога');

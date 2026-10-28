@@ -16,7 +16,10 @@ class ConditionSpec implements LotSpecification
         if ($search->seatCountMin) $query->where('seat_count', '>=', $search->seatCountMin);
         if ($search->seatCountMax) $query->where('seat_count', '<=', $search->seatCountMax);
 
-        if ($search->hasAccident      !== null) $query->where('has_accident',      $search->hasAccident);
+        // the same rule as EncarProvider::hasAccident: claims are an accident, «no accident» needs a record without claims
+        if ($search->hasAccident === true)  $query->where(fn ($q) => $q->where('has_accident', true)->orWhere('insurance_count', '>', 0));
+        if ($search->hasAccident === false) $query->whereRaw('COALESCE(has_accident, 0) = 0')->where('insurance_count', 0);
+        if ($search->accidentUnknown)       $query->whereRaw('COALESCE(has_accident, 0) = 0')->whereNull('insurance_count');
         if ($search->floodHistory     !== null) $query->where('flood_history',     $search->floodHistory);
         if ($search->totalLossHistory !== null) $query->where('total_loss_history', $search->totalLossHistory);
         if ($search->seatColor !== '')          $query->where('seat_color', 'like', '%' . $search->seatColor . '%');

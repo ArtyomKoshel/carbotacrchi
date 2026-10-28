@@ -52,7 +52,7 @@ final class SearchDescriber
             $list('transmissions', 'transmission'),
             $list('bodyTypes', 'body_type'),
             $list('colors', 'color'),
-            $flag('hasAccident', 'ДТП'),
+            ($q['hasAccident'] ?? null) === 'unknown' ? 'ДТП: нет данных' : $flag('hasAccident', 'ДТП'),
             $flag('floodHistory', 'затопление'),
             $flag('totalLossHistory', 'тотал'),
             ($r = $range('insuranceCountMin', 'insuranceCountMax', $plain)) ? 'страх. случаев ' . $r : null,

@@ -223,7 +223,11 @@ def test_inspection_rejects_short_cert_numbers_and_bad_dates() -> None:
     m.apply_inspection(lot, insp, record)
     assert record.cert_no is None
     assert record.valid_from is None
-    assert lot.has_accident is False, "set from master.accdient when the record API gave nothing"
+    assert lot.has_accident is None, "an undamaged frame says nothing about claims"
+    assert record.has_accident is False
+    insp["master"]["accdient"] = True
+    m.apply_inspection(lot, insp, record)
+    assert lot.has_accident is True, "an accident the inspection found reaches the lot"
 
 
 def test_sellingpoint_gives_drive_and_sentence() -> None:

@@ -6,6 +6,7 @@ use App\Catalog\CatalogLinker;
 use App\Models\CalculatorSetting;
 use App\Models\LotInspection;
 use App\Models\User;
+use App\Search\Specifications\ConditionSpec;
 use App\Services\SearchQuery;
 use App\Services\TelegramBot;
 use App\Support\ClientLotCard;
@@ -13,6 +14,7 @@ use Database\Factories\BotUserFactory;
 use Database\Factories\LotFactory;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\RefreshesDatabaseOnce;
 use Tests\TestCase;
@@ -128,6 +130,29 @@ final class LotApiTest extends TestCase
             $this->assertStringNotContainsStringIgnoringCase($leak, $text);
         }
         $this->assertLessThanOrEqual(1024, mb_strlen(ClientLotCard::html(['year' => 2021, 'make' => 'x', 'model' => str_repeat('y', 2000), 'catalog' => null, 'price' => 1, 'mileage' => 1])));
+    }
+
+    public function test_no_accident_needs_the_insurance_record(): void
+    {
+        $clean = $this->sonata();
+        // lot 43020329: the record is not open yet, has_accident=0 is the inspection's undamaged frame
+        LotFactory::new()->create(['id' => '43020329', 'has_accident' => false, 'insurance_count' => null]);
+        LotFactory::new()->create(['id' => '43020330', 'has_accident' => true, 'insurance_count' => null]);
+        // lot 41436905: the record closed, the inspection wrote has_accident=0 over 3 claims
+        LotFactory::new()->create(['id' => '41436905', 'has_accident' => false, 'insurance_count' => 3]);
+
+        $accident = fn (string $id) => $this->getJson("/api/lots/{$id}?init_data=".urlencode(self::initData(777)))->json('data.lot.hasAccident');
+        $this->assertFalse($accident($clean));
+        $this->assertNull($accident('43020329'), 'unknown, not «Без ДТП»');
+        $this->assertTrue($accident('43020330'), 'an accident the inspection found stands');
+        $this->assertTrue($accident('41436905'), 'claims are an accident');
+
+        $found = fn (bool|string $v) => tap(DB::table('lots'), fn ($q) => (new ConditionSpec)->apply($q, SearchQuery::fromArray(['hasAccident' => $v])))
+            ->orderBy('id')->pluck('id')->all();
+        $this->assertSame([$clean], $found(false));
+        $this->assertSame(['41436905', '43020330'], $found(true));
+        $this->assertSame(['43020329'], $found('unknown'), '«Нет данных»: fresh lots whose record Encar has not built yet');
+        $this->assertSame(['hasAccident' => 'unknown'], array_intersect_key(SearchQuery::fromArray(['hasAccident' => 'unknown'])->toSearchArray(), ['hasAccident' => 1]), 'a subscription keeps the choice');
     }
 
     public function test_pickers_can_sort_by_mileage_and_year(): void

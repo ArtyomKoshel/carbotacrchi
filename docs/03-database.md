@@ -98,7 +98,7 @@ Encar организует данные в 6 уровней (iNav). Лот хр�
 | `transmission` | VARCHAR(20) | Тип КПП (`automatic` \| `manual` \| `cvt` \| `dct`) |
 | `color` | VARCHAR(30) | Цвет кузова (английский) |
 | `seat_color` | VARCHAR(30) | Цвет салона (английский) |
-| `has_accident` | BOOLEAN | Наличие ДТП |
+| `has_accident` | BOOLEAN | ДТП по страховой истории или найденное осмотром; «без ДТП» — только вместе с `insurance_count = 0`, см. [04-parser](./04-parser.md#дтп-страховая-история-против-осмотра) |
 | `flood_history` | BOOLEAN | История затопления |
 | `total_loss_history` | BOOLEAN | Признание тотальным убытком |
 | `owners_count` | SMALLINT | Количество владельцев |
