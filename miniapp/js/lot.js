@@ -177,21 +177,21 @@ const LotView = (() => {
           <div class="lot__meta">${Fmt.esc([lot.sourceName, Fmt.city(lot), lot.listedAt ? 'выставлен ' + Fmt.day(lot.listedAt) : ''].filter(Boolean).join(' · '))}</div>
         </div>
         ${lot.lotUrl ? `<button class="btn btn--primary btn--block lot__source" type="button" data-source>${Fmt.icon.out}Открыть объявление на ${Fmt.esc(lot.sourceName || 'площадке')}</button>` : ''}
+        <button class="lot-link" type="button" data-calc><span>Под ключ</span><b data-calc-total>…</b><i>Расчёт ›</i></button>
         ${lot.isActive === false ? '<div class="lot__inactive">Снят с продажи или больше не проходит правила отбора. Данные — на момент последнего обхода.</div>' : ''}
         <div class="facts">${facts.map(([b, s, m]) => `<div${m ? ' class="match"' : ''}><b>${Fmt.esc(b)}</b><span>${Fmt.esc(s)}</span></div>`).join('')}</div>
         <div class="lot__tools">
           ${ctx.closable ? '' : `<button class="btn fav${ctx.favorite ? ' on' : ''}" type="button" data-fav aria-pressed="${!!ctx.favorite}">${Fmt.icon.heart}<span>${ctx.favorite ? 'В избранном' : 'В избранное'}</span></button>`}
           <button class="btn${ctx.compared ? ' on' : ''}" type="button" data-compare aria-pressed="${!!ctx.compared}">${Fmt.icon.compare}<span>${ctx.compared ? 'В сравнении' : 'Сравнить'}</span></button>
         </div>
-        <div data-calc></div>
         ${historyBlock(lot, ctx.inspection, asked)}
-        ${Damage.bodyBlock(ctx.inspection)}
-        ${Damage.claimsBlock(ctx.inspection)}
+        ${(d => d ? `<button class="lot-link lot-link--${d.level || 'plain'}" type="button" data-body><span>${Fmt.esc(d.text)}</span><i>Схема ›</i></button>` : '')(Damage.line(ctx.inspection))}
         ${specsBlock(lot, asked)}
         ${optionsBlock(lot, q)}
         <div class="lot__actions">
           <button class="btn" type="button" data-share>${Fmt.icon.share}Клиенту</button>
-          <button class="btn btn--primary" type="button" data-source>Открыть на ${Fmt.esc(lot.sourceName || 'площадке')}</button>
+          <button class="btn" type="button" data-calc>Расчёт</button>
+          <button class="btn btn--primary" type="button" data-source>На ${Fmt.esc(lot.sourceName || 'площадку')}</button>
         </div>
       </div>`;
 
@@ -200,6 +200,8 @@ const LotView = (() => {
     mount.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', () => ctx.onFav(b)));
     mount.querySelector('[data-compare]')?.addEventListener('click', e => ctx.onCompare(e.currentTarget));
     mount.querySelector('[data-share]')?.addEventListener('click', () => ctx.onShare());
+    mount.querySelectorAll('[data-calc]').forEach(b => b.addEventListener('click', () => ctx.onPage('calc')));
+    mount.querySelector('[data-body]')?.addEventListener('click', () => ctx.onPage('body'));
     mount.querySelectorAll('[data-source]').forEach(b => b.addEventListener('click', () => ctx.onSource()));
     mount.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(b.dataset.copy); App.toast('Скопировано'); } catch (_) { App.toast(b.dataset.copy); }

@@ -6,7 +6,7 @@
    what a manager changes for one car is kept for that car in this browser. */
 const Calc = (() => {
   const LOTS_KEY = 'carbot_calc_lots';     // { lotId | 'manual': { field: value } }, last 60
-  const PREFS_KEY = 'carbot_calc_prefs';   // { template, share, open }
+  const PREFS_KEY = 'carbot_calc_prefs';   // { template, share }
   const KEEP = 60;
   const FIELDS = [
     // key, label, unit, default key in /api/calculator
@@ -32,7 +32,7 @@ const Calc = (() => {
   const read = key => { try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (_) { return {}; } };
   const write = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch (_) {} };
   const prefs = () => {
-    const p = { share: false, open: true, ...read(PREFS_KEY) };
+    const p = { share: false, ...read(PREFS_KEY) };
     p.template = TEMPLATES[p.template] ? p.template : (p.simple ? 'simple' : 'full'); // before templates: { simple }
     return p;
   };
@@ -138,12 +138,19 @@ const Calc = (() => {
     return r.error ? null : message(r, prefs().template);
   }
 
+  /** The lot card's line: «26 833 $ + 800 BYN» with this car's corrections, or null. */
+  async function summary(lotId, priceKrw) {
+    await load();
+    const r = compute(inputs(lotId, priceKrw));
+    return r.error ? null : usd(r.total) + (r.service > 0 ? ' + ' + byn(r.service) : '');
+  }
+
   // ── form ────────────────────────────────────────────────────────────────
   const esc = s => Fmt.esc(String(s ?? ''));
 
   /**
-   * The calculator in `el`. ctx: { id: lot id or 'manual', priceKrw, lot: true for the card
-   * (a collapsible block with the total in its header, and «add to the client's message») }.
+   * The calculator in `el`. ctx: { id: lot id or 'manual', priceKrw, lot: true for one car's page
+   * («В сообщение клиенту»), onShare: sends the car to the client (a «Клиенту» button) }.
    */
   async function mount(el, ctx) {
     el.innerHTML = `<div class="calc__state">Загружаю курс…</div>`;
@@ -189,10 +196,9 @@ const Calc = (() => {
         <span class="spacer"></span>
         <button class="link-btn" type="button" data-reset>Сбросить</button>
         <button class="btn" type="button" data-copy-calc>Скопировать</button>
+        ${ctx.onShare ? `<button class="btn btn--primary" type="button" data-share-calc>${Fmt.icon.share}Клиенту</button>` : ''}
       </div>`;
-    el.innerHTML = ctx.lot
-      ? `<details class="calc card"${p.open ? ' open' : ''}><summary><span>Под ключ</span><b data-out="head"></b></summary><div class="calc__body">${body}</div></details>`
-      : `<div class="calc card"><div class="calc__body">${body}</div></div>`;
+    el.innerHTML = `<div class="calc card"><div class="calc__body">${body}</div></div>`;
 
     const $ = s => el.querySelector(s);
     const update = () => {
@@ -203,7 +209,7 @@ const Calc = (() => {
       const set = (k, text) => { const n = $(`[data-out="${k}"]`); if (n) n.textContent = text; };
       set('rate', r.rate ? fmt(r.rate) + ' ₩' + (r.manual ? ' (вручную)' : '') : '—');
       if (r.error) {
-        ['carWon', 'carUsd', 'transfer', 'fee', 'beforeCustoms', 'total', 'msg', 'head'].forEach(k => set(k, '—'));
+        ['carWon', 'carUsd', 'transfer', 'fee', 'beforeCustoms', 'total', 'msg'].forEach(k => set(k, '—'));
         return;
       }
       set('carWon', fmt(r.carWon) + ' ₩');
@@ -212,7 +218,6 @@ const Calc = (() => {
       set('fee', fmt(r.fee, 2) + ' $');
       set('beforeCustoms', fmt(r.beforeCustoms, 2) + ' $');
       set('total', fmt(r.total, 2) + ' $');
-      set('head', usd(r.total) + (r.service > 0 ? ' + ' + byn(r.service) : ''));
       set('msg', message(r, prefs().template).join('\n'));
     };
     // what differs from the defaults is kept for this car
@@ -231,8 +236,8 @@ const Calc = (() => {
       if (pk) setPref(pk, e.target.type === 'checkbox' ? e.target.checked : e.target.value);
       update();
     });
-    $('details')?.addEventListener('toggle', e => setPref('open', e.currentTarget.open));
     $('[data-reset]').addEventListener('click', () => { saveOverrides(ctx.id, {}); mount(el, ctx); });
+    $('[data-share-calc]')?.addEventListener('click', () => ctx.onShare());
     $('[data-copy-calc]').addEventListener('click', async () => {
       const text = $('[data-out="msg"]').textContent;
       if (!text || text === '—') return;
@@ -241,5 +246,5 @@ const Calc = (() => {
     update();
   }
 
-  return { load, mount, compute, message, shareLines };
+  return { load, mount, compute, message, shareLines, summary };
 })();

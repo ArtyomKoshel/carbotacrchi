@@ -185,11 +185,27 @@ const Damage = (() => {
     return `${list.length} ${Fmt.plural(list.length, 'деталь', 'детали', 'деталей')}${bits.length ? ': ' + bits.join(', ') : ''}`;
   }
 
+  /**
+   * The lot card's line to the «Кузов и страховые» page: { text, level } or null when there is
+   * nothing to show there. level: 'bad' when the frame was touched, else 'warn' / ''.
+   */
+  function line(inspection) {
+    const list = parts(inspection);
+    const n = claims(inspection).length;
+    if (!list.length && !n) return null;
+    const frame = list.some(p => p.kind === 'frame');
+    const bits = [
+      list.length && `кузов: ${list.length} ${Fmt.plural(list.length, 'деталь', 'детали', 'деталей')}${frame ? ', каркас' : ''}`,
+      n && `${n} ${Fmt.plural(n, 'страховой случай', 'страховых случая', 'страховых случаев')}`,
+    ].filter(Boolean);
+    return { text: bits.join(' · '), level: frame ? 'bad' : list.length ? 'warn' : '' };
+  }
+
   /** This car's repairs paid by insurance, ₩: the inspection's own figure, else what the lot keeps. */
   function ownRepairCost(lot, inspection) {
     const own = inspection?.details?.my_accident_cost;
     return own != null && own !== '' ? Number(own) || 0 : lot.repairCost || 0;
   }
 
-  return { bodyBlock, claimsBlock, summary, ownRepairCost, parts, claims };
+  return { bodyBlock, claimsBlock, summary, line, ownRepairCost, parts, claims };
 })();

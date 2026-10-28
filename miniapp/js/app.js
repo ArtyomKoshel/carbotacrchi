@@ -91,11 +91,90 @@ const App = (() => {
   function route() {
     const h = location.hash.replace(/^#/, '');
     const lotId = (h.match(/^lot-(.+)$/) || [])[1];
-    if (lotId) { if (!s.lot || s.lot.id !== lotId) openLot(lotId, { fromRoute: true }); else setOverlay('lot'); return; }
+    if (lotId) {
+      // back from the car's calc / body page: the card opens over the screen it came from
+      if (s.page && (s.view === 'calc' || s.view === 'body')) showView(s.page.prev || 'search');
+      if (!s.lot || s.lot.id !== lotId) openLot(lotId, { fromRoute: true }); else setOverlay('lot');
+      return;
+    }
     if (h === 'filters' && !s.wide) { setOverlay('filters'); return; }
+    // one car's pages: #calc-<id> (the calculator), #body-<id> (body damage and insurance claims)
+    const page = h.match(/^(calc|body)-(.+)$/);
+    if (page && s.page?.id !== page[2]) s.page = { id: page[2], lot: null, inspection: null, from: false };
     setOverlay(null);
+    if (page) { showView(page[1], page[2]); return; }
     const view = ['favorites', 'compare', 'alerts', 'calc'].includes(h) ? h : 'search';
     showView(view);
+  }
+
+  /** From the lot card to one of its pages; «Назад» there returns to the card. */
+  function openPage(kind) {
+    if (!s.lot) return;
+    s.page = { id: s.lot.id, lot: s.lot, inspection: s.inspection, from: true, prev: s.view };
+    location.hash = `#${kind}-${s.lot.id}`;
+  }
+
+  function pageBack() {
+    const p = s.page;
+    if (!p) { go('#'); return; }
+    if (p.from) { p.from = false; history.back(); } else go(`#lot-${p.id}`);
+  }
+
+  const pageHead = (title, lot) => `<button class="link-btn page-back" type="button" data-page-back>${Fmt.icon.back}<span>Назад к машине</span></button>
+    <h1 class="view__title">${title}</h1>${lot ? `<p class="view__hint">${Fmt.esc(Fmt.title(lot))} · ${Fmt.won(lot.price)}</p>` : ''}`;
+
+  /** s.page with its lot (and inspection when asked), loading what the card did not have; null on failure. */
+  async function pageLot(el, head, title, withInspection) {
+    const p = s.page;
+    const draw = () => {
+      head.innerHTML = pageHead(title, p.lot);
+      head.querySelector('[data-page-back]').addEventListener('click', pageBack);
+    };
+    draw();
+    if (!p.lot || (withInspection && !p.inspection)) {
+      el.innerHTML = '<div class="calc__state">Загружаю…</div>';
+      try {
+        const d = await API.getLot(p.id);
+        p.lot = d.lot;
+        p.inspection = d.inspection;
+      } catch (e) {
+        el.innerHTML = `<div class="calc__state">${Fmt.esc(API.isAuthError(e) ? 'Нужен вход через Telegram' : e.message || 'Лот не найден')}</div>`;
+        el.dataset.ctx = '';
+        return null;
+      }
+      if (s.page !== p) return null;
+      draw();
+    }
+    syncTelegramButtons();
+    return p;
+  }
+
+  const CALC_HEAD = `<h1 class="view__title">Калькулятор</h1>
+    <p class="view__hint">Стоимость авто под ключ по цене в Корее. Расчёт по машине из поиска — кнопка «Расчёт» в её карточке.</p>`;
+
+  async function mountCalc(lotId) {
+    const el = $('calc-view');
+    const key = lotId || 'manual';
+    // kept while it shows the same car (or the manual one) and has loaded
+    if (el.dataset.ctx === key && el.querySelector('.calc')) return;
+    el.dataset.ctx = key;
+    if (!lotId) {
+      $('calc-head').innerHTML = CALC_HEAD;
+      Calc.mount(el, { id: 'manual', priceKrw: 0 });
+      return;
+    }
+    const p = await pageLot(el, $('calc-head'), 'Расчёт', false);
+    if (!p || el.dataset.ctx !== key) return;
+    Calc.mount(el, { id: p.id, priceKrw: p.lot.price, lot: true, onShare: () => shareLot(p.lot) });
+  }
+
+  async function mountBody(lotId) {
+    const el = $('body-view');
+    el.dataset.ctx = lotId;
+    const p = await pageLot(el, $('body-head'), 'Кузов и страховые случаи', true);
+    if (!p || el.dataset.ctx !== lotId) return;
+    el.innerHTML = Damage.bodyBlock(p.inspection) + Damage.claimsBlock(p.inspection)
+      || '<div class="calc__state">Осмотр не отметил деталей кузова, страховых случаев нет.</div>';
   }
 
   function go(hash) {
@@ -103,16 +182,18 @@ const App = (() => {
     location.hash = hash;
   }
 
-  function showView(view) {
-    if (view !== s.view) { if (s.wide) $('main').scrollTop = 0; else window.scrollTo(0, 0); }
+  /** lotId: the car of the calc / body page; none for the «Калькулятор» tab itself. */
+  function showView(view, lotId = null) {
+    if (view !== s.view || lotId) { if (s.wide) $('main').scrollTop = 0; else window.scrollTo(0, 0); }
     s.view = view;
-    for (const v of ['search', 'favorites', 'compare', 'alerts', 'calc']) $(`view-${v}`).hidden = v !== view;
-    document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === view));
+    if (!lotId) s.page = null;
+    for (const v of ['search', 'favorites', 'compare', 'alerts', 'calc', 'body']) $(`view-${v}`).hidden = v !== view;
+    document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('on', !lotId && a.dataset.nav === view));
     if (view === 'favorites') loadFavorites();
     if (view === 'compare') Compare.render($('compare'), { onOpen: lot => openLot(lot) });
     if (view === 'alerts') Subscriptions.loadAndRender();
-    // mounted once; again while it has not loaded (opened before signing in, Bithumb or the API down)
-    if (view === 'calc' && !$('calc-view').querySelector('.calc')) Calc.mount($('calc-view'), { id: 'manual', priceKrw: 0 });
+    if (view === 'calc') mountCalc(lotId);
+    if (view === 'body') mountBody(lotId);
     syncTelegramButtons();
   }
 
@@ -150,7 +231,8 @@ const App = (() => {
   function syncTelegramButtons() {
     const actionbar = $('actionbar');
     actionbar.hidden = true;
-    if (s.overlay) TG.setBack(closeOverlay); else TG.setBack(null);
+    const page = !s.overlay && s.page && (s.view === 'calc' || s.view === 'body') ? s.page : null;
+    if (s.overlay) TG.setBack(closeOverlay); else if (page) TG.setBack(pageBack); else TG.setBack(null);
     if (s.overlay === 'filters') {
       TG.setMain(countLabel(), applyFilters, { active: s.count !== 0, progress: s.count === undefined });
       TG.setSecondary('Сбросить', resetFilters);
@@ -160,6 +242,9 @@ const App = (() => {
       TG.setMain('Отправить клиенту', shareLot);
       // above the main one, full width: side by side each got half and the link read small
       TG.setSecondary(`Открыть на ${s.lot.sourceName || 'площадке'}`, openSource, { position: 'top' });
+    } else if (page?.lot) {
+      TG.setMain('Отправить клиенту', () => shareLot(page.lot));
+      TG.setSecondary(null, null);
     } else {
       TG.setMain(null, null);
       TG.setSecondary(null, null);
@@ -407,9 +492,12 @@ const App = (() => {
       onSource: openSource,
       onFav: () => toggleFavorite(s.lot),
       onCompare: () => toggleCompare(s.lot),
+      onPage: openPage,
     });
-    const calc = mount.querySelector('[data-calc]');
-    if (calc) Calc.mount(calc, { id: s.lot.id, priceKrw: s.lot.price, lot: true });
+    // the card's «Под ключ» line: the total with this car's corrections; the form is its own page
+    const total = mount.querySelector('[data-calc-total]');
+    const id = s.lot.id;
+    if (total) Calc.summary(id, s.lot.price).then(t => { if (s.lot?.id === id) total.textContent = t || '—'; }, () => { total.textContent = '—'; });
     const track = mount.querySelector('.gallery__track');
     if (track && keep) track.scrollLeft = keep;
     if (s.wide) $('lot-pane').scrollTop = 0;
@@ -428,8 +516,8 @@ const App = (() => {
     if (s.lot?.lotUrl) TG.openLink(s.lot.lotUrl);
   }
 
-  async function shareLot() {
-    const lot = s.lot;
+  async function shareLot(lotArg) {
+    const lot = lotArg?.id ? lotArg : s.lot; // the calculator page sends its own car
     if (!lot) return;
     TG.haptic('impact', 'medium');
     try {

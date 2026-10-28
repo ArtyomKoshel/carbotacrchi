@@ -313,7 +313,7 @@ body.wide .gallery__thumbs { display: flex; }
 .lot__price.match, .lot__trim.match { color: var(--accent); }
 .lt td.match { color: var(--accent); font-weight: 600; }
 .lt td.t-car.match b { color: var(--accent); }
-.lot__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lot__actions { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
 .lot__tools { display: flex; gap: 8px; }
 .lot__tools .btn { flex: 1; min-height: 40px; font-size: 14px; }
 .lot__tools .btn.on { background: var(--accent-soft); color: var(--accent); }
@@ -515,12 +515,6 @@ body.web:not(.wide) .lot__actions { position: sticky; bottom: 0; background: var
 .banner--ai b { color: var(--accent); }
 
 /* ── landed-cost calculator (js/calc.js): the lot card's «Под ключ» block and the «Калькулятор» tab ── */
-.calc > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 14px; cursor: pointer; list-style: none; font-weight: 600; }
-.calc > summary::-webkit-details-marker { display: none; }
-.calc > summary span { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.calc > summary b { font: 600 16px/1.2 var(--f-data); color: var(--text); }
-.calc > summary::after { content: "▾"; color: var(--muted); transition: transform .15s; }
-.calc:not([open]) > summary::after { transform: rotate(-90deg); }
 .calc__body { display: grid; gap: 12px; padding: 0 14px 14px; }
 div.calc > .calc__body { padding-top: 14px; }
 .calc__state { color: var(--muted); font-size: 13px; padding: 8px 2px; }
@@ -548,7 +542,6 @@ div.calc > .calc__body { padding-top: 14px; }
 .calc__bar .spacer { flex: 1; }
 .calc__tpl { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
 .calc__tpl .filter-select { width: auto; min-height: 36px; padding: 4px 8px; }
-body.wide .lot .calc.card { background: var(--bg); }
 #view-calc .calc { max-width: 760px; }
 
 /* ── body by the inspection and insurance claims (js/damage.js) ── */
@@ -593,3 +586,17 @@ body.wide .lot .calc.card { background: var(--bg); }
 .claims__list small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
 .claims__date { color: var(--muted); font-size: 13px; }
 .claims .bad { color: var(--bad); }
+
+/* ── the lot card's lines to its pages (calculator, body), and those pages ── */
+.lot-link { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 11px 14px; border-radius: var(--r); background: var(--surface); text-align: left; font-size: 14px; color: var(--text); }
+.lot-link span { color: var(--muted); }
+.lot-link b { font: 600 15px/1.2 var(--f-data); }
+.lot-link i { margin-left: auto; font-style: normal; color: var(--accent); font-weight: 500; white-space: nowrap; }
+.lot-link--bad { background: var(--bad-soft); }
+.lot-link--bad span { color: var(--bad); font-weight: 600; }
+.lot-link--warn { background: var(--warn-soft); }
+.lot-link--warn span { color: var(--warn); font-weight: 600; }
+body.wide .lot .lot-link:not(.lot-link--bad):not(.lot-link--warn) { background: var(--bg); }
+.page-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.page-back svg { width: 18px; height: 18px; }
+.page-sects { display: grid; gap: 16px; max-width: 760px; }
