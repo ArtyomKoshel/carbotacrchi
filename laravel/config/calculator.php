@@ -31,7 +31,7 @@ return [
      * engine's cm³ or a share of the customs value in €. Petrol, diesel and parallel hybrids:
      *  - up to 3 years inclusive: pct of the value, but not less than per_cc by the value bracket;
      *  - over 3 up to 5 years, over 5 years: per_cc by the engine volume bracket.
-     * Electric cars: 15 % of the value; over 5 years also 20 % VAT on value + duty.
+     * Electric cars: 15 % of the value; over 5 years also 20 % VAT on the value (not the duty).
      * Age counts from the production date; a bracket's limit is its upper bound, inclusive.
      */
     'customs' => [

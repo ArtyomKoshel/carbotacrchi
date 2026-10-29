@@ -631,3 +631,10 @@ body.wide .lot .lot-link:not(.lot-link--bad):not(.lot-link--warn) { background: 
 @media (max-width: 600px) {
   .calc__ratebox { grid-template-columns: minmax(0, 1fr); }
 }
+/* the age bracket as three buttons (customs) */
+.calc__seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 3px; gap: 3px; border-radius: var(--r-sm); background: var(--surface-2); }
+.calc__seg label { position: relative; cursor: pointer; }
+.calc__seg input { position: absolute; opacity: 0; pointer-events: none; }
+.calc__seg span { display: block; padding: 8px 6px; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
+.calc__seg input:checked + span { background: var(--accent); color: var(--accent-text); }
+.calc__seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }

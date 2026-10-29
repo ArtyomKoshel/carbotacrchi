@@ -24,7 +24,7 @@ const Calc = (() => {
   const RATES = [['rate', 'Bithumb, ₩ за $'], ['usdByn', 'НБРБ, BYN за $'], ['eurByn', 'НБРБ, BYN за €']];
   const ENGINES = { ice: 'Бензин / дизель', hybrid: 'Параллельный гибрид', ev: 'Электро' };
   // as customs.gov.by: up to 3 years inclusive; over 3 up to 5 inclusive; over 5
-  const AGES = { lt3: 'до 3 лет вкл.', mid: 'от 3 до 5 лет', old: 'старше 5 лет' };
+  const AGES = { lt3: 'до 3 лет', mid: '3–5 лет', old: 'старше 5 лет' };
   // everything a manager can change, kept per car when it differs from the default
   const KEPT = [...FIELDS.map(f => f[0]), ...RATES.map(r => r[0]), 'mixed', 'newNotes', 'engine', 'cc', 'age', 'benefit', 'customs'];
 
@@ -124,7 +124,7 @@ const Calc = (() => {
     if (v.engine === 'ev') {
       duty = valueEur * c.electric_pct / 100;
       basis = `${c.electric_pct} % от таможенной стоимости`;
-      if (v.age === 'old') vat = (valueEur + duty) * c.electric_old_vat_pct / 100;
+      if (v.age === 'old') vat = valueEur * c.electric_old_vat_pct / 100; // on the value, not the duty (Arena Drive)
     } else {
       if (!(cc > 0)) return { error: 'Укажите объём двигателя, см³' };
       if (v.age === 'lt3') {
@@ -250,7 +250,7 @@ const Calc = (() => {
       `цена авто минус ${usd(num(base.defaults?.valuation_discount_usd) || 0)} — до оценки на таможне`]);
     rows.push(['Пошлина', `${eur(cx.dutyEur)} = ${usd(cx.dutyUsd)}`,
       cx.basis + (v.benefit ? `; льгота −${fmt(num(base.defaults?.benefit_pct) || 0)} % (без льготы ${eur(cx.dutyFullEur)})` : '')]);
-    if (cx.vatEur > 0) rows.push(['НДС', `${eur(cx.vatEur)} = ${usd(cx.vatUsd)}`, `${base.customs.electric_old_vat_pct} % от стоимости и пошлины`]);
+    if (cx.vatEur > 0) rows.push(['НДС', `${eur(cx.vatEur)} = ${usd(cx.vatUsd)}`, `${base.customs.electric_old_vat_pct} % от таможенной стоимости`]);
     rows.push(['Сборы', `${byn(cx.feesByn)} = ${usd(cx.feesUsd)}`, cx.fees.map(([k, x]) => `${k} ${fmt(x)}`).join(' · ')]);
     rows.push(['Таможня всего', `<b>${usd(cx.total)}</b>`, r.customsByHand ? 'в расчёте — сумма вручную' : '']);
     return `<dl class="calc__cx">${rows.map(([k, val, note]) => `<div><dt>${k}</dt><dd>${val}${note ? `<small>${esc(note)}</small>` : ''}</dd></div>`).join('')}</dl>
@@ -288,8 +288,12 @@ const Calc = (() => {
         <select class="filter-select" data-k="${k}">${Object.entries(options)
           .map(([key, text]) => `<option value="${key}"${v[k] === key ? ' selected' : ''}>${esc(text)}</option>`).join('')}</select>
       </label>`;
-    const ageNote = ageFrom.from === 'reg' ? `Возраст посчитан по первой регистрации ${Fmt.month(ctx.car.firstRegDate)} — у машин на границе 3 и 5 лет проверьте дату выпуска.`
-      : ageFrom.from === 'year' ? `Возраст посчитан по году ${ctx.car.year} — проверьте дату выпуска.` : '';
+    // the production date is on the plate under the driver's door; Encar has none, so the first
+    // registration stands in for it (Korean makes usually match, imports are often registered later)
+    const ageNote = ageFrom.from === 'reg' ? `Выбрано по первой регистрации ${Fmt.month(ctx.car.firstRegDate)}. Дата выпуска — на шильде под дверью водителя; у иномарок регистрация часто позже.`
+      : ageFrom.from === 'year' ? `Выбрано по году ${ctx.car.year}. Дата выпуска — на шильде под дверью водителя.` : '';
+    const ageButtons = `<div class="calc__seg" role="radiogroup" aria-label="Возраст с даты выпуска">${Object.entries(AGES).map(([key, text]) =>
+      `<label><input type="radio" name="age-${esc(ctx.id)}" data-k="age" value="${key}"${v.age === key ? ' checked' : ''}><span>${esc(text)}</span></label>`).join('')}</div>`;
     const f = k => field(FIELDS.find(x => x[0] === k));
     const inputsHtml = `
       <section class="calc__sec">
@@ -307,10 +311,10 @@ const Calc = (() => {
       </section>
       <section class="calc__sec">
         <h4>Таможня в РБ</h4>
+        <div class="calc__field"><span>Возраст с даты выпуска</span>${ageButtons}</div>
         <div class="calc__fields">
           ${select('engine', 'Двигатель', ENGINES)}
           ${field(['cc', 'Объём', 'см³'], v.engine === 'ev' ? ' hidden data-cc' : ' data-cc')}
-          ${select('age', 'Возраст', AGES)}
           ${field(['customs', 'Таможня вручную', '$'])}
         </div>
         <label class="calc__check"><input type="checkbox" data-k="benefit"${v.benefit ? ' checked' : ''}> Льгота
