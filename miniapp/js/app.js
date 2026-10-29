@@ -160,12 +160,12 @@ const App = (() => {
     el.dataset.ctx = key;
     if (!lotId) {
       $('calc-head').innerHTML = CALC_HEAD;
-      Calc.mount(el, { id: 'manual', priceKrw: 0 });
+      Calc.mount(el, { id: 'manual', car: null });
       return;
     }
     const p = await pageLot(el, $('calc-head'), 'Расчёт', false);
     if (!p || el.dataset.ctx !== key) return;
-    Calc.mount(el, { id: p.id, priceKrw: p.lot.price, lot: true, onShare: () => shareLot(p.lot) });
+    Calc.mount(el, { id: p.id, car: p.lot, lot: true, onShare: () => shareLot(p.lot) });
   }
 
   async function mountBody(lotId) {
@@ -497,7 +497,7 @@ const App = (() => {
     // the card's «Под ключ» line: the total with this car's corrections; the form is its own page
     const total = mount.querySelector('[data-calc-total]');
     const id = s.lot.id;
-    if (total) Calc.summary(id, s.lot.price).then(t => { if (s.lot?.id === id) total.textContent = t || '—'; }, () => { total.textContent = '—'; });
+    if (total) Calc.summary(s.lot).then(t => { if (s.lot?.id === id) total.textContent = t || '—'; }, () => { total.textContent = '—'; });
     const track = mount.querySelector('.gallery__track');
     if (track && keep) track.scrollLeft = keep;
     if (s.wide) $('lot-pane').scrollTop = 0;
@@ -521,7 +521,7 @@ const App = (() => {
     if (!lot) return;
     TG.haptic('impact', 'medium');
     try {
-      const calc = Calc.shareLines(lot.id, lot.price);
+      const calc = Calc.shareLines(lot);
       if (s.tg) {
         const res = await API.shareLot(lot.id, TG.canShare() ? 'prepare' : 'chat', calc);
         if (res.prepared_message_id && await TG.share(res.prepared_message_id)) { toast('Отправлено'); return; }
