@@ -14,17 +14,19 @@ const Calc = (() => {
     // key, label, unit
     ['price', 'Цена авто', 'млн ₩'],
     ['vat', 'Возврат НДС', '%'],
-    ['delivery', 'Доставка с расходами в Корее', '$'],
+    ['delivery', 'Доставка всего', '$'], // to Minsk, Korea expenses included
     ['dealerFee', 'Стояночные дилера', 'млн ₩'],
     ['fee', 'Комиссия за перевод', '%'],
     ['service', 'Наши услуги', 'BYN'],
-    ['rate', 'Курс вручную', '₩ за $'],
   ];
+  // the rates on top, each can be set by hand for one calculation: Bithumb ₩ per $ (before
+  // the adjustment), NBRB BYN per $ and per €
+  const RATES = [['rate', 'Bithumb, ₩ за $'], ['usdByn', 'НБРБ, BYN за $'], ['eurByn', 'НБРБ, BYN за €']];
   const ENGINES = { ice: 'Бензин / дизель', hybrid: 'Параллельный гибрид', ev: 'Электро' };
   // as customs.gov.by: up to 3 years inclusive; over 3 up to 5 inclusive; over 5
   const AGES = { lt3: 'до 3 лет вкл.', mid: 'от 3 до 5 лет', old: 'старше 5 лет' };
   // everything a manager can change, kept per car when it differs from the default
-  const KEPT = [...FIELDS.map(f => f[0]), 'mixed', 'newNotes', 'engine', 'cc', 'age', 'benefit', 'customs'];
+  const KEPT = [...FIELDS.map(f => f[0]), ...RATES.map(r => r[0]), 'mixed', 'newNotes', 'engine', 'cc', 'age', 'benefit', 'customs'];
 
   let base = null;
   let pending = null;
@@ -84,7 +86,7 @@ const Calc = (() => {
     const v = {
       price: car?.price > 0 ? +(car.price / 1e6).toFixed(3) : '',
       vat: d.vat_refund_pct, delivery: d.delivery_usd, dealerFee: d.dealer_fee_millions,
-      fee: d.transfer_fee_pct, service: d.service_byn, rate: '',
+      fee: d.transfer_fee_pct, service: d.service_byn, rate: '', usdByn: '', eurByn: '',
       mixed: false, newNotes: 0,
       engine: car ? engineOf(car.fuel) : 'ice',
       cc: car?.engineVolume > 0 ? Math.round(car.engineVolume * 1000) : '',
@@ -105,9 +107,12 @@ const Calc = (() => {
   function customs(v, priceUsd) {
     const d = base?.defaults || {};
     const c = base?.customs;
-    const nb = base?.nbrb || {};
+    // NBRB rates, or the ones the manager set for this calculation
+    const nb = { ...(base?.nbrb || {}) };
+    if (num(v.usdByn) > 0) nb.usd = num(v.usdByn);
+    if (num(v.eurByn) > 0) nb.eur = num(v.eurByn);
     if (!c) return { error: 'Нет ставок таможни' };
-    if (!(nb.usd > 0 && nb.eur > 0)) return { error: 'Нет курсов НБРБ — введите таможню вручную' };
+    if (!(nb.usd > 0 && nb.eur > 0)) return { error: 'Нет курсов НБРБ — введите их вверху или таможню вручную' };
     const usdPerEur = nb.eur / nb.usd;
     const byValue = v.engine === 'ev' || v.age === 'lt3';
     const valueUsd = byValue ? Math.max(0, priceUsd - (num(d.valuation_discount_usd) || 0)) : null;
@@ -240,7 +245,6 @@ const Calc = (() => {
   function customsLines(r, v) {
     const cx = r.cx;
     if (!cx || cx.error) return cx?.error ? `<p class="calc__error">${esc(cx.error)}</p>` : '';
-    const nb = cx.nbrb;
     const rows = [];
     if (cx.byValue) rows.push(['Таможенная стоимость', `${usd(cx.valueUsd)} = ${eur(cx.valueEur)}`,
       `цена авто минус ${usd(num(base.defaults?.valuation_discount_usd) || 0)} — до оценки на таможне`]);
@@ -250,7 +254,7 @@ const Calc = (() => {
     rows.push(['Сборы', `${byn(cx.feesByn)} = ${usd(cx.feesUsd)}`, cx.fees.map(([k, x]) => `${k} ${fmt(x)}`).join(' · ')]);
     rows.push(['Таможня всего', `<b>${usd(cx.total)}</b>`, r.customsByHand ? 'в расчёте — сумма вручную' : '']);
     return `<dl class="calc__cx">${rows.map(([k, val, note]) => `<div><dt>${k}</dt><dd>${val}${note ? `<small>${esc(note)}</small>` : ''}</dd></div>`).join('')}</dl>
-      <p class="calc__hint">Курсы НБРБ${nb.date ? ' на ' + esc(Fmt.day(nb.date)) : ''}: 1 $ = ${fmt(nb.usd, 4)} BYN, 1 € = ${fmt(nb.eur, 4)} BYN${nb.stale ? ' (последние известные)' : ''}</p>`;
+`;
   }
 
   /**
@@ -278,35 +282,42 @@ const Calc = (() => {
         <span class="calc__inp"><input class="filter-input" data-k="${k}" inputmode="decimal" autocomplete="off"
           value="${esc(v[k])}" placeholder="${k === 'rate' && r0.rate ? esc(fmt(r0.rate)) : k === 'customs' ? 'считается сама' : ''}"><i>${esc(unit)}</i></span>
       </label>`;
-    const select = (k, label, options, hint = '') => `
+    const select = (k, label, options) => `
       <label class="calc__field">
         <span>${esc(label)}</span>
         <select class="filter-select" data-k="${k}">${Object.entries(options)
           .map(([key, text]) => `<option value="${key}"${v[k] === key ? ' selected' : ''}>${esc(text)}</option>`).join('')}</select>
-        ${hint ? `<small>${esc(hint)}</small>` : ''}
       </label>`;
-    const ageHint = ageFrom.from === 'reg' ? `по первой регистрации ${Fmt.month(ctx.car.firstRegDate)}`
-      : ageFrom.from === 'year' ? `по году ${ctx.car.year} — проверьте дату выпуска` : '';
-    const body = `
-      <div class="calc__rate">Курс Bithumb ${r0.rate ? `<b>${fmt(r0.rate)} ₩</b> − ${fmt(adj)} = <b data-out="rate"></b>` : '<b>нет</b>'}
-        ${r0.stale && r0.rate ? '<span class="calc__stale">последний известный</span>' : ''}</div>
-      <div class="calc__fields">${FIELDS.map(f => field(f)).join('')}</div>
-      <label class="calc__check"><input type="checkbox" data-k="mixed"${v.mixed ? ' checked' : ''}> У клиента разные купюры
-        <small>на старые купюры комиссия на ${fmt(num(base.defaults?.old_banknotes_extra_pct) || 0, 1).replace(',0', '')} % выше</small></label>
-      <label class="calc__field calc__notes"${v.mixed ? '' : ' hidden'}><span>Сумма в новых купюрах</span>
-        <span class="calc__inp"><input class="filter-input" data-k="newNotes" inputmode="decimal" value="${esc(v.newNotes)}"><i>$</i></span></label>
-      <section class="calc__sub">
+    const ageNote = ageFrom.from === 'reg' ? `Возраст посчитан по первой регистрации ${Fmt.month(ctx.car.firstRegDate)} — у машин на границе 3 и 5 лет проверьте дату выпуска.`
+      : ageFrom.from === 'year' ? `Возраст посчитан по году ${ctx.car.year} — проверьте дату выпуска.` : '';
+    const f = k => field(FIELDS.find(x => x[0] === k));
+    const inputsHtml = `
+      <section class="calc__sec">
+        <h4>Машина</h4>
+        <div class="calc__fields">${f('price')}${f('vat')}${f('dealerFee')}</div>
+      </section>
+      <section class="calc__sec">
+        <h4>Доставка и перевод</h4>
+        <div class="calc__fields">${f('delivery')}${f('fee')}${f('service')}
+          <label class="calc__field calc__notes"${v.mixed ? '' : ' hidden'}><span>В новых купюрах</span>
+            <span class="calc__inp"><input class="filter-input" data-k="newNotes" inputmode="decimal" value="${esc(v.newNotes)}"><i>$</i></span></label>
+        </div>
+        <label class="calc__check"><input type="checkbox" data-k="mixed"${v.mixed ? ' checked' : ''}> У клиента разные купюры
+          <small>на старые купюры комиссия на ${fmt(num(base.defaults?.old_banknotes_extra_pct) || 0, 1).replace(',0', '')} % выше</small></label>
+      </section>
+      <section class="calc__sec">
         <h4>Таможня в РБ</h4>
         <div class="calc__fields">
           ${select('engine', 'Двигатель', ENGINES)}
-          ${field(['cc', 'Объём двигателя', 'см³'], v.engine === 'ev' ? ' hidden data-cc' : ' data-cc')}
-          ${select('age', 'Возраст с даты выпуска', AGES, ageHint)}
+          ${field(['cc', 'Объём', 'см³'], v.engine === 'ev' ? ' hidden data-cc' : ' data-cc')}
+          ${select('age', 'Возраст', AGES)}
           ${field(['customs', 'Таможня вручную', '$'])}
         </div>
         <label class="calc__check"><input type="checkbox" data-k="benefit"${v.benefit ? ' checked' : ''}> Льгота
-          <small>минус ${fmt(num(base.defaults?.benefit_pct) || 0)} % от пошлины (сборы не меняются)</small></label>
-        <div data-out="cx"></div>
-      </section>
+          <small>минус ${fmt(num(base.defaults?.benefit_pct) || 0)} % от пошлины, сборы не меняются</small></label>
+        ${ageNote ? `<p class="calc__hint">${esc(ageNote)}</p>` : ''}
+      </section>`;
+    const resultsHtml = `
       <dl class="calc__out">
         <div><dt>Цена авто</dt><dd data-out="carWon"></dd></div>
         <div><dt>Авто в $</dt><dd data-out="carUsd"></dd></div>
@@ -316,17 +327,32 @@ const Calc = (() => {
         <div class="calc__total"><dt>Итого</dt><dd data-out="total"></dd></div>
       </dl>
       <div class="calc__error" data-out="error" hidden></div>
+      <div data-out="cx"></div>
       <pre class="calc__msg" data-out="msg"></pre>
       <div class="calc__bar">
         <label class="calc__tpl">Шаблон <select class="filter-select" data-pref="template">${Object.entries(TEMPLATES)
           .map(([k, label]) => `<option value="${k}"${p.template === k ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
         ${ctx.lot ? `<label class="calc__check"><input type="checkbox" data-pref="share"${p.share ? ' checked' : ''}> В сообщение клиенту</label>` : ''}
-        <span class="spacer"></span>
+      </div>
+      <div class="calc__bar">
         <button class="link-btn" type="button" data-reset>Сбросить</button>
+        <span class="spacer"></span>
         <button class="btn" type="button" data-copy-calc>Скопировать</button>
         ${ctx.onShare ? `<button class="btn btn--primary" type="button" data-share-calc>${Fmt.icon.share}Клиенту</button>` : ''}
       </div>`;
-    el.innerHTML = `<div class="calc card"><div class="calc__body">${body}</div></div>`;
+    // the rates on top: what the sources give as the placeholder, a number typed over it counts instead
+    const nb = base.nbrb || {};
+    const live = { rate: r0.rate, usdByn: nb.usd, eurByn: nb.eur };
+    const ratesHtml = `<div class="calc__rates card">${RATES.map(([k, label]) => `
+      <label class="calc__ratebox">
+        <span>${esc(label)}</span>
+        <input class="filter-input" data-k="${k}" inputmode="decimal" autocomplete="off" value="${esc(v[k])}"
+          placeholder="${live[k] ? esc(fmt(live[k], k === 'rate' ? 0 : 4)) : 'нет'}">
+        ${k === 'rate' ? `<small>− ${fmt(adj)} ₩ = <b data-out="rate"></b></small>` : ''}
+      </label>`).join('')}
+      <p class="calc__hint">${r0.stale && r0.rate ? 'Bithumb не ответил — последний известный курс. ' : ''}НБРБ${nb.date ? ' на ' + esc(Fmt.day(nb.date)) : ''}${nb.stale ? ' — последние известные' : ''}. Свой курс — впишите в поле, пустое поле — курс источника.</p>
+    </div>`;
+    el.innerHTML = `<div class="calc">${ratesHtml}<div class="calc__inputs card">${inputsHtml}</div><div class="calc__results card">${resultsHtml}</div></div>`;
 
     const $ = s => el.querySelector(s);
     const update = () => {
