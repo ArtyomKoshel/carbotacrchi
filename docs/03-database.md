@@ -79,7 +79,7 @@ Encar организует данные в 6 уровней (iNav). Лот хр�
 | Колонка | Тип | Описание |
 |---------|-----|----------|
 | `id` | VARCHAR(100) PK | ID лота из источника |
-| `source` | VARCHAR(20) | `encar` \| `kbcha` |
+| `source` | VARCHAR(20) | `encar` \| `che168` \| `kbcha` |
 | `make` | VARCHAR(60) | Марка (корейская) |
 | `model` | VARCHAR(60) | Модель Level-3 (корейская) |
 | `model_group` | VARCHAR(100) | ModelGroup Level-2 (корейская) |
@@ -88,7 +88,8 @@ Encar организует данные в 6 уровней (iNav). Лот хр�
 | `trim` | VARCHAR(40) | BadgeDetail Level-6 (корейская комплектация) |
 | `trim_en` | VARCHAR(100) | BadgeDetail по-английски, как прислал Encar (`gradeDetailEnglishName`) |
 | `year` | SMALLINT | Год выпуска |
-| `price` | INT | Цена в KRW |
+| `price` | INT | Цена в валюте площадки (`currency`), без пересчёта |
+| `currency` | CHAR(3) | `KRW` (Encar) \| `CNY` (che168); в ней же `retail_value` и `repair_cost` |
 | `mileage` | INT | Пробег в км |
 | `fuel` | VARCHAR(20) | `gasoline` \| `diesel` \| `hybrid` \| `electric` \| `lpg` |
 | `drive_type` | VARCHAR(10) | `fwd` \| `rwd` \| `awd` \| `4wd` |

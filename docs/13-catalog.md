@@ -37,6 +37,8 @@
 | `app/Catalog/BadgeGrammar.php` | общее для всех марок: кузов, места, особые серии, комплектация |
 | `app/Catalog/Rules/*Rules.php` | обозначение двигателя: BMW, Mercedes, Audi, Porsche; остальные — `GenericRules` по `engine` из эталона |
 | `app/Catalog/CatalogLinker.php` | варианты в `ref_variants`, лоты → `lots.ref_*` |
+| `resources/catalog/che168/brands.json` | che168: китайская марка → марка эталона, китайские названия серий → модель |
+| `app/Catalog/Che168/Che168Matcher.php` | вариант che168 (`brandname`, `seriesname`) → марка и модель; поколение che168 не называет — пусто |
 
 Encar читается только по собственным корейским полям, не по нашим переводам: переводы приходят
 с опозданием (нормализация ждёт конца прогона) и устаревают, когда объявление меняет модель.
