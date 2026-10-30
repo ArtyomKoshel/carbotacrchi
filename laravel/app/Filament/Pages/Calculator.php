@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\CalculatorSetting;
 use App\Providers\Filament\AdminPanelProvider;
 use App\Services\Calculator\BithumbRate;
+use App\Services\Calculator\NbrbRates;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -90,5 +91,11 @@ class Calculator extends Page
         $adjust = CalculatorSetting::values()['rate_adjustment_krw'];
 
         return $r + ['used' => $r['rate'] !== null ? $r['rate'] - $adjust : null];
+    }
+
+    /** @return array{usd: ?float, eur: ?float, date: ?string, stale: bool} BYN per 1 USD / EUR */
+    public function nbrb(): array
+    {
+        return app(NbrbRates::class)->current();
     }
 }

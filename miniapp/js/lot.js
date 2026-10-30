@@ -76,15 +76,20 @@ const LotView = (() => {
     add('ДТП по страховым', yesNo(lot.hasAccident) ?? ['нет данных', ''], asked.has('accident'));
     if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: asked.has('owners') ? 'match' : '' }]);
     if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: asked.has('insurance') ? 'match' : '' }]);
-    if (lot.repairCost) rows.push(['Ремонт по страховым', Fmt.price(lot.repairCost, lot.currency), { value: 'num warn' }]);
+    // this car's repairs only: what it did to other cars is not its damage
+    const repair = Damage.ownRepairCost(lot, inspection);
+    if (repair) rows.push(['Ремонт по страховым', Fmt.price(repair, lot.currency), { value: 'num warn' }]);
     add('Затопление', yesNo(lot.floodHistory), asked.has('flood'));
     add('Тотал', yesNo(lot.totalLossHistory), asked.has('totalLoss'));
     if (lot.lienStatus) rows.push(['Залог', lot.lienStatus === 'clean' ? 'нет' : 'есть', { value: lot.lienStatus === 'clean' ? 'ok' : 'bad' }]);
     if (lot.seizureStatus) rows.push(['Арест', lot.seizureStatus === 'clean' ? 'нет' : 'есть', { value: lot.seizureStatus === 'clean' ? 'ok' : 'bad' }]);
     if (inspection) {
-      const marks = [inspection.accident_detail, inspection.outer_detail].filter(Boolean);
+      // the panels and the claims have their own sections below; the row says what the inspection found
+      const body = Damage.summary(inspection);
+      const outerOld = !body && inspection.outer_detail; // an inspection stored before details.outer_parts
       rows.push([`Осмотр${inspection.inspection_date ? ' ' + Fmt.day(inspection.inspection_date) : ''}`,
-        marks.length ? Fmt.esc(marks.join('; ')) : 'замечаний нет', { value: inspection.accident_detail ? 'bad' : marks.length ? 'warn' : 'ok' }]);
+        body ? Fmt.esc(body) : outerOld ? Fmt.esc(outerOld) : 'замечаний по кузову нет',
+        { value: body || outerOld ? 'warn' : 'ok' }]);
       if (inspection.inspection_mileage) rows.push(['Пробег по осмотру', Fmt.km(inspection.inspection_mileage), { value: 'num' }]);
       if (inspection.valid_until) rows.push(['Осмотр действует до', Fmt.day(inspection.valid_until), { value: 'num' }]);
       const note = inspection.details?.inspector_note;
@@ -150,6 +155,7 @@ const LotView = (() => {
     const q = ctx.query ?? null;
     const asked = Fmt.matched(q);
     const any = (...f) => f.some(x => asked.has(x));
+    const calc = Calc.fits(lot); // the calculator counts from a price in ₩
     const facts = [
       [Fmt.num(lot.mileage), 'км', any('mileage')],
       [Fmt.engine(lot).replace(' л', '') || '—', Fmt.lower(Fmt.label('fuel', lot.fuel)) || 'двигатель', any('engine', 'fuel')],
@@ -172,19 +178,21 @@ const LotView = (() => {
           <div class="lot__meta">${Fmt.esc([lot.sourceName, Fmt.city(lot), lot.listedAt ? 'выставлен ' + Fmt.day(lot.listedAt) : ''].filter(Boolean).join(' · '))}</div>
         </div>
         ${lot.lotUrl ? `<button class="btn btn--primary btn--block lot__source" type="button" data-source>${Fmt.icon.out}Открыть объявление на ${Fmt.esc(lot.sourceName || 'площадке')}</button>` : ''}
+        ${calc ? '<button class="lot-link" type="button" data-calc><span>Под ключ</span><b data-calc-total>…</b><i>Расчёт ›</i></button>' : ''}
         ${lot.isActive === false ? '<div class="lot__inactive">Снят с продажи или больше не проходит правила отбора. Данные — на момент последнего обхода.</div>' : ''}
         <div class="facts">${facts.map(([b, s, m]) => `<div${m ? ' class="match"' : ''}><b>${Fmt.esc(b)}</b><span>${Fmt.esc(s)}</span></div>`).join('')}</div>
         <div class="lot__tools">
           ${ctx.closable ? '' : `<button class="btn fav${ctx.favorite ? ' on' : ''}" type="button" data-fav aria-pressed="${!!ctx.favorite}">${Fmt.icon.heart}<span>${ctx.favorite ? 'В избранном' : 'В избранное'}</span></button>`}
           <button class="btn${ctx.compared ? ' on' : ''}" type="button" data-compare aria-pressed="${!!ctx.compared}">${Fmt.icon.compare}<span>${ctx.compared ? 'В сравнении' : 'Сравнить'}</span></button>
         </div>
-        ${(lot.currency || 'KRW') === 'KRW' ? '<div data-calc></div>' : ''}
         ${historyBlock(lot, ctx.inspection, asked)}
+        ${(d => d ? `<button class="lot-link lot-link--${d.level || 'plain'}" type="button" data-body><span>${Fmt.esc(d.text)}</span><i>Схема ›</i></button>` : '')(Damage.line(ctx.inspection))}
         ${specsBlock(lot, asked)}
         ${optionsBlock(lot, q)}
-        <div class="lot__actions">
+        <div class="lot__actions${calc ? '' : ' lot__actions--two'}">
           <button class="btn" type="button" data-share>${Fmt.icon.share}Клиенту</button>
-          <button class="btn btn--primary" type="button" data-source>Открыть на ${Fmt.esc(lot.sourceName || 'площадке')}</button>
+          ${calc ? '<button class="btn" type="button" data-calc>Расчёт</button>' : ''}
+          <button class="btn btn--primary" type="button" data-source>На ${Fmt.esc(lot.sourceName || 'площадку')}</button>
         </div>
       </div>`;
 
@@ -193,6 +201,8 @@ const LotView = (() => {
     mount.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', () => ctx.onFav(b)));
     mount.querySelector('[data-compare]')?.addEventListener('click', e => ctx.onCompare(e.currentTarget));
     mount.querySelector('[data-share]')?.addEventListener('click', () => ctx.onShare());
+    mount.querySelectorAll('[data-calc]').forEach(b => b.addEventListener('click', () => ctx.onPage('calc')));
+    mount.querySelector('[data-body]')?.addEventListener('click', () => ctx.onPage('body'));
     mount.querySelectorAll('[data-source]').forEach(b => b.addEventListener('click', () => ctx.onSource()));
     mount.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(b.dataset.copy); App.toast('Скопировано'); } catch (_) { App.toast(b.dataset.copy); }

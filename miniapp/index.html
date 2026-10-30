@@ -6,6 +6,8 @@
   <meta name="color-scheme" content="light dark">
   <!-- Che168's photos (autoimg.cn) answer 403 to any foreign Referer and load without one -->
   <meta name="referrer" content="no-referrer">
+  <!-- the theme chosen in the top bar (js/app.js), set before the styles so the page does not flash -->
+  <script>try { var t = localStorage.getItem('carbot_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <title>CarBot — подбор авто из Кореи</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +15,7 @@
   <!-- option icons (js/lot.js OPTION_ICONS): only these glyphs; the list must stay alphabetical -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@40,300,0,0&icon_names=360,add_road,air,airline_seat_recline_extra,airline_seat_recline_normal,album,blinds,bluetooth,brightness_6,brightness_auto,cable,camera_rear,check,compress,directions_car,emoji_objects,event_seat,flip,gamepad,height,highlight,live_tv,local_fire_department,local_parking,lock,luggage,memory,navigation,open_with,radar,security,sensor_door,settings_remote,shield,spa,speed,swap_vert,thermostat,toll,trip_origin,tune,tv,unarchive,usb,visibility,visibility_off,vpn_key,water_drop,wb_shade,wb_sunny,wifi_tethering,window&display=block">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.min.css">
-  <link rel="stylesheet" href="css/app.css?v=33">
+  <link rel="stylesheet" href="css/app.css?v=46">
 </head>
 <body>
 <!--
@@ -49,6 +51,7 @@
       <a href="#alerts" data-nav="alerts" class="topnav__item">Подписки <span class="count count--new" id="subs-badge"></span></a>
       <a href="#calc" data-nav="calc" class="topnav__item">Калькулятор</a>
     </nav>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button"></button>
     <div id="account-slot" class="account-slot"></div>
   </header>
 
@@ -129,9 +132,13 @@
     </section>
 
     <section id="view-calc" class="view" hidden aria-label="Калькулятор">
-      <h1 class="view__title">Калькулятор</h1>
-      <p class="view__hint">Стоимость авто под ключ по цене в Корее. В карточке лота цена подставляется сама.</p>
+      <div id="calc-head"></div>
       <div id="calc-view"></div>
+    </section>
+
+    <section id="view-body" class="view" hidden aria-label="Кузов и страховые случаи">
+      <div id="body-head"></div>
+      <div id="body-view" class="page-sects"></div>
     </section>
   </main>
 
@@ -158,19 +165,20 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
-<script src="js/telegram.js?v=35"></script>
-<script src="js/browser-auth.js?v=35"></script>
-<script src="js/api.js?v=35"></script>
-<script src="js/taxonomy.js?v=35"></script>
+<script src="js/telegram.js?v=46"></script>
+<script src="js/browser-auth.js?v=46"></script>
+<script src="js/api.js?v=46"></script>
+<script src="js/taxonomy.js?v=46"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
-<script src="js/format.js?v=35"></script>
-<script src="js/catalog-filter.js?v=35"></script>
-<script src="js/filters.js?v=35"></script>
-<script src="js/compare.js?v=35"></script>
-<script src="js/results.js?v=35"></script>
-<script src="js/lot.js?v=35"></script>
-<script src="js/calc.js?v=35"></script>
-<script src="js/subscriptions.js?v=35"></script>
-<script src="js/app.js?v=35"></script>
+<script src="js/format.js?v=46"></script>
+<script src="js/catalog-filter.js?v=46"></script>
+<script src="js/filters.js?v=46"></script>
+<script src="js/compare.js?v=46"></script>
+<script src="js/results.js?v=46"></script>
+<script src="js/damage.js?v=46"></script>
+<script src="js/lot.js?v=46"></script>
+<script src="js/calc.js?v=46"></script>
+<script src="js/subscriptions.js?v=46"></script>
+<script src="js/app.js?v=46"></script>
 </body>
 </html>

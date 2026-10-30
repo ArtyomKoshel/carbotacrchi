@@ -27,14 +27,23 @@
   --side: 272px;
   --pane: 420px;
 }
+/* dark: the system's choice, unless the top bar's button set one (html[data-theme], js/app.js) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f141b; --surface: #161d27; --surface-2: #1d2632; --text: #e8edf3; --muted: #93a0b1; --line: #263140;
     --accent: #6d92ff; --accent-text: #0b1220; --accent-soft: #1c2a4d; --link: #8aa8ff;
     --ok: #4cc785; --ok-soft: #12301f; --warn: #f0a83a; --warn-soft: #33260d; --bad: #f2716a; --bad-soft: #3a1714;
     --shade: rgba(0, 0, 0, .6);
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f141b; --surface: #161d27; --surface-2: #1d2632; --text: #e8edf3; --muted: #93a0b1; --line: #263140;
+  --accent: #6d92ff; --accent-text: #0b1220; --accent-soft: #1c2a4d; --link: #8aa8ff;
+  --ok: #4cc785; --ok-soft: #12301f; --warn: #f0a83a; --warn-soft: #33260d; --bad: #f2716a; --bad-soft: #3a1714;
+  --shade: rgba(0, 0, 0, .6);
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 /* Telegram: the theme Telegram gives (updates live when the user switches theme) */
 body.tg {
@@ -108,6 +117,9 @@ body.tg .ask { border-color: transparent; }
 .ask.busy .ask__icon { animation: spin .8s linear infinite; stroke: var(--accent); }
 .ask__kbd { font-family: var(--f-data); font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
 .account-slot { display: contents; }
+.theme-btn { flex: none; width: 36px; height: 36px; }
+.theme-btn svg { width: 18px; height: 18px; }
+body.tg .theme-btn { display: none; } /* Telegram's own theme */
 
 .main { padding: 0 max(12px, env(safe-area-inset-right, 0px)) 16px max(12px, env(safe-area-inset-left, 0px)); }
 .view__title { font-size: 22px; font-weight: 700; padding: 8px 0 12px; letter-spacing: -.01em; }
@@ -313,7 +325,8 @@ body.wide .gallery__thumbs { display: flex; }
 .lot__price.match, .lot__trim.match { color: var(--accent); }
 .lt td.match { color: var(--accent); font-weight: 600; }
 .lt td.t-car.match b { color: var(--accent); }
-.lot__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lot__actions { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+.lot__actions--two { grid-template-columns: 1fr 1fr; } /* no «Расчёт»: a lot in ¥ */
 .lot__tools { display: flex; gap: 8px; }
 .lot__tools .btn { flex: 1; min-height: 40px; font-size: 14px; }
 .lot__tools .btn.on { background: var(--accent-soft); color: var(--accent); }
@@ -515,38 +528,132 @@ body.web:not(.wide) .lot__actions { position: sticky; bottom: 0; background: var
 .banner--ai b { color: var(--accent); }
 
 /* ── landed-cost calculator (js/calc.js): the lot card's «Под ключ» block and the «Калькулятор» tab ── */
-.calc > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 14px; cursor: pointer; list-style: none; font-weight: 600; }
-.calc > summary::-webkit-details-marker { display: none; }
-.calc > summary span { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.calc > summary b { font: 600 16px/1.2 var(--f-data); color: var(--text); }
-.calc > summary::after { content: "▾"; color: var(--muted); transition: transform .15s; }
-.calc:not([open]) > summary::after { transform: rotate(-90deg); }
-.calc__body { display: grid; gap: 12px; padding: 0 14px 14px; }
-div.calc > .calc__body { padding-top: 14px; }
+
+/* ── body by the inspection and insurance claims (js/damage.js) ── */
+.dmg { display: grid; gap: 12px; padding: 12px; }
+.dmg__alert { padding: 8px 10px; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn); font-size: 13px; font-weight: 600; }
+.dmg__alert--bad { background: var(--bad-soft); color: var(--bad); }
+.dmg__body { display: grid; gap: 14px; }
+.dmg__car { width: 100%; max-width: 230px; height: auto; display: block; margin: 0 auto; }
+.dmg__shell { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+.dmg__glass { fill: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dmg__zone rect { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.dmg__zone--frame rect { fill: none; stroke-width: 1.5; stroke-dasharray: 3 2; }
+.dmg__zone.dmg--bad rect { fill: var(--bad-soft); stroke: var(--bad); }
+.dmg__zone.dmg--warn rect { fill: var(--warn-soft); stroke: var(--warn); }
+.dmg__zone.dmg--minor rect { fill: color-mix(in srgb, var(--warn) 8%, transparent); stroke: color-mix(in srgb, var(--warn) 60%, transparent); }
+.dmg__zone--frame.dmg--bad rect, .dmg__zone--frame.dmg--warn rect, .dmg__zone--frame.dmg--minor rect { fill-opacity: .7; }
+.dmg__zone text { font: 700 11px/1 var(--f-data); text-anchor: middle; dominant-baseline: central; fill: var(--text); pointer-events: none; }
+.dmg__zone.dmg--bad text { fill: var(--bad); }
+.dmg__zone.dmg--warn text { fill: var(--warn); }
+.dmg__dir { font-size: 8px; text-anchor: middle; fill: var(--muted); }
+.dmg__list h4 { font-size: 12px; color: var(--muted); font-weight: 600; margin: 0 0 4px; }
+.dmg__list h4:not(:first-child) { margin-top: 10px; }
+.dmg__list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dmg__list li { display: grid; grid-template-columns: 10px 1fr auto; align-items: baseline; gap: 8px; font-size: 13.5px; }
+.dmg__list li b { font-weight: 600; font-size: 12.5px; text-align: right; }
+.dmg__dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--line); }
+.dmg__dot.dmg--bad { background: var(--bad); }
+.dmg__dot.dmg--warn { background: var(--warn); }
+.dmg__dot.dmg--minor { background: color-mix(in srgb, var(--warn) 45%, transparent); }
+.dmg__dot--frame { background: none; border: 1.5px dashed var(--muted); }
+.dmg__legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.dmg__legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.claims { display: grid; gap: 10px; padding: 12px; }
+.claims__sum { display: grid; gap: 4px; }
+.claims__sum div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.claims__sum span { color: var(--muted); }
+.claims__sum b { font: 600 14px/1.3 var(--f-data); }
+.claims__list { list-style: none; margin: 0; padding: 0; }
+.claims__list li { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.claims__list b { font: 600 14px/1.3 var(--f-data); }
+.claims__list small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.claims__date { color: var(--muted); font-size: 13px; }
+.claims .bad { color: var(--bad); }
+
+/* ── the lot card's lines to its pages (calculator, body), and those pages ── */
+.lot-link { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 11px 14px; border-radius: var(--r); background: var(--surface); text-align: left; font-size: 14px; color: var(--text); }
+.lot-link span { color: var(--muted); }
+.lot-link b { font: 600 15px/1.2 var(--f-data); }
+.lot-link i { margin-left: auto; font-style: normal; color: var(--accent); font-weight: 500; white-space: nowrap; }
+.lot-link--bad { background: var(--bad-soft); }
+.lot-link--bad span { color: var(--bad); font-weight: 600; }
+.lot-link--warn { background: var(--warn-soft); }
+.lot-link--warn span { color: var(--warn); font-weight: 600; }
+body.wide .lot .lot-link:not(.lot-link--bad):not(.lot-link--warn) { background: var(--bg); }
+.page-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.page-back svg { width: 18px; height: 18px; }
+.page-sects { display: grid; gap: 16px; max-width: 760px; }
+
+/* ── landed-cost calculator (js/calc.js): inputs by group, results beside them on a wide page ── */
+.calc { display: grid; gap: 12px; }
+.calc > .card { display: grid; gap: 14px; padding: 14px; align-content: start; }
 .calc__state { color: var(--muted); font-size: 13px; padding: 8px 2px; }
+.calc__sec { display: grid; gap: 10px; }
+.calc__sec + .calc__sec { padding-top: 14px; border-top: 1px solid var(--line); }
+.calc__sec h4 { margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .calc__rate { font-size: 13px; color: var(--muted); }
 .calc__rate b { color: var(--text); font-family: var(--f-data); font-weight: 600; }
 .calc__stale { margin-left: 6px; color: var(--warn); }
-.calc__fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.calc__field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.calc__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.calc__field { display: grid; gap: 4px; min-width: 0; font-size: 12px; color: var(--muted); }
+.calc__field > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calc__field .filter-input, .calc__field .filter-select { height: 40px; min-height: 40px; }
 .calc__inp { position: relative; display: block; }
 .calc__inp .filter-input { padding-right: 52px; }
 .calc__inp i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 12px; color: var(--muted); pointer-events: none; }
 .calc__check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; flex-wrap: wrap; }
 .calc__check input { accent-color: var(--accent); width: 16px; height: 16px; }
 .calc__check small { flex-basis: 100%; padding-left: 24px; color: var(--muted); font-size: 12px; }
-.calc__out { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--line); border-radius: var(--r-sm); overflow: hidden; margin: 0; }
+.calc__hint { margin: 0; font-size: 12px; color: var(--muted); }
+.calc__out { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border-radius: var(--r-sm); overflow: hidden; margin: 0; }
 .calc__out > div { background: var(--surface); padding: 8px 10px; display: grid; gap: 2px; }
 .calc__out dt { font-size: 12px; color: var(--muted); }
 .calc__out dd { margin: 0; font: 600 15px/1.3 var(--f-data); }
 .calc__out .calc__total { background: var(--accent); }
 .calc__out .calc__total dt, .calc__out .calc__total dd { color: var(--accent-text); }
+.calc__out .calc__total dd { font-size: 17px; }
 .calc__error { color: var(--bad); font-size: 13px; }
+.calc__cx { display: grid; gap: 1px; margin: 0; background: var(--line); border-radius: var(--r-sm); overflow: hidden; }
+.calc__cx > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; padding: 7px 10px; background: var(--surface); font-size: 13px; }
+.calc__cx dt { color: var(--muted); }
+.calc__cx dd { margin: 0; font-family: var(--f-data); display: grid; gap: 2px; min-width: 0; }
+.calc__cx dd small { font-family: var(--f-ui); font-size: 11.5px; color: var(--muted); }
+[data-out="cx"] { display: grid; gap: 6px; }
 .calc__msg { margin: 0; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); font: 13px/1.5 var(--f-ui); white-space: pre-wrap; }
-.calc__bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.calc__bar { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; }
 .calc__bar .btn { min-height: 36px; font-size: 14px; }
 .calc__bar .spacer { flex: 1; }
 .calc__tpl { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
 .calc__tpl .filter-select { width: auto; min-height: 36px; padding: 4px 8px; }
-body.wide .lot .calc.card { background: var(--bg); }
-#view-calc .calc { max-width: 760px; }
+#view-calc .calc { max-width: 1080px; }
+/* wide: the inputs on the left, the results on the right and in sight while scrolling */
+@media (min-width: 900px) {
+  body.wide #view-calc .calc { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); align-items: start; }
+  body.wide #view-calc .calc__rates { grid-column: 1 / -1; }
+  body.wide #view-calc .calc__results { position: sticky; top: 12px; }
+}
+.calc__rates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; padding: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.calc__rates .calc__hint { grid-column: 1 / -1; }
+.calc__ratebox { display: grid; grid-template-columns: minmax(0, 160px) auto; align-items: center; gap: 4px 10px; min-width: 0; font-size: 12px; color: var(--muted); }
+.calc__ratebox > .calc__ratehead { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; color: var(--text); font-size: 13px; font-weight: 600; }
+.calc__ratehead small { font-weight: 400; color: var(--muted); }
+.calc__ratehead em { display: none; font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); }
+.calc__ratebox.is-own .calc__ratehead em { display: inline-block; }
+.calc__cur { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font: 700 12px/1 var(--f-data); font-style: normal; flex: none; }
+.calc__ratebox .filter-input { height: 42px; font: 600 17px/1 var(--f-data); background: var(--surface); }
+.calc__ratebox .filter-input::placeholder { color: var(--text); opacity: 1; }
+.calc__ratebox.is-own .filter-input { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.calc__ratebox small { font-size: 12px; white-space: nowrap; }
+.calc__ratebox b { color: var(--text); font-family: var(--f-data); font-weight: 600; }
+@media (max-width: 600px) {
+  .calc__ratebox { grid-template-columns: minmax(0, 1fr); }
+}
+/* the age bracket as three buttons (customs) */
+.calc__seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 3px; gap: 3px; border-radius: var(--r-sm); background: var(--surface-2); }
+.calc__seg label { position: relative; cursor: pointer; }
+.calc__seg input { position: absolute; opacity: 0; pointer-events: none; }
+.calc__seg span { display: block; padding: 8px 6px; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
+.calc__seg input:checked + span { background: var(--accent); color: var(--accent-text); }
+.calc__seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }

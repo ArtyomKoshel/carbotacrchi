@@ -178,22 +178,35 @@ final class LotApiTest extends TestCase
         $this->assertStringNotContainsString('Расчёт', $plain);
     }
 
-    /** One Bithumb rate for everyone and the team's defaults; the last rate when Bithumb is down. */
-    public function test_the_calculator_gives_the_rate_and_the_team_defaults(): void
+    /**
+     * One Bithumb rate for everyone, the NBRB rates and duty tables for customs, the team's
+     * defaults; the last rates when a source is down.
+     */
+    public function test_the_calculator_gives_the_rates_and_the_team_defaults(): void
     {
         Cache::flush();
         CalculatorSetting::create(['key' => 'delivery_usd', 'value' => '5500']);
-        Http::fake(['api.bithumb.com/*' => Http::sequence()
-            ->push(['status' => '0000', 'data' => ['closing_price' => '1400']])
-            ->push('down', 503)]);
+        Http::fake([
+            'api.bithumb.com/*' => Http::sequence()
+                ->push(['status' => '0000', 'data' => ['closing_price' => '1400']])
+                ->push('down', 503),
+            'api.nbrb.by/exrates/rates/USD*' => Http::sequence()
+                ->push(['Cur_Scale' => 1, 'Cur_OfficialRate' => 2.9458, 'Date' => '2026-10-29T00:00:00'])
+                ->push('down', 503),
+            'api.nbrb.by/exrates/rates/EUR*' => Http::response(['Cur_Scale' => 1, 'Cur_OfficialRate' => 3.2771, 'Date' => '2026-10-29T00:00:00']),
+        ]);
         $url = '/api/calculator?' . http_build_query(['init_data' => self::initData(777)]);
 
         $data = $this->getJson($url)->assertOk()->json('data');
         $this->assertSame([1400, false], [(int) $data['rate']['rate'], $data['rate']['stale']]);
-        $this->assertEquals([5500, 4100], [$data['defaults']['delivery_usd'], $data['defaults']['customs_usd']]);
+        $this->assertEquals([2.9458, 3.2771, '2026-10-29', false], array_values($data['nbrb']));
+        $this->assertEquals([5500, 120, 1282], [$data['defaults']['delivery_usd'], $data['defaults']['customs_fee_byn'], $data['defaults']['recycling_fee_byn']]);
+        $this->assertEquals([null, 3.6], end($data['customs']['mid']), 'over 3000 cm³, 3 to 5 years: 3.6 € per cm³');
 
         Cache::forget('calculator:bithumb');
-        $rate = $this->getJson($url)->json('data.rate');
-        $this->assertSame([1400, true], [(int) $rate['rate'], $rate['stale']]);
+        Cache::forget('calculator:nbrb');
+        $again = $this->getJson($url)->json('data');
+        $this->assertSame([1400, true], [(int) $again['rate']['rate'], $again['rate']['stale']]);
+        $this->assertSame([2.9458, true], [$again['nbrb']['usd'], $again['nbrb']['stale']]);
     }
 }
