@@ -35,3 +35,6 @@ laravel/storage/framework/testing/
 
 # Encar trees scraped for the catalog (analysis/scrape_encar_inav_tree.py): Encar's data, not ours
 analysis/data/
+
+# Che168 collector output and local checkpoints (never commit live records)
+analysis/che168/runs/

@@ -1,0 +1,18 @@
+# Build context: collector/. Standalone bounded API collector; no production DB connection.
+FROM python:3.13-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.13.4 /uv /usr/local/bin/uv
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_LINK_MODE=copy
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-default-groups --extra che168 --no-install-project
+COPY src ./src
+RUN uv sync --frozen --no-default-groups --extra che168 \
+    && useradd --system --uid 10001 collector \
+    && mkdir -p /data/che168 \
+    && chown -R collector /app /data/che168
+USER collector
+ENV PATH="/app/.venv/bin:$PATH"
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["python", "-m", "collector.che168"]
+CMD ["--output", "/data/che168", "--max-pages", "10", "--max-cars", "200"]

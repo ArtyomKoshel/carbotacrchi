@@ -3,6 +3,9 @@
 Сервис-сборщик: забирает лоты с площадок (сейчас Encar) и передаёт ядру записи CarLot v1 через буфер
 `collector.ingest_lots`. Архитектура и решения — [docs/adr](../docs/adr/), план — [docs/refactor](../docs/refactor/).
 
+Для che168 реализован отдельный API-сборщик с файловым результатом, CNY, ротацией прокси
+и возобновлением. Он пока не подключён к производственному ingest: [запуск и ограничения](CHE168.md).
+
 ```
 src/collector/
   domain/carlot.py      контракт CarLot v1 (pydantic) → contracts/carlot.v1.schema.json
