@@ -82,6 +82,11 @@ def test_lot_fields_match_the_old_parser(legacy: Any, case: str) -> None:
         # Departure: the old parser took the inspection's undamaged frame for «no accident».
         assert new_lot.has_accident is None
         old_lot.has_accident = None
+    if record is not None:
+        # Departure: the old parser added the damage this car did to other cars (otherAccidentCost);
+        # repair_cost is this car's own repairs (myAccidentCost), 0 when the history has none.
+        assert new_lot.repair_cost == int(record.get("myAccidentCost") or 0)
+        old_lot.repair_cost = new_lot.repair_cost
 
     for f in dataclasses.fields(m.EncarDraft):
         assert getattr(new_lot, f.name) == getattr(old_lot, f.name), f.name

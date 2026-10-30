@@ -46,6 +46,11 @@ class Diff:
 def expected_from_golden(lot: dict[str, Any], inspection: dict[str, Any] | None) -> CarLotV1:
     draft_fields = {f.name for f in dataclasses.fields(m.EncarDraft)}
     draft = m.EncarDraft(**{k: v for k, v in lot.items() if k in draft_fields})
+    # Departure: the old parser's repair_cost added the damage this car did to other cars; the
+    # collector keeps this car's own repairs, which the old record kept apart (0 when none).
+    own_repairs = ((inspection or {}).get("details") or {}).get("my_accident_cost")
+    if own_repairs is not None:
+        draft.repair_cost = own_repairs
     insp = None
     if inspection is not None:
         insp_fields = {f.name for f in dataclasses.fields(m.InspectionDraft)}
