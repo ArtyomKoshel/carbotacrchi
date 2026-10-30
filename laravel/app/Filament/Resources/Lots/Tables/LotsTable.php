@@ -79,7 +79,7 @@ class LotsTable
                 ->state(fn (Lot $record) => $record->image_url ?: (LotPhotos::urls($record->getAttributes())[0] ?? null))
                 ->imageWidth(72)
                 ->imageHeight(54)
-                ->extraImgAttributes(['loading' => 'lazy', 'class' => 'lot-thumb', 'alt' => ''])
+                ->extraImgAttributes(['loading' => 'lazy', 'class' => 'lot-thumb', 'alt' => '', 'referrerpolicy' => 'no-referrer'])
                 ->toggleable(),
 
             TextColumn::make('title')

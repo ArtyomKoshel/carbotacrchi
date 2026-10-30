@@ -31,7 +31,8 @@ class LotInfolist
                     ->state(fn (Lot $record) => LotPhotos::urls($record->getAttributes())[0] ?? $record->image_url)
                     ->imageWidth('100%')
                     ->imageHeight('auto')
-                    ->extraImgAttributes(['class' => 'lot-photo', 'alt' => ''])
+                    // Che168's photos (autoimg.cn) answer 403 to a foreign Referer
+                    ->extraImgAttributes(['class' => 'lot-photo', 'alt' => '', 'referrerpolicy' => 'no-referrer'])
                     ->placeholder('Нет фото'),
                 Grid::make(2)->columnSpan(['md' => 2])->schema([
                     TextEntry::make('price')->label('Цена')

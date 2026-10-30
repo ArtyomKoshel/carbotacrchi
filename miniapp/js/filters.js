@@ -76,6 +76,9 @@ const Filters = (() => {
       const prefix = inp.parentElement?.querySelector('.filter-input-prefix');
       if (prefix) prefix.textContent = Fmt.symbol(state.priceCurrency);
     });
+    // the field's label from the settings names the currency ("Цена (₩)"): it follows the choice
+    const label = document.querySelector('[data-filter-field="price"] .filter-label__text');
+    if (label) label.textContent = label.textContent.replace(/[₩¥]/g, Fmt.symbol(state.priceCurrency));
     const box = document.getElementById('price-currency');
     if (!box) return;
     box.hidden = curs.length < 2;

@@ -78,7 +78,7 @@ const App = (() => {
   }
   function readDeepLink() {
     const u = new URL(location.href);
-    const fromHash = (location.hash.match(/^#lot-(.+)$/) || [])[1];
+    const fromHash = hashLotId(location.hash.replace(/^#/, ''));
     const start = TG.startParam();
     const lotFromStart = (start.match(/^lot_(.+)$/) || [])[1];
     let query = u.searchParams.get('q') ? b64.dec(u.searchParams.get('q')) : null;
@@ -88,9 +88,16 @@ const App = (() => {
   }
 
   // ── routing ──────────────────────────────────────────────────────────────
+  /** The lot id of a «lot-<id>» hash; openLot writes it URI-encoded («che168:1» → «che168%3A1»). */
+  function hashLotId(h) {
+    const raw = (h.match(/^lot-(.+)$/) || [])[1];
+    if (!raw) return null;
+    try { return decodeURIComponent(raw); } catch (_) { return raw; }
+  }
+
   function route() {
     const h = location.hash.replace(/^#/, '');
-    const lotId = (h.match(/^lot-(.+)$/) || [])[1];
+    const lotId = hashLotId(h);
     if (lotId) { if (!s.lot || s.lot.id !== lotId) openLot(lotId, { fromRoute: true }); else setOverlay('lot'); return; }
     if (h === 'filters' && !s.wide) { setOverlay('filters'); return; }
     setOverlay(null);
