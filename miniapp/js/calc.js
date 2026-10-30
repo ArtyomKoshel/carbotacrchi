@@ -21,7 +21,7 @@ const Calc = (() => {
   ];
   // the rates on top, each can be set by hand for one calculation: Bithumb ₩ per $ (before
   // the adjustment), NBRB BYN per $ and per €
-  const RATES = [['rate', 'Bithumb, ₩ за $'], ['usdByn', 'НБРБ, BYN за $'], ['eurByn', 'НБРБ, BYN за €']];
+  const RATES = [['rate', 'Bithumb', '₩ за $', '₩'], ['usdByn', 'НБРБ', 'BYN за $', '$'], ['eurByn', 'НБРБ', 'BYN за €', '€']];
   const ENGINES = { ice: 'Бензин / дизель', hybrid: 'Параллельный гибрид', ev: 'Электро' };
   // as customs.gov.by: up to 3 years inclusive; over 3 up to 5 inclusive; over 5
   const AGES = { lt3: 'до 3 лет', mid: '3–5 лет', old: 'старше 5 лет' };
@@ -142,7 +142,9 @@ const Calc = (() => {
     const dutyFull = duty;
     if (v.benefit) duty *= 1 - (num(d.benefit_pct) || 0) / 100; // the benefit is off the duty only
     const fees = [
-      ['Таможенный сбор', num(d.customs_fee_byn) || 0], ['Утилизационный сбор', num(d.recycling_fee_byn) || 0],
+      // the recycling fee is lower for a car up to 3 years old
+      ['Таможенный сбор', num(d.customs_fee_byn) || 0],
+      ['Утилизационный сбор', num(v.age === 'lt3' ? (d.recycling_fee_new_byn ?? d.recycling_fee_byn) : d.recycling_fee_byn) || 0],
       ['СВХ', num(d.svh_byn) || 0], ['Декларант', num(d.declarant_byn) || 0],
       ...(byValue ? [['Оценка', num(d.valuation_byn) || 0]] : []),
     ];
@@ -347,9 +349,9 @@ const Calc = (() => {
     // the rates on top: what the sources give as the placeholder, a number typed over it counts instead
     const nb = base.nbrb || {};
     const live = { rate: r0.rate, usdByn: nb.usd, eurByn: nb.eur };
-    const ratesHtml = `<div class="calc__rates card">${RATES.map(([k, label]) => `
-      <label class="calc__ratebox">
-        <span>${esc(label)}</span>
+    const ratesHtml = `<div class="calc__rates card">${RATES.map(([k, source, unit, sym]) => `
+      <label class="calc__ratebox${String(v[k] ?? '').trim() ? ' is-own' : ''}">
+        <span class="calc__ratehead"><i class="calc__cur" aria-hidden="true">${sym}</i>${esc(source)} <small>${esc(unit)}</small><em>свой</em></span>
         <input class="filter-input" data-k="${k}" inputmode="decimal" autocomplete="off" value="${esc(v[k])}"
           placeholder="${live[k] ? esc(fmt(live[k], k === 'rate' ? 0 : 4)) : 'нет'}">
         ${k === 'rate' ? `<small>− ${fmt(adj)} ₩ = <b data-out="rate"></b></small>` : ''}
@@ -392,6 +394,7 @@ const Calc = (() => {
       if (k) { v[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; remember(); }
       if (k === 'mixed') $('.calc__notes').hidden = !v.mixed;
       if (k === 'engine') $('[data-cc]').hidden = v.engine === 'ev';
+      if (RATES.some(r => r[0] === k)) e.target.closest('.calc__ratebox').classList.toggle('is-own', String(v[k]).trim() !== '');
       const pk = e.target.dataset.pref;
       if (pk) setPref(pk, e.target.type === 'checkbox' ? e.target.checked : e.target.value);
       update();

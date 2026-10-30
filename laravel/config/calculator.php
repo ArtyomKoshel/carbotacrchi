@@ -18,7 +18,8 @@ return [
         'service_byn'             => ['default' => 800,  'label' => 'Стоимость наших услуг',                   'unit' => 'BYN'],
         // customs in Belarus, on top of the duty (paid in BYN, counted in $ at the NBRB rate)
         'customs_fee_byn'         => ['default' => 120,  'label' => 'Таможенный сбор',                         'unit' => 'BYN'],
-        'recycling_fee_byn'       => ['default' => 1282, 'label' => 'Утилизационный сбор',                     'unit' => 'BYN'],
+        'recycling_fee_new_byn'   => ['default' => 625,  'label' => 'Утилизационный сбор: машины до 3 лет',    'unit' => 'BYN'],
+        'recycling_fee_byn'       => ['default' => 1282, 'label' => 'Утилизационный сбор: старше 3 лет',       'unit' => 'BYN'],
         'svh_byn'                 => ['default' => 401,  'label' => 'СВХ',                                     'unit' => 'BYN'],
         'declarant_byn'           => ['default' => 300,  'label' => 'Декларант',                               'unit' => 'BYN'],
         'valuation_byn'           => ['default' => 600,  'label' => 'Оценка на таможне (пошлина от стоимости)', 'unit' => 'BYN'],

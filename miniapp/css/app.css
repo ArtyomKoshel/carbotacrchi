@@ -621,11 +621,17 @@ body.wide .lot .lot-link:not(.lot-link--bad):not(.lot-link--warn) { background: 
   body.wide #view-calc .calc__rates { grid-column: 1 / -1; }
   body.wide #view-calc .calc__results { position: sticky; top: 12px; }
 }
-.calc__rates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 16px; padding: 12px 14px; }
+.calc__rates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 18px; padding: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
 .calc__rates .calc__hint { grid-column: 1 / -1; }
 .calc__ratebox { display: grid; grid-template-columns: minmax(0, 160px) auto; align-items: center; gap: 4px 10px; min-width: 0; font-size: 12px; color: var(--muted); }
-.calc__ratebox > span { grid-column: 1 / -1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.calc__ratebox .filter-input { height: 40px; font-family: var(--f-data); }
+.calc__ratebox > .calc__ratehead { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; color: var(--text); font-size: 13px; font-weight: 600; }
+.calc__ratehead small { font-weight: 400; color: var(--muted); }
+.calc__ratehead em { display: none; font-style: normal; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); }
+.calc__ratebox.is-own .calc__ratehead em { display: inline-block; }
+.calc__cur { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font: 700 12px/1 var(--f-data); font-style: normal; flex: none; }
+.calc__ratebox .filter-input { height: 42px; font: 600 17px/1 var(--f-data); background: var(--surface); }
+.calc__ratebox .filter-input::placeholder { color: var(--text); opacity: 1; }
+.calc__ratebox.is-own .filter-input { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
 .calc__ratebox small { font-size: 12px; white-space: nowrap; }
 .calc__ratebox b { color: var(--text); font-family: var(--f-data); font-weight: 600; }
 @media (max-width: 600px) {
