@@ -27,14 +27,23 @@
   --side: 272px;
   --pane: 420px;
 }
+/* dark: the system's choice, unless the top bar's button set one (html[data-theme], js/app.js) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f141b; --surface: #161d27; --surface-2: #1d2632; --text: #e8edf3; --muted: #93a0b1; --line: #263140;
     --accent: #6d92ff; --accent-text: #0b1220; --accent-soft: #1c2a4d; --link: #8aa8ff;
     --ok: #4cc785; --ok-soft: #12301f; --warn: #f0a83a; --warn-soft: #33260d; --bad: #f2716a; --bad-soft: #3a1714;
     --shade: rgba(0, 0, 0, .6);
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f141b; --surface: #161d27; --surface-2: #1d2632; --text: #e8edf3; --muted: #93a0b1; --line: #263140;
+  --accent: #6d92ff; --accent-text: #0b1220; --accent-soft: #1c2a4d; --link: #8aa8ff;
+  --ok: #4cc785; --ok-soft: #12301f; --warn: #f0a83a; --warn-soft: #33260d; --bad: #f2716a; --bad-soft: #3a1714;
+  --shade: rgba(0, 0, 0, .6);
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 /* Telegram: the theme Telegram gives (updates live when the user switches theme) */
 body.tg {
@@ -108,6 +117,9 @@ body.tg .ask { border-color: transparent; }
 .ask.busy .ask__icon { animation: spin .8s linear infinite; stroke: var(--accent); }
 .ask__kbd { font-family: var(--f-data); font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
 .account-slot { display: contents; }
+.theme-btn { flex: none; width: 36px; height: 36px; }
+.theme-btn svg { width: 18px; height: 18px; }
+body.tg .theme-btn { display: none; } /* Telegram's own theme */
 
 .main { padding: 0 max(12px, env(safe-area-inset-right, 0px)) 16px max(12px, env(safe-area-inset-left, 0px)); }
 .view__title { font-size: 22px; font-weight: 700; padding: 8px 0 12px; letter-spacing: -.01em; }

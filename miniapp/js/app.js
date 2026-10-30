@@ -618,6 +618,33 @@ const App = (() => {
   }
 
   // ── start ────────────────────────────────────────────────────────────────
+  // ── theme (browser only; in Telegram the page takes Telegram's) ───────────
+  // auto → light → dark: html[data-theme] over the system's prefers-color-scheme (css/app.css)
+  const THEME_KEY = 'carbot_theme';
+  const THEMES = {
+    auto: ['Тема как в системе', '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>'],
+    light: ['Светлая тема', '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'],
+    dark: ['Тёмная тема', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'],
+  };
+  function initTheme() {
+    const btn = $('theme-btn');
+    let theme = 'auto';
+    try { theme = THEMES[localStorage.getItem(THEME_KEY)] ? localStorage.getItem(THEME_KEY) : 'auto'; } catch (_) {}
+    const apply = () => {
+      if (theme === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme;
+      const [label, icon] = THEMES[theme];
+      btn.innerHTML = icon;
+      btn.title = `${label} — нажмите, чтобы сменить`;
+      btn.setAttribute('aria-label', btn.title);
+    };
+    btn.addEventListener('click', () => {
+      theme = { auto: 'light', light: 'dark', dark: 'auto' }[theme];
+      try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
+      apply();
+    });
+    apply();
+  }
+
   async function init() {
     s.tg = TG.init();
     try { s.resultsView = localStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'table'; } catch (_) {}
@@ -652,6 +679,7 @@ const App = (() => {
     $('sort2-select').addEventListener('change', e => setSort2(e.target.value));
     $('subscribe-btn').addEventListener('click', () => Subscriptions.toggleSubscribe());
     $('columns-btn').addEventListener('click', e => Results.columnsMenu(e.currentTarget, renderResults));
+    initTheme();
     initSplits();
     document.querySelectorAll('.seg__btn').forEach(b => b.addEventListener('click', () => {
       s.resultsView = b.dataset.view;
