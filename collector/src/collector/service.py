@@ -15,6 +15,7 @@ import contextlib
 import logging
 import signal
 import traceback
+import uuid
 from collections.abc import Callable, Coroutine
 from typing import Any
 
@@ -22,6 +23,9 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from collector import storage
+from collector.adapters.che168.api import Che168Api, CurlTransport, RotationPolicy
+from collector.adapters.che168.job import Che168Run, run_che168
+from collector.adapters.che168.signing import Signer
 from collector.adapters.encar.api import HEADERS, EncarApi
 from collector.config import Settings
 from collector.http import Fetcher, ProxyBudgetError, ProxyPool
@@ -159,6 +163,8 @@ class Service:
         return status
 
     async def _run(self, job: Job, fetcher: Fetcher, sink: MySqlIngestSink, runlog: RunLog) -> str:
+        if job.source == "che168":
+            return await self._run_che168(job, sink, runlog)
         rules = await load_rules(self.db, self.settings.core_schema)
         pipeline = build_pipeline(
             EncarApi(fetcher), rules, MySqlHistoryStore(self.db), sink,
@@ -186,6 +192,34 @@ class Service:
             return await run_reparse(ctx, MySqlRawStore(self.db))
         ctx.known_makers = await known_makers(self.db, self.settings.core_schema, job.source, exclude=job.id)
         return await run_full(ctx, history_cutoff_at=cutoff, current_year=now.year)
+
+    async def _run_che168(self, job: Job, sink: MySqlIngestSink, runlog: RunLog) -> str:
+        """Che168 has its own API client (curl_cffi, a CN proxy session) instead of the Encar fetcher."""
+        if job.type != "full":
+            await self.queue.finish(job.id, "error", {"error": f"{job.type} is not supported for che168"})
+            return "error"
+        s = self.settings
+        max_pages = max(1, s.che168_max_pages)
+        max_cars = max(1, s.che168_max_cars)
+        transport = CurlTransport("che" + uuid.uuid4().hex[:16])
+        try:
+            api = Che168Api(
+                transport.request,
+                Signer.bundled(),
+                delay=s.che168_delay,
+                # each card is one request, each page one more; retries and challenges on top
+                max_requests=2 * (max_cars + max_pages) + 50,
+                max_seconds=s.che168_max_hours * 3600,
+                rotate=transport.rotate,
+                rotation=RotationPolicy(),
+            )
+            run = Che168Run(
+                job=job, queue=self.queue, sink=sink, api=api, max_pages=max_pages, max_cars=max_cars,
+                should_stop=self.stop.is_set, clock=self.clock, runlog=runlog,
+            )  # fmt: skip
+            return await run_che168(run)
+        finally:
+            transport.close()
 
     async def _until_stopped(self, work: Coroutine[Any, Any, str], job: Job, runlog: RunLog) -> str:
         """Runs the job; after a stop request the current page gets stop_grace_seconds, then is cancelled."""

@@ -12,12 +12,13 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.4 /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Dependencies first (cached layer), runtime only: no dev / legacy groups.
+# The che168 extra (curl_cffi) is in: a collector with COLLECTOR_SOURCES=che168 runs che168 jobs.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-default-groups --no-install-project
+RUN uv sync --frozen --no-default-groups --extra che168 --no-install-project
 
 COPY src ./src
 COPY migrations ./migrations
-RUN uv sync --frozen --no-default-groups \
+RUN uv sync --frozen --no-default-groups --extra che168 \
     && useradd --system --uid 10001 collector \
     && chown -R collector /app
 

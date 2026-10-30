@@ -40,6 +40,11 @@ class Settings:
     proxy_sessions: int = 30
     stop_grace_seconds: float = 25.0  # after SIGTERM, how long the current page may run on
     stale_minutes: int = 10  # a running job without progress this long was left by a killed collector
+    # che168: one run is bounded (pages of 20 cars, cards); a job's filters.max_pages / max_cars win
+    che168_max_pages: int = 20
+    che168_max_cars: int = 400
+    che168_delay: float = 3.0  # seconds after each request
+    che168_max_hours: float = 6.0
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -61,6 +66,10 @@ class Settings:
             proxy_sessions=_int("COLLECTOR_PROXY_SESSIONS", 30),
             stop_grace_seconds=float(_env("COLLECTOR_STOP_GRACE_SECONDS", "25")),
             stale_minutes=_int("COLLECTOR_STALE_MINUTES", 10),
+            che168_max_pages=_int("CHE168_MAX_PAGES", 20),
+            che168_max_cars=_int("CHE168_MAX_CARS", 400),
+            che168_delay=float(_env("CHE168_DELAY", "3")),
+            che168_max_hours=float(_env("CHE168_MAX_HOURS", "6")),
         )
 
     @property
