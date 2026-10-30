@@ -13,6 +13,10 @@ const Fmt = (() => {
   }
 
   const won = n => (n ? '₩' + num(n) : '—');
+  /** A lot's price is in its platform's currency (lot.currency): ₩ for Encar, ¥ for Che168. Never converted. */
+  const SYMBOLS = { KRW: '₩', CNY: '¥' };
+  const symbol = cur => SYMBOLS[cur || 'KRW'] ?? cur;
+  const price = (n, cur) => (n ? symbol(cur) + num(n) : '—');
   const km = n => (n || n === 0 ? num(n) + ' км' : '—');
 
   function plural(n, one, few, many) {
@@ -159,5 +163,5 @@ const Fmt = (() => {
     lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   };
 
-  return { owners, PLACEHOLDER, esc, num, won, km, plural, lots, month, day, shortDay, label, lower, make, model, title, trim, engine, city, photos, cover, photoCount, history, sub, drive, matched, icon };
+  return { owners, PLACEHOLDER, esc, num, won, price, symbol, km, plural, lots, month, day, shortDay, label, lower, make, model, title, trim, engine, city, photos, cover, photoCount, history, sub, drive, matched, icon };
 })();

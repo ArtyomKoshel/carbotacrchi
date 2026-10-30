@@ -13,6 +13,7 @@ use App\Search\Specifications\OptionsSpec;
 use App\Search\Specifications\PriceRangeSpec;
 use App\Search\Specifications\TaxonomySpec;
 use App\Search\Specifications\YearRangeSpec;
+use App\Support\Currency;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -84,7 +85,7 @@ class ProviderAggregator
 
         $total = (clone $builder)->count();
 
-        $this->applyDbSort($builder, $query->sort, $query->sort2);
+        $this->applyDbSort($builder, $query->sort, $query->sort2, Currency::shared(array_keys($providersByKey)) === null);
 
         $rows = $builder
             ->offset($query->offset)
@@ -115,10 +116,14 @@ class ProviderAggregator
         ));
     }
 
-    private function applyDbSort(Builder $builder, string $sort, string $sort2 = ''): void
+    private function applyDbSort(Builder $builder, string $sort, string $sort2 = '', bool $mixedCurrencies = false): void
     {
         // every order the miniapp offers (SearchQuery::SORTS); id last keeps pages stable
         $then = $sort2 !== '' && $sort2 !== $sort;
+        // ₩ and ¥ are not compared: by price means by price within each currency, KRW (Encar) first
+        if ($mixedCurrencies && (str_starts_with($sort, 'price') || ($then && str_starts_with($sort2, 'price')))) {
+            $builder->orderBy('currency', 'desc');
+        }
         match ($sort) {
             'price_asc' => $builder->orderBy('price', 'asc'),
             'price_desc' => $builder->orderBy('price', 'desc'),

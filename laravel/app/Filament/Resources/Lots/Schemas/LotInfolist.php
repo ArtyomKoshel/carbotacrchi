@@ -35,7 +35,7 @@ class LotInfolist
                     ->placeholder('Нет фото'),
                 Grid::make(2)->columnSpan(['md' => 2])->schema([
                     TextEntry::make('price')->label('Цена')
-                        ->formatStateUsing(fn ($state) => LotFormat::won($state))
+                        ->formatStateUsing(fn ($state, Lot $record) => LotFormat::money($state, $record->currency))
                         ->size('lg')->weight('semibold'),
                     TextEntry::make('is_active')->label('Статус')
                         ->badge()
@@ -126,11 +126,11 @@ class LotInfolist
                 $plain('owners_count'),
                 $plain('insurance_count'),
                 TextEntry::make('repair_cost')->label('Ремонт по страховке')
-                    ->formatStateUsing(fn ($state) => LotFormat::won($state))->placeholder('—'),
+                    ->formatStateUsing(fn ($state, Lot $record) => LotFormat::money($state, $record->currency))->placeholder('—'),
                 $plain('lien_status', 'Залог'),
                 $plain('seizure_status', 'Арест'),
                 TextEntry::make('retail_value')->label('Цена нового')
-                    ->formatStateUsing(fn ($state) => LotFormat::won($state))->placeholder('—'),
+                    ->formatStateUsing(fn ($state, Lot $record) => LotFormat::money($state, $record->currency))->placeholder('—'),
             ]),
             Section::make('Объявление')->columns(3)->compact()->schema([
                 TextEntry::make('source')->label('Площадка')

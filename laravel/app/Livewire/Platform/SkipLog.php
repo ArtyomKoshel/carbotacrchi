@@ -65,7 +65,7 @@ class SkipLog extends PlatformComponent implements HasTable
                     ->description(fn (FilterSkipLog $record) => isset($byName[$record->rule_name]) ? $rules->sentence($byName[$record->rule_name]) : 'правило удалено'),
                 TextColumn::make('field_value')->label('Значение')
                     ->state(fn (FilterSkipLog $record) => $record->field_name
-                        ? \App\Support\AdminUiLabels::field($record->field_name) . ': ' . $rules->formatValue($record->field_name, self::decode($record->field_value))
+                        ? \App\Support\AdminUiLabels::field($record->field_name) . ': ' . $rules->formatValue($record->field_name, self::decode($record->field_value), $record->source)
                         : '—'),
                 TextColumn::make('action')->label('Что сделано')
                     ->formatStateUsing(fn (?string $state) => ParseFilterRules::ACTIONS[$state] ?? $state),

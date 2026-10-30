@@ -433,7 +433,7 @@ const App = (() => {
     if (!lot) return;
     TG.haptic('impact', 'medium');
     try {
-      const calc = Calc.shareLines(lot.id, lot.price);
+      const calc = (lot.currency || 'KRW') === 'KRW' ? Calc.shareLines(lot.id, lot.price) : [];
       if (s.tg) {
         const res = await API.shareLot(lot.id, TG.canShare() ? 'prepare' : 'chat', calc);
         if (res.prepared_message_id && await TG.share(res.prepared_message_id)) { toast('Отправлено'); return; }

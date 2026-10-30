@@ -47,6 +47,7 @@ readonly class LotDTO
         public ?string $firstRegDate        = null,
         public ?string $listedAt             = null,
         public array   $photos               = [],   // every photo of the listing, in order
+        public string  $currency             = 'KRW', // of price, retailValue, repairCost (lots.currency)
     ) {}
 
     public function toArray(): array
@@ -60,6 +61,7 @@ readonly class LotDTO
             'badgeGroup'  => $this->badgeGroup,
             'year'        => $this->year,
             'price'       => $this->price,
+            'currency'    => $this->currency,
             'mileage'     => $this->mileage,
             'location'    => $this->location,
             'lotUrl'      => $this->lotUrl,

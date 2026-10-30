@@ -14,7 +14,7 @@ final class LotUpsert
 {
     /** Always take the incoming value. */
     public const LOT_OVERWRITE = [
-        'price', 'mileage', 'make', 'model', 'year', 'location', 'lot_url', 'raw_data', 'is_active',
+        'price', 'currency', 'mileage', 'make', 'model', 'year', 'location', 'lot_url', 'raw_data', 'is_active',
         'parsed_at', 'updated_at', 'ingest_hash',
     ];
 

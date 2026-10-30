@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BotFilterSetting;
+use App\Support\Currency;
 
 class SearchQuery
 {
@@ -26,6 +27,8 @@ class SearchQuery
     public int $yearTo = 0;
     public int $priceMax = 0;
     public int $priceMin = 0;
+    /** The currency priceMin / priceMax are in: a price range only finds lots priced in it. */
+    public string $priceCurrency = Currency::DEFAULT;
     public int $mileageMin = 0;
     public int $mileageMax = 0;
     public float $engineMin = 0;
@@ -108,6 +111,8 @@ class SearchQuery
         $q->yearTo = (int) ($data['yearTo'] ?? 0);
         $q->priceMax = (int) ($data['priceMax'] ?? 0);
         $q->priceMin = (int) ($data['priceMin'] ?? 0);
+        $currency = strtoupper(trim((string) ($data['priceCurrency'] ?? '')));
+        $q->priceCurrency = preg_match('/^[A-Z]{3}$/', $currency) ? $currency : Currency::DEFAULT;
         $q->mileageMin = (int) ($data['mileageMin'] ?? 0);
         $q->mileageMax = (int) ($data['mileageMax'] ?? 0);
         $q->engineMin = (float) ($data['engineMin'] ?? 0);
@@ -289,8 +294,9 @@ class SearchQuery
         } elseif ($this->yearTo) {
             $parts[] = "до {$this->yearTo} г.";
         }
-        if ($this->priceMax)   $parts[] = "до \${$this->priceMax}";
-        if ($this->priceMin)   $parts[] = "от \${$this->priceMin}";
+        $symbol = Currency::symbol($this->priceCurrency);
+        if ($this->priceMax)   $parts[] = "до {$symbol}{$this->priceMax}";
+        if ($this->priceMin)   $parts[] = "от {$symbol}{$this->priceMin}";
         if ($this->mileageMin) $parts[] = "пробег от " . number_format($this->mileageMin) . " км";
         if ($this->mileageMax) $parts[] = "пробег до " . number_format($this->mileageMax) . " км";
         if ($this->engineMin)  $parts[] = "двигатель от {$this->engineMin} л";
@@ -334,6 +340,9 @@ class SearchQuery
         if ($this->yearTo)        $data['yearTo']        = $this->yearTo;
         if ($this->priceMin)      $data['priceMin']      = $this->priceMin;
         if ($this->priceMax)      $data['priceMax']      = $this->priceMax;
+        if (($this->priceMin || $this->priceMax) && $this->priceCurrency !== Currency::DEFAULT) {
+            $data['priceCurrency'] = $this->priceCurrency;
+        }
         if ($this->mileageMin)    $data['mileageMin']    = $this->mileageMin;
         if ($this->mileageMax)    $data['mileageMax']    = $this->mileageMax;
         if ($this->engineMin)     $data['engineMin']     = $this->engineMin;

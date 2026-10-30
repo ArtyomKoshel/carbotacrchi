@@ -36,7 +36,7 @@ const Compare = (() => {
 
   /** Rows: [label, (lot) => text, best: 'min'|'max'|null, (lot) => number for "best"] */
   const ROWS = [
-    ['Цена', l => Fmt.won(l.price), 'min', l => l.price],
+    ['Цена', l => Fmt.price(l.price, l.currency), 'min', l => l.price],
     ['Пробег', l => Fmt.km(l.mileage), 'min', l => l.mileage],
     ['Год', l => l.year || '—', 'max', l => l.year],
     ['Регистрация', l => Fmt.month(l.firstRegDate), null],
@@ -47,9 +47,9 @@ const Compare = (() => {
     ['ДТП', l => l.hasAccident === true ? 'было' : l.hasAccident === false ? 'нет' : '—', null],
     ['Смен владельца', l => l.ownersCount ?? '—', 'min', l => l.ownersCount],
     ['Страховые случаи', l => l.insuranceCount ?? '—', 'min', l => l.insuranceCount],
-    ['Ремонт по страховым', l => l.repairCost ? Fmt.won(l.repairCost) : '—', 'min', l => l.repairCost || 0],
+    ['Ремонт по страховым', l => l.repairCost ? Fmt.price(l.repairCost, l.currency) : '—', 'min', l => l.repairCost || 0],
     ['Затопление, тотал', l => (l.floodHistory || l.totalLossHistory) ? 'было' : (l.floodHistory === false || l.totalLossHistory === false ? 'нет' : '—'), null],
-    ['Новая стоила', l => l.retailValue ? Fmt.won(l.retailValue) : '—', null],
+    ['Новая стоила', l => l.retailValue ? Fmt.price(l.retailValue, l.currency) : '—', null],
     ['Опций', l => Array.isArray(l.options) ? l.options.length : '—', 'max', l => Array.isArray(l.options) ? l.options.length : null],
     ['Город', l => Fmt.city(l) || '—', null],
     ['Выставлен', l => Fmt.day(l.listedAt), null],
@@ -57,13 +57,17 @@ const Compare = (() => {
 
   let onlyDiff = false;
 
+  const MONEY = new Set(['Цена', 'Ремонт по страховым']);
+
   /** Each row: its cells, whether the cars differ, and which cells hold the best value. */
   function rows() {
     return ROWS.map(([label, text, best, value]) => {
       const cells = items.map(text).map(String);
       const differs = items.length > 1 && cells.some(c => c !== cells[0]);
       const bestIdx = new Set();
-      if (best && differs) {
+      // ₩ and ¥ are not compared: a money row has a best value only when every car is in one currency
+      const oneCurrency = new Set(items.map(l => l.currency || 'KRW')).size === 1;
+      if (best && differs && (oneCurrency || !MONEY.has(label))) {
         const vals = items.map(value).map(v => (v === null || v === undefined || v === '' ? null : Number(v)));
         const known = vals.filter(v => v !== null && !isNaN(v));
         if (known.length > 1 && new Set(known).size > 1) {

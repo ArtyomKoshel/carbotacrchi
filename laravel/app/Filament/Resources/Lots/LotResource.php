@@ -107,7 +107,7 @@ class LotResource extends Resource
         /** @var Lot $record */
         return [
             'ID'   => $record->id,
-            'Цена' => LotFormat::won($record->price),
+            'Цена' => LotFormat::money($record->price, $record->currency),
         ];
     }
 }

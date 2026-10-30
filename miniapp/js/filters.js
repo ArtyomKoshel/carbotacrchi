@@ -21,6 +21,7 @@ const Filters = (() => {
     yearTo:           '',
     priceMin:         '',
     priceMax:         '',
+    priceCurrency:    'KRW', // the currency priceMin / priceMax are in (lots are never converted)
     mileageMin:       '',
     mileageMax:       '',
     engineMin:        '',
@@ -57,11 +58,42 @@ const Filters = (() => {
     return (filtersData?.sources ?? []).map(s => s.key).filter(Boolean);
   }
 
+  /** Currencies of the selected platforms (Encar ₩, Che168 ¥), in the order the API lists them. */
+  function _currencies() {
+    const all = filtersData?.sources ?? [];
+    const picked = all.filter(s => state.sources.includes(s.key));
+    return [...new Set((picked.length ? picked : all).map(s => s.currency || 'KRW'))];
+  }
+
+  /**
+   * A price range is in one currency: the selected platforms' own, or the one the picker
+   * chooses when they differ. It finds only lots priced in that currency.
+   */
+  function _syncPriceCurrency() {
+    const curs = _currencies();
+    if (!curs.includes(state.priceCurrency)) state.priceCurrency = curs[0] || 'KRW';
+    document.querySelectorAll('#filter-price-min, #filter-price-max').forEach(inp => {
+      const prefix = inp.parentElement?.querySelector('.filter-input-prefix');
+      if (prefix) prefix.textContent = Fmt.symbol(state.priceCurrency);
+    });
+    const box = document.getElementById('price-currency');
+    if (!box) return;
+    box.hidden = curs.length < 2;
+    box.innerHTML = curs.length < 2 ? '' : curs.map(c =>
+      `<button type="button" class="filter-chip${c === state.priceCurrency ? ' selected' : ''}" data-cur="${c}">${Fmt.symbol(c)}</button>`).join('');
+    box.querySelectorAll('[data-cur]').forEach(b => b.addEventListener('click', () => {
+      state.priceCurrency = b.dataset.cur;
+      _syncPriceCurrency();
+      TG.haptic('selection');
+      _scheduleCountUpdate();
+    }));
+  }
+
   function resetState() {
     state.sources = _sourceKeys();
     state.make = ''; state.model = ''; state.badge = '';
     state.yearFrom = ''; state.yearTo = '';
-    state.priceMin = ''; state.priceMax = '';
+    state.priceMin = ''; state.priceMax = ''; state.priceCurrency = 'KRW';
     state.mileageMin = ''; state.mileageMax = '';
     state.engineMin = ''; state.engineMax = '';
     state.seatsMin = ''; state.seatsMax = '';
@@ -167,6 +199,7 @@ const Filters = (() => {
 
     // Populate dynamic content
     populateFilters();
+    _syncPriceCurrency();
 
     // Keep reset button state synced after full rerender.
     _updateResetBtn();
@@ -264,6 +297,13 @@ const Filters = (() => {
             <input class="filter-input" type="${ui.inputType||'number'}" id="${ui.idMax}" placeholder="До" min="${ui.min??''}" max="${ui.max??''}" step="${ui.step||'1'}">`;
         }
         row.querySelectorAll('input').forEach(inp => inp.addEventListener('input', _scheduleCountUpdate));
+        if (name === 'price') {
+          const cur = document.createElement('div');
+          cur.className = 'chip-group price-currency';
+          cur.id = 'price-currency';
+          cur.hidden = true;
+          body.appendChild(cur);
+        }
         body.appendChild(row);
         break;
       }
@@ -462,6 +502,7 @@ const Filters = (() => {
           state.sources.push(k);
         }
         btn.classList.toggle('selected', state.sources.includes(k));
+        _syncPriceCurrency();
         TG.haptic('selection');
         _scheduleCountUpdate();
       });
@@ -563,6 +604,7 @@ const Filters = (() => {
       yearTo:           state.yearTo            ? parseInt(state.yearTo)            : undefined,
       priceMin:         state.priceMin          ? parseInt(state.priceMin)          : undefined,
       priceMax:         state.priceMax          ? parseInt(state.priceMax)          : undefined,
+      priceCurrency:    (state.priceMin || state.priceMax) && state.priceCurrency !== 'KRW' ? state.priceCurrency : undefined,
       mileageMin:       state.mileageMin        ? parseInt(state.mileageMin)        : undefined,
       mileageMax:       state.mileageMax        ? parseInt(state.mileageMax)        : undefined,
       engineMin:        state.engineMin         ? parseFloat(state.engineMin)       : undefined,
@@ -638,6 +680,7 @@ const Filters = (() => {
     if (q.listedBefore !== undefined)      state.listedBefore      = String(q.listedBefore ?? '');
     if (q.firstRegAfter !== undefined)     state.firstRegAfter     = String(q.firstRegAfter ?? '');
     if (q.firstRegBefore !== undefined)    state.firstRegBefore    = String(q.firstRegBefore ?? '');
+    state.priceCurrency = q.priceCurrency || 'KRW';
     if (q.hasAccident !== undefined && q.hasAccident !== null) state.hasAccident = q.hasAccident;
     if (q.floodHistory !== undefined && q.floodHistory !== null) state.floodHistory = q.floodHistory;
     if (q.totalLossHistory !== undefined && q.totalLossHistory !== null) state.totalLossHistory = q.totalLossHistory;
@@ -808,7 +851,7 @@ const Filters = (() => {
     if (q.badge) add('badge', q.badge);
     if (q.trim) add('trim', Taxonomy.label('trim', q.trim) || q.trim);
     if (q.yearFrom || q.yearTo) add('year', range(q.yearFrom, q.yearTo, '', String));
-    if (q.priceMin || q.priceMax) add('price', '₩' + range(q.priceMin, q.priceMax, '', priceM));
+    if (q.priceMin || q.priceMax) add('price', Fmt.symbol(q.priceCurrency) + range(q.priceMin, q.priceMax, '', priceM));
     if (q.mileageMin || q.mileageMax) add('mileage', range(q.mileageMin, q.mileageMax, ' км'));
     if (q.engineMin || q.engineMax) add('engine', range(q.engineMin, q.engineMax, ' л', String));
     if (q.seatCountMin || q.seatCountMax) add('seats', range(q.seatCountMin, q.seatCountMax, ' мест', String));

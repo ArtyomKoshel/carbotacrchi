@@ -14,8 +14,13 @@ use DateTimeZone;
  */
 final class LotRowMapper
 {
-    /** lots.price is KRW; other currencies arrive with multi-platform support. */
-    public const STORAGE_CURRENCY = 'KRW';
+    /** Currencies lots.price may hold; the lot's other amounts must be in its price currency. */
+    public const CURRENCIES = ['KRW', 'CNY'];
+
+    /** The platform's own time zone: lots.listed_at keeps the listing time there. */
+    private const TIME_ZONES = ['che168' => 'Asia/Shanghai'];
+
+    private const DEFAULT_TIME_ZONE = 'Asia/Seoul';
 
     /** `lots.id` is the source's own id for Encar (as today), prefixed for any other platform. */
     public static function lotId(string $source, string $sourceId): string
@@ -37,6 +42,7 @@ final class LotRowMapper
         $extra = $lot['extra'] ?? [];
         $options = $l['options'] ?? [];
         $paidOptions = $l['paid_options'] ?? [];
+        $currency = self::currency($l['price']);
 
         return [
             'id' => self::lotId($lot['source'], $lot['source_id']),
@@ -45,7 +51,8 @@ final class LotRowMapper
             'model' => $v['model'],
             'model_group' => $v['model_group'] ?? null,
             'year' => $v['year'],
-            'price' => self::krw($l['price']),
+            'price' => self::amount($l['price'], $currency),
+            'currency' => $currency,
             'mileage' => $l['mileage_km'],
             'vin' => $v['vin'] ?? null,
             'body_type' => $v['body_type'] ?? null,
@@ -67,14 +74,14 @@ final class LotRowMapper
             'lien_status' => $h['lien_status'] ?? null,
             'seizure_status' => $h['seizure_status'] ?? null,
             'total_loss_history' => self::bool($h['total_loss'] ?? null),
-            'retail_value' => isset($l['retail_value']) ? self::krw($l['retail_value']) : null,
-            'repair_cost' => isset($h['repair_cost']) ? self::krw($h['repair_cost']) : null,
+            'retail_value' => isset($l['retail_value']) ? self::amount($l['retail_value'], $currency) : null,
+            'repair_cost' => isset($h['repair_cost']) ? self::amount($h['repair_cost'], $currency) : null,
             'image_url' => $l['image_url'] ?? null,
             'lot_url' => $lot['url'],
             'raw_data' => $extra === [] ? null : self::json($extra),
             'plate_number' => $v['plate_number'] ?? null,
             'first_reg_date' => $v['first_registration'] ?? null,
-            'listed_at' => self::korean($l['listed_at'] ?? null),
+            'listed_at' => self::local($l['listed_at'] ?? null, $lot['source']),
             'options' => $options === [] ? null : self::json(array_values($options)),
             'options_mask' => $optionsMask(array_values($options)),
             'paid_options' => $paidOptions === [] ? null : self::json(array_values($paidOptions)),
@@ -107,7 +114,7 @@ final class LotRowMapper
             'report_url' => $i['report_url'] ?? null,
             'first_registration' => $i['first_registration'] ?? null,
             'inspection_mileage' => $i['mileage_km'] ?? null,
-            'insurance_fee' => isset($i['insurance_fee']) ? self::krw($i['insurance_fee']) : null,
+            'insurance_fee' => isset($i['insurance_fee']) ? self::amount($i['insurance_fee'], self::currency($lot['listing']['price'])) : null,
             'has_accident' => self::bool($i['has_accident'] ?? null),
             'has_outer_damage' => self::bool($i['has_outer_damage'] ?? null),
             'has_flood' => self::bool($i['has_flood'] ?? null),
@@ -125,12 +132,23 @@ final class LotRowMapper
         return self::utc($lot['history']['observed_at'] ?? null);
     }
 
-    /** @param array{amount: int, currency?: string} $money */
-    private static function krw(array $money): int
+    /** @param array{amount: int, currency?: string} $price */
+    private static function currency(array $price): string
     {
-        $currency = $money['currency'] ?? self::STORAGE_CURRENCY;
-        if ($currency !== self::STORAGE_CURRENCY) {
-            throw new UnsupportedRecord("currency {$currency} is not stored yet (lots.price is KRW)");
+        $currency = $price['currency'] ?? 'KRW';
+        if (! in_array($currency, self::CURRENCIES, true)) {
+            throw new UnsupportedRecord("currency {$currency} is not stored yet");
+        }
+
+        return $currency;
+    }
+
+    /** @param array{amount: int, currency?: string} $money */
+    private static function amount(array $money, string $currency): int
+    {
+        $own = $money['currency'] ?? 'KRW';
+        if ($own !== $currency) {
+            throw new UnsupportedRecord("amount in {$own}, the price in {$currency}: a lot keeps one currency");
         }
 
         return (int) $money['amount'];
@@ -151,16 +169,17 @@ final class LotRowMapper
     }
 
     /**
-     * lots.listed_at holds the platform's listing time in Korea, as the old parser stored it
-     * (Encar's date at 00:00); converting it to UTC would move every date one day back.
+     * lots.listed_at holds the listing time where the platform is, as the old parser stored
+     * Encar's (the date at 00:00 in Korea); converting it to UTC would move every date one day back.
      */
-    private static function korean(?string $timestamp): ?string
+    private static function local(?string $timestamp, string $source): ?string
     {
         if ($timestamp === null) {
             return null;
         }
+        $zone = new DateTimeZone(self::TIME_ZONES[$source] ?? self::DEFAULT_TIME_ZONE);
 
-        return (new DateTimeImmutable($timestamp))->setTimezone(new DateTimeZone('Asia/Seoul'))->format('Y-m-d H:i:s');
+        return (new DateTimeImmutable($timestamp))->setTimezone($zone)->format('Y-m-d H:i:s');
     }
 
     private static function json(mixed $value): string

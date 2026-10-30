@@ -179,7 +179,7 @@ const Subscriptions = (() => {
 
   function renderMiniLot(p) {
     const img    = p.imageUrl ?? '/miniapp/img/placeholder.svg';
-    const price  = Fmt.won(p.price);
+    const price  = Fmt.price(p.price, p.currency);
     const urlAttr = p.id ? ` data-id="${escHtml(p.id)}"` : '';
     return `
       <div class="mini-lot"${urlAttr}>

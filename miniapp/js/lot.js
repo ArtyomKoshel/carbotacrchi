@@ -76,7 +76,7 @@ const LotView = (() => {
     add('ДТП по страховым', yesNo(lot.hasAccident) ?? ['нет данных', ''], asked.has('accident'));
     if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: asked.has('owners') ? 'match' : '' }]);
     if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: asked.has('insurance') ? 'match' : '' }]);
-    if (lot.repairCost) rows.push(['Ремонт по страховым', Fmt.won(lot.repairCost), { value: 'num warn' }]);
+    if (lot.repairCost) rows.push(['Ремонт по страховым', Fmt.price(lot.repairCost, lot.currency), { value: 'num warn' }]);
     add('Затопление', yesNo(lot.floodHistory), asked.has('flood'));
     add('Тотал', yesNo(lot.totalLossHistory), asked.has('totalLoss'));
     if (lot.lienStatus) rows.push(['Залог', lot.lienStatus === 'clean' ? 'нет' : 'есть', { value: lot.lienStatus === 'clean' ? 'ok' : 'bad' }]);
@@ -104,7 +104,7 @@ const LotView = (() => {
       ['Комплектация', Fmt.trim(lot), ['modification', 'complectation']],
       ['Регистрация', lot.firstRegDate ? Fmt.month(lot.firstRegDate) : null, 'firstReg'],
       ['Выставлен', lot.listedAt ? Fmt.day(lot.listedAt) : null, 'listed'],
-      ['Новая стоила', lot.retailValue ? Fmt.won(lot.retailValue) : null],
+      ['Новая стоила', lot.retailValue ? Fmt.price(lot.retailValue, lot.currency) : null],
       ['Город', lot.location && lot.location !== 'Korea' ? Fmt.esc(lot.location) : null],
       ['VIN', copy(lot.vin, 'VIN')],
       ['Номер', copy(lot.plateNumber, 'номер')],
@@ -168,7 +168,7 @@ const LotView = (() => {
         <div>
           <h2 class="lot__title">${Fmt.esc(Fmt.title(lot))}</h2>
           ${Fmt.trim(lot) ? `<div class="lot__trim${any('modification', 'complectation') ? ' match' : ''}">${Fmt.esc(Fmt.trim(lot))}</div>` : ''}
-          <div class="lot__price${any('price') ? ' match' : ''}">${Fmt.won(lot.price)}</div>
+          <div class="lot__price${any('price') ? ' match' : ''}">${Fmt.price(lot.price, lot.currency)}</div>
           <div class="lot__meta">${Fmt.esc([lot.sourceName, Fmt.city(lot), lot.listedAt ? 'выставлен ' + Fmt.day(lot.listedAt) : ''].filter(Boolean).join(' · '))}</div>
         </div>
         ${lot.lotUrl ? `<button class="btn btn--primary btn--block lot__source" type="button" data-source>${Fmt.icon.out}Открыть объявление на ${Fmt.esc(lot.sourceName || 'площадке')}</button>` : ''}
@@ -178,7 +178,7 @@ const LotView = (() => {
           ${ctx.closable ? '' : `<button class="btn fav${ctx.favorite ? ' on' : ''}" type="button" data-fav aria-pressed="${!!ctx.favorite}">${Fmt.icon.heart}<span>${ctx.favorite ? 'В избранном' : 'В избранное'}</span></button>`}
           <button class="btn${ctx.compared ? ' on' : ''}" type="button" data-compare aria-pressed="${!!ctx.compared}">${Fmt.icon.compare}<span>${ctx.compared ? 'В сравнении' : 'Сравнить'}</span></button>
         </div>
-        <div data-calc></div>
+        ${(lot.currency || 'KRW') === 'KRW' ? '<div data-calc></div>' : ''}
         ${historyBlock(lot, ctx.inspection, asked)}
         ${specsBlock(lot, asked)}
         ${optionsBlock(lot, q)}

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\AuctionProviders\Che168Provider;
 use App\AuctionProviders\EncarProvider;
 use App\Bot\BotDispatcher;
 use App\Services\ChatSearchService;
@@ -24,6 +25,7 @@ class AuctionServiceProvider extends ServiceProvider
         $this->app->singleton(ProviderAggregator::class, function () {
             return (new ProviderAggregator())->register(
                 new EncarProvider(),
+                new Che168Provider(),
             );
         });
 

@@ -7,6 +7,7 @@ use App\Filament\Resources\Lots\LotFormat;
 use App\Models\ParseFilter;
 use App\Services\ParseFilterRules;
 use App\Services\ParseRuns;
+use App\Support\Currency;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -207,14 +208,14 @@ class Rules extends PlatformComponent implements HasTable
                     ->visible(fn (Get $get) => $dtype($get) === 'bool' && in_array($op($get), ['eq', 'ne'], true))
                     ->required()->live(),
                 TextInput::make('value_number')->label('Значение')->numeric()
-                    ->suffix(fn (Get $get) => self::unit($get('field')))
+                    ->suffix(fn (Get $get) => $this->unit($get('field')))
                     ->visible(fn (Get $get) => $isNum($get) && in_array($op($get), self::SINGLE_OPS, true))
                     ->required()->live(onBlur: true),
                 Grid::make(2)
                     ->visible(fn (Get $get) => $op($get) === 'between')
                     ->schema([
-                        TextInput::make('value_from')->label('От')->numeric()->required()->live(onBlur: true)->suffix(fn (Get $get) => self::unit($get('field'))),
-                        TextInput::make('value_to')->label('До')->numeric()->required()->live(onBlur: true)->suffix(fn (Get $get) => self::unit($get('field'))),
+                        TextInput::make('value_from')->label('От')->numeric()->required()->live(onBlur: true)->suffix(fn (Get $get) => $this->unit($get('field'))),
+                        TextInput::make('value_to')->label('До')->numeric()->required()->live(onBlur: true)->suffix(fn (Get $get) => $this->unit($get('field'))),
                     ]),
                 TagsInput::make('value_list')->label('Значения')
                     ->placeholder('Введите и нажмите Enter')
@@ -249,7 +250,7 @@ class Rules extends PlatformComponent implements HasTable
             return new HtmlString('<span class="text-gray-500">Укажите значение, чтобы увидеть, сколько лотов попадёт под правило.</span>');
         }
         [$value] = $typed;
-        $sentence = (ParseFilterRules::ACTIONS[$get('action')] ?? '') . ', если ' . $this->rules()->condition($field, $operator, $value);
+        $sentence = (ParseFilterRules::ACTIONS[$get('action')] ?? '') . ', если ' . $this->rules()->condition($field, $operator, $value, $this->source);
 
         return new HtmlString('<strong>' . e($sentence) . '.</strong> ' . e($this->previewSentence($field, $operator, $value)));
     }
@@ -347,10 +348,10 @@ class Rules extends PlatformComponent implements HasTable
         return $form;
     }
 
-    private static function unit(?string $field): ?string
+    private function unit(?string $field): ?string
     {
         return match ($field) {
-            'price', 'retail_value', 'repair_cost', 'accident_max_cost', 'total_accident_cost' => '₩',
+            'price', 'retail_value', 'repair_cost', 'accident_max_cost', 'total_accident_cost' => Currency::symbol(Currency::of($this->source)),
             'mileage', 'inspection_mileage' => 'км',
             'engine_volume' => 'л',
             default => null,

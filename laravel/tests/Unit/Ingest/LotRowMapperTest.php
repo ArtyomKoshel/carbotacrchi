@@ -34,6 +34,7 @@ final class LotRowMapperTest extends TestCase
 
         $this->assertSame('39847215', $row['id']);
         $this->assertSame(18_900_000, $row['price']);
+        $this->assertSame('KRW', $row['currency']);
         $this->assertSame(45_210, $row['mileage']);
         $this->assertSame(2.0, $row['engine_volume']);
         $this->assertSame(0, $row['has_accident']);
@@ -89,10 +90,34 @@ final class LotRowMapperTest extends TestCase
         $this->assertSame(['https://img.example.com/1.jpg'], json_decode($row['photo_urls'], true));
     }
 
-    public function test_non_krw_price_is_refused_until_multi_currency(): void
+    public function test_unknown_currency_is_refused(): void
     {
         $lot = self::fixture('minimal');
         $lot['listing']['price'] = ['amount' => 100, 'currency' => 'JPY'];
+        $this->expectException(UnsupportedRecord::class);
+        LotRowMapper::lotRow($lot, self::mask(...));
+    }
+
+    public function test_che168_lot_keeps_yuan_and_china_time(): void
+    {
+        $lot = self::fixture('minimal');
+        $lot['source'] = 'che168';
+        $lot['source_id'] = '60321227';
+        $lot['listing']['price'] = ['amount' => 189_800, 'currency' => 'CNY'];
+        $lot['listing']['retail_value'] = ['amount' => 545_000, 'currency' => 'CNY'];
+        $lot['listing']['listed_at'] = '2026-10-29T00:00:00+08:00';
+        $row = LotRowMapper::lotRow($lot, self::mask(...));
+
+        $this->assertSame('che168:60321227', $row['id']);
+        $this->assertSame([189_800, 'CNY', 545_000], [$row['price'], $row['currency'], $row['retail_value']]);
+        $this->assertSame('2026-10-29 00:00:00', $row['listed_at']);
+    }
+
+    public function test_an_amount_in_another_currency_than_the_price_is_refused(): void
+    {
+        $lot = self::fixture('minimal');
+        $lot['listing']['price'] = ['amount' => 189_800, 'currency' => 'CNY'];
+        $lot['listing']['retail_value'] = ['amount' => 32_000_000, 'currency' => 'KRW'];
         $this->expectException(UnsupportedRecord::class);
         LotRowMapper::lotRow($lot, self::mask(...));
     }

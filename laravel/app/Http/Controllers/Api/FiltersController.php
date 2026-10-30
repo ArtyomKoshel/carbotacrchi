@@ -8,6 +8,7 @@ use App\Models\EncarOptionCatalog;
 use App\Search\Specifications\CatalogSpec;
 use App\Services\ProviderAggregator;
 use App\Services\SearchQuery;
+use App\Support\Currency;
 use App\Support\Taxonomy\TaxonomyLocalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,7 +48,8 @@ class FiltersController extends Controller
         $sources     = array_values(is_array($sourcesCfg) ? $sourcesCfg : ['encar', 'kbcha']);
         $currentYear = (int) date('Y');
 
-        $cacheKey = 'api_filters_' . $locale . '_' . implode('_', $sources) . '_v' . self::cacheVersion();
+        // _cur: source options carry their currency since che168
+        $cacheKey = 'api_filters_cur_' . $locale . '_' . implode('_', $sources) . '_v' . self::cacheVersion();
 
         $data = Cache::get($cacheKey);
         if ($data === null) {
@@ -179,10 +181,12 @@ class FiltersController extends Controller
 
     private function buildSourceOptions(array $sources): array
     {
-        $labels = ['encar' => 'Encar', 'kbcha' => 'KBChacha'];
+        $labels = ['encar' => 'Encar', 'kbcha' => 'KBChacha', 'che168' => 'Che168'];
         return array_map(static fn (string $key) => [
-            'key'  => $key,
-            'name' => $labels[$key] ?? strtoupper($key),
+            'key'      => $key,
+            'name'     => $labels[$key] ?? strtoupper($key),
+            'currency' => Currency::of($key),
+            'symbol'   => Currency::symbol(Currency::of($key)),
         ], $sources);
     }
 

@@ -7,6 +7,7 @@ class AdminUiLabels
     private const SOURCE_LABELS = [
         'encar' => 'Encar',
         'kbcha' => 'Второй источник',
+        'che168' => 'Che168',
     ];
 
     private const EVENT_LABELS = [

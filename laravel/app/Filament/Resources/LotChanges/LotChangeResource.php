@@ -68,14 +68,14 @@ class LotChangeResource extends Resource
                 TextColumn::make('event')->label('Событие')
                     ->formatStateUsing(fn (?string $state) => AdminUiLabels::event($state)),
                 TextColumn::make('changes')->label('Что изменилось')
-                    ->state(fn (LotChange $r) => new HtmlString(collect((array) $r->changes)->map(function ($diff, $field) {
+                    ->state(fn (LotChange $r) => new HtmlString(collect((array) $r->changes)->map(function ($diff, $field) use ($r) {
                         $label = e(AdminUiLabels::field((string) $field));
                         if (is_array($diff) && (array_key_exists('old', $diff) || array_key_exists('new', $diff))) {
-                            return "{$label}: <span class=\"lot-history-old\">" . e(LotFormat::changeValue($field, $diff['old'] ?? null))
-                                . '</span> → ' . e(LotFormat::changeValue($field, $diff['new'] ?? null));
+                            return "{$label}: <span class=\"lot-history-old\">" . e(LotFormat::changeValue($field, $diff['old'] ?? null, $r->source))
+                                . '</span> → ' . e(LotFormat::changeValue($field, $diff['new'] ?? null, $r->source));
                         }
 
-                        return "{$label}: " . e(LotFormat::changeValue($field, $diff));
+                        return "{$label}: " . e(LotFormat::changeValue($field, $diff, $r->source));
                     })->implode('<br>')))
                     ->wrap(),
             ])

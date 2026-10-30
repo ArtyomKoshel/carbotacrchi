@@ -102,7 +102,7 @@ class LotsTable
 
             TextColumn::make('price')
                 ->label('Цена')
-                ->formatStateUsing(fn ($state) => LotFormat::won($state))
+                ->formatStateUsing(fn ($state, $record) => LotFormat::money($state, $record->currency))
                 ->alignEnd()
                 ->sortable(),
 

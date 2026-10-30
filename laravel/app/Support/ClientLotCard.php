@@ -117,7 +117,7 @@ final class ClientLotCard
 
         // Price
         $out[] = ['blank', ''];
-        $out[] = ['price', '❗ ЦЕНА: ₩' . self::num((int) $lot['price'])];
+        $out[] = ['price', '❗ ЦЕНА: ' . Currency::symbol($lot['currency'] ?? null) . self::num((int) $lot['price'])];
 
         // Landed cost, as the picker's calculator counted it
         if ($calc !== []) {

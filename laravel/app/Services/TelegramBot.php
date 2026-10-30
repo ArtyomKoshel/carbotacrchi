@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Catalog\CatalogPlaces;
 use App\Models\BotFilterSetting;
+use App\Support\Currency;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -203,7 +204,7 @@ class TelegramBot
             $priceRaw = $lot['price'] ?? null;
             if ($priceRaw !== null && $priceRaw !== '') {
                 $price = number_format((int) $priceRaw, 0, '.', ',');
-                $priceMileageParts[] = sprintf('💰 <b>₩%s</b>', $price);
+                $priceMileageParts[] = sprintf('💰 <b>%s%s</b>', Currency::symbol($lot['currency'] ?? null), $price);
             }
         }
         if (in_array('mileage', $cardFields, true)) {

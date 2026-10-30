@@ -3,10 +3,11 @@
 namespace App\Filament\Resources\Lots;
 
 use App\Models\Lot;
+use App\Support\Currency;
 use App\Support\Taxonomy\TaxonomyLocalizer;
 use Illuminate\Support\Facades\DB;
 
-/** Display formats for lots in the panel. Prices are KRW integers, shown in ₩. */
+/** Display formats for lots in the panel. Prices are integers in the lot's currency (lots.currency). */
 class LotFormat
 {
     private const NBSP = "\u{00A0}";
@@ -82,7 +83,13 @@ class LotFormat
 
     public static function won(mixed $value): string
     {
-        return is_numeric($value) ? '₩' . self::NBSP . self::number((int) $value) : '—';
+        return self::money($value, Currency::DEFAULT);
+    }
+
+    /** An amount in the lot's currency (lots.currency); null = KRW. */
+    public static function money(mixed $value, ?string $currency): string
+    {
+        return is_numeric($value) ? Currency::symbol($currency) . self::NBSP . self::number((int) $value) : '—';
     }
 
     public static function km(mixed $value): string
@@ -111,11 +118,11 @@ class LotFormat
     }
 
     /** A value from lot_changes.changes, as the History tab shows it. */
-    public static function changeValue(string $field, mixed $v): string
+    public static function changeValue(string $field, mixed $v, ?string $source = null): string
     {
         return match (true) {
             $v === null, $v === ''                                         => '—',
-            in_array($field, ['price', 'retail_value', 'repair_cost'], true) => self::won($v),
+            in_array($field, ['price', 'retail_value', 'repair_cost'], true) => self::money($v, Currency::of($source)),
             $field === 'mileage'                                           => self::km($v),
             $field === 'is_active'                                         => $v ? 'активен' : 'снят',
             is_bool($v)                                                    => $v ? 'да' : 'нет',

@@ -16,7 +16,7 @@ const Results = (() => {
   // the table's optional columns, in order; `match` names the field of Fmt.matched() that lights the cell
   const dash = v => (v === null || v === undefined || v === '' ? '—' : v);
   const COLUMNS = [
-    { id: 'price', label: 'Цена, ₩', cls: 'r t-num', sort: 'price', match: 'price', cell: l => Fmt.num(l.price) },
+    { id: 'price', label: 'Цена', cls: 'r t-num', sort: 'price', match: 'price', cell: l => Fmt.price(l.price, l.currency) },
     { id: 'mileage', label: 'Пробег, км', cls: 'r t-num', sort: 'mileage', match: 'mileage', cell: l => Fmt.num(l.mileage) },
     { id: 'year', label: 'Год', cls: 't-num', sort: 'year', match: 'year', cell: l => dash(l.year) },
     { id: 'engine', label: 'Объём', cls: 'r t-num', match: 'engine', cell: l => dash(Fmt.engine(l)) },
@@ -99,7 +99,7 @@ const Results = (() => {
       <div>
         <div class="row__title">${Fmt.esc(Fmt.title(lot))}${Fmt.trim(lot) ? ` <span style="color:var(--muted);font-weight:500">${Fmt.esc(Fmt.trim(lot))}</span>` : ''}</div>
         <div class="row__sub">${Fmt.esc(Fmt.sub(lot))}</div>
-        <div class="row__price">${Fmt.won(lot.price)}</div>
+        <div class="row__price">${Fmt.price(lot.price, lot.currency)}</div>
         ${flags(lot, ctx.query)}
       </div>
       <button class="row__fav${fav ? ' on' : ''}" type="button" data-fav="${i}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}" aria-pressed="${fav}">${Fmt.icon.heart}</button>
@@ -124,7 +124,7 @@ const Results = (() => {
       <div class="gc__body">
         <div class="row__title">${Fmt.esc(Fmt.title(lot))}</div>
         <div class="row__sub">${Fmt.esc(Fmt.sub(lot))}</div>
-        <div class="row__price">${Fmt.won(lot.price)}</div>
+        <div class="row__price">${Fmt.price(lot.price, lot.currency)}</div>
         ${flags(lot, ctx.query)}
       </div>
     </div>`;

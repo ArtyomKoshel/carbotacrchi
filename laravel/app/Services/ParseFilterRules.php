@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Filament\Resources\Lots\LotFormat;
 use App\Models\ParseFilter;
 use App\Support\AdminUiLabels;
+use App\Support\Currency;
 use App\Support\Taxonomy\TaxonomyCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -125,28 +126,29 @@ class ParseFilterRules
     /** "Не сохранять, если пробег > 200 000 км" */
     public function sentence(ParseFilter $rule): string
     {
-        return (self::ACTIONS[$rule->action] ?? $rule->action) . ', если ' . $this->condition($rule->field, $rule->operator, $rule->decodedValue());
+        return (self::ACTIONS[$rule->action] ?? $rule->action) . ', если ' . $this->condition($rule->field, $rule->operator, $rule->decodedValue(), $rule->source);
     }
 
-    public function condition(string $field, string $operator, mixed $value): string
+    /** $source: the platform whose currency amounts are in (a rule for all platforms reads as KRW). */
+    public function condition(string $field, string $operator, mixed $value, ?string $source = null): string
     {
         $label = mb_strtolower(AdminUiLabels::field($field));
         if (!self::needsValue($operator)) {
             return "{$label} " . self::OPERATORS[$operator];
         }
         if ($operator === 'between' && is_array($value) && count($value) === 2) {
-            return "{$label} от " . $this->formatValue($field, $value[0]) . ' до ' . $this->formatValue($field, $value[1]);
+            return "{$label} от " . $this->formatValue($field, $value[0], $source) . ' до ' . $this->formatValue($field, $value[1], $source);
         }
         if (is_array($value)) {
-            $shown = implode(', ', array_map(fn ($v) => $this->formatValue($field, $v), $value));
+            $shown = implode(', ', array_map(fn ($v) => $this->formatValue($field, $v, $source), $value));
             return "{$label} " . (self::OPERATORS[$operator] ?? $operator) . ": {$shown}";
         }
         $op = self::SYMBOLS[$operator] ?? (self::OPERATORS[$operator] ?? $operator);
 
-        return "{$label} {$op} " . $this->formatValue($field, $value);
+        return "{$label} {$op} " . $this->formatValue($field, $value, $source);
     }
 
-    public function formatValue(string $field, mixed $value): string
+    public function formatValue(string $field, mixed $value, ?string $source = null): string
     {
         if ($value === null) {
             return '—';
@@ -155,7 +157,7 @@ class ParseFilterRules
             return $value ? 'да' : 'нет';
         }
         if (in_array($field, ['price', 'retail_value', 'repair_cost', 'accident_max_cost', 'total_accident_cost'], true) && is_numeric($value)) {
-            return LotFormat::won($value);
+            return LotFormat::money($value, Currency::of($source));
         }
         if ($field === 'mileage' && is_numeric($value)) {
             return LotFormat::km($value);
