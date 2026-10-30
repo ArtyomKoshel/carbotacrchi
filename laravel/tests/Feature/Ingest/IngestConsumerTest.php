@@ -261,6 +261,27 @@ final class IngestConsumerTest extends TestCase
         $this->assertSame(0, $this->consume()->consumed, 'offset moved past the rejected rows');
     }
 
+    public function test_che168_lot_is_stored_in_yuan_placed_in_the_catalog_and_found_in_yuan_only(): void
+    {
+        $lot = json_decode((string) file_get_contents(base_path('../contracts/fixtures/carlot.v1/valid/che168.json')), true);
+        $this->buffer($lot);
+
+        $this->assertSame(1, $this->consume()->inserted);
+
+        $row = DB::table('lots')->where('id', 'che168:60321227')->first();
+        $this->assertSame([189_800, 'CNY', 545_000], [(int) $row->price, $row->currency, (int) $row->retail_value]);
+        $this->assertSame('Porsche', DB::table('ref_makes')->where('id', $row->ref_make_id)->value('name'));
+        $this->assertSame('Macan', DB::table('ref_models')->where('id', $row->ref_model_id)->value('name'));
+        $this->assertNull($row->ref_generation_id, 'Che168 names no generation');
+
+        $search = app(\App\Services\ProviderAggregator::class);
+        $find = fn (array $q) => array_map(fn ($l) => $l->id, $search->search(\App\Services\SearchQuery::fromArray(['sources' => ['encar', 'che168'], ...$q]))->lots);
+        $this->assertSame(['che168:60321227'], $find(['priceMax' => 200_000, 'priceCurrency' => 'CNY']));
+        $this->assertSame([], $find(['priceMax' => 200_000]), 'a range in ₩ never finds a lot priced in ¥');
+        $found = $search->search(\App\Services\SearchQuery::fromArray(['sources' => ['che168']]))->lots[0]->toArray();
+        $this->assertSame(['CNY', 'Che168'], [$found['currency'], $found['sourceName']]);
+    }
+
     public function test_last_record_of_a_lot_in_a_batch_wins(): void
     {
         $this->buffer(self::lot(['listing' => ['price' => ['amount' => 1_000_000]]]));

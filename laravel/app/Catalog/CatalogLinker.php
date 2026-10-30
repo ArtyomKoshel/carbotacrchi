@@ -2,6 +2,7 @@
 
 namespace App\Catalog;
 
+use App\Catalog\Che168\Che168Matcher;
 use App\Catalog\Encar\EncarMatcher;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 class CatalogLinker
 {
-    /** Platforms the catalog reads; other lots stay unlinked. */
-    public const SOURCES = ['encar'];
+    /** Platforms the catalog reads, each by its own matcher; other lots stay unlinked. */
+    public const SOURCES = ['encar', 'che168'];
 
     public const VARIANT_FIELDS = ['make', 'model', 'badge_group', 'badge', 'trim'];
 
@@ -39,12 +40,16 @@ class CatalogLinker
 
     private readonly ConnectionInterface $db;
 
+    private readonly Che168Matcher $che168;
+
     public function __construct(
         private readonly EncarMatcher $matcher,
         private readonly CatalogStore $store,
         ?ConnectionInterface $db = null,
+        ?Che168Matcher $che168 = null,
     ) {
         $this->db = $db ?? DB::connection();
+        $this->che168 = $che168 ?? app(Che168Matcher::class);
     }
 
     public static function hash(array|object $variant): string
@@ -217,7 +222,7 @@ class CatalogLinker
     /** A variant as the rules read it, with the catalog's ids. */
     private function read(string $source, array $v): array
     {
-        $m = $this->matcher->match($v);
+        $m = $source === 'che168' ? $this->che168->match($v) : $this->matcher->match($v);
 
         $makeId = $m->make ? $this->store->makeId($m->make) : null;
         // a model Encar named without its generation (Mustang 1964–2024) stays under the model: «поколение не указано»

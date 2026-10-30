@@ -14,6 +14,7 @@ class AppServiceProvider extends ServiceProvider
         // the reference catalog's files are read once per process
         $this->app->singleton(\App\Catalog\Reference::class);
         $this->app->singleton(\App\Catalog\Encar\EncarMatcher::class);
+        $this->app->singleton(\App\Catalog\Che168\Che168Matcher::class);
     }
 
     public function boot(): void
