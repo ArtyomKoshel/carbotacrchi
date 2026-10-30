@@ -1,10 +1,11 @@
-"""Sequential API access with bounded time, requests and same-session retries."""
+"""API access with bounded time, requests and same-session retries; one Che168Api per proxy session."""
 
 from __future__ import annotations
 
 import json
 import os
 import re
+import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -107,6 +108,22 @@ class RotationPolicy:
     every_pages: int = 2
     max_rotations: int = 8
     max_challenge_rotations: int = 3
+    every_cards: int = 0  # a card session's planned rotation (collector serve); 0 = only on a challenge
+
+
+class RequestBudget:
+    """One request limit shared by the sessions of a run (each session runs in its own thread)."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        self.used = 0
+        self._lock = threading.Lock()
+
+    def take(self) -> None:
+        with self._lock:
+            if self.used >= self.limit:
+                raise CollectionError("request_limit")
+            self.used += 1
 
 
 class Che168Api:
@@ -132,6 +149,10 @@ class Che168Api:
         self.next_request_at = clock()
         self.requests = 0
         self.response_bytes = 0
+        self.request_seconds = 0.0  # time spent waiting for answers, pauses excluded
+        self.retries_used = 0
+        self.cards = 0
+        self.budget: RequestBudget | None = None  # set: the run's shared limit replaces max_requests
         self.rotate = rotate
         self.rotation = rotation or RotationPolicy()
         self.rotations = 0
@@ -151,18 +172,22 @@ class Che168Api:
         self.challenge_rotations += int(challenge)
 
     def _request(self, url: str, params: dict[str, str]) -> Reply:
-        if self.requests >= self.max_requests:
+        if self.budget is None and self.requests >= self.max_requests:
             raise CollectionError("request_limit")
         wait = max(0.0, self.next_request_at - self.clock())
         if self.clock() + wait >= self.deadline:
             raise CollectionError("time_limit")
+        if self.budget is not None:
+            self.budget.take()
         self.sleep(wait)
         self.requests += 1
+        started = self.clock()
         try:
             reply = self.request(url, params)
             self.response_bytes += len(reply.body)
             return reply
         finally:
+            self.request_seconds += self.clock() - started
             self.next_request_at = self.clock() + self.delay
 
     def _get(self, url: str, params: dict[str, str]) -> dict[str, Any]:
@@ -183,6 +208,7 @@ class Che168Api:
                     and transient_failures < self.retries
                 ):
                     transient_failures += 1
+                    self.retries_used += 1
                     continue
                 raise
 
@@ -226,6 +252,10 @@ class Che168Api:
         return SearchPage(page, count, total, tuple(identifier(c.get("infoid")) for c in cars))
 
     def detail(self, infoid: str) -> dict[str, Any]:
+        every = self.rotation.every_cards
+        if self.rotate is not None and every > 0 and self.cards > 0 and self.cards % every == 0:
+            self._rotate(challenge=False)
+        self.cards += 1
         data = self._get(DETAIL_URL, {"infoid": identifier(infoid)})
         if identifier(data.get("infoid")) != infoid:
             raise CollectionError("detail_id_mismatch")

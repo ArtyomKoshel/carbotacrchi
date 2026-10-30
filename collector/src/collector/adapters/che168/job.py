@@ -1,9 +1,11 @@
 """A che168 parse_jobs run: the bounded API collection, its lots into the ingest buffer.
 
-Che168's API is synchronous (curl_cffi); each request runs in a thread so the service stays
-responsive to SIGTERM. The checkpoint (parse_jobs.progress.checkpoint) holds the next page and
-the ids of the current page still to fetch; lots already in the buffer for this run are never
-fetched again on resume (sink.resume).
+Che168's API is synchronous (curl_cffi): each session runs its requests in a thread of the run,
+so the service stays responsive to SIGTERM. The list pages come from one session, the cards from
+several at once (CHE168_WORKERS), each with its own proxy exit and its own pause, as Encar's
+collector runs many requests over its proxy pool. The checkpoint (parse_jobs.progress.checkpoint)
+holds the next page and the listed cars not yet in the buffer; lots already in the buffer for this
+run are never fetched again on resume (sink.resume).
 
 A che168 run never counts as a full run: the list is not a proven snapshot of the site, so
 lots:lifecycle must never delist che168 lots from it.
@@ -12,10 +14,11 @@ lots:lifecycle must never delist che168 lots from it.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 
 from collector import COLLECTOR_VERSION
 from collector.adapters.che168.api import CollectionError, SearchPage
@@ -38,10 +41,16 @@ CARD_ERRORS = (
 MAX_CARD_FAILURES_IN_A_ROW = 5
 BATCH = 10  # cards per buffer write and checkpoint
 
+T = TypeVar("T")
+
 
 class Api(Protocol):
     requests: int
     rotations: int
+    challenge_rotations: int
+    response_bytes: int
+    request_seconds: float
+    retries_used: int
 
     def search(self, page: int, pagesize: int) -> SearchPage: ...
 
@@ -72,13 +81,19 @@ class Che168Run:
     job: Job
     queue: JobQueue
     sink: IngestSink
-    api: Api
+    api: Api  # the list pages
     max_pages: int
     max_cars: int
     pagesize: int = 20
     should_stop: Callable[[], bool] = lambda: False
     clock: Clock = utc_now
     runlog: RunLog | None = None
+    # the cards, one worker per session (its own proxy exit and pause); none = `api` alone
+    card_apis: Sequence[Api] = ()
+
+    @property
+    def apis(self) -> list[Api]:
+        return [self.api, *(a for a in self.card_apis if a is not self.api)]
 
 
 def _limit(filters: dict[str, Any], key: str, default: int) -> int:
@@ -86,7 +101,26 @@ def _limit(filters: dict[str, Any], key: str, default: int) -> int:
     return int(value) if isinstance(value, int | str) and str(value).isdigit() and int(value) > 0 else default
 
 
-def _progress(state: Che168State, max_pages: int, message: str) -> dict[str, Any]:
+def _traffic(run: Che168Run) -> dict[str, Any]:
+    """Requests, proxy bytes and answer time over every session of the run."""
+    apis = run.apis
+    requests = sum(a.requests for a in apis)
+    return {
+        "requests": requests,
+        "proxy_bytes": sum(a.response_bytes for a in apis),
+        "avg_request_s": round(sum(a.request_seconds for a in apis) / requests, 2) if requests else None,
+        "proxy_rotations": sum(a.rotations for a in apis),
+        "challenges": sum(a.challenge_rotations for a in apis),
+        "retries": sum(a.retries_used for a in apis),
+        "workers": len(run.card_apis) or 1,
+    }
+
+
+def _elapsed(run: Che168Run, state: Che168State) -> float:
+    return round(max(0.0, (run.clock() - datetime.fromisoformat(state.started_at)).total_seconds()), 1)
+
+
+def _progress(run: Che168Run, state: Che168State, max_pages: int, message: str) -> dict[str, Any]:
     pct = round(min(state.pages / max_pages, 1.0) * 100, 1) if max_pages else 0.0
     return {
         "status": f"{pct}%",
@@ -100,6 +134,8 @@ def _progress(state: Che168State, max_pages: int, message: str) -> dict[str, Any
         "rejected": state.skipped,
         "page": state.pages,
         "message": message,
+        "elapsed_s": _elapsed(run, state),
+        **_traffic(run),
         "checkpoint": state.to_json(),
         "collector": COLLECTOR_VERSION,
     }
@@ -111,6 +147,13 @@ async def run_che168(run: Che168Run) -> str:
 
 
 class _Collection:
+    """One lister reads the pages into a queue, the card workers empty it, each with its own session.
+
+    The lister keeps about one page ahead of the workers (like Encar's pipeline_depth). The
+    checkpoint's `pending` is every listed car not yet in the buffer, queued or in flight: a
+    resume fetches them again unless the buffer already has them (sink.resume).
+    """
+
     def __init__(self, run: Che168Run) -> None:
         self.run_ = run
         job = run.job
@@ -121,91 +164,175 @@ class _Collection:
         )
         self.max_pages = _limit(job.filters, "max_pages", run.max_pages)
         self.max_cars = _limit(job.filters, "max_cars", run.max_cars)
+        self.workers = list(run.card_apis) or [run.api]
         self.done: set[str] = set()
         self.batch: list[CarLotV1] = []
+        self.batch_ids: list[str] = []
+        self.outstanding: dict[str, None] = {}  # listed, not yet in the buffer, in list order
+        self.ids: asyncio.Queue[str | None] = asyncio.Queue()
+        self.claimed = 0  # cars written or in flight, against max_cars
         self.failures = 0
+        self.error: CollectionError | None = None
+        self.car_limit = False
+        self.flushing = asyncio.Lock()
+        self.sessions: dict[int, asyncio.Lock] = {}  # without card_apis the list and the cards share `api`
+        self.threads = ThreadPoolExecutor(max_workers=len(self.workers) + 1, thread_name_prefix="che168")
 
     async def run(self) -> str:
         run, state = self.run_, self.state
         if run.job.checkpoint:
             self.done = await run.sink.resume(run.job.id)
+        n = len(self.workers)
+        await self._log(
+            f"{'resumed' if run.job.checkpoint else 'started'}: {n} card session{'s' if n > 1 else ''}, "
+            f"up to {self.max_pages} pages / {self.max_cars} cars"
+        )
         try:
             reason = await self._collect()
         except CollectionError as e:
             await self._write()
-            await self._log(f"stopped: {e.kind}", "error")
+            await self._log(f"stopped: {e.kind} · {self._totals()}", "error")
             await run.queue.finish(run.job.id, "error", {**_result(run, state, e.kind), "error": e.kind})
             return "error"
+        finally:
+            self.threads.shutdown(wait=False, cancel_futures=True)
         await self._write()  # a limit can end the run mid-batch
         if reason == "interrupted":
-            await run.queue.interrupt(run.job.id, state.to_json())
+            await run.queue.interrupt(run.job.id, self._checkpoint())
             await self._log(f"stopped after {state.written} cars; resumes from the checkpoint", "warning")
             return "interrupted"
-        progress = {**_progress(state, self.max_pages, "done"), "status": "done"}
+        progress = {**_progress(run, state, self.max_pages, "done"), "status": "done"}
         await run.queue.finish(run.job.id, "done", _result(run, state, reason), progress=progress)
-        await self._log(
-            f"done ({reason}): {state.written} cars from {state.pages} pages, {state.skipped} skipped"
-        )
+        await self._log(f"done ({reason}): {self._totals()}")
         return "done"
 
     async def _collect(self) -> str:
-        """Cards of the current page first, then the next page; the reason the run ended."""
-        state = self.state
+        """The reason the run ended; raises the first error any session met."""
+        for infoid in self.state.pending:
+            if infoid not in self.done and infoid not in self.outstanding:
+                self.outstanding[infoid] = None
+                self.ids.put_nowait(infoid)
+        tasks = [asyncio.create_task(self._card_worker(api)) for api in self.workers]
+        try:
+            reason = await self._lister()
+        finally:
+            for _ in tasks:
+                self.ids.put_nowait(None)  # after what is queued: the workers finish the listed cars
+        await asyncio.gather(*tasks)
+        if self.error is not None:
+            raise self.error
+        if self.run_.should_stop():
+            return "interrupted"
+        return "car_limit" if self.car_limit else reason
+
+    async def _lister(self) -> str:
+        state, run = self.state, self.run_
         while True:
-            if self.run_.should_stop():
-                await self._flush("stopping")
+            # one page ahead of the workers, not the whole site
+            while self.ids.qsize() >= run.pagesize and not self._halted() and not self.car_limit:
+                await asyncio.sleep(0.05)
+            if self._halted():
                 return "interrupted"
-            if state.written >= self.max_cars:
+            if self.car_limit or self.claimed >= self.max_cars:
                 return "car_limit"
-            if state.pending:
-                await self._card(state.pending[0])
-                state.pending.pop(0)
-                if len(self.batch) >= BATCH:
-                    await self._flush(f"page {state.pages}: {state.written} cars")
-                continue
-            await self._flush(f"page {state.pages}: {state.written} cars")
             if state.exhausted:
                 return "api_end_reached"
             if state.next_page > self.max_pages:
                 return "page_limit"
-            await self._page()
+            try:
+                page = await self._call(run.api, run.api.search, state.next_page, run.pagesize)
+            except CollectionError as e:
+                self.error = self.error or e
+                return "error"
+            state.api_total = page.total
+            state.pages = page.number
+            state.next_page = page.number + 1
+            state.exhausted = page.number >= page.page_count
+            fresh = [i for i in dict.fromkeys(page.ids) if i not in self.done and i not in self.outstanding]
+            for infoid in fresh:
+                self.outstanding[infoid] = None
+                self.ids.put_nowait(infoid)
+            await self._flush(f"page {page.number}: {len(page.ids)} cars listed")
+            listed = f"page {page.number}/{self.max_pages}: {len(page.ids)} listed, {len(fresh)} new"
+            await self._log(f"{listed} · {self._totals()}")
 
-    async def _card(self, infoid: str) -> None:
-        if infoid in self.done:
-            return
-        run = self.run_
-        try:
-            data = await asyncio.to_thread(run.api.detail, infoid)
-            self.batch.append(to_lot(data, run.clock()).model_copy(update={"run_id": run.job.id}))
-            self.state.written += 1
+    async def _card_worker(self, api: Api) -> None:
+        while True:
+            infoid = await self.ids.get()
+            if infoid is None or self._halted():
+                return
+            if infoid in self.done:
+                self.outstanding.pop(infoid, None)
+                continue
+            if self.claimed >= self.max_cars:
+                self.car_limit = True
+                return
+            self.claimed += 1
+            try:
+                data = await self._call(api, api.detail, infoid)
+                lot = to_lot(data, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
+            except CollectionError as e:
+                self.claimed -= 1
+                self.failures += 1
+                if e.kind not in CARD_ERRORS or self.failures >= MAX_CARD_FAILURES_IN_A_ROW:
+                    self.error = self.error or e
+                    return
+                self.state.skipped += 1
+                self.done.add(infoid)
+                self.outstanding.pop(infoid, None)
+                await self._log(f"car {infoid} skipped: {e.kind}", "warning")
+                continue
             self.failures = 0
-        except CollectionError as e:
-            self.failures += 1
-            if e.kind not in CARD_ERRORS or self.failures >= MAX_CARD_FAILURES_IN_A_ROW:
-                raise
-            self.state.skipped += 1
-            await self._log(f"car {infoid} skipped: {e.kind}", "warning")
-        self.done.add(infoid)
+            self.done.add(infoid)
+            self.batch.append(lot)
+            self.batch_ids.append(infoid)
+            self.state.written += 1
+            if len(self.batch) >= BATCH:
+                await self._flush(f"page {self.state.pages}: {self.state.written} cars")
 
-    async def _page(self) -> None:
-        state = self.state
-        page = await asyncio.to_thread(self.run_.api.search, state.next_page, self.run_.pagesize)
-        state.api_total = page.total
-        state.pending = [i for i in dict.fromkeys(page.ids) if i not in self.done]
-        state.pages = page.number
-        state.next_page = page.number + 1
-        state.exhausted = page.number >= page.page_count
-        await self._flush(f"page {page.number}: {len(page.ids)} cars listed")
+    def _halted(self) -> bool:
+        return self.error is not None or self.run_.should_stop()
+
+    async def _call(self, api: Api, fn: Callable[..., T], *args: Any) -> T:
+        """A synchronous curl_cffi request in this run's own threads; one request at a time per session."""
+        async with self.sessions.setdefault(id(api), asyncio.Lock()):
+            return await asyncio.get_running_loop().run_in_executor(self.threads, fn, *args)
 
     async def _write(self) -> None:
-        if self.batch:
-            await self.run_.sink.write(self.batch)
-            self.batch.clear()
+        """The cars gathered so far into the buffer; only then they leave the checkpoint's pending."""
+        if not self.batch:
+            return
+        batch, ids = self.batch, self.batch_ids
+        self.batch, self.batch_ids = [], []
+        await self.run_.sink.write(batch)
+        for infoid in ids:
+            self.outstanding.pop(infoid, None)
+
+    def _checkpoint(self) -> dict[str, Any]:
+        self.state.pending = list(self.outstanding)
+        return self.state.to_json()
 
     async def _flush(self, message: str) -> None:
         """Lots into the buffer, then the checkpoint: a resume never loses a written card."""
-        await self._write()
-        await self.run_.queue.progress(self.run_.job.id, _progress(self.state, self.max_pages, message))
+        async with self.flushing:
+            await self._write()
+            self._checkpoint()
+            progress = _progress(self.run_, self.state, self.max_pages, message)
+            await self.run_.queue.progress(self.run_.job.id, progress)
+
+    def _totals(self) -> str:
+        """«97 cars, 10.8 cars/min, 0 skipped · 102 requests, 2.3 s per answer, 4 sessions · proxy …»."""
+        t, state = _traffic(self.run_), self.state
+        elapsed = _elapsed(self.run_, state)
+        per_min = f", {state.written / elapsed * 60:.1f} cars/min" if elapsed > 0 else ""
+        avg = f"{t['avg_request_s']:.1f} s per answer" if t["avg_request_s"] is not None else "no answers yet"
+        sessions = f"{t['workers']} session{'s' if t['workers'] > 1 else ''}"
+        return (
+            f"{state.written} cars{per_min}, {state.skipped} skipped"
+            f" · {t['requests']} requests, {avg}, {sessions}"
+            f" · proxy {t['proxy_bytes'] / 1024**2:.1f} MB"
+            f" · {t['proxy_rotations']} rotations, {t['challenges']} challenges, {t['retries']} retries"
+        )
 
     async def _log(self, message: str, level: str = "info") -> None:
         if self.run_.runlog:
@@ -226,8 +353,7 @@ def _result(run: Che168Run, state: Che168State, reason: str) -> dict[str, Any]:
         "coverage_pct": 0.0,
         "run_started_at": started.strftime("%Y-%m-%d %H:%M:%S"),
         "ingest_last_id": getattr(run.sink, "last_id", None),
-        "requests": run.api.requests,
-        "proxy_rotations": run.api.rotations,
-        "elapsed_s": round(max(0.0, (run.clock() - started).total_seconds()), 1),
+        **_traffic(run),
+        "elapsed_s": _elapsed(run, state),
         "collector": COLLECTOR_VERSION,
     }

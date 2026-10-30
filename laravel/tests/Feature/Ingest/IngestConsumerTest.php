@@ -175,6 +175,24 @@ final class IngestConsumerTest extends TestCase
         DB::table('ingest_run_stats')->where('run_id', 17)->update(['run_id' => $job->id]);
         $s = JobReport::stats($job->fresh());
         $this->assertSame([1, 0, 1, 1], [$s['new'], $s['updated'], $s['filtered'], $s['written']]);
+        $this->assertNull($s['buffered']); // Encar: the run total counts lots it never sends
+    }
+
+    public function test_a_che168_run_shows_the_cars_still_in_the_buffer(): void
+    {
+        $job = ParseJobFactory::new()->create([
+            'source' => 'che168',
+            'status' => 'done',
+            'progress' => ['collector' => 'collector/1', 'checkpoint' => ['engine' => 'che168']],
+            'result' => ['engine' => 'che168', 'total' => 97],
+        ]);
+        $this->assertSame(97, JobReport::stats($job)['buffered']); // nothing applied yet
+
+        DB::table('ingest_run_stats')->insert(['run_id' => $job->id, 'source' => 'che168', 'inserted' => 77, 'updated' => 0, 'unchanged' => 0, 'filtered' => 0, 'rejected' => 0, 'updated_at' => now()]);
+        $this->assertSame(20, JobReport::stats($job)['buffered']);
+
+        DB::table('ingest_run_stats')->where('run_id', $job->id)->update(['inserted' => 97]);
+        $this->assertSame(0, JobReport::stats($job)['buffered']);
     }
 
     public function test_photos_are_kept_when_the_gallery_was_not_seen(): void

@@ -253,7 +253,8 @@ class Runs extends PlatformComponent implements HasTable
                 TextEntry::make('dur')->label('Длительность')->state(JobFormat::duration($s['elapsed'])),
                 TextEntry::make('lots')->label('Лоты (обработано / на площадке)')->state($this->lotsLine($job)),
                 TextEntry::make('cov')->label('Охват')->state(isset($r['coverage_pct']) ? $r['coverage_pct'] . ' %' : '—'),
-                TextEntry::make('written')->label('Записано в базу')->state($num($s['written'])),
+                TextEntry::make('written')->label('Записано в базу')->state($num($s['written']))
+                    ->helperText($s['buffered'] ? 'ещё ' . LotFormat::number($s['buffered']) . ' в буфере приёма — запишутся в течение минуты' : null),
                 TextEntry::make('new')->label('Новые')->state($num($s['new'])),
                 TextEntry::make('upd')->label('Обновлено')->state($num($s['updated'])),
                 TextEntry::make('filt')->label('Отсеяно правилами')->state($num($s['filtered'])),

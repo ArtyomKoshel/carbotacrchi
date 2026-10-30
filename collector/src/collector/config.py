@@ -45,6 +45,7 @@ class Settings:
     che168_max_cars: int = 400
     che168_delay: float = 3.0  # seconds after each request
     che168_max_hours: float = 6.0
+    che168_workers: int = 4  # card sessions at once, each its own proxy exit (Encar: COLLECTOR_CONCURRENCY)
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -70,6 +71,7 @@ class Settings:
             che168_max_cars=_int("CHE168_MAX_CARS", 400),
             che168_delay=float(_env("CHE168_DELAY", "3")),
             che168_max_hours=float(_env("CHE168_MAX_HOURS", "6")),
+            che168_workers=_int("CHE168_WORKERS", 4),
         )
 
     @property

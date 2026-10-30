@@ -109,7 +109,7 @@ class JobReport
         return '✅ <b>Парсинг '.self::title($job).': запись возобновилась</b>'.$pause;
     }
 
-    /** @return array{done: int, total: int, pct: ?float, elapsed: float, new: int, updated: int, errors: int, filtered: ?int, stale: ?int, proxy_bytes: int} */
+    /** @return array{done: int, total: int, pct: ?float, elapsed: float, new: int, updated: int, written: ?int, errors: int, filtered: ?int, stale: ?int, proxy_bytes: int, buffered: ?int} */
     public static function stats(ParseJob $job): array
     {
         $p = $job->progress ?? [];
@@ -132,7 +132,26 @@ class JobReport
             'filtered'    => $run ? $run['filtered'] : (isset($r['filtered']) ? (int) $r['filtered'] : null),
             'stale'       => isset($r['stale']) ? (int) $r['stale'] : null,
             'proxy_bytes' => (int) ($r['proxy_bytes'] ?? $p['proxy_bytes'] ?? 0),
+            'buffered'    => self::buffered($job, $done, $run),
         ];
+    }
+
+    /**
+     * A che168 run: cars the collector put in the ingest buffer that the core has not applied yet
+     * (ingest:consume runs every minute, so the last ones land just after the run ends). Null for
+     * Encar, whose run total counts lots it never sends (PRE rules).
+     *
+     * @param  array{inserted: int, updated: int, unchanged: int, filtered: int, rejected: int}|null  $run
+     */
+    private static function buffered(ParseJob $job, int $sent, ?array $run): ?int
+    {
+        $engine = $job->result['engine'] ?? $job->progress['checkpoint']['engine'] ?? null;
+        if ($engine !== 'che168') {
+            return null;
+        }
+        $applied = $run === null ? 0 : $run['inserted'] + $run['updated'] + $run['unchanged'] + $run['filtered'] + $run['rejected'];
+
+        return max(0, $sent - $applied);
     }
 
     /**
