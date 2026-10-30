@@ -120,8 +120,14 @@ def _elapsed(run: Che168Run, state: Che168State) -> float:
     return round(max(0.0, (run.clock() - datetime.fromisoformat(state.started_at)).total_seconds()), 1)
 
 
-def _progress(run: Che168Run, state: Che168State, max_pages: int, message: str) -> dict[str, Any]:
-    pct = round(min(state.pages / max_pages, 1.0) * 100, 1) if max_pages else 0.0
+def _target(state: Che168State, max_pages: int, max_cars: int, pagesize: int) -> int:
+    """The cars this run sets out to fetch: its limits, or fewer when the site has fewer."""
+    target = min(max_cars, max_pages * pagesize)
+    return min(target, state.api_total) if state.api_total else target
+
+
+def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> dict[str, Any]:
+    pct = round(min((state.written + state.skipped) / target, 1.0) * 100, 1) if target else 0.0
     return {
         "status": f"{pct}%",
         "pct": pct,
@@ -130,6 +136,7 @@ def _progress(run: Che168Run, state: Che168State, max_pages: int, message: str) 
         "total_progress": round(pct / 100, 3),
         "found_total": state.written,
         "api_total": state.api_total,
+        "target": target,
         "total": state.written,
         "rejected": state.skipped,
         "page": state.pages,
@@ -192,7 +199,8 @@ class _Collection:
         except CollectionError as e:
             await self._write()
             await self._log(f"stopped: {e.kind} · {self._totals()}", "error")
-            await run.queue.finish(run.job.id, "error", {**_result(run, state, e.kind), "error": e.kind})
+            result = {**_result(run, state, e.kind, self._target()), "error": e.kind}
+            await run.queue.finish(run.job.id, "error", result)
             return "error"
         finally:
             self.threads.shutdown(wait=False, cancel_futures=True)
@@ -201,8 +209,9 @@ class _Collection:
             await run.queue.interrupt(run.job.id, self._checkpoint())
             await self._log(f"stopped after {state.written} cars; resumes from the checkpoint", "warning")
             return "interrupted"
-        progress = {**_progress(run, state, self.max_pages, "done"), "status": "done"}
-        await run.queue.finish(run.job.id, "done", _result(run, state, reason), progress=progress)
+        target = self._target()
+        progress = {**_progress(run, state, target, "done"), "status": "done"}
+        await run.queue.finish(run.job.id, "done", _result(run, state, reason, target), progress=progress)
         await self._log(f"done ({reason}): {self._totals()}")
         return "done"
 
@@ -317,8 +326,11 @@ class _Collection:
         async with self.flushing:
             await self._write()
             self._checkpoint()
-            progress = _progress(self.run_, self.state, self.max_pages, message)
+            progress = _progress(self.run_, self.state, self._target(), message)
             await self.run_.queue.progress(self.run_.job.id, progress)
+
+    def _target(self) -> int:
+        return _target(self.state, self.max_pages, self.max_cars, self.run_.pagesize)
 
     def _totals(self) -> str:
         """«97 cars, 10.8 cars/min, 0 skipped · 102 requests, 2.3 s per answer, 4 sessions · proxy …»."""
@@ -339,13 +351,14 @@ class _Collection:
             await getattr(self.run_.runlog, level)(message)
 
 
-def _result(run: Che168Run, state: Che168State, reason: str) -> dict[str, Any]:
+def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dict[str, Any]:
     started = datetime.fromisoformat(state.started_at)
     return {
         "engine": "che168",
         "stop_reason": reason,
         "total": state.written,
         "api_total": state.api_total,
+        "target": target,
         "pages": state.pages,
         "rejected": state.skipped,
         # never a full run: lots:lifecycle must not delist che168 lots by it

@@ -13,8 +13,10 @@
                 $s = ParseRuns::stats($current);
                 $pct = $s['pct'] ?? (isset($p['pct']) ? (float) $p['pct'] : null);
                 $perMin = $s['elapsed'] > 0 ? $s['done'] / ($s['elapsed'] / 60) : 0;
-                $eta = ($perMin > 0 && $s['total'] > $s['done']) ? ($s['total'] - $s['done']) / $perMin * 60 : null;
+                $eta = ($perMin > 0 && $s['goal'] > $s['done']) ? ($s['goal'] - $s['done']) / $perMin * 60 : null;
                 $phase = $p['phase'] ?? null;
+                // che168 only searches: no history, no delisting (its runs are never full)
+                $phases = ($p['checkpoint']['engine'] ?? null) === 'che168' ? ['search'] : ['search', 'enrich', 'delist'];
             @endphp
             <x-filament::section>
                 <x-slot name="heading">
@@ -39,14 +41,14 @@
                         <div class="run-progress-bar" style="width: {{ min(100, max(0, (float) ($pct ?? 0))) }}%"></div>
                     </div>
                     <ol class="run-phases">
-                        @foreach (['search', 'enrich', 'delist'] as $step)
+                        @foreach ($phases as $step)
                             <li @class(['is-current' => $phase === $step])>{{ JobFormat::phase($step) }}</li>
                         @endforeach
                     </ol>
                 </div>
 
                 <dl class="run-stats">
-                    <div><dt>Лоты</dt><dd>{{ LotFormat::number($s['done']) }}{{ $s['total'] > 0 ? ' / ' . LotFormat::number($s['total']) : '' }}</dd></div>
+                    <div><dt>Лоты</dt><dd>{{ LotFormat::number($s['done']) }}{{ $s['goal'] > 0 ? ' / ' . LotFormat::number($s['goal']) : '' }}@if ($s['goal'] !== $s['total'] && $s['total'] > 0)<small class="block text-gray-500">на площадке {{ LotFormat::number($s['total']) }}</small>@endif</dd></div>
                     <div><dt>Новые</dt><dd>{{ LotFormat::number($s['new']) }}</dd></div>
                     <div><dt>Обновлено</dt><dd>{{ LotFormat::number($s['updated']) }}</dd></div>
                     <div><dt>Ошибки</dt><dd>{{ LotFormat::number($s['errors']) }}</dd></div>

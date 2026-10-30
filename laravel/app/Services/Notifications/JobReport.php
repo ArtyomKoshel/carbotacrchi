@@ -109,7 +109,7 @@ class JobReport
         return '✅ <b>Парсинг '.self::title($job).': запись возобновилась</b>'.$pause;
     }
 
-    /** @return array{done: int, total: int, pct: ?float, elapsed: float, new: int, updated: int, written: ?int, errors: int, filtered: ?int, stale: ?int, proxy_bytes: int, buffered: ?int} */
+    /** @return array{done: int, total: int, goal: int, pct: ?float, elapsed: float, new: int, updated: int, written: ?int, errors: int, filtered: ?int, stale: ?int, proxy_bytes: int, buffered: ?int} */
     public static function stats(ParseJob $job): array
     {
         $p = $job->progress ?? [];
@@ -120,10 +120,14 @@ class JobReport
         // A collector run: new / updated / filtered are what the core applied (ingest_run_stats).
         $run = isset($p['collector']) ? IngestRunStats::of((int) $job->id) : null;
 
+        // a bounded run (che168) sets out to fetch `target` cars, not the whole site
+        $goal = (int) ($r['target'] ?? $p['target'] ?? 0) ?: $total;
+
         return [
             'done'        => $done,
             'total'       => $total,
-            'pct'         => $total > 0 ? min(100.0, $done / $total * 100) : null,
+            'goal'        => $goal,
+            'pct'         => $goal > 0 ? min(100.0, $done / $goal * 100) : null,
             'elapsed'     => (float) ($r['elapsed_s'] ?? $p['elapsed_s'] ?? 0),
             'new'         => $run ? $run['inserted'] : (int) ($r['new'] ?? $p['new'] ?? 0),
             'updated'     => $run ? $run['updated'] : (int) ($r['updated'] ?? $p['updated'] ?? 0),

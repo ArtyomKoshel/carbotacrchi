@@ -204,6 +204,8 @@ def test_card_workers_share_the_cards_and_fetch_each_once() -> None:
     result = queue.finished[1]
     assert (result["stop_reason"], result["total"], result["workers"]) == ("api_end_reached", 15, 3)
     assert result["requests"] == 3 + 15  # three list pages, a card each, over every session
+    assert result["target"] == 15  # limits allow 100 cars, the site has 15
+    assert queue.progress_calls[-1]["pct"] == 100.0
     assert result["proxy_bytes"] > 0
     assert result["avg_request_s"] is not None
     pages = [m for _, m in log.lines if m.startswith("page ")]

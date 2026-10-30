@@ -195,6 +195,19 @@ final class IngestConsumerTest extends TestCase
         $this->assertSame(0, JobReport::stats($job)['buffered']);
     }
 
+    public function test_a_bounded_che168_run_counts_against_its_target_not_the_site(): void
+    {
+        $job = ParseJobFactory::new()->create([
+            'source' => 'che168',
+            'status' => 'running',
+            'progress' => ['collector' => 'collector/1', 'total' => 50, 'api_total' => 240566, 'target' => 100, 'proxy_bytes' => 3 * 1024 ** 2],
+        ]);
+        $s = JobReport::stats($job);
+        $this->assertSame([50, 240566, 100, 50.0], [$s['done'], $s['total'], $s['goal'], $s['pct']]);
+        $this->assertSame('3,0 МБ', \App\Services\ParseRuns::gb($s['proxy_bytes']));
+        $this->assertSame('1,50 ГБ', \App\Services\ParseRuns::gb((int) (1.5 * 1024 ** 3)));
+    }
+
     public function test_photos_are_kept_when_the_gallery_was_not_seen(): void
     {
         $this->buffer(self::lot());

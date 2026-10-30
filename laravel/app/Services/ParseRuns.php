@@ -177,8 +177,11 @@ class ParseRuns
         return JobReport::stats($job);
     }
 
+    /** «1,25 ГБ»; under 1 GB in MB, so a short run does not read «0,00 ГБ». */
     public static function gb(int $bytes): string
     {
-        return number_format($bytes / 1024 ** 3, 2, ',', ' ') . ' ГБ';
+        return $bytes < 1024 ** 3
+            ? number_format($bytes / 1024 ** 2, 1, ',', ' ') . ' МБ'
+            : number_format($bytes / 1024 ** 3, 2, ',', ' ') . ' ГБ';
     }
 }
