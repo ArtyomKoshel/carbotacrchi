@@ -66,6 +66,25 @@ class ChaboshiReportTest extends TestCase
         $this->assertSame('ДТП', $reports->summary(['major_accident' => true, 'flood' => true])['problem']);
     }
 
+    public function test_terms_seen_on_prod_are_named(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $c = (new ChaboshiReport("{$root}/resources/catalog/che168/chaboshi.json"))->describe(['systems' => [[
+            'name' => '附加检测项', 'checked' => 42, 'unchecked' => [],
+            'findings' => [
+                ['part' => '后保险杠', 'notes' => [['剐蹭', '2-10cm'], ['划伤', '＜8cm']]],
+                ['part' => '右后行李箱盖尾灯', 'notes' => [['加装底盘装甲', null]]],
+                ['part' => '左后门', 'notes' => [['击伤', '＜3CM²']]],
+            ],
+        ]]]);
+
+        $this->assertSame([
+            ['part' => 'задний бампер', 'notes' => 'потёртость 2–10 см, царапина <8 см'],
+            ['part' => 'фонарь на крышке багажника (прав. задн.)', 'notes' => 'нанесён антикор днища'],
+            ['part' => 'дверь (лев. задн.)', 'notes' => 'след удара <3 см²'],
+        ], $c['systems'][0]['findings']);
+    }
+
     public function test_an_unknown_term_stays_chinese_and_an_unknown_verdict_is_no_data(): void
     {
         $root = dirname(__DIR__, 3);

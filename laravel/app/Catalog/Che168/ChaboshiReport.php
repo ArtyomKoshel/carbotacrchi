@@ -146,7 +146,8 @@ class ChaboshiReport
         return match (true) {
             $detail === null || $detail === '' => $name,
             $finding !== '' && str_contains($detail, $finding) => $this->term('notes', $detail),
-            (bool) preg_match('/^[\d≥≤<>]/u', $detail) => $name . ' ' . str_replace(['cm', '-'], [' см', '–'], $detail),
+            // a size: «5cm-50cm», «≥3cm», «＜8cm» (full-width), «＜3CM²»
+            (bool) preg_match('/^[\d≥≤<>＜＞]/u', $detail) => $name . ' ' . str_replace(['cm', 'CM', '-', '＜', '＞'], [' см', ' см', '–', '<', '>'], $detail),
             default => "{$name} ({$this->term('notes', $detail)})",
         };
     }
