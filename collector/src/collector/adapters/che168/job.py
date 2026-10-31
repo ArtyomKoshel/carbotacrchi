@@ -29,8 +29,11 @@ from collector.runlog import RunLog
 from collector.storage import Job, JobQueue
 
 # A car whose card is refused (sold between the list and the card, or one the mapping cannot
-# read) is skipped, not the run; this many in a row means the site changed and the run stops.
+# read) or still unreachable after its retries is skipped, not the run: the next run fetches it.
+# This many in a row means the site changed or the proxy is down, and the run stops.
 CARD_ERRORS = (
+    "network_error",
+    "temporary_http_error",
     "api_rejected",
     "detail_id_mismatch",
     "invalid_vehicle_fields",

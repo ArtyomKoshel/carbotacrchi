@@ -382,3 +382,49 @@ def test_a_list_session_rotates_by_its_own_searches() -> None:
     for page in (1, 4, 7, 2, 5):  # a wave's pages are not consecutive
         api.search(page, 20)
     assert rotations == [2, 4]  # before its 3rd and 5th search
+
+
+def test_an_unreachable_card_is_skipped_not_the_run() -> None:
+    shelf = Shelf(pages=1, per_page=3)
+    sink, queue = MemorySink(), Queue()
+    broken = shelf.session("w0")
+    inner = broken.request
+
+    def flaky(url: str, params: dict[str, str]) -> Reply:
+        if url == DETAIL_URL and params["infoid"] == "102":
+            raise CollectionError("network_error", "tls_error")
+        return inner(url, params)
+
+    broken.request = flaky
+    run = Che168Run(
+        job=job(), queue=queue, sink=sink, api=shelf.session("list"),  # type: ignore[arg-type]
+        card_apis=[broken], max_pages=10, max_cars=100, clock=lambda: NOW,
+    )  # fmt: skip
+    assert asyncio.run(run_che168(run)) == "done"
+    assert sorted(lot.source_id for lot in sink.lots) == ["101", "103"]
+    assert queue.finished is not None
+    assert queue.finished[1]["rejected"] == 1
+
+
+def test_a_tls_error_retries_on_a_fresh_session() -> None:
+    answers: Iterator[Exception | Reply] = iter(
+        [CollectionError("network_error", "tls_error"), reply(detail("101"))]
+    )
+
+    def flaky(url: str, params: dict[str, str]) -> Reply:
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    rotations: list[int] = []
+    api = Che168Api(flaky, Signer.bundled(), delay=0, rotate=lambda: rotations.append(1))
+    api.detail("101")
+    assert (api.retries_used, len(rotations)) == (1, 1)
+
+
+def test_the_listing_day_is_kept_as_a_date_in_the_raw_fields() -> None:
+    fetched = to_lot(detail("101", publicdate="今天"), NOW)
+    stored = to_lot(stored_card(detail("101", publicdate="今天"), NOW), NOW + timedelta(days=2))
+    assert fetched.extra["che168"]["publicdate"] == "2026-10-30"
+    assert fetched.extra == stored.extra  # a car from the store reads as unchanged

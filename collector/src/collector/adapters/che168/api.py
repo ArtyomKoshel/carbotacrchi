@@ -48,7 +48,10 @@ _TRANSPORT_CAUSES = (
 # still open after TIMEOUT_S hangs on that exit. The retry goes through a fresh session, as
 # Encar's fetcher does (COLLECTOR_HTTP_TIMEOUT), instead of waiting on the same exit again.
 TIMEOUT_S = 10.0
-STUCK_EXIT_CAUSES = frozenset({"timeout", "read_timeout", "connect_timeout", "proxy_error"})
+# a bad proxy exit: retried on a fresh session, not the same exit (run 32: three tls_error in a row on one)
+STUCK_EXIT_CAUSES = frozenset(
+    {"timeout", "read_timeout", "connect_timeout", "proxy_error", "tls_error", "connection_error"}
+)
 
 
 def transport_cause(exc: BaseException) -> str:

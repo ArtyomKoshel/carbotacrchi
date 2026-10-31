@@ -203,6 +203,9 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
     if not isinstance(photos, list) or any(not isinstance(p, str) for p in photos):
         raise CollectionError("photo_schema_changed")
     raw = {key: data[key] for key in SOURCE_FIELDS if isinstance(data.get(key), (str, int, float))}
+    day = listed_at(data.get("publicdate"), observed_at)
+    if day is not None:  # «今天» would read as a change on every run; the day it meant does not
+        raw["publicdate"] = day.date().isoformat()
     try:
         urls = tuple(dict.fromkeys(HttpUrl("https:" + p if p.startswith("//") else p) for p in photos))
         seats = data.get("setcount")
