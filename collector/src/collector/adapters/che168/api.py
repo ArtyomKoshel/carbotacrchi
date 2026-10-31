@@ -21,11 +21,32 @@ DETAIL_URL = "https://apiuscdt.che168.com/apic/v2/car/getcarinfo"
 
 
 class CollectionError(Exception):
-    """Safe reason only; never include remote bodies, cookies or transport exception text."""
+    """Safe reason only; never include remote bodies, cookies or transport exception text.
 
-    def __init__(self, kind: str) -> None:
+    cause: a finer safe reason for the run log (read_timeout, proxy_error, http_502, …).
+    """
+
+    def __init__(self, kind: str, cause: str | None = None) -> None:
         self.kind = kind
+        self.cause = cause
         super().__init__(kind)
+
+
+# curl_cffi exception class → a safe cause; the first match in the class's MRO wins
+_TRANSPORT_CAUSES = (
+    ("ConnectTimeout", "connect_timeout"),
+    ("ReadTimeout", "read_timeout"),
+    ("ProxyError", "proxy_error"),
+    ("SSLError", "tls_error"),
+    ("DNSError", "dns_error"),
+    ("Timeout", "timeout"),
+    ("ConnectionError", "connection_error"),
+)
+
+
+def transport_cause(exc: BaseException) -> str:
+    names = {cls.__name__ for cls in type(exc).__mro__}
+    return next((cause for name, cause in _TRANSPORT_CAUSES if name in names), "network_error")
 
 
 def identifier(value: Any) -> str:
@@ -87,8 +108,8 @@ class CurlTransport:
     def request(self, url: str, params: dict[str, str]) -> Reply:
         try:
             response = self.session.get(url, params=params, timeout=30, allow_redirects=False)
-        except Exception:
-            raise CollectionError("network_error") from None
+        except Exception as exc:
+            raise CollectionError("network_error", transport_cause(exc)) from None
         return Reply(response.status_code, response.content)
 
     def close(self) -> None:
@@ -151,6 +172,8 @@ class Che168Api:
         self.response_bytes = 0
         self.request_seconds = 0.0  # time spent waiting for answers, pauses excluded
         self.retries_used = 0
+        self.retry_reasons: dict[str, int] = {}  # every failed attempt of a retried kind, by cause
+        self.max_request_s = 0.0
         self.cards = 0
         self.budget: RequestBudget | None = None  # set: the run's shared limit replaces max_requests
         self.rotate = rotate
@@ -187,7 +210,9 @@ class Che168Api:
             self.response_bytes += len(reply.body)
             return reply
         finally:
-            self.request_seconds += self.clock() - started
+            took = self.clock() - started
+            self.request_seconds += took
+            self.max_request_s = max(self.max_request_s, took)
             self.next_request_at = self.clock() + self.delay
 
     def _get(self, url: str, params: dict[str, str]) -> dict[str, Any]:
@@ -196,13 +221,16 @@ class Che168Api:
             try:
                 reply = self._request(url, self.signer.sign(params))
                 if reply.status in (500, 502, 503, 504):
-                    raise CollectionError("temporary_http_error")
+                    raise CollectionError("temporary_http_error", f"http_{reply.status}")
                 return decode_reply(reply)
             except CollectionError as exc:
                 self.last_error = exc.kind
                 if exc.kind in ("challenge", "access_blocked") and self.rotate is not None:
                     self._rotate(challenge=True)
                     continue  # exact same request, without advancing the checkpoint
+                if exc.kind in ("network_error", "temporary_http_error"):
+                    cause = exc.cause or exc.kind
+                    self.retry_reasons[cause] = self.retry_reasons.get(cause, 0) + 1
                 if (
                     exc.kind in ("network_error", "temporary_http_error")
                     and transient_failures < self.retries

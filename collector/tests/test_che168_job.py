@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,6 +16,7 @@ from collector.adapters.che168.api import (
     Reply,
     RequestBudget,
     RotationPolicy,
+    transport_cause,
 )
 from collector.adapters.che168.job import Che168Run, run_che168
 from collector.adapters.che168.signing import Signer
@@ -55,6 +57,7 @@ class Queue:
 
     async def finish(self, job_id: int, status: str, result: dict[str, Any], progress: Any = None) -> None:
         self.finished = (status, result)
+        self.final_progress = progress
 
     async def interrupt(self, job_id: int, checkpoint: dict[str, Any]) -> None:
         self.interrupted = json.loads(json.dumps(checkpoint))
@@ -205,14 +208,35 @@ def test_card_workers_share_the_cards_and_fetch_each_once() -> None:
     assert (result["stop_reason"], result["total"], result["workers"]) == ("api_end_reached", 15, 3)
     assert result["requests"] == 3 + 15  # three list pages, a card each, over every session
     assert result["target"] == 15  # limits allow 100 cars, the site has 15
-    assert queue.progress_calls[-1]["pct"] == 100.0
+    assert queue.final_progress["pct"] == 100.0
     assert result["proxy_bytes"] > 0
     assert result["avg_request_s"] is not None
     pages = [m for _, m in log.lines if m.startswith("page ")]
     assert [m.split(":")[0] for m in pages] == ["page 1/10", "page 2/10", "page 3/10"]
     for part in ("requests", "s per answer", "3 sessions", "proxy", "rotations"):
         assert part in pages[-1]
-    assert log.lines[-1][1].startswith("done (api_end_reached): 15 cars")
+    assert log.lines[-2][1].startswith("done (api_end_reached): 15 cars")
+    assert log.lines[-1][1].startswith("sessions: list 3 req, 0 retries")  # then w1, w2, w3
+    assert [s["name"] for s in result["sessions"]] == ["list", "w1", "w2", "w3"]
+
+
+def test_retries_say_why_and_on_which_session() -> None:
+    class ReadTimeout(Exception):  # noqa: N818 - named like curl_cffi's: the cause comes from the class name
+        pass
+
+    answers: Iterator[Exception | Reply] = iter([ReadTimeout(), Reply(502, b""), reply(detail("101"))])
+
+    def flaky(url: str, params: dict[str, str]) -> Reply:
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise CollectionError("network_error", transport_cause(answer))
+        return answer
+
+    api = Che168Api(flaky, Signer.bundled(), delay=0, retries=2)
+    api.detail("101")
+    assert api.retries_used == 2
+    assert api.retry_reasons == {"read_timeout": 1, "http_502": 1}
+    assert transport_cause(ValueError()) == "network_error"
 
 
 def test_car_limit_holds_with_many_workers() -> None:

@@ -51,6 +51,8 @@ class Api(Protocol):
     response_bytes: int
     request_seconds: float
     retries_used: int
+    retry_reasons: dict[str, int]
+    max_request_s: float
 
     def search(self, page: int, pagesize: int) -> SearchPage: ...
 
@@ -105,6 +107,10 @@ def _traffic(run: Che168Run) -> dict[str, Any]:
     """Requests, proxy bytes and answer time over every session of the run."""
     apis = run.apis
     requests = sum(a.requests for a in apis)
+    reasons: dict[str, int] = {}
+    for a in apis:
+        for cause, n in a.retry_reasons.items():
+            reasons[cause] = reasons.get(cause, 0) + n
     return {
         "requests": requests,
         "proxy_bytes": sum(a.response_bytes for a in apis),
@@ -112,7 +118,25 @@ def _traffic(run: Che168Run) -> dict[str, Any]:
         "proxy_rotations": sum(a.rotations for a in apis),
         "challenges": sum(a.challenge_rotations for a in apis),
         "retries": sum(a.retries_used for a in apis),
+        "retry_reasons": dict(sorted(reasons.items(), key=lambda kv: -kv[1])),
+        "max_request_s": round(max((a.max_request_s for a in apis), default=0.0), 1),
         "workers": len(run.card_apis) or 1,
+        "sessions": [_session(name, a) for name, a in _named(run)],
+    }
+
+
+def _named(run: Che168Run) -> list[tuple[str, Api]]:
+    """«list» reads the pages, «w1»… fetch the cards; without card_apis «list» does both."""
+    return [("list", run.api), *((f"w{i}", a) for i, a in enumerate(run.card_apis, 1) if a is not run.api)]
+
+
+def _session(name: str, api: Api) -> dict[str, Any]:
+    return {
+        "name": name,
+        "requests": api.requests,
+        "retries": api.retries_used,
+        "avg_request_s": round(api.request_seconds / api.requests, 2) if api.requests else None,
+        "max_request_s": round(api.max_request_s, 1),
     }
 
 
@@ -199,6 +223,7 @@ class _Collection:
         except CollectionError as e:
             await self._write()
             await self._log(f"stopped: {e.kind} · {self._totals()}", "error")
+            await self._log(self._sessions())
             result = {**_result(run, state, e.kind, self._target()), "error": e.kind}
             await run.queue.finish(run.job.id, "error", result)
             return "error"
@@ -213,6 +238,7 @@ class _Collection:
         progress = {**_progress(run, state, target, "done"), "status": "done"}
         await run.queue.finish(run.job.id, "done", _result(run, state, reason, target), progress=progress)
         await self._log(f"done ({reason}): {self._totals()}")
+        await self._log(self._sessions())
         return "done"
 
     async def _collect(self) -> str:
@@ -339,12 +365,23 @@ class _Collection:
         per_min = f", {state.written / elapsed * 60:.1f} cars/min" if elapsed > 0 else ""
         avg = f"{t['avg_request_s']:.1f} s per answer" if t["avg_request_s"] is not None else "no answers yet"
         sessions = f"{t['workers']} session{'s' if t['workers'] > 1 else ''}"
+        reasons = ", ".join(f"{cause} {n}" for cause, n in t["retry_reasons"].items())
+        why = f" ({reasons})" if reasons else ""
         return (
             f"{state.written} cars{per_min}, {state.skipped} skipped"
             f" · {t['requests']} requests, {avg}, {sessions}"
             f" · proxy {t['proxy_bytes'] / 1024**2:.1f} MB"
-            f" · {t['proxy_rotations']} rotations, {t['challenges']} challenges, {t['retries']} retries"
+            f" · {t['proxy_rotations']} rotations, {t['challenges']} challenges, {t['retries']} retries{why}"
         )
+
+    def _sessions(self) -> str:
+        """«sessions: list 6 req, 0 retries, 0.4 s avg, 0.9 s max · w1 31 req, 9 retries, 9.8 s avg, …»."""
+        parts = []
+        for s in _traffic(self.run_)["sessions"]:
+            avg = s["avg_request_s"] if s["avg_request_s"] is not None else "-"
+            name, req, retries, slowest = s["name"], s["requests"], s["retries"], s["max_request_s"]
+            parts.append(f"{name} {req} req, {retries} retries, {avg} s avg, {slowest} s max")
+        return "sessions: " + " · ".join(parts)
 
     async def _log(self, message: str, level: str = "info") -> None:
         if self.run_.runlog:
