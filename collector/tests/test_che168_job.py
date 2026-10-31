@@ -194,8 +194,9 @@ class Lines:
 
 def workers_run(shelf: Shelf, n: int, **kw: Any) -> tuple[str, MemorySink, Queue, Lines]:
     sink, queue, log = MemorySink(), Queue(), Lines()
+    lists = [shelf.session("list" if i == 1 else f"l{i}") for i in range(1, kw.pop("listers", 1) + 1)]
     run = Che168Run(
-        job=job(), queue=queue, sink=sink, api=shelf.session("list"),  # type: ignore[arg-type]
+        job=job(), queue=queue, sink=sink, api=lists[0], list_apis=lists,  # type: ignore[arg-type]
         card_apis=[shelf.session(f"w{i}") for i in range(n)], max_pages=kw.pop("max_pages", 10),
         max_cars=kw.pop("max_cars", 100), clock=kw.pop("clock", lambda: NOW), runlog=log, **kw,  # type: ignore[arg-type]
     )  # fmt: skip
@@ -348,3 +349,36 @@ def test_the_store_keeps_the_listing_day_not_today() -> None:
     lot = to_lot(card, NOW + timedelta(days=3))
     assert lot.listing.listed_at is not None
     assert lot.listing.listed_at.date() == date(2026, 10, 30)
+
+
+def test_list_sessions_read_a_wave_of_pages_at_once() -> None:
+    shelf = Shelf(pages=7, per_page=4)
+    status, sink, queue, _ = workers_run(shelf, 2, listers=3)
+    assert status == "done"
+    assert len(sink.lots) == 28
+    assert len({i for _, i in shelf.details}) == 28  # each car fetched once
+    assert queue.finished is not None
+    result = queue.finished[1]
+    assert (result["stop_reason"], result["pages"]) == ("api_end_reached", 7)
+    names = [s["name"] for s in result["sessions"]]
+    assert names[:3] == ["list", "l2", "l3"]
+    assert all(s["requests"] > 0 for s in result["sessions"][:3])  # every list session read pages
+    assert sum(s["requests"] for s in result["sessions"][:3]) == 7
+
+
+def test_a_wave_stops_at_the_page_limit() -> None:
+    status, sink, queue, _ = workers_run(Shelf(pages=9, per_page=2), 1, listers=4, max_pages=5)
+    assert status == "done"
+    assert queue.finished is not None
+    assert (queue.finished[1]["stop_reason"], queue.finished[1]["pages"]) == ("page_limit", 5)
+    assert len(sink.lots) == 10
+
+
+def test_a_list_session_rotates_by_its_own_searches() -> None:
+    api = Shelf(pages=9).session("l")
+    rotations: list[int] = []
+    api.rotate = lambda: rotations.append(api.searches)
+    api.rotation = RotationPolicy(every_pages=0, every_searches=2, max_rotations=10)
+    for page in (1, 4, 7, 2, 5):  # a wave's pages are not consecutive
+        api.search(page, 20)
+    assert rotations == [2, 4]  # before its 3rd and 5th search

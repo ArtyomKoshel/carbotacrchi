@@ -71,6 +71,7 @@ class Che168State:
     skipped: int = 0
     api_total: int = 0
     stored: int = 0  # of `written`: taken from the card store, no request
+    page_count: int = 0  # known after the first page
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> Che168State:
@@ -94,14 +95,20 @@ class Che168Run:
     runlog: RunLog | None = None
     # the cards, one worker per session (its own proxy exit and pause); none = `api` alone
     card_apis: Sequence[Api] = ()
+    # more list sessions: a wave of pages is read at once, one per session; none = `api` alone
+    list_apis: Sequence[Api] = ()
     # the card store (collector.lot_history, source che168): a listed car whose list facts match
     # its stored card, fetched less than card_max_age_s ago, is not fetched again
     history: HistoryStore | None = None
     card_max_age_s: float = 7 * 24 * 3600
 
     @property
+    def listers(self) -> list[Api]:
+        return [self.api, *(a for a in self.list_apis if a is not self.api)]
+
+    @property
     def apis(self) -> list[Api]:
-        return [self.api, *(a for a in self.card_apis if a is not self.api)]
+        return [*self.listers, *(a for a in self.card_apis if a is not self.api)]
 
 
 def _limit(filters: dict[str, Any], key: str, default: int) -> int:
@@ -132,8 +139,9 @@ def _traffic(run: Che168Run) -> dict[str, Any]:
 
 
 def _named(run: Che168Run) -> list[tuple[str, Api]]:
-    """«list» reads the pages, «w1»… fetch the cards; without card_apis «list» does both."""
-    return [("list", run.api), *((f"w{i}", a) for i, a in enumerate(run.card_apis, 1) if a is not run.api)]
+    """«list», «l2»… read the pages, «w1»… fetch the cards; without card_apis «list» does both."""
+    lists = [("list" if i == 1 else f"l{i}", a) for i, a in enumerate(run.listers, 1)]
+    return [*lists, *((f"w{i}", a) for i, a in enumerate(run.card_apis, 1) if a is not run.api)]
 
 
 def _session(name: str, api: Api) -> dict[str, Any]:
@@ -216,7 +224,9 @@ class _Collection:
         self.car_limit = False
         self.flushing = asyncio.Lock()
         self.sessions: dict[int, asyncio.Lock] = {}  # without card_apis the list and the cards share `api`
-        self.threads = ThreadPoolExecutor(max_workers=len(self.workers) + 1, thread_name_prefix="che168")
+        self.listers = run.listers
+        threads = len(self.workers) + len(self.listers)
+        self.threads = ThreadPoolExecutor(max_workers=threads, thread_name_prefix="che168")
 
     async def run(self) -> str:
         run, state = self.run_, self.state
@@ -272,8 +282,9 @@ class _Collection:
     async def _lister(self) -> str:
         state, run = self.state, self.run_
         while True:
-            # one page ahead of the workers, not the whole site
-            while self.ids.qsize() >= run.pagesize and not self._halted() and not self.car_limit:
+            # a wave ahead of the workers, not the whole site
+            ahead = run.pagesize * len(self.listers)
+            while self.ids.qsize() >= ahead and not self._halted() and not self.car_limit:
                 await asyncio.sleep(0.05)
             if self._halted():
                 return "interrupted"
@@ -283,25 +294,48 @@ class _Collection:
                 return "api_end_reached"
             if state.next_page > self.max_pages:
                 return "page_limit"
-            try:
-                page = await self._call(run.api, run.api.search, state.next_page, run.pagesize)
-            except CollectionError as e:
-                self.error = self.error or e
+            # the first page says how many there are; then a page per list session at once
+            last = min(self.max_pages, state.page_count) if state.page_count else self.max_pages
+            width = len(self.listers) if state.page_count else 1
+            numbers = range(state.next_page, min(state.next_page + width, last + 1))
+            answers = await asyncio.gather(
+                *(
+                    self._call(api, api.search, n, run.pagesize)
+                    for api, n in zip(self.listers, numbers, strict=False)
+                ),
+                return_exceptions=True,
+            )
+            pages: list[SearchPage] = []
+            for answer in answers:
+                if isinstance(answer, CollectionError):
+                    self.error = self.error or answer
+                elif isinstance(answer, BaseException):
+                    raise answer
+                else:
+                    pages.append(answer)
+            if self.error is not None:
                 return "error"
-            state.api_total = page.total
-            state.pages = page.number
-            state.next_page = page.number + 1
-            state.exhausted = page.number >= page.page_count
-            fresh = [i for i in dict.fromkeys(page.ids) if i not in self.done and i not in self.outstanding]
-            self.facts.update(page.facts)
-            stored = await self._stored_cards(fresh)
-            for infoid in fresh:
-                self.outstanding[infoid] = None
-                if infoid not in stored or not self._from_store(infoid, stored[infoid]):
-                    self.ids.put_nowait(infoid)
-            await self._flush(f"page {page.number}: {len(page.ids)} cars listed")
-            listed = f"page {page.number}/{self.max_pages}: {len(page.ids)} listed, {len(fresh)} new"
-            await self._log(f"{listed} · {self._totals()}")
+            for page in pages:  # in page order: the checkpoint's next page passes the whole wave
+                await self._listed(page)
+
+    async def _listed(self, page: SearchPage) -> None:
+        """A page's cars: from the store when unchanged, else to the card workers."""
+        state = self.state
+        state.api_total = page.total
+        state.page_count = page.page_count
+        state.pages = page.number
+        state.next_page = page.number + 1
+        state.exhausted = page.number >= page.page_count
+        fresh = [i for i in dict.fromkeys(page.ids) if i not in self.done and i not in self.outstanding]
+        self.facts.update(page.facts)
+        stored = await self._stored_cards(fresh)
+        for infoid in fresh:
+            self.outstanding[infoid] = None
+            if infoid not in stored or not self._from_store(infoid, stored[infoid]):
+                self.ids.put_nowait(infoid)
+        await self._flush(f"page {page.number}: {len(page.ids)} cars listed")
+        listed = f"page {page.number}/{self.max_pages}: {len(page.ids)} listed, {len(fresh)} new"
+        await self._log(f"{listed} · {self._totals()}")
 
     async def _card_worker(self, api: Api) -> None:
         while True:

@@ -145,6 +145,9 @@ class RotationPolicy:
     max_rotations: int = 8
     max_challenge_rotations: int = 3
     every_cards: int = 0  # a card session's planned rotation (collector serve); 0 = only on a challenge
+    # a list session's planned rotation by its own searches (collector serve reads pages in parallel,
+    # so one session's page numbers are not consecutive); 0 = by page number (every_pages)
+    every_searches: int = 0
 
 
 class RequestBudget:
@@ -196,6 +199,7 @@ class Che168Api:
         self.rotations = 0
         self.challenge_rotations = 0
         self.last_rotated_page = 0
+        self.searches = 0
         self.last_error: str | None = None
 
     def _rotate(self, *, challenge: bool) -> None:
@@ -258,6 +262,10 @@ class Che168Api:
                 raise
 
     def search(self, page: int, pagesize: int) -> SearchPage:
+        own = self.rotation.every_searches
+        if self.rotate is not None and own > 0 and self.searches > 0 and self.searches % own == 0:
+            self._rotate(challenge=False)
+        self.searches += 1
         every = self.rotation.every_pages
         if (
             self.rotate is not None

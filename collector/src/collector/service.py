@@ -227,15 +227,20 @@ class Service:
             return api
 
         try:
-            lister = session(RotationPolicy(every_pages=2, max_rotations=unbounded))
+            # list sessions read a wave of pages at once; each rotates after two of its own pages
+            listers = [
+                session(RotationPolicy(every_pages=0, every_searches=2, max_rotations=unbounded))
+                for _ in range(max(1, s.che168_list_workers))
+            ]
             cards = [
                 session(RotationPolicy(every_pages=0, every_cards=40, max_rotations=unbounded))
                 for _ in range(max(1, s.che168_workers))
             ]
             run = Che168Run(
-                job=job, queue=self.queue, sink=sink, api=lister, card_apis=cards, max_pages=max_pages,
-                max_cars=max_cars, should_stop=self.stop.is_set, clock=self.clock, runlog=runlog,
-                history=MySqlHistoryStore(self.db), card_max_age_s=s.che168_card_max_age_hours * 3600,
+                job=job, queue=self.queue, sink=sink, api=listers[0], list_apis=listers, card_apis=cards,
+                max_pages=max_pages, max_cars=max_cars, should_stop=self.stop.is_set, clock=self.clock,
+                runlog=runlog, history=MySqlHistoryStore(self.db),
+                card_max_age_s=s.che168_card_max_age_hours * 3600,
             )  # fmt: skip
             return await run_che168(run)
         finally:
