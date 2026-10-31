@@ -80,7 +80,10 @@ SOURCE_FIELDS = (
 # what a stored card holds; a card stored by an older version is fetched again
 CARD_VERSION = 3  # 3: the Chaboshi report a card links
 CHINA = timezone(timedelta(hours=8))  # no DST
-MODEL_YEAR = re.compile(r"(?<!\d)((?:19|20)\d{2})款")
+# «2018款» ends the spec name; the series before it may end in digits: «阿斯顿·马丁DB112020款»
+MODEL_YEAR = re.compile(r"((?:19|20)\d{2})款")
+# a dealer's own title shortens it: «阿斯顿马丁DBX/3.0T/22款/…»
+SHORT_MODEL_YEAR = re.compile(r"(?<!\d)(\d{2})款")
 TRANSMISSIONS = {"自动": Transmission.AUTOMATIC, "手动": Transmission.MANUAL}
 FUELS = {
     "汽油": Fuel.GASOLINE,
@@ -164,9 +167,16 @@ def registration(value: Any) -> date | None:
 
 
 def model_year(carname: Any) -> int | None:
-    """Che168 names the spec «<series> 2018款 …»: the model year it states, not the registration year."""
-    match = MODEL_YEAR.search(carname) if isinstance(carname, str) else None
-    return int(match.group(1)) if match else None
+    """Che168 names the spec «<series> 2018款 …», a dealer's title «…/22款/…»: the model year it
+    states, not the registration year. A short year past next year is not read as one."""
+    if not isinstance(carname, str):
+        return None
+    if match := MODEL_YEAR.search(carname):
+        return int(match.group(1))
+    if match := SHORT_MODEL_YEAR.search(carname):
+        year = 2000 + int(match.group(1))
+        return year if year <= datetime.now(CHINA).year + 1 else None
+    return None
 
 
 def color(value: Any) -> str | None:

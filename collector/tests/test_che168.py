@@ -201,6 +201,11 @@ def test_model_year_and_body_only_when_stated() -> None:
     assert model_year("Model 3 后轮驱动版") is None
     assert model_year("20180款") is None
     assert model_year(None) is None
+    # seen on prod 2026-10-31: no year read meant lots.year NULL, and the core refused the lot
+    assert model_year("阿斯顿·马丁DB112020款 4.0T V8 Coupe") == 2020
+    assert model_year("阿斯顿马丁DBX/3.0T/22款/3.0T STRAIGHT-SIX") == 2022
+    assert model_year("奥迪A3L/1.5T/25款/Limousine 35TFSI飞骧尊享型") == 2025
+    assert model_year("桑塔纳 99款") is None  # not 2099
     assert body_type("中大型MPV") == BodyType.MINIVAN
     assert body_type("跑车") == BodyType.COUPE
     assert body_type("低端皮卡") == BodyType.PICKUP
