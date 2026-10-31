@@ -11,12 +11,18 @@ use Illuminate\Support\Facades\DB;
  * The reference catalog for the filters (app/Catalog): which makes it covers, and a make's
  * models → generations → modifications and complectations with their active lots. The
  * miniapp cascades on the client from one make's `cells` — every (model, generation,
- * modification, complectation) that has lots, with how many. A null is "not stated": those
+ * modification, complectation, platform) that has lots, with how many. A null is "not stated": those
  * lots are counted too and the miniapp offers them as «… не указано», so no lot drops out.
  */
 class CatalogController extends Controller
 {
     private const TTL = 600;
+
+    /** The cache key of a make's tree (v2: cells carry the platform). */
+    public static function makeKey(int $makeId): string
+    {
+        return "api_catalog_make_v2_{$makeId}";
+    }
 
     /** GET /api/catalog — the makes with active lots on the catalog. */
     public function makes(): JsonResponse
@@ -35,10 +41,11 @@ class CatalogController extends Controller
     /** GET /api/catalog/{makeId} — the make's tree. */
     public function make(int $makeId): JsonResponse
     {
-        $data = Cache::remember("api_catalog_make_{$makeId}", self::TTL, function () use ($makeId) {
+        $data = Cache::remember(self::makeKey($makeId), self::TTL, function () use ($makeId) {
+            // per platform too: with one platform picked the miniapp counts only its lots
             $cells = DB::table('lots')->where('is_active', true)->where('ref_make_id', $makeId)
-                ->groupBy('ref_model_id', 'ref_generation_id', 'ref_modification_id', 'ref_complectation_id')
-                ->selectRaw('ref_model_id m, ref_generation_id g, ref_modification_id d, ref_complectation_id c, COUNT(*) n')
+                ->groupBy('ref_model_id', 'ref_generation_id', 'ref_modification_id', 'ref_complectation_id', 'source')
+                ->selectRaw('ref_model_id m, ref_generation_id g, ref_modification_id d, ref_complectation_id c, COUNT(*) n, source s')
                 ->get();
 
             $ids = fn (string $k) => $cells->pluck($k)->filter()->unique()->values()->all();
@@ -56,7 +63,7 @@ class CatalogController extends Controller
                 'modifications' => $modifications,
                 'complectations' => $complectations,
                 'cells' => $cells->map(fn ($c) => [$c->m === null ? null : (int) $c->m, $c->g === null ? null : (int) $c->g,
-                    $c->d === null ? null : (int) $c->d, $c->c === null ? null : (int) $c->c, (int) $c->n])->all(),
+                    $c->d === null ? null : (int) $c->d, $c->c === null ? null : (int) $c->c, (int) $c->n, $c->s])->all(),
             ];
         });
 

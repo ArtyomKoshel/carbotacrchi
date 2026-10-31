@@ -4,7 +4,8 @@
  * owns the four selects below it and the ref* fields of the query.
  *
  * The cascade runs on the client from the make's `cells` [model, generation, modification,
- * complectation, lots]: each list shows what the choices above leave, with how many lots.
+ * complectation, lots, platform]: each list shows what the picked platforms and the choices
+ * above leave, with how many lots.
  * A modification code ("520i") is one choice across the selected generations.
  */
 const CatalogFilter = (() => {
@@ -13,6 +14,7 @@ const CatalogFilter = (() => {
   let seq = 0;
   let mountEl = null;
   let changed = () => {};
+  let sources = null;        // the platforms picked; null = every one
   const ts = {};
   const sel = { model: 0, generations: [], modifications: [], complectations: [] }; // modifications: codes
 
@@ -100,7 +102,8 @@ const CatalogFilter = (() => {
   function cells(level) {
     const mods = byId(tree.modifications);
     return tree.cells.filter(c =>
-      (level < 1 || !sel.model || keyOf.model(c) === sel.model)
+      (!sources || sources.includes(c[5]))
+      && (level < 1 || !sel.model || keyOf.model(c) === sel.model)
       && (level < 2 || !sel.generations.length || sel.generations.includes(keyOf.gen(c)))
       && (level < 3 || !sel.modifications.length || sel.modifications.includes(keyOf.mod(c, mods))));
   }
@@ -229,5 +232,16 @@ const CatalogFilter = (() => {
 
   const hasChoice = () => !!(sel.model || sel.complectations.length);
 
-  return { load, covers, active, mount, reset, query, summary, hasChoice };
+  /**
+   * The platforms picked (empty = every one): the lists count only their lots, and a choice
+   * none of them has is dropped.
+   */
+  function setSources(list) {
+    const next = list?.length ? [...list] : null;
+    if (String(next) === String(sources)) return;
+    sources = next;
+    if (tree && mountEl) render(0);
+  }
+
+  return { load, covers, active, mount, reset, query, summary, hasChoice, setSources };
 })();

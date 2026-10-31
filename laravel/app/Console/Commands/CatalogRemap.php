@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Catalog\CatalogLinker;
+use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\FiltersController;
 use App\Catalog\CatalogStore;
 use Illuminate\Console\Command;
@@ -63,7 +64,7 @@ class CatalogRemap extends Command
         $this->info(sprintf('Lots: %d seen, %d changed (%.1f s)', $seen, $written, microtime(true) - $started));
 
         foreach (DB::table('ref_makes')->pluck('id') as $id) {
-            Cache::forget("api_catalog_make_{$id}");
+            Cache::forget(CatalogController::makeKey($id));
         }
         Cache::forget('api_catalog_makes');
         Cache::forget('catalog_names');

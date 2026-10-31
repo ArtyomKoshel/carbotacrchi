@@ -505,6 +505,8 @@ const Filters = (() => {
           state.sources.push(k);
         }
         btn.classList.toggle('selected', state.sources.includes(k));
+        CatalogFilter.setSources(state.sources);
+        _updateResetBtn(); _scheduleContextUpdate();
         _syncPriceCurrency();
         TG.haptic('selection');
         _scheduleCountUpdate();
@@ -565,6 +567,7 @@ const Filters = (() => {
     const restore = _catalogRestore;
     _catalogRestore = null;
     if (!state.make) { CatalogFilter.reset(); return; }
+    CatalogFilter.setSources(state.sources);
     CatalogFilter.mount(el, state.make, () => { _updateResetBtn(); _scheduleContextUpdate(); _scheduleCountUpdate(); }, restore)
       .then(() => { if (restore) _scheduleCountUpdate(); });
   }

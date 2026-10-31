@@ -110,7 +110,7 @@ Audi, Porsche, Mini, Land Rover, Volkswagen, Volvo — 99,5–100%; остато
 | Запрос | Ответ |
 |---|---|
 | `GET /api/catalog` | марки справочника с активными лотами |
-| `GET /api/catalog/{makeId}` | модели, поколения, модификации, комплектации и `cells` — `[model, generation, modification, complectation, lots]` |
+| `GET /api/catalog/{makeId}` | модели, поколения, модификации, комплектации и `cells` — `[model, generation, modification, complectation, lots, source]`; миниапп считает только выбранные площадки |
 | `POST /api/search` | `refMakeId`, `refModelId`, `refGenerationIds[]`, `refModificationIds[]`, `refComplectationIds[]` |
 
 Поиск фильтрует только по `ref_*`. Запрос, где машина названа текстом (ИИ-поиск, бот, сохранённые подписки, старые ссылки:
