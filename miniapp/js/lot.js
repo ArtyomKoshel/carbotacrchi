@@ -74,7 +74,19 @@ const LotView = (() => {
   function historyBlock(lot, inspection, asked) {
     const rows = [];
     const add = (label, pair, match) => pair && rows.push([label, Fmt.esc(pair[0]), { value: pair[1], row: match ? 'match' : '' }]);
-    add('ДТП по страховым', yesNo(lot.hasAccident) ?? ['нет данных', ''], asked.has('accident'));
+    if (lot.source === 'che168') {
+      // Che168 gives no insurance history, so «по страховым» would always read «нет данных»:
+      // the row says what the Chaboshi inspection found instead, named as an inspection
+      const c = inspection?.chaboshi;
+      const major = c?.verdicts?.[0];
+      const body = (c?.systems || []).find(x => x.name === 'Проверка на ДТП')?.findings?.length || 0;
+      rows.push(['ДТП по осмотру', !major ? 'нет отчёта'
+        : major.level === 'bad' ? 'выявлено'
+        : major.level === 'ok' ? `не выявлено${body ? `, ${body} ${Fmt.plural(body, 'замечание', 'замечания', 'замечаний')} по кузову` : ''}`
+        : Fmt.esc(major.text), { value: !major ? '' : major.level === 'bad' ? 'bad' : body ? 'warn' : major.level || '' }]);
+    } else {
+      add('ДТП по страховым', yesNo(lot.hasAccident) ?? ['нет данных', ''], asked.has('accident'));
+    }
     if (lot.ownersCount != null) rows.push(['Владельцы', Fmt.owners(lot.ownersCount), { value: lot.ownersCount >= 3 ? 'warn' : '', row: asked.has('owners') ? 'match' : '' }]);
     if (lot.insuranceCount != null) rows.push(['Страховые случаи', String(lot.insuranceCount), { value: lot.insuranceCount >= 2 ? 'warn' : '', row: asked.has('insurance') ? 'match' : '' }]);
     // this car's repairs only: what it did to other cars is not its damage
