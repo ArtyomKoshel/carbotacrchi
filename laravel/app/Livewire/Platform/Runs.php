@@ -109,15 +109,15 @@ class Runs extends PlatformComponent implements HasTable
             ->schema([
                 Radio::make('mode')
                     ->label('Что парсить')
-                    // che168: a bounded collection of the newest listings, no maker filter, never a full run
+                    // che168: a pass over slices of the list (the selection rules as its filters), no maker filter
                     ->options(array_filter([
-                        ParseRuns::MODE_FULL   => $this->source === 'che168' ? 'Сбор свежих объявлений' : 'Полный прогон',
+                        ParseRuns::MODE_FULL   => $this->source === 'che168' ? 'Полный обход срезами' : 'Полный прогон',
                         ParseRuns::MODE_TEST   => 'Тестовый (' . ParseRuns::TEST_PAGES . ' страниц)',
                         ParseRuns::MODE_MAKERS => $this->source === 'che168' ? null : 'Только марки',
                     ]))
                     ->descriptions([
                         ParseRuns::MODE_FULL   => $this->source === 'che168'
-                            ? 'Первые страницы общей выдачи Che168 (лимиты CHE168_MAX_PAGES / CHE168_MAX_CARS у сборщика). Не засчитывается и ничего не снимает.'
+                            ? 'Вся выдача Che168 под правилами отбора, срезами по марке, серии, цене и году (поиск отдаёт не больше 380 машин на запрос). Карточки — до CHE168_MAX_CARS новых за прогон, остальные доберут следующие прогоны. Снятие проданных для Che168 пока не включено.'
                             : 'Все лоты площадки. Засчитывается как успешный, если охват ≥ ' . config('lifecycle.min_coverage') . ' %: после него лоты, которых не было, снимаются.',
                         ParseRuns::MODE_TEST   => 'Проверить, что парсер работает. Не засчитывается и ничего не снимает.',
                         ParseRuns::MODE_MAKERS => 'По отдельной задаче на каждую марку, одна за другой. Не засчитываются и ничего не снимают.',

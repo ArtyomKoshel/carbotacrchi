@@ -18,12 +18,14 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from functools import partial
 from typing import Any, Protocol, TypeVar
 
 from collector import COLLECTOR_VERSION
 from collector.adapters.che168.api import CollectionError, SearchPage, chaboshi_link
 from collector.adapters.che168.chaboshi import chaboshi_report
 from collector.adapters.che168.mapping import CARD_VERSION, model_year, scaled_integer, stored_card, to_lot
+from collector.adapters.che168.slices import CAP, cut, key
 from collector.domain.carlot import CarLotV1, SelectionPhase
 from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, utc_now
 from collector.runlog import RunLog
@@ -117,6 +119,10 @@ class Api(Protocol):
 
     def chaboshi(self, url: str) -> tuple[str, dict[str, Any]]: ...
 
+    def brands(self) -> list[str]: ...
+
+    def series(self, brandid: str) -> list[str]: ...
+
 
 @dataclass
 class Che168State:
@@ -135,6 +141,14 @@ class Che168State:
     reports_failed: int = 0  # linked but not fetched: the car is written without it, the next run retries
     reports_unavailable: int = 0  # Chaboshi refused the link che168 gave: kept as such with the card
     reports_via_proxy: int = 0  # the direct session could not reach the report: fetched through the proxy
+    # a pass over slices (Che168Run.slices): what is left to list, and how far the pass got
+    slices: list[dict[str, str]] = field(default_factory=list)
+    slicing: bool = False
+    slices_done: int = 0
+    cuts: int = 0  # slices over CAP that were cut into smaller ones
+    truncated: int = 0  # slices over CAP that could not be cut: che168 listed only part of them
+    listed: int = 0  # distinct cars the pass listed (this process: a resumed pass starts it again)
+    not_fetched: int = 0  # listed, new, but over the car limit: a later pass fetches their cards
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -170,6 +184,11 @@ class Che168Run:
     # the Chaboshi reports without the proxy, one session per card worker (same order); a report
     # the direct session cannot get is fetched through the worker's proxy session instead
     report_apis: Sequence[Api] = ()
+    # a pass over slices of the list (slices.py) instead of the newest pages: the whole segment,
+    # each slice listed to its end; `segment` is the selection rules as search filters
+    slices: bool = False
+    segment: dict[str, str] = field(default_factory=dict)
+    ages: tuple[float, float] = (0, 30)  # the age range cut year by year when the segment names none
 
     @property
     def listers(self) -> list[Api]:
@@ -231,13 +250,17 @@ def _elapsed(run: Che168Run, state: Che168State) -> float:
 
 
 def _target(state: Che168State, max_pages: int, max_cars: int, pagesize: int) -> int:
-    """The cars this run sets out to fetch: its limits, or fewer when the site has fewer."""
+    """The cars this run sets out to fetch: its limits, or fewer when the site has fewer. A pass over
+    slices sets out to list the whole segment."""
+    if state.slicing:
+        return state.api_total
     target = min(max_cars, max_pages * pagesize)
     return min(target, state.api_total) if state.api_total else target
 
 
 def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> dict[str, Any]:
-    pct = round(min((state.written + state.skipped) / target, 1.0) * 100, 1) if target else 0.0
+    done = state.listed if state.slicing else state.written + state.skipped
+    pct = round(min(done / target, 1.0) * 100, 1) if target else 0.0
     return {
         "status": f"{pct}%",
         "pct": pct,
@@ -295,6 +318,7 @@ class _Collection:
         self.batch_ids: list[str] = []
         self.batch_cards: list[HistoryState] = []  # fetched cards for the store, saved with their batch
         self.facts: dict[str, tuple[str, ...]] = {}  # the list's facts per listed car
+        self.seen: set[str] = set()  # every car this process listed, for the pass's count
         self.outstanding: dict[str, None] = {}  # listed, not yet in the buffer, in list order
         self.ids: asyncio.Queue[str | None] = asyncio.Queue()
         self.claimed = 0  # cars written or in flight, against max_cars
@@ -329,6 +353,9 @@ class _Collection:
         finally:
             self.threads.shutdown(wait=False, cancel_futures=True)
         await self._write()  # a limit can end the run mid-batch
+        if reason == "slices_done":
+            # listed and queued before the car limit, never fetched: a later pass fetches their cards
+            state.not_fetched += len(self.outstanding)
         if reason == "interrupted":
             await run.queue.interrupt(run.job.id, self._checkpoint())
             await self._log(f"stopped after {state.written} cars; resumes from the checkpoint", "warning")
@@ -348,7 +375,7 @@ class _Collection:
                 self.ids.put_nowait(infoid)
         tasks = [asyncio.create_task(self._card_worker(api)) for api in self.workers]
         try:
-            reason = await self._lister()
+            reason = await (self._slice_lister() if self.run_.slices else self._lister())
         finally:
             for _ in tasks:
                 self.ids.put_nowait(None)  # after what is queued: the workers finish the listed cars
@@ -357,6 +384,8 @@ class _Collection:
             raise self.error
         if self.run_.should_stop():
             return "interrupted"
+        if self.run_.slices:
+            return reason  # the car limit stops the cards, not the pass
         return "car_limit" if self.car_limit else reason
 
     async def _lister(self) -> str:
@@ -398,14 +427,104 @@ class _Collection:
             for page in pages:  # in page order: the checkpoint's next page passes the whole wave
                 await self._listed(page)
 
+    async def _slice_lister(self) -> str:
+        """A pass over slices: a slice over CAP is cut, one under it is listed to its last page.
+
+        The first page of a slice is both its count and its first data; its other pages go in a
+        wave, one per list session. The checkpoint holds the slices left: a resume lists the one
+        it stopped in again from its first page (cars already written are not fetched again)."""
+        state, run = self.state, self.run_
+        if not state.slicing:
+            state.slicing = True
+            state.slices = [dict(run.segment)]
+        while state.slices:
+            ahead = run.pagesize * len(self.listers)
+            while self.ids.qsize() >= ahead and not self._halted() and not self.car_limit:
+                await asyncio.sleep(0.05)
+            if self._halted():
+                return "interrupted"
+            stopped = await self._slice(state.slices[0])
+            if stopped is not None:
+                return stopped
+            if state.slices_done % 20 == 0:
+                await self._flush(f"{state.slices_done} slices, {len(state.slices)} left: {self._totals()}")
+        return "slices_done"
+
+    async def _slice(self, filters: dict[str, str]) -> str | None:
+        """The first slice left: cut, or listed to its end and dropped; a stop reason, or None to go on."""
+        state, lister = self.state, self.listers[0]
+        first = await self._search(lister, 1, filters)
+        if first is None:
+            return "error"
+        if state.api_total == 0:
+            state.api_total = first.total  # the segment: the first slice of a pass
+        if first.total > CAP:
+            parts = partial(cut, filters, brands=lister.brands, series=lister.series, ages=self.run_.ages)
+            children = await self._call(lister, parts)
+            if children:
+                state.slices[0:1] = children
+                state.cuts += 1
+                return None
+            state.truncated += 1
+            await self._log(f"slice {key(filters)}: {first.total} cars, cannot be cut further", "warning")
+        await self._listed(first)
+        stopped = await self._rest(first, filters)
+        if stopped is None:
+            state.slices.pop(0)
+            state.slices_done += 1
+        return stopped
+
+    async def _rest(self, first: SearchPage, filters: dict[str, str]) -> str | None:
+        """A slice's pages after the first, a wave at a time, up to page_cap."""
+        size = self.run_.pagesize
+        last = min(first.page_count, (CAP + size) // size + 1)
+        number = 2
+        while number <= last:
+            if self._halted():
+                return "interrupted"
+            numbers = range(number, min(number + len(self.listers), last + 1))
+            answers = await asyncio.gather(
+                *(
+                    self._search(api, n, filters, quiet=True)
+                    for api, n in zip(self.listers, numbers, strict=False)
+                )
+            )
+            if self.error is not None:
+                return "error"
+            pages = [a for a in answers if a is not None]
+            for page in pages:
+                await self._listed(page)
+            if len(pages) < len(answers):  # page_cap: che168 lists no more of this slice
+                return None
+            number += len(numbers)
+        return None
+
+    async def _search(
+        self, api: Api, number: int, filters: dict[str, str], *, quiet: bool = False
+    ) -> SearchPage | None:
+        """A page of a slice; None at page_cap (quiet) or on an error, which self.error keeps."""
+        try:
+            return await self._call(api, api.search, number, self.run_.pagesize, filters)
+        except CollectionError as e:
+            if quiet and e.kind == "page_cap":
+                return None
+            self.error = self.error or e
+            return None
+
     async def _listed(self, page: SearchPage) -> None:
         """A page's cars: from the store when unchanged, else to the card workers."""
         state = self.state
-        state.api_total = page.total
-        state.page_count = page.page_count
-        state.pages = page.number
-        state.next_page = page.number + 1
-        state.exhausted = page.number >= page.page_count
+        if state.slicing:
+            state.pages += 1
+        else:
+            state.api_total = page.total
+            state.page_count = page.page_count
+            state.pages = page.number
+            state.next_page = page.number + 1
+            state.exhausted = page.number >= page.page_count
+        new = [i for i in dict.fromkeys(page.ids) if i not in self.seen]
+        self.seen.update(new)
+        state.listed += len(new)
         fresh = [i for i in dict.fromkeys(page.ids) if i not in self.done and i not in self.outstanding]
         self.facts.update(page.facts)
         stored = await self._stored_cards(fresh)
@@ -414,6 +533,10 @@ class _Collection:
                 # never written: it is not in lots (it was never fetched), there is nothing to deactivate
                 self.state.filtered += 1
                 self.done.add(infoid)
+                continue
+            if infoid not in stored and state.slicing and (self.car_limit or self.claimed >= self.max_cars):
+                state.not_fetched += 1  # listed: a later pass fetches the card
+                self.done.add(infoid)  # a car on a price border is listed twice: count it once
                 continue
             self.outstanding[infoid] = None
             if infoid not in stored or not self._from_store(infoid, stored[infoid]):
@@ -647,6 +770,19 @@ class _Collection:
             await getattr(self.run_.runlog, level)(message)
 
 
+COMPLETE_SHARE = 0.97  # of the segment's totalcount a pass must list to count as full
+
+
+def _complete(state: Che168State, reason: str) -> bool:
+    return (
+        state.slicing
+        and reason == "slices_done"
+        and state.truncated == 0
+        and state.api_total > 0
+        and state.listed >= COMPLETE_SHARE * state.api_total
+    )
+
+
 def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dict[str, Any]:
     started = datetime.fromisoformat(state.started_at)
     return {
@@ -664,8 +800,14 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "reports_failed": state.reports_failed,
         "reports_unavailable": state.reports_unavailable,
         "reports_via_proxy": state.reports_via_proxy,
-        # never a full run: lots:lifecycle must not delist che168 lots by it
-        "full_run": False,
+        # a full run: every slice listed to its end, the cars it listed close to the segment's
+        # count (the list moves while a pass reads it); a pass of the newest pages never is one
+        "full_run": _complete(state, reason),
+        "slices_done": state.slices_done,
+        "cuts": state.cuts,
+        "truncated": state.truncated,
+        "listed": state.listed,
+        "not_fetched": state.not_fetched,
         "coverage_pct": 0.0,
         "run_started_at": started.strftime("%Y-%m-%d %H:%M:%S"),
         "ingest_last_id": getattr(run.sink, "last_id", None),

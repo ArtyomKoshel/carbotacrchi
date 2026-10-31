@@ -17,6 +17,10 @@ from urllib.parse import parse_qs, quote, urlsplit
 from collector.adapters.che168.signing import Signer
 
 SEARCH_URL = "https://api2scsou.che168.com/api/v11/search"
+BRANDS_URL = "https://api2scsou.che168.com/api/v2/getbrands"
+SERIES_URL = "https://api2scsou.che168.com/api/v2/getseriesbybrandid"
+# the newest listings first, as the app lists them: a stable order a page at a time
+SORT_NEWEST = "4"
 DETAIL_URL = "https://apiuscdt.che168.com/apic/v2/car/getcarinfo"
 # the card's highlighted options (亮点配置), as the mobile site asks for them: unsigned, _appid 2sc.m
 OPTIONS_URL = "https://apipcmusc.che168.com/v1/car/getusedcaroptiondata"
@@ -311,7 +315,11 @@ class Che168Api:
                     continue
                 raise
 
-    def search(self, page: int, pagesize: int) -> SearchPage:
+    def search(self, page: int, pagesize: int, filters: dict[str, str] | None = None) -> SearchPage:
+        """A page of the list, newest first; filters narrow it (brandid, seriesid, price, agerange, …).
+
+        A query lists 19 pages at most (2026-10-31, the app does the same): asked for page 20 the
+        search answers page 1 again. That is page_cap, the end of what this query can list."""
         own = self.rotation.every_searches
         if self.rotate is not None and own > 0 and self.searches > 0 and self.searches % own == 0:
             self._rotate(challenge=False)
@@ -334,8 +342,15 @@ class Che168Api:
                 "ssnew": "1",
                 "pid": "0",
                 "cid": "0",
+                "sort": SORT_NEWEST,
+                **(filters or {}),
             },
         )
+        if data.get("totalcount") == 0 and not data.get("carlist"):
+            # an empty slice (no Porsche under 3万): che168 answers pageindex 0, pagesize 0
+            return SearchPage(page, 0, 0, ())
+        if data.get("pageindex") == 1 and page > 1:
+            raise CollectionError("page_cap")
         if data.get("pageindex") != page or data.get("pagesize") != pagesize:
             raise CollectionError("pagination_mismatch")
         total, count, cars = data.get("totalcount"), data.get("pagecount"), data.get("carlist")
@@ -360,6 +375,36 @@ class Che168Api:
         return SearchPage(
             page, count, total, ids, {i: list_facts(c) for i, c in zip(ids, cars, strict=True)}, early
         )
+
+    def brands(self) -> list[str]:
+        """Every make's id (bid) the list knows, for the first cut of a too big list."""
+        result = self._get(BRANDS_URL, {"ssnew": "1"}, decode=decode_reply)
+        groups = result.get("brands")
+        if not isinstance(groups, list):
+            raise CollectionError("brands_schema_changed")
+        ids = [
+            b.get("bid")
+            for g in groups
+            if isinstance(g, dict)
+            for b in g.get("brand") or []
+            if isinstance(b, dict)
+        ]
+        return [str(i) for i in dict.fromkeys(ids) if type(i) is int and i > 0]
+
+    def series(self, brandid: str) -> list[str]:
+        """A make's series ids (sid), for the cut below a make."""
+        result = self._get(SERIES_URL, {"brandid": identifier(brandid), "ssnew": "1"}, decode=decode_reply)
+        groups = result.get("list")
+        if not isinstance(groups, list):
+            raise CollectionError("series_schema_changed")
+        ids = [
+            s.get("sid")
+            for g in groups
+            if isinstance(g, dict)
+            for s in g.get("item") or []
+            if isinstance(s, dict)
+        ]
+        return [str(i) for i in dict.fromkeys(ids) if type(i) is int and i > 0]
 
     def detail(self, infoid: str) -> dict[str, Any]:
         every = self.rotation.every_cards

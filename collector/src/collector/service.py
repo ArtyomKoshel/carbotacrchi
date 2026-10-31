@@ -26,6 +26,7 @@ from collector import storage
 from collector.adapters.che168.api import Che168Api, CurlTransport, RequestBudget, RotationPolicy
 from collector.adapters.che168.job import Che168Run, che168_rules, run_che168
 from collector.adapters.che168.signing import Signer
+from collector.adapters.che168.slices import segment
 from collector.adapters.encar.api import HEADERS, EncarApi
 from collector.config import Settings
 from collector.http import Fetcher, ProxyBudgetError, ProxyPool
@@ -207,8 +208,11 @@ class Service:
         s = self.settings
         max_pages = max(1, s.che168_max_pages)
         max_cars = max(1, s.che168_max_cars)
+        # a full run is a pass over slices of the whole segment; a test run (max_pages) the newest pages
+        slicing = not job.filters.get("max_pages")
+        list_pages = s.che168_max_list_pages if slicing else max_pages
         # each car is a card and its options, each page one more; retries and challenges on top
-        budget = RequestBudget(3 * max_cars + 2 * max_pages + 50 * (1 + s.che168_workers))
+        budget = RequestBudget(3 * max_cars + 2 * list_pages + 50 * (1 + s.che168_workers))
         # planned rotations are bounded by the request limit; a session gives up after 3 challenges
         unbounded = budget.limit
         rules = che168_rules(await load_rules(self.db, s.core_schema))
@@ -258,7 +262,7 @@ class Service:
             reports = [direct_session() for _ in cards] if s.che168_reports_direct else []
             run = Che168Run(
                 job=job, queue=self.queue, sink=sink, api=listers[0], list_apis=listers, card_apis=cards,
-                report_apis=reports,
+                report_apis=reports, slices=slicing, segment=segment(rules, self.clock().year),
                 max_pages=max_pages, max_cars=max_cars, should_stop=self.stop.is_set, clock=self.clock,
                 runlog=runlog, history=MySqlHistoryStore(self.db), rules=rules,
                 card_max_age_s=s.che168_card_max_age_hours * 3600,
