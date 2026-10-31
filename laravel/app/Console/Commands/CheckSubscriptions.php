@@ -42,7 +42,8 @@ class CheckSubscriptions extends Command
     private function checkOne(Subscription $sub): void
     {
         try {
-            $query        = SearchQuery::fromArray($sub->query ?? []);
+            // a subscription saved before other platforms came keeps watching Encar only
+            $query        = SearchQuery::fromArray(['sources' => ['encar'], ...($sub->query ?? [])]);
             $query->limit = 100;
 
             $result   = $this->aggregator->search($query);

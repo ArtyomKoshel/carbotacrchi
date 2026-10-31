@@ -91,6 +91,12 @@ class SearchQuery
     public int $limit = 20;
     public int $offset = 0;
 
+    /** @return list<string> the platforms the app offers (PARSER_SOURCES) */
+    public static function platforms(): array
+    {
+        return array_values(array_filter(array_map('strval', (array) config('auction.sources', ['encar'])))) ?: ['encar'];
+    }
+
     public static function fromArray(array $data): self
     {
         $q = new self();
@@ -159,6 +165,9 @@ class SearchQuery
 
         if (!empty($data['sources']) && is_array($data['sources'])) {
             $q->sources = array_map('strval', $data['sources']);
+        } else {
+            // a search that names no platform (the bot, the AI search) looks at every one the app offers
+            $q->sources = self::platforms();
         }
 
         if ($q->make !== '' || $q->model !== '' || $q->generation !== '' || $q->badge !== '' || $q->trim !== '') {
@@ -376,8 +385,8 @@ class SearchQuery
         if ($this->listedBefore)  $data['listedBefore']  = $this->listedBefore;
         if ($this->firstRegAfter) $data['firstRegAfter'] = $this->firstRegAfter;
         if ($this->firstRegBefore) $data['firstRegBefore'] = $this->firstRegBefore;
-        if ($this->sources !== ['encar', 'kbcha']) {
-            $data['sources'] = $this->sources;
+        if ($this->sources !== []) {
+            $data['sources'] = $this->sources; // a saved search keeps its platforms even when more are added
         }
         if ($this->sort2) {
             $data['sort2'] = $this->sort2;

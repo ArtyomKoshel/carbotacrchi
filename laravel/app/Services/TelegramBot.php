@@ -253,7 +253,19 @@ class TelegramBot
                 $condition[] = "📋 {$ic} " . $this->ruInsurance($ic);
             }
         }
-        if (in_array('has_accident', $cardFields, true)) {
+        if (in_array('has_accident', $cardFields, true) && ($lot['source'] ?? '') === 'che168') {
+            // Che168 has no insurance history: its Chaboshi inspection, named as one
+            $insp = $lot['inspectionSummary'] ?? null;
+            $condition[] = match (true) {
+                ! is_array($insp) => '🔍 Нет осмотра',
+                ($insp['problem'] ?? null) !== null => '⚠️ Осмотр: ' . $insp['problem'],
+                ($insp['notes'] ?? 0) > 0 => '🔍 Осмотр' . (empty($insp['grade']) ? '' : ' ' . htmlspecialchars((string) $insp['grade'])) . " · {$insp['notes']} замеч.",
+                default => '✅ Осмотр' . (empty($insp['grade']) ? '' : ' ' . htmlspecialchars((string) $insp['grade'])) . ' · без замечаний',
+            };
+            if (is_array($insp) && ! empty($insp['water']) && ($insp['problem'] ?? null) === null) {
+                $condition[] = '💧 Следы воды';
+            }
+        } elseif (in_array('has_accident', $cardFields, true)) {
             $hasAccident = $lot['hasAccident'] ?? null;
             if ($hasAccident === true) {
                 $condition[] = '⚠️ Были ДТП';
