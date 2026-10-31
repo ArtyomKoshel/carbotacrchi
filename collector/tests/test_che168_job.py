@@ -23,7 +23,7 @@ from collector.adapters.che168.job import Che168Run, che168_rules, run_che168
 from collector.adapters.che168.mapping import stored_card, to_lot
 from collector.adapters.che168.signing import Signer
 from collector.domain.carlot import RejectAction, SelectionPhase
-from collector.ports import MemoryHistoryStore, MemorySink
+from collector.ports import HistoryState, MemoryHistoryStore, MemorySink
 from collector.selection import Action, Rule, RuleEngine
 from collector.storage import Job
 from tests.test_che168 import detail, reply
@@ -573,3 +573,14 @@ def test_an_unexpected_error_in_a_worker_stops_the_run_instead_of_hanging() -> N
     )  # fmt: skip
     with pytest.raises(KeyError):
         asyncio.run(asyncio.wait_for(run_che168(run), timeout=10))
+
+
+def test_a_card_stored_by_an_older_version_is_fetched_again() -> None:
+    shelf, store = Shelf(pages=1, per_page=2), MemoryHistoryStore()
+    workers_run(shelf, 1, history=store)
+    for (source, lot_id), state in list(store.data.items()):
+        card = {k: v for k, v in state.fields["card"].items() if k != "_v"}  # as stored before versions
+        store.data[(source, lot_id)] = HistoryState(lot_id, state.checked_at, state.condition, {"card": card})
+    shelf.details.clear()
+    workers_run(shelf, 1, history=store)
+    assert len(shelf.details) == 2

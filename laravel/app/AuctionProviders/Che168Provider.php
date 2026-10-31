@@ -3,6 +3,7 @@
 namespace App\AuctionProviders;
 
 use App\Catalog\Che168\Che168Options;
+use App\Catalog\Che168\Che168Specs;
 use App\Dto\LotDTO;
 use App\Support\LotPhotos;
 
@@ -45,6 +46,7 @@ class Che168Provider extends AbstractDbProvider
                 photos:       LotPhotos::urls($raw) ?: array_values(array_filter([$raw['image_url'] ?? null])),
                 options:      $this->options($raw),
                 currency:     $raw['currency'] ?? 'CNY',
+                sourceSpecs:  app(Che168Specs::class)->sections((array) ((self::json($raw['raw_data'] ?? null) ?? [])['che168'] ?? [])) ?: null,
         );
     }
 

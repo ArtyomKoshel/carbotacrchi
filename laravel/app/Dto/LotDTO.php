@@ -48,6 +48,8 @@ readonly class LotDTO
         public ?string $listedAt             = null,
         public array   $photos               = [],   // every photo of the listing, in order
         public string  $currency             = 'KRW', // of price, retailValue, repairCost (lots.currency)
+        // the platform's own specs beyond the columns, as card sections (Che168Specs): [{title, rows: [[label, value]]}]
+        public ?array  $sourceSpecs          = null,
     ) {}
 
     public function toArray(): array
@@ -97,6 +99,7 @@ readonly class LotDTO
             'listedAt'         => $this->listedAt,
             'photos'           => $this->photos,
             'photoCount'       => count($this->photos),
+            'sourceSpecs'      => $this->sourceSpecs,
         ];
     }
 }

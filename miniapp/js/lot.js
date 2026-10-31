@@ -120,6 +120,13 @@ const LotView = (() => {
     return rows.length ? `<section class="sect"><h3 class="sect__title">Автомобиль</h3><div class="card">${kv(rows)}</div></section>` : '';
   }
 
+  /** The platform's own specs beyond the columns (Che168: documents, battery, warranty), as the API names them. */
+  function sourceSpecsBlock(lot) {
+    const sections = Array.isArray(lot.sourceSpecs) ? lot.sourceSpecs : [];
+    return sections.filter(s => s && Array.isArray(s.rows) && s.rows.length).map(s =>
+      `<section class="sect"><h3 class="sect__title">${Fmt.esc(s.title)}</h3><div class="card">${kv(s.rows.map(([k, v]) => [Fmt.esc(k), Fmt.esc(v)]))}</div></section>`).join('');
+  }
+
   function optionsBlock(lot, q) {
     const opts = Array.isArray(lot.options) ? lot.options.filter(o => o && typeof o === 'object') : [];
     if (!opts.length) return '';
@@ -192,6 +199,7 @@ const LotView = (() => {
         ${historyBlock(lot, ctx.inspection, asked)}
         ${(d => d ? `<button class="lot-link lot-link--${d.level || 'plain'}" type="button" data-body><span>${Fmt.esc(d.text)}</span><i>Схема ›</i></button>` : '')(Damage.line(ctx.inspection))}
         ${specsBlock(lot, asked)}
+        ${sourceSpecsBlock(lot)}
         ${optionsBlock(lot, q)}
         <div class="lot__actions${calc ? '' : ' lot__actions--two'}">
           <button class="btn" type="button" data-share>${Fmt.icon.share}Клиенту</button>

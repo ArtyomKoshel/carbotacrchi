@@ -22,7 +22,7 @@ from typing import Any, Protocol, TypeVar
 
 from collector import COLLECTOR_VERSION
 from collector.adapters.che168.api import CollectionError, SearchPage
-from collector.adapters.che168.mapping import model_year, scaled_integer, stored_card, to_lot
+from collector.adapters.che168.mapping import CARD_VERSION, model_year, scaled_integer, stored_card, to_lot
 from collector.domain.carlot import CarLotV1, SelectionPhase
 from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, utc_now
 from collector.runlog import RunLog
@@ -460,6 +460,7 @@ class _Collection:
             for i, s in states.items()
             if isinstance(s.fields.get("card"), dict)
             and "options" in s.fields["card"]  # a card stored without its options is fetched again
+            and s.fields["card"].get("_v") == CARD_VERSION  # so is one stored before newer fields
             and s.condition == self.facts.get(i)
             and s.checked_at.timestamp() >= cutoff
         }
