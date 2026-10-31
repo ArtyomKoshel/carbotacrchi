@@ -18,6 +18,8 @@ from collector.adapters.che168.signing import Signer
 
 SEARCH_URL = "https://api2scsou.che168.com/api/v11/search"
 DETAIL_URL = "https://apiuscdt.che168.com/apic/v2/car/getcarinfo"
+# the card's highlighted options (亮点配置), as the mobile site asks for them: unsigned, _appid 2sc.m
+OPTIONS_URL = "https://apipcmusc.che168.com/v1/car/getusedcaroptiondata"
 
 
 class CollectionError(Exception):
@@ -239,14 +241,21 @@ class Che168Api:
             self.max_request_s = max(self.max_request_s, took)
             self.next_request_at = self.clock() + self.delay
 
-    def _get(self, url: str, params: dict[str, str]) -> dict[str, Any]:
+    def _get(
+        self,
+        url: str,
+        params: dict[str, str],
+        *,
+        signed: bool = True,
+        decode: Callable[[Reply], Any] | None = None,
+    ) -> Any:
         transient_failures = 0
         while True:
             try:
-                reply = self._request(url, self.signer.sign(params))
+                reply = self._request(url, self.signer.sign(params) if signed else params)
                 if reply.status in (500, 502, 503, 504):
                     raise CollectionError("temporary_http_error", f"http_{reply.status}")
-                return decode_reply(reply)
+                return (decode or decode_reply)(reply)
             except CollectionError as exc:
                 self.last_error = exc.kind
                 if exc.kind in ("challenge", "access_blocked") and self.rotate is not None:
@@ -321,13 +330,46 @@ class Che168Api:
         if self.rotate is not None and every > 0 and self.cards > 0 and self.cards % every == 0:
             self._rotate(challenge=False)
         self.cards += 1
-        data = self._get(DETAIL_URL, {"infoid": identifier(infoid)})
+        data: dict[str, Any] = self._get(DETAIL_URL, {"infoid": identifier(infoid)})
         if identifier(data.get("infoid")) != infoid:
             raise CollectionError("detail_id_mismatch")
         return data
 
+    def options(self, infoid: str) -> list[tuple[str, str]]:
+        """The card's highlighted options: (optionid, Chinese name); [] when che168 lists none.
+
+        Not the whole equipment and no paid packages (extra-fields-report-2026-10-30): an option
+        missing here is unknown, not absent."""
+        params = {"_appid": "2sc.m", "infoid": identifier(infoid)}
+        items = self._get(OPTIONS_URL, params, signed=False, decode=decode_list)
+        options = []
+        for item in items:
+            oid = item.get("optionid") if isinstance(item, dict) else None
+            if not (type(oid) is int and oid > 0) and not (isinstance(oid, str) and oid.isdigit()):
+                raise CollectionError("options_schema_changed")
+            name = item.get("optionname")
+            options.append((str(oid), name.strip() if isinstance(name, str) else ""))
+        return options
+
 
 def decode_reply(reply: Reply) -> dict[str, Any]:
+    result = decode_result(reply)
+    if not isinstance(result, dict):
+        raise CollectionError("api_schema_changed")
+    return result
+
+
+def decode_list(reply: Reply) -> list[Any]:
+    """A result that is a list (the options); null reads as none."""
+    result = decode_result(reply)
+    if result is None:
+        return []
+    if not isinstance(result, list):
+        raise CollectionError("api_schema_changed")
+    return result
+
+
+def decode_result(reply: Reply) -> Any:
     if reply.status == 402:
         raise CollectionError("proxy_budget_exhausted")
     if reply.status in (401, 407):
@@ -350,7 +392,4 @@ def decode_reply(reply: Reply) -> dict[str, Any]:
         raise CollectionError("signature_rejected")
     if data.get("returncode") != 0:
         raise CollectionError("api_rejected")
-    result = data.get("result")
-    if not isinstance(result, dict):
-        raise CollectionError("api_schema_changed")
-    return result
+    return data.get("result")

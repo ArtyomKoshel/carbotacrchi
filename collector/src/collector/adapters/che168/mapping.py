@@ -189,11 +189,25 @@ def location(value: Any) -> str | None:
 
 def stored_card(data: dict[str, Any], observed_at: datetime) -> dict[str, Any]:
     """What to_lot reads of a card, for the card store; «今天» / «3天前» become the date they meant."""
-    card = {key: data[key] for key in (*SOURCE_FIELDS, "piclist") if key in data}
+    card = {key: data[key] for key in (*SOURCE_FIELDS, "piclist", "options") if data.get(key) is not None}
     day = listed_at(data.get("publicdate"), observed_at)
     if day is not None:
         card["publicdate"] = day.date().isoformat()
     return card
+
+
+OPTION_PREFIX = "che168:"  # a che168 option code never reads as one of Encar's ("001")
+
+
+def option_pairs(value: Any) -> list[tuple[str, str]] | None:
+    """The card's options as (id, name); None when they were not fetched (unknown, not none)."""
+    if not isinstance(value, list | tuple):
+        return None
+    pairs = []
+    for item in value:
+        if isinstance(item, list | tuple) and len(item) == 2 and str(item[0]).isdigit():
+            pairs.append((str(item[0]), str(item[1] or "")))
+    return pairs
 
 
 def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
@@ -203,6 +217,7 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
     if not isinstance(photos, list) or any(not isinstance(p, str) for p in photos):
         raise CollectionError("photo_schema_changed")
     raw = {key: data[key] for key in SOURCE_FIELDS if isinstance(data.get(key), (str, int, float))}
+    options = option_pairs(data.get("options"))
     day = listed_at(data.get("publicdate"), observed_at)
     if day is not None:  # «今天» would read as a change on every run; the day it meant does not
         raw["publicdate"] = day.date().isoformat()
@@ -235,6 +250,7 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
                 listed_at=listed_at(data.get("publicdate"), observed_at),
                 photos=urls,
                 image_url=urls[0] if urls else None,
+                options=tuple(f"{OPTION_PREFIX}{oid}" for oid, _ in options or ()),
             ),
             extra={
                 "che168": raw,
@@ -243,6 +259,8 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
                 "source_price_unit": "wan_CNY",
                 "source_mileage_unit": "wan_km",
                 "selection_evaluated": False,
+                # the options' Chinese names: the core names a code its catalog does not know yet
+                **({"che168_options": dict(options)} if options is not None else {}),
             },
         )
     except ValidationError:

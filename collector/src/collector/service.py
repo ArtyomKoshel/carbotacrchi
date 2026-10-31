@@ -205,8 +205,8 @@ class Service:
         s = self.settings
         max_pages = max(1, s.che168_max_pages)
         max_cars = max(1, s.che168_max_cars)
-        # each card is one request, each page one more; retries and challenges on top
-        budget = RequestBudget(2 * (max_cars + max_pages) + 50 * (1 + s.che168_workers))
+        # each car is a card and its options, each page one more; retries and challenges on top
+        budget = RequestBudget(3 * max_cars + 2 * max_pages + 50 * (1 + s.che168_workers))
         # planned rotations are bounded by the request limit; a session gives up after 3 challenges
         unbounded = budget.limit
         rules = che168_rules(await load_rules(self.db, s.core_schema))

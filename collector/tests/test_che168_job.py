@@ -11,6 +11,7 @@ import pytest
 
 from collector.adapters.che168.api import (
     DETAIL_URL,
+    OPTIONS_URL,
     Che168Api,
     CollectionError,
     Reply,
@@ -28,6 +29,10 @@ from collector.storage import Job
 from tests.test_che168 import detail, reply
 
 NOW = datetime(2026, 10, 30, tzinfo=UTC)
+OPTIONS = [
+    {"optionid": 101, "optionname": "并线辅助", "optionpics": ""},
+    {"optionid": 119, "optionname": "方向盘加热"},
+]
 
 
 class Site:
@@ -38,6 +43,8 @@ class Site:
         self.refused: set[str] = set()
 
     def request(self, url: str, params: dict[str, str]) -> Reply:
+        if url == OPTIONS_URL:
+            return reply(OPTIONS)
         if url == DETAIL_URL:
             self.details.append(params["infoid"])
             if params["infoid"] in self.refused:
@@ -160,6 +167,8 @@ class Shelf:
 
     def session(self, name: str) -> Che168Api:
         def request(url: str, params: dict[str, str]) -> Reply:
+            if url == OPTIONS_URL:
+                return reply(OPTIONS)
             if url == DETAIL_URL:
                 with self.lock:
                     self.details.append((name, params["infoid"]))
@@ -222,7 +231,9 @@ def test_card_workers_share_the_cards_and_fetch_each_once() -> None:
     assert queue.finished is not None
     result = queue.finished[1]
     assert (result["stop_reason"], result["total"], result["workers"]) == ("api_end_reached", 15, 3)
-    assert result["requests"] == 3 + 15  # three list pages, a card each, over every session
+    assert (
+        result["requests"] == 3 + 15 * 2
+    )  # three list pages, a card and its options each, over every session
     assert result["target"] == 15  # limits allow 100 cars, the site has 15
     assert queue.final_progress["pct"] == 100.0
     assert result["proxy_bytes"] > 0
@@ -492,3 +503,73 @@ def test_a_limit_in_won_without_a_platform_does_not_judge_a_price_in_yuan() -> N
     )
     rules = che168_rules(RuleEngine([won, yuan, year]))
     assert sorted(r.id for r in rules.applicable("che168", SelectionPhase.PRE)) == [6, 10]
+
+
+def test_a_car_carries_its_options_as_che168_codes_with_their_names() -> None:
+    _, sink, _, _ = workers_run(Shelf(pages=1, per_page=2), 1)
+    lot = sink.lots[0]
+    assert lot.listing.options == ("che168:101", "che168:119")  # never read as Encar's "101"
+    assert lot.extra["che168_options"] == {"101": "并线辅助", "119": "方向盘加热"}
+
+
+def test_failed_options_keep_the_car_and_are_fetched_next_time() -> None:
+    shelf, store = Shelf(pages=1, per_page=2), MemoryHistoryStore()
+    lists = [shelf.session("list")]
+    card = shelf.session("w0")
+    inner = card.request
+
+    def no_options(url: str, params: dict[str, str]) -> Reply:
+        if url == OPTIONS_URL:
+            return Reply(429, b"")
+        return inner(url, params)
+
+    card.request = no_options
+    sink, queue = MemorySink(), Queue()
+    run = Che168Run(
+        job=job(), queue=queue, sink=sink, api=lists[0], card_apis=[card],  # type: ignore[arg-type]
+        max_pages=10, max_cars=100, clock=lambda: NOW, history=store,
+    )  # fmt: skip
+    assert asyncio.run(run_che168(run)) == "done"
+    assert len(sink.lots) == 2
+    assert all(lot.listing.options == () and "che168_options" not in lot.extra for lot in sink.lots)
+    assert queue.finished is not None
+    assert queue.finished[1]["options_failed"] == 2
+
+    shelf.details.clear()
+    _, sink2, _, _ = workers_run(shelf, 1, history=store)
+    assert len(shelf.details) == 2  # stored without options: fetched again
+    assert all(lot.listing.options for lot in sink2.lots)
+
+
+def test_a_stored_car_keeps_its_options() -> None:
+    shelf, store = Shelf(pages=1, per_page=2), MemoryHistoryStore()
+    workers_run(shelf, 1, history=store)
+    shelf.details.clear()
+    _, sink, _, _ = workers_run(shelf, 1, history=store)
+    assert shelf.details == []
+    assert all(lot.listing.options == ("che168:101", "che168:119") for lot in sink.lots)
+
+
+def test_options_none_or_a_changed_schema() -> None:
+    api = Che168Api(lambda u, p: reply(None), Signer.bundled(), delay=0)
+    assert api.options("101") == []
+    api = Che168Api(lambda u, p: reply([{"optionname": "x"}]), Signer.bundled(), delay=0)
+    with pytest.raises(CollectionError, match="options_schema_changed"):
+        api.options("101")
+
+
+def test_an_unexpected_error_in_a_worker_stops_the_run_instead_of_hanging() -> None:
+    shelf = Shelf(pages=3, per_page=5)
+    card = shelf.session("w0")
+
+    def broken(url: str, params: dict[str, str]) -> Reply:
+        raise KeyError("bug")
+
+    card.request = broken
+    run = Che168Run(
+        job=job(), queue=Queue(), sink=MemorySink(), api=shelf.session("list"),  # type: ignore[arg-type]
+        card_apis=[card],
+        max_pages=10, max_cars=100, clock=lambda: NOW,
+    )  # fmt: skip
+    with pytest.raises(KeyError):
+        asyncio.run(asyncio.wait_for(run_che168(run), timeout=10))

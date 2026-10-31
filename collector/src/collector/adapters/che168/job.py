@@ -107,6 +107,8 @@ class Api(Protocol):
 
     def detail(self, infoid: str) -> dict[str, Any]: ...
 
+    def options(self, infoid: str) -> list[tuple[str, str]]: ...
+
 
 @dataclass
 class Che168State:
@@ -120,6 +122,7 @@ class Che168State:
     api_total: int = 0
     stored: int = 0  # of `written`: taken from the card store, no request
     filtered: int = 0  # rejected by the selection rules (of them, the early ones are never written)
+    options_failed: int = 0  # cards written without options: the next run fetches them again
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -230,6 +233,7 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "rejected": state.skipped,
         "stored": state.stored,
         "filtered": state.filtered,
+        "options_failed": state.options_failed,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -274,6 +278,7 @@ class _Collection:
         self.failures = 0
         self.error: CollectionError | None = None
         self.car_limit = False
+        self.crash: BaseException | None = None  # a worker's unexpected error, raised after the others stop
         self.flushing = asyncio.Lock()
         self.sessions: dict[int, asyncio.Lock] = {}  # without card_apis the list and the cards share `api`
         self.listers = run.listers
@@ -395,6 +400,14 @@ class _Collection:
         await self._log(f"{listed} · {self._totals()}")
 
     async def _card_worker(self, api: Api) -> None:
+        """A worker that dies of an unexpected error halts the run: the list would wait for it forever."""
+        try:
+            await self._card_work(api)
+        except BaseException as e:
+            self.crash = self.crash or e
+            raise
+
+    async def _card_work(self, api: Api) -> None:
         while True:
             infoid = await self.ids.get()
             if infoid is None or self._halted():
@@ -408,6 +421,7 @@ class _Collection:
             self.claimed += 1
             try:
                 data = await self._call(api, api.detail, infoid)
+                data = {**data, "options": await self._options(api, infoid)}
                 lot = self._judged(
                     to_lot(data, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
                 )
@@ -445,6 +459,7 @@ class _Collection:
             i: s.fields["card"]
             for i, s in states.items()
             if isinstance(s.fields.get("card"), dict)
+            and "options" in s.fields["card"]  # a card stored without its options is fetched again
             and s.condition == self.facts.get(i)
             and s.checked_at.timestamp() >= cutoff
         }
@@ -466,6 +481,17 @@ class _Collection:
         self.state.written += 1
         self.state.stored += 1
         return True
+
+    async def _options(self, api: Api, infoid: str) -> list[tuple[str, str]] | None:
+        """The card's options, a second request; None when it failed: the car is written without them."""
+        try:
+            return await self._call(api, api.options, infoid)
+        except CollectionError as e:
+            self.state.options_failed += 1
+            await self._log(
+                f"car {infoid}: options not fetched ({e.kind}), the next run fetches them", "warning"
+            )
+            return None
 
     def _rejected_early(self, car: dict[str, Any] | None) -> bool:
         """The list's year and mileage alone reject the car (Encar's list stage): no card to fetch."""
@@ -496,7 +522,7 @@ class _Collection:
         return lot.model_copy(update={"selection": verdict.selection(phase), "extra": extra})
 
     def _halted(self) -> bool:
-        return self.error is not None or self.run_.should_stop()
+        return self.error is not None or self.crash is not None or self.run_.should_stop()
 
     async def _call(self, api: Api, fn: Callable[..., T], *args: Any) -> T:
         """A synchronous curl_cffi request in this run's own threads; one request at a time per session."""
@@ -573,6 +599,7 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "rejected": state.skipped,
         "stored": state.stored,
         "filtered": state.filtered,
+        "options_failed": state.options_failed,
         # never a full run: lots:lifecycle must not delist che168 lots by it
         "full_run": False,
         "coverage_pct": 0.0,
