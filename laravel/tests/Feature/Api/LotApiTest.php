@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Api;
 
+use App\AuctionProviders\Che168Provider;
 use App\Catalog\CatalogLinker;
 use App\Models\CalculatorSetting;
+use App\Models\EncarOptionCatalog;
 use App\Models\LotInspection;
 use App\Models\User;
 use App\Search\Specifications\ConditionSpec;
+use App\Services\OptionEnricher;
 use App\Services\SearchQuery;
 use App\Services\TelegramBot;
 use App\Support\ClientLotCard;
@@ -57,6 +60,21 @@ final class LotApiTest extends TestCase
         app(CatalogLinker::class)->link(['41536978']);
 
         return '41536978';
+    }
+
+    public function test_che168_options_are_named_by_its_dictionary_and_pass_the_encar_enricher(): void
+    {
+        EncarOptionCatalog::create(['code' => '001', 'name_ru' => 'Люк', 'sort_order' => 1]);
+        EncarOptionCatalog::flushCache();
+        $lot = (new Che168Provider())->normalize([
+            'id' => 'che168:60213627', 'make' => '日产', 'model' => '逍客', 'price' => 126_800, 'mileage' => 8_000,
+            'options' => json_encode(['che168:119', 'che168:999']),
+            'raw_data' => json_encode(['che168_options' => ['119' => '方向盘加热', '999' => '座椅通风']]),
+        ])->toArray();
+
+        $this->assertSame(['Подогрев руля', '座椅通风'], array_column($lot['options'], 'name_ru'));
+        $this->assertSame($lot['options'], app(OptionEnricher::class)->enrichLots([$lot])[0]['options']);
+        $this->assertNull((new Che168Provider())->normalize(['id' => 'che168:1', 'options' => null])->toArray()['options']);
     }
 
     public function test_a_mini_app_request_marks_the_picker_as_seen(): void

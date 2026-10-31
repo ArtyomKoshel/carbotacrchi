@@ -1,0 +1,28 @@
+{
+  "_doc": "Che168 highlighted options (亮点配置, getusedcaroptiondata): optionid → names and the mini app's group and icon. Lots carry them as «che168:<optionid>»; an id missing here shows Che168's own Chinese name (lots.raw_data.che168_options). The list is what che168 highlights, not the whole equipment: an option missing from it is unknown, not absent. icon: a Material Symbols glyph already in the mini app's font link (miniapp/index.html).",
+  "options": {
+    "101": {"zh": "并线辅助", "ru": "Контроль слепых зон при перестроении", "en": "Lane change assist", "category": "safety", "icon": "visibility"},
+    "102": {"zh": "车道保持辅助系统", "ru": "Удержание в полосе", "en": "Lane keeping assist", "category": "safety", "icon": "add_road"},
+    "103": {"zh": "车道偏离预警系统", "ru": "Предупреждение о выходе из полосы", "en": "Lane departure warning", "category": "safety", "icon": "add_road"},
+    "104": {"zh": "主动刹车/主动安全系统", "ru": "Автоматическое экстренное торможение", "en": "Automatic emergency braking", "category": "safety", "icon": "security"},
+    "105": {"zh": "ISOFIX儿童座椅接口", "ru": "Крепления ISOFIX", "en": "ISOFIX child seat anchors", "category": "safety", "icon": "event_seat"},
+    "108": {"zh": "自动驻车", "ru": "Автоудержание (Auto Hold)", "en": "Auto hold", "category": "convenience", "icon": "local_parking"},
+    "112": {"zh": "电动后备厢", "ru": "Электропривод багажника", "en": "Power tailgate", "category": "convenience", "icon": "luggage"},
+    "113": {"zh": "感应后备厢", "ru": "Бесконтактное открытие багажника", "en": "Hands-free tailgate", "category": "convenience", "icon": "luggage"},
+    "114": {"zh": "无钥匙启动系统", "ru": "Бесключевой запуск", "en": "Keyless start", "category": "convenience", "icon": "vpn_key"},
+    "117": {"zh": "主动闭合式进气格栅", "ru": "Активные жалюзи радиатора", "en": "Active grille shutters", "category": "exterior", "icon": "blinds"},
+    "118": {"zh": "方向盘换挡", "ru": "Подрулевые лепестки", "en": "Paddle shifters", "category": "interior", "icon": "swap_vert"},
+    "119": {"zh": "方向盘加热", "ru": "Подогрев руля", "en": "Heated steering wheel", "category": "interior", "icon": "local_fire_department"},
+    "120": {"zh": "全液晶仪表盘", "ru": "Цифровая приборная панель", "en": "Digital instrument cluster", "category": "interior", "icon": "speed"},
+    "122": {"zh": "HUD抬头数字显示", "ru": "Проекционный дисплей (HUD)", "en": "Head-up display", "category": "interior", "icon": "visibility"},
+    "123": {"zh": "内置行车记录仪", "ru": "Встроенный видеорегистратор", "en": "Built-in dashcam", "category": "convenience", "icon": "camera_rear"},
+    "124": {"zh": "蓝牙/车载电话", "ru": "Bluetooth и громкая связь", "en": "Bluetooth / car phone", "category": "convenience", "icon": "bluetooth"},
+    "126": {"zh": "车联网", "ru": "Онлайн-сервисы автомобиля", "en": "Connected car services", "category": "convenience", "icon": "wifi_tethering"},
+    "128": {"zh": "OTA升级", "ru": "Обновления по воздуху (OTA)", "en": "Over-the-air updates", "category": "convenience", "icon": "wifi_tethering"},
+    "131": {"zh": "自适应远近光", "ru": "Адаптивный дальний свет", "en": "Adaptive high beam", "category": "exterior", "icon": "highlight"},
+    "135": {"zh": "车内PM2.5过滤装置", "ru": "Фильтр PM2.5 в салоне", "en": "Cabin PM2.5 filter", "category": "interior", "icon": "air"},
+    "136": {"zh": "车载空气净化器", "ru": "Очиститель воздуха в салоне", "en": "Cabin air purifier", "category": "interior", "icon": "air"},
+    "137": {"zh": "后排独立空调", "ru": "Отдельный климат для заднего ряда", "en": "Rear climate control", "category": "interior", "icon": "thermostat"},
+    "138": {"zh": "后排出风口", "ru": "Дефлекторы для заднего ряда", "en": "Rear air vents", "category": "interior", "icon": "air"}
+  }
+}

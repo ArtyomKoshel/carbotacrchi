@@ -22,7 +22,8 @@ const LotView = (() => {
     '085': 'wifi_tethering', '086': 'visibility_off', '087': '360', '088': 'add_road',
   };
   const GROUP_ICONS = { exterior: 'directions_car', safety: 'security', convenience: 'tune', interior: 'event_seat' };
-  const optionIcon = o => OPTION_ICONS[o.code] ?? GROUP_ICONS[o.category] ?? 'check';
+  // a provider may name the glyph itself (Che168Provider: resources/catalog/che168/options.json)
+  const optionIcon = o => o.icon ?? OPTION_ICONS[o.code] ?? GROUP_ICONS[o.category] ?? 'check';
 
   function gallery(lot) {
     const photos = Fmt.photos(lot);
@@ -135,8 +136,11 @@ const LotView = (() => {
       groups.get(g).push(o);
     }
     const order = [...Object.keys(OPTION_GROUPS), 'other'].filter(g => groups.has(g));
-    return `<section class="sect"><h3 class="sect__title"><span>Опции</span><span class="num">${opts.length}</span></h3>
+    // Che168 lists the options it highlights, not the whole equipment: one missing is unknown, not absent
+    const che = lot.source === 'che168';
+    return `<section class="sect"><h3 class="sect__title"><span>${che ? 'Основные опции' : 'Опции'}</span><span class="num">${opts.length}</span></h3>
       <div class="card opts">
+        ${che ? '<p class="opts__note">По данным Che168 — это не вся комплектация машины.</p>' : ''}
         <div class="opts__list">${top.map(tile).join('')}</div>
         ${rest.length ? `<details class="opts__more"><summary>Ещё ${rest.length} ${Fmt.plural(rest.length, 'опция', 'опции', 'опций')}</summary>
           ${order.map(g => `<div class="opts__group"><h4>${OPTION_GROUPS[g] ?? 'Прочее'}</h4>

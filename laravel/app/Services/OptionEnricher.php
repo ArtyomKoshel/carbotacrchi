@@ -30,14 +30,17 @@ class OptionEnricher
      *   ["code"=>"055", "name_ru"=>null,         "name_en"=>null, "icon_url"=>null],  ← неизвестный код
      * ]
      *
-     * @param  string[] $codes
+     * @param  array<string|array<string, mixed>> $codes Encar codes; an option a provider already named passes as it is
      * @return array[]
      */
     public function enrichCodes(array $codes): array
     {
         $catalog = $this->catalog();
 
-        return array_values(array_map(function (string $code) use ($catalog) {
+        return array_values(array_map(function (string|array $code) use ($catalog) {
+            if (is_array($code)) {
+                return $code; // already named by its provider (Che168Provider)
+            }
             $opt = $catalog->get($code);
 
             return [
