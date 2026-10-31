@@ -44,6 +44,13 @@ _TRANSPORT_CAUSES = (
 )
 
 
+# A proxy exit that does not answer: Che168 answers in 0.4-3 s (run 30: 3.3 s at most), a request
+# still open after TIMEOUT_S hangs on that exit. The retry goes through a fresh session, as
+# Encar's fetcher does (COLLECTOR_HTTP_TIMEOUT), instead of waiting on the same exit again.
+TIMEOUT_S = 10.0
+STUCK_EXIT_CAUSES = frozenset({"timeout", "read_timeout", "connect_timeout", "proxy_error"})
+
+
 def transport_cause(exc: BaseException) -> str:
     names = {cls.__name__ for cls in type(exc).__mro__}
     return next((cause for name, cause in _TRANSPORT_CAUSES if name in names), "network_error")
@@ -80,8 +87,9 @@ class Reply:
 
 
 class CurlTransport:
-    def __init__(self, session: str) -> None:
+    def __init__(self, session: str, timeout: float = TIMEOUT_S) -> None:
         self.session = self._session(session)
+        self.timeout = timeout
 
     @staticmethod
     def _session(session: str) -> Any:
@@ -107,7 +115,7 @@ class CurlTransport:
 
     def request(self, url: str, params: dict[str, str]) -> Reply:
         try:
-            response = self.session.get(url, params=params, timeout=30, allow_redirects=False)
+            response = self.session.get(url, params=params, timeout=self.timeout, allow_redirects=False)
         except Exception as exc:
             raise CollectionError("network_error", transport_cause(exc)) from None
         return Reply(response.status_code, response.content)
@@ -237,6 +245,8 @@ class Che168Api:
                 ):
                     transient_failures += 1
                     self.retries_used += 1
+                    if exc.cause in STUCK_EXIT_CAUSES and self.rotate is not None:
+                        self._rotate(challenge=False)  # not the same stuck exit again
                     continue
                 raise
 

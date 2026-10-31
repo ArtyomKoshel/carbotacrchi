@@ -285,3 +285,24 @@ def test_a_card_session_rotates_every_n_cards() -> None:
         api.detail(str(101 + i))
     assert rotations == [2, 4]  # before the 3rd and the 5th card
     assert api.rotations == 2
+
+
+def test_a_stuck_proxy_exit_is_retried_on_a_fresh_session() -> None:
+    class ReadTimeout(Exception):  # noqa: N818 - named like curl_cffi's
+        pass
+
+    answers: Iterator[Exception | Reply] = iter([ReadTimeout(), Reply(502, b""), reply(detail("101"))])
+    sessions: list[int] = []
+
+    def flaky(url: str, params: dict[str, str]) -> Reply:
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise CollectionError("network_error", transport_cause(answer))
+        return answer
+
+    api = Che168Api(flaky, Signer.bundled(), delay=0, retries=2, rotate=lambda: sessions.append(1))
+    api.rotation = RotationPolicy(every_pages=0, max_rotations=10)
+    api.detail("101")
+    assert len(sessions) == 1  # the timeout moved to a new exit; the 502 retried on the same one
+    assert api.rotations == 1
+    assert api.challenge_rotations == 0

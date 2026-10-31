@@ -218,6 +218,7 @@ class Service:
                 transport.request,
                 Signer.bundled(),
                 delay=s.che168_delay,
+                retries=2,  # a stuck exit is retried on a fresh session, twice at most
                 max_seconds=s.che168_max_hours * 3600,
                 rotate=transport.rotate,
                 rotation=rotation,
