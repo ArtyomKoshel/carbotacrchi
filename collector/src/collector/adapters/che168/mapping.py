@@ -275,7 +275,9 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
                 options=tuple(f"{OPTION_PREFIX}{oid}" for oid, _ in options or ()),
             ),
             # the Chaboshi inspection the card links, when it was fetched
-            inspection=inspection(data["report"]) if isinstance(data.get("report"), dict) else None,
+            inspection=inspection(report)
+            if isinstance(report := data.get("report"), dict) and "kind" in report
+            else None,
             extra={
                 "che168": raw,
                 "collector_method": "api",

@@ -128,6 +128,7 @@ class Che168State:
     options_failed: int = 0  # cards written without options: the next run fetches them again
     reports: int = 0  # Chaboshi reports fetched with their cards
     reports_failed: int = 0  # linked but not fetched: the car is written without it, the next run retries
+    reports_unavailable: int = 0  # Chaboshi refused the link che168 gave: kept as such with the card
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -241,6 +242,7 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "options_failed": state.options_failed,
         "reports": state.reports,
         "reports_failed": state.reports_failed,
+        "reports_unavailable": state.reports_unavailable,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -511,6 +513,11 @@ class _Collection:
         try:
             kind, info = await self._call(api, api.chaboshi, link)
         except CollectionError as e:
+            if e.kind == "report_link_rejected":
+                # kept with the card: the dead link is not tried again until the card is fetched again
+                self.state.reports_unavailable += 1
+                await self._log(f"car {infoid}: report link refused by Chaboshi ({e.cause})")
+                return {"unavailable": e.cause or e.kind}
             self.state.reports_failed += 1
             await self._log(
                 f"car {infoid}: report not fetched ({e.kind}), the next run fetches it", "warning"
@@ -628,6 +635,7 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "options_failed": state.options_failed,
         "reports": state.reports,
         "reports_failed": state.reports_failed,
+        "reports_unavailable": state.reports_unavailable,
         # never a full run: lots:lifecycle must not delist che168 lots by it
         "full_run": False,
         "coverage_pct": 0.0,

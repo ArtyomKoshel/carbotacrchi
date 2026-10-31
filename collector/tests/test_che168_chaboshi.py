@@ -244,3 +244,19 @@ def test_the_core_reads_the_report_as_the_collector_writes_it(kind: str) -> None
     shared = Path(__file__).parents[2] / "contracts" / "fixtures" / f"chaboshi_{kind}.json"
     written = chaboshi_report(kind, fixture(kind)["data"]["reportInfo"])
     assert json.loads(shared.read_text(encoding="utf-8")) == written
+
+
+def test_a_link_chaboshi_refuses_is_kept_as_unavailable_and_not_tried_again() -> None:
+    site, store = ReportSite(), MemoryHistoryStore()
+    refusal = json.dumps({"Code": "1001", "Message": "签名错误"}).encode()
+    site.chaboshi.get = lambda url, params: Reply(200, refusal)  # type: ignore[method-assign]
+    sink, queue = report_run(site, store)
+    assert len(sink.lots) == 3
+    assert all(lot.inspection is None for lot in sink.lots)
+    assert queue.finished is not None
+    result = queue.finished[1]
+    assert (result["reports"], result["reports_failed"], result["reports_unavailable"]) == (0, 0, 3)
+
+    site.details.clear()
+    report_run(site, store)
+    assert site.details == []  # the stored card says the link was refused: nothing fetched again

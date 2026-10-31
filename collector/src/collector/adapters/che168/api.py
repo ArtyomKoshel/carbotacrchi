@@ -435,7 +435,17 @@ def init_params(reply: Reply) -> dict[str, str]:
     """window.__INIT_PARAMS__ of the report page: the order and its signature, as the page sends them."""
     if reply.status != 200:
         raise CollectionError("report_unavailable", f"http_{reply.status}")
-    match = _INIT_PARAMS.search(reply.body.decode("utf-8", "replace"))
+    text = reply.body.decode("utf-8", "replace")
+    if text.lstrip().startswith("{"):
+        # Chaboshi refuses the link che168 gave ({"Code":"1001","Message":"签名错误"}, run 37):
+        # no report behind it until che168 gives another
+        try:
+            refusal = json.loads(text)
+        except ValueError:
+            refusal = None
+        if isinstance(refusal, dict):
+            raise CollectionError("report_link_rejected", f"code_{refusal.get('Code', refusal.get('code'))}")
+    match = _INIT_PARAMS.search(text)
     params = dict(_INIT_PARAM.findall(match.group(1))) if match else {}
     if not params.get("orderNo") and not params.get("orderno"):
         raise CollectionError("report_schema_changed")
