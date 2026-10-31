@@ -91,7 +91,21 @@ const Fmt = (() => {
     const flags = [];
     let level = 'none';
     const raise = l => { const order = { none: 0, ok: 1, warn: 2, bad: 3 }; if (order[l] > order[level]) level = l; };
-    if (lot.hasAccident === true) { flags.push({ text: 'ДТП', cls: 'bad' }); raise('bad'); }
+    // Che168 has no insurance history: its label is the Chaboshi inspection (grade, findings), named as one
+    const insp = lot.source === 'che168' ? lot.inspectionSummary : undefined;
+    if (lot.source === 'che168') {
+      if (!insp) flags.push({ text: 'Нет осмотра', cls: '' });
+      else if (insp.problem) { flags.push({ text: `Осмотр: ${insp.problem}`, cls: 'bad' }); raise('bad'); }
+      else {
+        const grade = insp.grade ? ` ${insp.grade}` : '';
+        flags.push(insp.notes
+          ? { text: `Осмотр${grade} · ${insp.notes} замеч.`, cls: 'warn' }
+          : { text: `Осмотр${grade} · без замечаний`, cls: 'ok' });
+        raise(insp.notes ? 'warn' : 'ok');
+      }
+      if (insp?.water && !insp.problem) { flags.push({ text: 'Следы воды', cls: 'warn' }); raise('warn'); }
+    }
+    else if (lot.hasAccident === true) { flags.push({ text: 'ДТП', cls: 'bad' }); raise('bad'); }
     else if (lot.hasAccident === false) { flags.push({ text: 'Без ДТП', cls: 'ok' }); raise('ok'); }
     else flags.push({ text: 'ДТП: нет данных', cls: '' }); // no insurance record yet (or the seller hid it)
     if (lot.floodHistory) { flags.push({ text: 'Затопление', cls: 'bad' }); raise('bad'); }
@@ -107,7 +121,9 @@ const Fmt = (() => {
     }
     if (lot.lienStatus && lot.lienStatus !== 'clean') { flags.push({ text: 'Залог', cls: 'warn' }); raise('warn'); }
     if (lot.seizureStatus && lot.seizureStatus !== 'clean') { flags.push({ text: 'Арест', cls: 'bad' }); raise('bad'); }
-    const short = lot.hasAccident === true ? 'ДТП'
+    const short = lot.source === 'che168' ? (!insp ? 'нет осмотра' : insp.problem ? `осмотр: ${insp.problem}`
+        : insp.notes ? `${insp.notes} замеч.` : 'осмотр чистый')
+      : lot.hasAccident === true ? 'ДТП'
       : lot.floodHistory ? 'затопление'
       : lot.totalLossHistory ? 'тотал'
       : lot.insuranceCount ? `${lot.insuranceCount} ${plural(lot.insuranceCount, 'страховой', 'страховых', 'страховых')}`

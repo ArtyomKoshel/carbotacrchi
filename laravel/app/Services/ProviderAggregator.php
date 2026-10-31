@@ -13,6 +13,7 @@ use App\Search\Specifications\OptionsSpec;
 use App\Search\Specifications\PriceRangeSpec;
 use App\Search\Specifications\TaxonomySpec;
 use App\Search\Specifications\YearRangeSpec;
+use App\Catalog\Che168\ChaboshiReport;
 use App\Support\Currency;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -93,8 +94,12 @@ class ProviderAggregator
             ->get();
 
         $lots = [];
+        // a Che168 car's Chaboshi report in short, for the list's history label: one query per page
+        $reports = app(ChaboshiReport::class)->summaries(
+            $rows->where('source', 'che168')->pluck('id')->map(fn ($id) => (string) $id)->values()->all());
         foreach ($rows as $row) {
             $raw = (array) $row;
+            $raw['inspection_summary'] = $reports[(string) $raw['id']] ?? null;
             $source = (string) ($raw['source'] ?? '');
             $provider = $providersByKey[$source] ?? null;
             if ($provider === null) {

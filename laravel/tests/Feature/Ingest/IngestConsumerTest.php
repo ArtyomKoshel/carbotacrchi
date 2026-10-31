@@ -315,6 +315,10 @@ final class IngestConsumerTest extends TestCase
             ->invoke(app(\App\Http\Controllers\Api\LotController::class), 'che168:60321227');
         $this->assertSame('нет, но есть следы воды', $card['chaboshi']['verdicts'][1]['text']);
         $this->assertSame('93,6 % · данные от 27.10.2026', $card['chaboshi']['battery'][0][1]);
+
+        // the list's label: the report in short, loaded with the page of results
+        $found = app(\App\Services\ProviderAggregator::class)->search(\App\Services\SearchQuery::fromArray(['sources' => ['che168']]))->lots[0]->toArray();
+        $this->assertSame(['grade' => 'S', 'problem' => null, 'notes' => 13, 'water' => true], $found['inspectionSummary']);
     }
 
     public function test_che168_lot_is_stored_in_yuan_placed_in_the_catalog_and_found_in_yuan_only(): void

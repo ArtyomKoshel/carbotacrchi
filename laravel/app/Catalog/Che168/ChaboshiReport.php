@@ -2,6 +2,8 @@
 
 namespace App\Catalog\Che168;
 
+use Illuminate\Support\Facades\DB;
+
 /**
  * A Chaboshi (查博士) inspection report of a Che168 lot (lot_inspections.details.chaboshi, written by
  * the collector) as the lot card shows it, in Russian by resources/catalog/che168/chaboshi.json.
@@ -52,6 +54,55 @@ class ChaboshiReport
             'systems' => array_values(array_filter(array_map(fn (array $s) => $this->system($s), $systems))),
             'battery' => is_array($report['battery'] ?? null) ? $this->battery($report['battery']) : [],
         ];
+    }
+
+    /**
+     * What the list shows of a report: the grade, the worst verdict, how many findings, water traces.
+     *
+     * @param  array<string, mixed>  $report  details.chaboshi
+     * @return array{grade: ?string, problem: ?string, notes: int, water: bool}
+     */
+    public function summary(array $report): array
+    {
+        $systems = array_values(array_filter((array) ($report['systems'] ?? []), 'is_array'));
+        $notes = array_sum(array_map(fn (array $s) => count((array) ($s['findings'] ?? [])), $systems));
+        $flood = collect($systems)->firstWhere('name', self::FLOOD);
+
+        return [
+            'grade' => $report['grade'] ?? null,
+            'problem' => match (true) {
+                ($report['major_accident'] ?? null) === true => 'ДТП',
+                ($report['flood'] ?? null) === true => 'затопление',
+                ($report['fire'] ?? null) === true => 'пожар',
+                default => null,
+            },
+            'notes' => $notes,
+            'water' => $flood !== null && collect($flood['findings'] ?? [])->contains(
+                fn ($f) => collect($f['notes'] ?? [])->contains(fn ($n) => in_array($n[0] ?? null, self::WATER, true))),
+        ];
+    }
+
+    /**
+     * The summaries of these lots' Chaboshi reports, by lot id (one query for a page of results);
+     * a lot without a report is absent.
+     *
+     * @param  list<string>  $lotIds
+     * @return array<string, array{grade: ?string, problem: ?string, notes: int, water: bool}>
+     */
+    public function summaries(array $lotIds): array
+    {
+        if ($lotIds === []) {
+            return [];
+        }
+        $out = [];
+        foreach (DB::table('lot_inspections')->whereIn('lot_id', $lotIds)->get(['lot_id', 'details']) as $row) {
+            $report = (json_decode((string) $row->details, true) ?? [])['chaboshi'] ?? null;
+            if (is_array($report) && isset($report['kind'])) {
+                $out[(string) $row->lot_id] = $this->summary($report);
+            }
+        }
+
+        return $out;
     }
 
     /** @return array{label: string, text: string, level: ?string} */

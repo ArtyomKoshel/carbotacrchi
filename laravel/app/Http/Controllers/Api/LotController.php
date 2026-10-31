@@ -115,7 +115,9 @@ class LotController extends Controller
         if ($row === null || $provider === null) {
             return null;
         }
-        $lot = $provider->normalize((array) $row)->toArray();
+        $raw = (array) $row;
+        $raw['inspection_summary'] = app(ChaboshiReport::class)->summaries([$lotId])[$lotId] ?? null;
+        $lot = $provider->normalize($raw)->toArray();
         $lot['isActive'] = (bool) $row->is_active;
         $lot['catalog'] = app(CatalogPlaces::class)->of([$lotId])[$lotId] ?? null;
 

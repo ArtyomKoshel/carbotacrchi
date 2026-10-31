@@ -50,6 +50,7 @@ readonly class LotDTO
         public string  $currency             = 'KRW', // of price, retailValue, repairCost (lots.currency)
         // the platform's own specs beyond the columns, as card sections (Che168Specs): [{title, rows: [[label, value]]}]
         public ?array  $sourceSpecs          = null,
+        public ?array  $inspectionSummary    = null,   // Che168: its Chaboshi report in short (ChaboshiReport::summary)
     ) {}
 
     public function toArray(): array
@@ -100,6 +101,7 @@ readonly class LotDTO
             'photos'           => $this->photos,
             'photoCount'       => count($this->photos),
             'sourceSpecs'      => $this->sourceSpecs,
+            'inspectionSummary' => $this->inspectionSummary,
         ];
     }
 }

@@ -46,6 +46,7 @@ class Che168Provider extends AbstractDbProvider
                 photos:       LotPhotos::urls($raw) ?: array_values(array_filter([$raw['image_url'] ?? null])),
                 options:      $this->options($raw),
                 currency:     $raw['currency'] ?? 'CNY',
+                inspectionSummary: $raw['inspection_summary'] ?? null,
                 sourceSpecs:  app(Che168Specs::class)->sections((array) ((self::json($raw['raw_data'] ?? null) ?? [])['che168'] ?? [])) ?: null,
         );
     }

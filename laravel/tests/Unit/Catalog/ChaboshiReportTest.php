@@ -55,6 +55,17 @@ class ChaboshiReportTest extends TestCase
         $this->assertSame([], $c['battery']);
     }
 
+    public function test_the_lists_summary_is_the_grade_the_findings_and_water_traces(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $reports = new ChaboshiReport("{$root}/resources/catalog/che168/chaboshi.json");
+        $read = fn (string $kind) => json_decode((string) file_get_contents(dirname($root) . "/contracts/fixtures/chaboshi_{$kind}.json"), true);
+
+        $this->assertSame(['grade' => 'S', 'problem' => null, 'notes' => 13, 'water' => true], $reports->summary($read('ev')));
+        $this->assertSame(['grade' => 'S', 'problem' => null, 'notes' => 3, 'water' => false], $reports->summary($read('fuel')));
+        $this->assertSame('ДТП', $reports->summary(['major_accident' => true, 'flood' => true])['problem']);
+    }
+
     public function test_an_unknown_term_stays_chinese_and_an_unknown_verdict_is_no_data(): void
     {
         $root = dirname(__DIR__, 3);
