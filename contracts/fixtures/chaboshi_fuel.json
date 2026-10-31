@@ -1,0 +1,80 @@
+{
+ "kind": "fuel",
+ "report_no": "TEST0001",
+ "inspected_on": "2026-10-27",
+ "product": "事故排查检测",
+ "grade": "S",
+ "major_accident": false,
+ "flood": false,
+ "fire": false,
+ "remark": "经查博士检测，本车结构件、加强件均无重大事故痕迹；无泡水痕迹；无火烧痕迹；",
+ "systems": [
+  {
+   "name": "事故车检测",
+   "checked": 70,
+   "flaws": 0,
+   "findings": [],
+   "unchecked": [
+    "底板横梁",
+    "底板纵梁",
+    "车身底板"
+   ]
+  },
+  {
+   "name": "泡水车检测",
+   "checked": 31,
+   "flaws": 1,
+   "findings": [
+    {
+     "group": "内饰",
+     "part": "主驾座椅轨道及骨架",
+     "notes": [
+      [
+       "拆卸痕迹",
+       null
+      ]
+     ]
+    }
+   ],
+   "unchecked": []
+  },
+  {
+   "name": "火烧车检测",
+   "checked": 23,
+   "flaws": 0,
+   "findings": [],
+   "unchecked": [
+    "燃油箱及管路",
+    "车身底板"
+   ]
+  },
+  {
+   "name": "附加检测项",
+   "checked": 2,
+   "flaws": 2,
+   "findings": [
+    {
+     "group": "变速箱",
+     "part": "变速箱总成",
+     "notes": [
+      [
+       "漏油",
+       null
+      ]
+     ]
+    },
+    {
+     "group": "发动机",
+     "part": "发动机总成",
+     "notes": [
+      [
+       "渗漏痕迹",
+       null
+      ]
+     ]
+    }
+   ],
+   "unchecked": []
+  }
+ ]
+}

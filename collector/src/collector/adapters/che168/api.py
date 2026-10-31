@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import import_module
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlsplit
 
 from collector.adapters.che168.signing import Signer
 
@@ -20,6 +20,19 @@ SEARCH_URL = "https://api2scsou.che168.com/api/v11/search"
 DETAIL_URL = "https://apiuscdt.che168.com/apic/v2/car/getcarinfo"
 # the card's highlighted options (亮点配置), as the mobile site asks for them: unsigned, _appid 2sc.m
 OPTIONS_URL = "https://apipcmusc.che168.com/v1/car/getusedcaroptiondata"
+# Chaboshi (查博士) inspection reports a card links in cxc.reporturl: the report page (api.chaboshi.cn)
+# and the data request its own script makes with the page's parameters (analysis/che168,
+# enrichment-plan section 4). Nothing is signed here: the page's own parameters are sent as given.
+CHABOSHI_PAGE_HOST = "api.chaboshi.cn"
+CHABOSHI_REPORTS = {
+    "/insurance/report": ("fuel", "https://app.chaboshi.cn/wap/insurance/getDetectionFuelVehicleReportData"),
+    "/platform/v2/insurance/auth_report_h5": (
+        "ev",
+        "https://app.chaboshi.cn/wap/insurance/getDetectionNewEnergyReportData",
+    ),
+}
+_INIT_PARAMS = re.compile(r"window\.__INIT_PARAMS__\s*=\s*\{(.*?)\};", re.S)
+_INIT_PARAM = re.compile(r"(\w+)\s*:\s*'([^']*)'")
 
 
 class CollectionError(Exception):
@@ -125,6 +138,15 @@ class CurlTransport:
             raise CollectionError("network_error", transport_cause(exc)) from None
         return Reply(response.status_code, response.content)
 
+    def post(self, url: str, data: dict[str, str], headers: dict[str, str]) -> Reply:
+        try:
+            response = self.session.post(
+                url, data=data, headers=headers, timeout=self.timeout, allow_redirects=False
+            )
+        except Exception as exc:
+            raise CollectionError("network_error", transport_cause(exc)) from None
+        return Reply(response.status_code, response.content)
+
     def close(self) -> None:
         self.session.close()
 
@@ -188,6 +210,8 @@ class Che168Api:
         rotation: RotationPolicy | None = None,
     ) -> None:
         self.request = request
+        # the transport's POST (the Chaboshi report's data request); a run sets it like `budget`
+        self.post: Callable[[str, dict[str, str], dict[str, str]], Reply] | None = None
         self.signer = signer
         self.delay, self.max_requests, self.retries = delay, max_requests, retries
         self.sleep, self.clock = sleep, clock
@@ -220,7 +244,10 @@ class Che168Api:
         self.rotations += 1
         self.challenge_rotations += int(challenge)
 
-    def _request(self, url: str, params: dict[str, str]) -> Reply:
+    def _request(
+        self, url: str, params: dict[str, str], form: tuple[dict[str, str], dict[str, str]] | None = None
+    ) -> Reply:
+        """form: (data, headers) of a POST, else a GET with params."""
         if self.budget is None and self.requests >= self.max_requests:
             raise CollectionError("request_limit")
         wait = max(0.0, self.next_request_at - self.clock())
@@ -232,7 +259,12 @@ class Che168Api:
         self.requests += 1
         started = self.clock()
         try:
-            reply = self.request(url, params)
+            if form is None:
+                reply = self.request(url, params)
+            elif self.post is None:
+                raise CollectionError("post_unavailable")
+            else:
+                reply = self.post(url, *form)
             self.response_bytes += len(reply.body)
             return reply
         finally:
@@ -248,11 +280,12 @@ class Che168Api:
         *,
         signed: bool = True,
         decode: Callable[[Reply], Any] | None = None,
+        form: tuple[dict[str, str], dict[str, str]] | None = None,
     ) -> Any:
         transient_failures = 0
         while True:
             try:
-                reply = self._request(url, self.signer.sign(params) if signed else params)
+                reply = self._request(url, self.signer.sign(params) if signed else params, form)
                 if reply.status in (500, 502, 503, 504):
                     raise CollectionError("temporary_http_error", f"http_{reply.status}")
                 return (decode or decode_reply)(reply)
@@ -350,6 +383,83 @@ class Che168Api:
             name = item.get("optionname")
             options.append((str(oid), name.strip() if isinstance(name, str) else ""))
         return options
+
+    def chaboshi(self, url: str) -> tuple[str, dict[str, Any]]:
+        """The Chaboshi report a card links: (fuel | ev, the report as its page receives it).
+
+        Two requests: the report page for its parameters, then the data request the page's own
+        script makes with them. Raises report_* errors; the caller writes the car without it."""
+        kind, data_url = CHABOSHI_REPORTS[urlsplit(url).path]
+        params = self._get(url, {}, signed=False, decode=init_params)
+        if params.get("orderNo"):
+            params.pop("orderno", None)  # the page sends one of the two
+        headers = {
+            "Sign": params.get("sign", ""),
+            "signparamname": params.get("signparamname", ""),
+            "Referer": url,
+            "Origin": f"https://{CHABOSHI_PAGE_HOST}",
+        }
+        body = self._get(data_url, {}, signed=False, decode=decode_chaboshi, form=(params, headers))
+        if isinstance(body, str):  # code 5: the report is a file the page fetches by this link
+            link = urlsplit(body)
+            if link.scheme != "https" or not (link.hostname or "").endswith(".chaboshi.cn"):
+                raise CollectionError("report_schema_changed")
+            body = self._get(body, {}, signed=False, decode=decode_json_object)
+        info = body.get("reportInfo") if isinstance(body, dict) else None
+        if not isinstance(info, dict) or not info:
+            raise CollectionError("report_schema_changed")
+        return kind, info
+
+
+def chaboshi_link(cxc: Any) -> str | None:
+    """The Chaboshi report page a card links (cxc.reporturl), or None: other reports (Guazi, …) are not read.
+
+    The card gives an app link (usedcar://…?param={"url": …}); its https page is what a browser opens."""
+    url = cxc.get("reporturl") if isinstance(cxc, dict) else None
+    if not isinstance(url, str) or not url:
+        return None
+    if url.startswith("usedcar://"):
+        try:
+            url = json.loads(parse_qs(urlsplit(url).query)["param"][0]).get("url", "")
+        except (KeyError, IndexError, ValueError, AttributeError):
+            return None
+    if not isinstance(url, str):
+        return None
+    parts = urlsplit(url)
+    if parts.scheme != "https" or parts.hostname != CHABOSHI_PAGE_HOST:
+        return None
+    return url if parts.path in CHABOSHI_REPORTS else None
+
+
+def init_params(reply: Reply) -> dict[str, str]:
+    """window.__INIT_PARAMS__ of the report page: the order and its signature, as the page sends them."""
+    if reply.status != 200:
+        raise CollectionError("report_unavailable", f"http_{reply.status}")
+    match = _INIT_PARAMS.search(reply.body.decode("utf-8", "replace"))
+    params = dict(_INIT_PARAM.findall(match.group(1))) if match else {}
+    if not params.get("orderNo") and not params.get("orderno"):
+        raise CollectionError("report_schema_changed")
+    return params
+
+
+def decode_json_object(reply: Reply) -> dict[str, Any]:
+    if reply.status != 200:
+        raise CollectionError("report_unavailable", f"http_{reply.status}")
+    try:
+        data = json.loads(reply.body)
+    except (ValueError, UnicodeError):
+        raise CollectionError("report_schema_changed") from None
+    if not isinstance(data, dict):
+        raise CollectionError("report_schema_changed")
+    return data
+
+
+def decode_chaboshi(reply: Reply) -> Any:
+    """{code, data, message}: code 0 → data; 5 → data is a link to the report; any other → no report."""
+    data = decode_json_object(reply)
+    if data.get("code") not in (0, 5):
+        raise CollectionError("report_rejected")
+    return data.get("data")
 
 
 def decode_reply(reply: Reply) -> dict[str, Any]:

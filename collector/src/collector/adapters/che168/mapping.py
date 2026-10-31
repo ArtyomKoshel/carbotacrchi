@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import HttpUrl, ValidationError
 
 from collector.adapters.che168.api import CollectionError, identifier
+from collector.adapters.che168.chaboshi import inspection
 from collector.domain.carlot import (
     BodyType,
     CarLotV1,
@@ -76,7 +77,7 @@ SOURCE_FIELDS = (
     "isextwarranty",
 )
 # what a stored card holds; a card stored by an older version is fetched again
-CARD_VERSION = 2
+CARD_VERSION = 3  # 3: the Chaboshi report a card links
 CHINA = timezone(timedelta(hours=8))  # no DST
 MODEL_YEAR = re.compile(r"(?<!\d)((?:19|20)\d{2})款")
 TRANSMISSIONS = {"自动": Transmission.AUTOMATIC, "手动": Transmission.MANUAL}
@@ -205,7 +206,11 @@ def location(value: Any) -> str | None:
 
 def stored_card(data: dict[str, Any], observed_at: datetime) -> dict[str, Any]:
     """What to_lot reads of a card, for the card store; «今天» / «3天前» become the date they meant."""
-    card = {key: data[key] for key in (*SOURCE_FIELDS, "piclist", "options") if data.get(key) is not None}
+    card = {
+        key: data[key]
+        for key in (*SOURCE_FIELDS, "piclist", "options", "report", "report_link")
+        if data.get(key) is not None
+    }
     card["_v"] = CARD_VERSION
     day = listed_at(data.get("publicdate"), observed_at)
     if day is not None:
@@ -269,6 +274,8 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
                 image_url=urls[0] if urls else None,
                 options=tuple(f"{OPTION_PREFIX}{oid}" for oid, _ in options or ()),
             ),
+            # the Chaboshi inspection the card links, when it was fetched
+            inspection=inspection(data["report"]) if isinstance(data.get("report"), dict) else None,
             extra={
                 "che168": raw,
                 "collector_method": "api",

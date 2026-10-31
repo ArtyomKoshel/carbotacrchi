@@ -292,6 +292,31 @@ final class IngestConsumerTest extends TestCase
         $this->assertSame(0, $this->consume()->consumed, 'offset moved past the rejected rows');
     }
 
+    public function test_a_che168_chaboshi_report_is_its_inspection_never_its_insurance_history(): void
+    {
+        $lot = json_decode((string) file_get_contents(base_path('../contracts/fixtures/carlot.v1/valid/che168.json')), true);
+        $report = json_decode((string) file_get_contents(base_path('../contracts/fixtures/chaboshi_ev.json')), true);
+        $lot['inspection'] = [
+            'cert_no' => 'TEST0001', 'inspected_on' => '2026-10-28', 'mileage_km' => 49_619,
+            'has_accident' => false, 'has_flood' => false, 'has_fire' => false, 'has_outer_damage' => true,
+            'details' => ['chaboshi' => $report],
+        ];
+        $this->buffer($lot);
+
+        $this->assertSame(1, $this->consume()->inserted);
+
+        $row = DB::table('lots')->where('id', 'che168:60321227')->first();
+        $this->assertNull($row->has_accident, 'an inspection is not an insurance history');
+        $inspection = DB::table('lot_inspections')->where('lot_id', 'che168:60321227')->first();
+        $this->assertSame(['2026-10-28', 49_619, 0], [$inspection->inspection_date, (int) $inspection->inspection_mileage, (int) $inspection->has_accident]);
+        $this->assertSame(93.6, json_decode($inspection->details, true)['chaboshi']['battery']['soh']);
+
+        $card = (new \ReflectionMethod(\App\Http\Controllers\Api\LotController::class, 'inspection'))
+            ->invoke(app(\App\Http\Controllers\Api\LotController::class), 'che168:60321227');
+        $this->assertSame('нет, но есть следы воды', $card['chaboshi']['verdicts'][1]['text']);
+        $this->assertSame('93,6 % · данные от 27.10.2026', $card['chaboshi']['battery'][0][1]);
+    }
+
     public function test_che168_lot_is_stored_in_yuan_placed_in_the_catalog_and_found_in_yuan_only(): void
     {
         $lot = json_decode((string) file_get_contents(base_path('../contracts/fixtures/carlot.v1/valid/che168.json')), true);

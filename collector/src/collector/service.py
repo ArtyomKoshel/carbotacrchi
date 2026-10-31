@@ -225,6 +225,7 @@ class Service:
                 rotation=rotation,
             )
             api.budget = budget
+            api.post = transport.post  # the Chaboshi report's data request
             return api
 
         try:

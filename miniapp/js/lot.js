@@ -84,7 +84,7 @@ const LotView = (() => {
     add('Тотал', yesNo(lot.totalLossHistory), asked.has('totalLoss'));
     if (lot.lienStatus) rows.push(['Залог', lot.lienStatus === 'clean' ? 'нет' : 'есть', { value: lot.lienStatus === 'clean' ? 'ok' : 'bad' }]);
     if (lot.seizureStatus) rows.push(['Арест', lot.seizureStatus === 'clean' ? 'нет' : 'есть', { value: lot.seizureStatus === 'clean' ? 'ok' : 'bad' }]);
-    if (inspection) {
+    if (inspection && !inspection.chaboshi) {
       // the panels and the claims have their own sections below; the row says what the inspection found
       const body = Damage.summary(inspection);
       const outerOld = !body && inspection.outer_detail; // an inspection stored before details.outer_parts
@@ -98,6 +98,33 @@ const LotView = (() => {
     }
     if (!rows.length) return '';
     return `<section class="sect"><h3 class="sect__title">История</h3><div class="card">${kv(rows)}</div></section>`;
+  }
+
+  /**
+   * A Che168 lot's Chaboshi (查博士) inspection as the core described it (inspection.chaboshi): the
+   * three verdicts, the findings of each check, what could not be checked, the battery of an EV.
+   * An inspection, not an insurance history: it never answers «ДТП по страховым».
+   */
+  function chaboshiBlock(inspection) {
+    const c = inspection?.chaboshi;
+    if (!c) return '';
+    const rows = [];
+    if (c.grade) rows.push(['Оценка', Fmt.esc(c.grade) + (c.product ? ` · ${Fmt.esc(c.product)}` : '')]);
+    for (const v of c.verdicts || []) rows.push([Fmt.esc(v.label), Fmt.esc(v.text), { value: v.level || '' }]);
+    if (c.mileage_km) rows.push(['Пробег по осмотру', Fmt.km(c.mileage_km), { value: 'num' }]);
+    for (const sys of c.systems || []) {
+      const n = (sys.findings || []).length;
+      const points = sys.checked ? `${sys.checked} ${Fmt.plural(sys.checked, 'пункт', 'пункта', 'пунктов')}` : '';
+      rows.push([`<b>${Fmt.esc(sys.name)}</b>`, n ? `${n} ${Fmt.plural(n, 'замечание', 'замечания', 'замечаний')}${points ? ` из ${sys.checked} ${Fmt.plural(sys.checked, 'пункта', 'пунктов', 'пунктов')}` : ''}`
+        : `замечаний нет${points ? ` (${points})` : ''}`, { value: n ? 'warn' : 'ok' }]);
+      for (const f of sys.findings || []) rows.push([Fmt.esc(f.part), Fmt.esc(f.notes), { value: 'warn' }]);
+      if ((sys.unchecked || []).length) rows.push(['Не удалось проверить', Fmt.esc(sys.unchecked.join(', '))]);
+    }
+    const battery = (c.battery || []).length
+      ? `<section class="sect"><h3 class="sect__title">Батарея по осмотру</h3><div class="card">${kv(c.battery.map(([k, v]) => [Fmt.esc(k), Fmt.esc(v)]))}</div></section>`
+      : '';
+    return `<section class="sect"><h3 class="sect__title">Осмотр Chaboshi${c.date ? ' ' + Fmt.day(c.date) : ''}</h3>
+      <div class="card"><p class="opts__note">Заключение осмотра, а не история страховых случаев.</p>${kv(rows)}</div></section>${battery}`;
   }
 
   function specsBlock(lot, asked) {
@@ -197,6 +224,7 @@ const LotView = (() => {
           <button class="btn${ctx.compared ? ' on' : ''}" type="button" data-compare aria-pressed="${!!ctx.compared}">${Fmt.icon.compare}<span>${ctx.compared ? 'В сравнении' : 'Сравнить'}</span></button>
         </div>
         ${historyBlock(lot, ctx.inspection, asked)}
+        ${chaboshiBlock(ctx.inspection)}
         ${(d => d ? `<button class="lot-link lot-link--${d.level || 'plain'}" type="button" data-body><span>${Fmt.esc(d.text)}</span><i>Схема ›</i></button>` : '')(Damage.line(ctx.inspection))}
         ${specsBlock(lot, asked)}
         ${sourceSpecsBlock(lot)}

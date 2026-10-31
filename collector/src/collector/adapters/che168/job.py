@@ -21,7 +21,8 @@ from datetime import datetime
 from typing import Any, Protocol, TypeVar
 
 from collector import COLLECTOR_VERSION
-from collector.adapters.che168.api import CollectionError, SearchPage
+from collector.adapters.che168.api import CollectionError, SearchPage, chaboshi_link
+from collector.adapters.che168.chaboshi import chaboshi_report
 from collector.adapters.che168.mapping import CARD_VERSION, model_year, scaled_integer, stored_card, to_lot
 from collector.domain.carlot import CarLotV1, SelectionPhase
 from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, utc_now
@@ -109,6 +110,8 @@ class Api(Protocol):
 
     def options(self, infoid: str) -> list[tuple[str, str]]: ...
 
+    def chaboshi(self, url: str) -> tuple[str, dict[str, Any]]: ...
+
 
 @dataclass
 class Che168State:
@@ -123,6 +126,8 @@ class Che168State:
     stored: int = 0  # of `written`: taken from the card store, no request
     filtered: int = 0  # rejected by the selection rules (of them, the early ones are never written)
     options_failed: int = 0  # cards written without options: the next run fetches them again
+    reports: int = 0  # Chaboshi reports fetched with their cards
+    reports_failed: int = 0  # linked but not fetched: the car is written without it, the next run retries
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -234,6 +239,8 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "stored": state.stored,
         "filtered": state.filtered,
         "options_failed": state.options_failed,
+        "reports": state.reports,
+        "reports_failed": state.reports_failed,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -422,6 +429,9 @@ class _Collection:
             try:
                 data = await self._call(api, api.detail, infoid)
                 data = {**data, "options": await self._options(api, infoid)}
+                link = chaboshi_link(data.get("cxc"))
+                if link is not None:
+                    data = {**data, "report_link": True, "report": await self._report(api, infoid, link)}
                 lot = self._judged(
                     to_lot(data, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
                 )
@@ -460,6 +470,8 @@ class _Collection:
             for i, s in states.items()
             if isinstance(s.fields.get("card"), dict)
             and "options" in s.fields["card"]  # a card stored without its options is fetched again
+            # so is one whose linked report was not fetched
+            and (not s.fields["card"].get("report_link") or "report" in s.fields["card"])
             and s.fields["card"].get("_v") == CARD_VERSION  # so is one stored before newer fields
             and s.condition == self.facts.get(i)
             and s.checked_at.timestamp() >= cutoff
@@ -493,6 +505,19 @@ class _Collection:
                 f"car {infoid}: options not fetched ({e.kind}), the next run fetches them", "warning"
             )
             return None
+
+    async def _report(self, api: Api, infoid: str, link: str) -> dict[str, Any] | None:
+        """The Chaboshi report the card links; None when it failed: the car is written without it."""
+        try:
+            kind, info = await self._call(api, api.chaboshi, link)
+        except CollectionError as e:
+            self.state.reports_failed += 1
+            await self._log(
+                f"car {infoid}: report not fetched ({e.kind}), the next run fetches it", "warning"
+            )
+            return None
+        self.state.reports += 1
+        return chaboshi_report(kind, info)
 
     def _rejected_early(self, car: dict[str, Any] | None) -> bool:
         """The list's year and mileage alone reject the car (Encar's list stage): no card to fetch."""
@@ -601,6 +626,8 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "stored": state.stored,
         "filtered": state.filtered,
         "options_failed": state.options_failed,
+        "reports": state.reports,
+        "reports_failed": state.reports_failed,
         # never a full run: lots:lifecycle must not delist che168 lots by it
         "full_run": False,
         "coverage_pct": 0.0,

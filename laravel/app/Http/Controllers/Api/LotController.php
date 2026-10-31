@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Catalog\CatalogPlaces;
+use App\Catalog\Che168\ChaboshiReport;
 use App\Http\Controllers\Controller;
 use App\Models\LotInspection;
 use App\Models\User;
@@ -121,9 +122,20 @@ class LotController extends Controller
         return $this->enricher->enrichLots([$lot])[0];
     }
 
-    /** @return array<string, mixed>|null */
+    /**
+     * The lot's inspection row; a Che168 lot's Chaboshi report also comes described in Russian
+     * (`chaboshi`), the card shows it instead of Encar's inspection rows.
+     *
+     * @return array<string, mixed>|null
+     */
     private function inspection(string $lotId): ?array
     {
-        return LotInspection::where('lot_id', $lotId)->first()?->toArray();
+        $inspection = LotInspection::where('lot_id', $lotId)->first()?->toArray();
+        $report = $inspection['details']['chaboshi'] ?? null;
+        if (is_array($report)) {
+            $inspection['chaboshi'] = app(ChaboshiReport::class)->describe($report);
+        }
+
+        return $inspection;
     }
 }

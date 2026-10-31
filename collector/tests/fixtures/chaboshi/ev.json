@@ -1,0 +1,1974 @@
+{
+ "code": 0,
+ "message": "success",
+ "data": {
+  "reportInfo": {
+   "reportNo": "TEST0001",
+   "detectionFinishTimeCH": "2026-10-28",
+   "shopSpuName": "新能源汽车检测",
+   "reportLevel": "S",
+   "isSG": false,
+   "isPS": false,
+   "isHS": false,
+   "reportRemark": "经查博士检测，本车结构件、加强件均无重大事故痕迹；车内有进水痕迹但不符合查博士泡水车标准，非泡水车；无火烧痕迹；",
+   "displayMileage": 49619,
+   "watchMile": "49619",
+   "batteryHealthScore": 93.6,
+   "batteryHealthLevel": "优",
+   "batteryLevel": "S",
+   "lastDataDate": "2026-10-27 13:37:07",
+   "batteryType": "磷酸铁锂",
+   "batteryPower": "60.48",
+   "batteryVoltage": 403.2,
+   "batteryPackManufacturer": "非宁德时代",
+   "qczjBatteryBrandName": "弗迪",
+   "fastChrgRange": "30-80",
+   "mileageTempRange1": "486.5-510.0Km(春季:15-25℃)",
+   "mileageTempRange2": "440.6-510.0Km(夏季:30-45℃)",
+   "mileageTempRange3": "413.1-482.0Km(冬季:-20-10℃)",
+   "batteryRemark": "经查博士检测，动力电池包下箱体、挂载点及高低压插座均无火烧进水痕迹，无拆包或凹陷痕迹，无密封性和漏液问题，电芯无损伤。",
+   "vin": "TESTVIN0000000001",
+   "userPhone": "13800000000",
+   "ownUserCheckName": "inspector",
+   "detectionAddress": "address",
+   "detectionItemList": [
+    {
+     "systemName": "重大问题检测",
+     "flawComponentListV2": []
+    },
+    {
+     "systemName": "事故车检测",
+     "totalCount": 70,
+     "flawCount": 5,
+     "flawComponentListV2": [
+      {
+       "componentName": "左侧下边梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前大灯框架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前大灯框架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左侧上边梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后翼子板",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 1097,
+         "firDescName": "掉漆",
+         "secDescName": "≥3cm",
+         "firDescId": 463
+        }
+       ]
+      },
+      {
+       "componentName": "仪表台骨架",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后翼子板内侧(骨架)",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后翼子板内侧(骨架)",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "后围板",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 252,
+         "firDescName": "变形",
+         "secDescName": "5cm-50cm",
+         "firDescId": 11
+        },
+        {
+         "secDescId": 44,
+         "firDescName": "喷漆修复",
+         "secDescName": "喷漆修复",
+         "firDescId": 48
+        },
+        {
+         "secDescId": 255,
+         "firDescName": "钣金修复",
+         "secDescName": "5cm-50cm",
+         "firDescId": 7
+        }
+       ]
+      },
+      {
+       "componentName": "左后尾灯框架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后翼子板导水槽",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后轮旋",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后减震器座",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "安全气囊",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后轮旋",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后减震器座",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后尾灯框架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后纵梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后纵梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后翼子板导水槽",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后翼子板",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 44,
+         "firDescName": "喷漆修复",
+         "secDescName": "喷漆修复",
+         "firDescId": 48
+        }
+       ]
+      },
+      {
+       "componentName": "右侧上边梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "备胎槽(行李箱底板)",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 1073,
+         "firDescName": "变形",
+         "secDescName": "5cm-20cm",
+         "firDescId": 11
+        },
+        {
+         "secDescId": 258,
+         "firDescName": "开裂",
+         "secDescName": "5cm-20cm",
+         "firDescId": 37
+        },
+        {
+         "secDescId": 44,
+         "firDescName": "喷漆修复",
+         "secDescName": "喷漆修复",
+         "firDescId": 48
+        }
+       ]
+      },
+      {
+       "componentName": "防火墙(前围板)",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右B柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左B柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "底板横梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      },
+      {
+       "componentName": "底板纵梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      },
+      {
+       "componentName": "右侧下边梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "车身大顶",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "行李箱后遮物板(铁质)",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前门框密封条",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后门框密封条",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前纵梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前门框密封条",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前纵梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后门框密封条",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前吸能盒",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右前吸能盒",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "水箱框架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前减震器座",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前减震器座",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前翼子板骨架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前翼子板骨架",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "仪表台",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前安全带",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右A柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前纵梁连接板（法兰盘）",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右A柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前纵梁连接板（法兰盘）",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "左后纵梁连接板（法兰盘）",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右后纵梁连接板（法兰盘）",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右前安全带",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右B柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右C柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右C柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "前防撞梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后安全带",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "车身底板",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      },
+      {
+       "componentName": "右D柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "右D柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "后防撞梁",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 61,
+         "firDescName": "变形",
+         "secDescName": "10-20cm",
+         "firDescId": 11
+        },
+        {
+         "secDescId": 18,
+         "firDescName": "拆卸痕迹",
+         "secDescName": "拆卸痕迹",
+         "firDescId": 17
+        }
+       ]
+      },
+      {
+       "componentName": "左D柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "左D柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "左C柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "左C柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左B柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "左后安全带",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左A柱外侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左A柱内侧",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "systemName": "泡水车检测",
+     "totalCount": 31,
+     "flawCount": 7,
+     "flawComponentListV2": [
+      {
+       "componentName": "左侧门槛内部空腔",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右侧门槛内部空腔",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左侧门槛线束",
+       "secSystemName": "车身电器",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右侧门槛线束",
+       "secSystemName": "车身电器",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "后排座椅骨架及海绵",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "OBD插接件",
+       "secSystemName": "车身电器",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "主驾座椅轨道及骨架",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "副驾座椅轨道及骨架",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左侧脚部出风口",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右侧脚部出风口",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "行李箱底板线束及保险盒",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后安全带插座",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后安全带插座",
+       "secSystemName": "被动安全",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "机舱电器插接件",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "仪表台骨架",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "备胎槽(行李箱底板)",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "firDescName": "未见异常",
+         "secDescName": "未见异常"
+        }
+       ]
+      },
+      {
+       "componentName": "左前底板隔音胶及封边胶",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左侧底板横梁内部",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后底板隔音胶及封边胶",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 805,
+         "firDescName": "霉斑",
+         "secDescName": "内侧霉斑",
+         "firDescId": 44
+        },
+        {
+         "secDescId": 803,
+         "firDescName": "水痕",
+         "secDescName": "内侧水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "右前底板隔音胶及封边胶",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 805,
+         "firDescName": "霉斑",
+         "secDescName": "内侧霉斑",
+         "firDescId": 44
+        },
+        {
+         "secDescId": 803,
+         "firDescName": "水痕",
+         "secDescName": "内侧水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "右侧底板横梁内部",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 315,
+         "firDescName": "水痕",
+         "secDescName": "水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "仪表台空调出风口",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后底板隔音胶及封边胶",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 805,
+         "firDescName": "霉斑",
+         "secDescName": "内侧霉斑",
+         "firDescId": 44
+        },
+        {
+         "secDescId": 803,
+         "firDescName": "水痕",
+         "secDescName": "内侧水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "机舱保险盒",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前地毯(含周边饰条/饰板)",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 803,
+         "firDescName": "水痕",
+         "secDescName": "内侧水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "车内顶棚",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "点烟器座",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "转向管柱",
+       "secSystemName": "转向系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后地毯(含周边饰条/饰板)",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 803,
+         "firDescName": "水痕",
+         "secDescName": "内侧水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "左后地毯(含周边饰条/饰板)",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 803,
+         "firDescName": "水痕",
+         "secDescName": "内侧水痕",
+         "firDescId": 118
+        }
+       ]
+      },
+      {
+       "componentName": "左前地毯(含周边饰条/饰板)",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "systemName": "火烧车检测",
+     "totalCount": 23,
+     "flawCount": 0,
+     "flawComponentListV2": [
+      {
+       "componentName": "行李箱底板线束及保险盒",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左后轮旋",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右后轮旋",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "车身覆盖件",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "发动机舱隔音棉",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "发动机舱内管路(水管/油管)",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "发动机舱塑料件",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "驾驶舱内饰板",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "驾驶舱内线束及插接件",
+       "secSystemName": "车身电器",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "行李箱",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "蓄电池及附件",
+       "secSystemName": "车身电器",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "仪表台及附件",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "右前减震器座周边胶体",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "左前减震器座周边胶体",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "燃油箱及管路",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      },
+      {
+       "componentName": "机舱线束及标签",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "主驾驶座椅",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "机舱保险盒",
+       "secSystemName": "发动机",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "防火墙隔热棉",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "后排座椅",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "副驾驶座椅",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "车身底板",
+       "secSystemName": "覆盖件",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      },
+      {
+       "componentName": "行李箱内饰板",
+       "secSystemName": "内饰",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "systemName": "电池安全检测",
+     "totalCount": 6,
+     "flawCount": 0,
+     "flawComponentListV2": [
+      {
+       "componentName": "动力电池端高低压插座",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "firDescName": "未见异常",
+         "secDescName": "未见异常"
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池包下箱体底部",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池包挂载点",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "firDescName": "未见异常",
+         "secDescName": "未见异常"
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池包下箱体侧边（侧面）",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "气密检测",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池电芯漏液检测",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 293,
+         "firDescName": "受限不可检",
+         "secDescName": "受限不可检",
+         "firDescId": 97
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "systemName": "物理损伤检测",
+     "totalCount": 19,
+     "flawCount": 1,
+     "flawComponentListV2": [
+      {
+       "componentName": "前动力电机总成（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "后动力电机总成（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "前动力电机控制器（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "后动力电机控制器（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 17,
+         "firDescName": "未见此项",
+         "secDescName": "未见此项",
+         "firDescId": 1
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统充电口（外观）",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "整车控制器VCU",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统冷却液位",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "可见高压维护开关（MSD）",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统散热管路（可见部分）",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统低压连接器",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统高压连接器（橙色）",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池端高低压插座",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池液冷管进-出口",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池防爆阀（平衡阀）",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池底护板",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 208,
+         "firDescName": "拆解痕迹",
+         "secDescName": "普通拆解",
+         "firDescId": 15
+        }
+       ]
+      },
+      {
+       "componentName": "动力电池包挂载点",
+       "secSystemName": "三电物理损伤",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "车载充电机（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "高压集成分配盒（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "高压DC/DC转换器（外观）",
+       "secSystemName": "电机电控系统",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "systemName": "基础功能检测",
+     "totalCount": 5,
+     "flawCount": 0,
+     "flawComponentListV2": [
+      {
+       "componentName": "动力系统快充功能",
+       "secSystemName": "基础功能",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统慢充功能",
+       "secSystemName": "基础功能",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "启动上电",
+       "secSystemName": "基础功能",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "动力系统故障指示灯（当前状态）",
+       "secSystemName": "基础功能",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      },
+      {
+       "componentName": "挡位检测（静态）",
+       "secSystemName": "基础功能",
+       "systemDescList": [
+        {
+         "secDescId": 11,
+         "firDescName": "未见异常",
+         "secDescName": "未见异常",
+         "firDescId": 2
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ }
+}
