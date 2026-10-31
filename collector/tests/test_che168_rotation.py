@@ -79,6 +79,21 @@ def test_persistent_challenge_stops_at_budget() -> None:
     assert len(rotations) == 3
 
 
+def test_challenges_count_in_a_row_an_answer_resets_them() -> None:
+    # a long run's session meets a CAPTCHA now and then (one in ~500): never a block
+    calls: list[str] = []
+
+    def request(url: str, params: dict[str, str]) -> Reply:
+        calls.append(params["infoid"])
+        return Reply(200, b"captcha.aspx") if len(calls) % 2 else reply(detail(params["infoid"]))
+
+    api = Che168Api(request, Signer.bundled(), delay=0, rotate=lambda: None)
+    for infoid in range(1, 7):
+        assert api.detail(str(infoid))["infoid"] == infoid
+    assert api.challenge_rotations == 6  # every one counted, none of them ended the session
+    assert api.challenges_in_a_row == 0
+
+
 @pytest.mark.parametrize(
     ("response", "reason"),
     [

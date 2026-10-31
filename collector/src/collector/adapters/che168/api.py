@@ -179,6 +179,8 @@ def list_facts(car: dict[str, Any]) -> tuple[str, ...]:
 class RotationPolicy:
     every_pages: int = 2
     max_rotations: int = 8
+    # in a row: a real block answers every fresh exit with a CAPTCHA; one in ~500 requests is che168's
+    # usual, and a long run's session meets several of those (live 2026-10-31: run 42 stopped on its 4th)
     max_challenge_rotations: int = 3
     every_cards: int = 0  # a card session's planned rotation (collector serve); 0 = only on a challenge
     # a list session's planned rotation by its own searches (collector serve reads pages in parallel,
@@ -236,6 +238,7 @@ class Che168Api:
         self.rotation = rotation or RotationPolicy()
         self.rotations = 0
         self.challenge_rotations = 0
+        self.challenges_in_a_row = 0  # since the last answer that was no challenge
         self.last_rotated_page = 0
         self.searches = 0
         self.last_error: str | None = None
@@ -243,13 +246,14 @@ class Che168Api:
     def _rotate(self, *, challenge: bool) -> None:
         if self.rotations >= self.rotation.max_rotations:
             raise CollectionError("proxy_rotation_limit")
-        if challenge and self.challenge_rotations >= self.rotation.max_challenge_rotations:
+        if challenge and self.challenges_in_a_row >= self.rotation.max_challenge_rotations:
             raise CollectionError("challenge_rotation_limit")
         if self.rotate is None:
             raise CollectionError("rotation_unavailable")
         self.rotate()
         self.rotations += 1
         self.challenge_rotations += int(challenge)
+        self.challenges_in_a_row += int(challenge)
 
     def _request(
         self, url: str, params: dict[str, str], form: tuple[dict[str, str], dict[str, str]] | None = None
@@ -295,7 +299,9 @@ class Che168Api:
                 reply = self._request(url, self.signer.sign(params) if signed else params, form)
                 if reply.status in (500, 502, 503, 504):
                     raise CollectionError("temporary_http_error", f"http_{reply.status}")
-                return (decode or decode_reply)(reply)
+                decoded = (decode or decode_reply)(reply)
+                self.challenges_in_a_row = 0  # an answer, not a CAPTCHA: the exit is not blocked
+                return decoded
             except CollectionError as exc:
                 self.last_error = exc.kind
                 if exc.kind in ("challenge", "access_blocked") and self.rotate is not None:

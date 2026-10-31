@@ -213,7 +213,7 @@ class Service:
         list_pages = s.che168_max_list_pages if slicing else max_pages
         # each car is a card and its options, each page one more; retries and challenges on top
         budget = RequestBudget(3 * max_cars + 2 * list_pages + 50 * (1 + s.che168_workers))
-        # planned rotations are bounded by the request limit; a session gives up after 3 challenges
+        # planned rotations are bounded by the request limit; a session gives up after 3 challenges in a row
         unbounded = budget.limit
         rules = che168_rules(await load_rules(self.db, s.core_schema))
         transports: list[CurlTransport] = []
