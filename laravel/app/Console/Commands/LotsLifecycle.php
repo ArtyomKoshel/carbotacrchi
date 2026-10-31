@@ -111,6 +111,9 @@ class LotsLifecycle extends Command
             $rows[] = ['purge', 'lot_inspections (FK cascade)', $counts['lot_inspections']];
             $rows[] = ['purge', 'lot_changes (FK cascade)', $counts['lot_changes']];
             $rows[] = ['purge', 'lot_options (delete, no FK)', $counts['lot_options']];
+            foreach (LotLifecycle::COLLECTOR_TABLES as $table) {
+                $rows[] = ['purge', "collector.{$table} (delete)", $counts[$table]];
+            }
             if (isset($counts['kept_for_favorites'])) {
                 $rows[] = ['purge', 'lots kept: in favorites', $counts['kept_for_favorites']];
             }

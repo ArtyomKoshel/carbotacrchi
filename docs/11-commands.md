@@ -105,6 +105,8 @@ php artisan lots:lifecycle [OPTIONS]
 | purge   | lot_inspections (FK cascade)    | 1      |
 | purge   | lot_changes (FK cascade)        | 2      |
 | purge   | lot_options (delete, no FK)     | 15,004 |
+| purge   | collector.raw_responses (delete)| 20,010 |
+| purge   | collector.lot_history (delete)  | 5,002  |
 | purge   | lots kept: in favorites         | 1      |
 | orphans | lot_options (delete, lot gone)  | 5      |
 | orphans | distinct missing lot_ids        | 2      |
@@ -171,6 +173,7 @@ php artisan notifications:watch --only=proxy,ai
 
 ```bash
 php artisan ingest:consume [--batch=500] [--max-batches=0]   # применить записи буфера к lots (по расписанию в primary)
+php artisan ingest:prune [--hours=24] [--dry-run]            # удалить применённые записи буфера старше срока (раз в час в primary)
 php artisan collector:enqueue [--dry-run]                    # поставить сборщику прогоны по parser_schedules (shadow/primary)
 php artisan collector:compare [--job=ID] [--json]            # теневой режим: прогон сборщика против lots старого парсера
 php artisan ingest:cutover                                   # один раз при переходе в primary: пропустить теневой буфер

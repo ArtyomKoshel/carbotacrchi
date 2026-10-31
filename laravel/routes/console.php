@@ -64,6 +64,14 @@ Schedule::command('ingest:consume')
     ->runInBackground()
     ->when(fn () => (bool) config('ingest.enabled'));
 
+// Applied buffer rows older than ingest.retention_hours (docs/adr/0003): each
+// full run adds ~200k records, so the buffer would otherwise grow without end.
+Schedule::command('ingest:prune')
+    ->hourlyAt(20)
+    ->withoutOverlapping(60)
+    ->runInBackground()
+    ->when(fn () => (bool) config('ingest.enabled'));
+
 // The collector's scheduled full runs (parser_schedules), tagged for it. Off in mode off.
 Schedule::command('collector:enqueue')
     ->everyMinute()

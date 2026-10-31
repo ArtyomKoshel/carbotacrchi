@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Ingest\CollectorMode;
 use App\Ingest\IngestConsumer;
+use App\Ingest\LotRowMapper;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -25,10 +26,18 @@ use Illuminate\Support\Facades\Schema;
  * Children of a purged lot: lot_inspections and lot_changes go by FK ON DELETE
  * CASCADE. The old pivots (lot_photos with FK, lot_options without) are handled
  * only while they still exist — they are dropped by 2026_10_20_000001.
- * Lots referenced by favorites are never purged.
+ * Lots referenced by favorites are never purged. The collector's raw responses
+ * and fetched history of a purged lot (collector.raw_responses, lot_history)
+ * go too, after the lot's transaction: a replay would otherwise bring it back.
  */
 class LotLifecycle
 {
+    /** Collector tables keyed by (source, lot_id) that a purged lot leaves behind. */
+    public const COLLECTOR_TABLES = ['raw_responses', 'lot_history'];
+
+    /** @var list<string>|null collector tables present (null: not checked yet) */
+    private ?array $collectorTables = null;
+
     public function __construct(
         private readonly string $source = 'encar',
         private readonly int $batch = 2000,
@@ -321,6 +330,16 @@ class LotLifecycle
         $total = $base()->count();
         $purge = $lots()->count();
 
+        // Another schema: no join, count by the purged ids.
+        $collector = array_fill_keys(self::COLLECTOR_TABLES, 0);
+        if ($this->collectorTables() !== []) {
+            foreach ($lots()->pluck('lots.id')->chunk($this->batch) as $ids) {
+                foreach ($this->collectorRows($ids->all(), fn ($q) => $q->count()) as $t => $n) {
+                    $collector[$t] += $n;
+                }
+            }
+        }
+
         return [
             'lots'               => $purge,
             'lots_archive'       => $purge,
@@ -328,6 +347,7 @@ class LotLifecycle
             'lot_inspections'    => $children('lot_inspections'),
             'lot_changes'        => $children('lot_changes'),
             'lot_options'        => Schema::hasTable('lot_options') ? $children('lot_options') : 0,
+            ...$collector,
             'kept_for_favorites' => $total - $purge,
         ];
     }
@@ -341,7 +361,8 @@ class LotLifecycle
      */
     public function purge(CarbonImmutable $cutoff, Closure $shouldStop): array
     {
-        $totals = ['lots' => 0, 'lots_archive' => 0, 'lot_photos' => 0, 'lot_inspections' => 0, 'lot_changes' => 0, 'lot_options' => 0];
+        $totals = ['lots' => 0, 'lots_archive' => 0, 'lot_photos' => 0, 'lot_inspections' => 0, 'lot_changes' => 0, 'lot_options' => 0]
+            + array_fill_keys(self::COLLECTOR_TABLES, 0);
         $hasOptions = Schema::hasTable('lot_options');
         // Both pivots are gone after 2026_10_20_000001; only count what still exists.
         $childTables = array_values(array_filter(
@@ -404,6 +425,7 @@ class LotLifecycle
 
                 $counts['lot_options'] = $hasOptions ? DB::table('lot_options')->whereIn('lot_id', $ids)->delete() : 0;
                 $counts['lots'] = DB::table('lots')->whereIn('id', $ids)->delete();
+                $counts['ids'] = $ids;
 
                 return $counts;
             });
@@ -411,6 +433,10 @@ class LotLifecycle
             if ($done === null || $done['lots'] === 0) {
                 break;
             }
+            // Committed: the lots are gone, so their collector rows may go too.
+            $ids = $done['ids'];
+            unset($done['ids']);
+            $done += $this->collectorRows($ids, fn ($q) => $q->delete());
             foreach ($done as $k => $v) {
                 $totals[$k] += $v;
             }
@@ -461,6 +487,42 @@ class LotLifecycle
         }
 
         return $found;
+    }
+
+    /**
+     * Runs $op (count or delete) on each collector table's rows of these lots.
+     *
+     * @param  list<string> $lotIds lots.id values of this source
+     * @param  Closure(\Illuminate\Database\Query\Builder):int $op
+     * @return array<string,int> per table
+     */
+    private function collectorRows(array $lotIds, Closure $op): array
+    {
+        $prefix = LotRowMapper::lotId($this->source, '');
+        $sourceIds = array_map(fn (string $id) => substr($id, strlen($prefix)), $lotIds);
+
+        $rows = [];
+        foreach ($this->collectorTables() as $table) {
+            $rows[$table] = $op(DB::connection('collector')->table($table)
+                ->where('source', $this->source)->whereIn('lot_id', $sourceIds));
+        }
+
+        return $rows;
+    }
+
+    /** @return list<string> the collector tables that exist; none when its schema is unreachable */
+    private function collectorTables(): array
+    {
+        if ($this->collectorTables === null) {
+            try {
+                $schema = DB::connection('collector')->getSchemaBuilder();
+                $this->collectorTables = array_values(array_filter(self::COLLECTOR_TABLES, fn ($t) => $schema->hasTable($t)));
+            } catch (\Throwable) {
+                $this->collectorTables = [];
+            }
+        }
+
+        return $this->collectorTables;
     }
 
     private function pause(): void

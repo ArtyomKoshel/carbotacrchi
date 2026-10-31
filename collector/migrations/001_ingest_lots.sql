@@ -1,5 +1,6 @@
--- Outbox of CarLot records for the core (docs/adr/0003). Append-only: the core
--- keeps its read offset in its own schema (ingest_offsets) and never writes here.
+-- Outbox of CarLot records for the core (docs/adr/0003). The collector only
+-- appends; the core keeps its read offset in its own schema (ingest_offsets) and
+-- deletes applied rows past retention (ingest:prune).
 CREATE TABLE IF NOT EXISTS ingest_lots (
     id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     run_id        BIGINT UNSIGNED NULL,

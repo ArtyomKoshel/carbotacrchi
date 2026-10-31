@@ -7,6 +7,10 @@ return [
     // The scheduler consumes the buffer only when the collector feeds lots.
     'enabled' => env('COLLECTOR_MODE', 'off') === 'primary',
 
+    // ingest:prune keeps buffer rows the core has applied this many hours, then deletes them.
+    // Every full run writes the whole catalogue (~1.3 GB), so keep this short.
+    'retention_hours' => (int) env('INGEST_RETENTION_HOURS', 24),
+
     // Sources the collector sweeps (collector:enqueue).
     'sources' => array_values(array_filter(explode(',', (string) env('COLLECTOR_SOURCES', 'encar')))),
 
