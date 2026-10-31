@@ -22,10 +22,11 @@ from typing import Any, Protocol, TypeVar
 
 from collector import COLLECTOR_VERSION
 from collector.adapters.che168.api import CollectionError, SearchPage
-from collector.adapters.che168.mapping import stored_card, to_lot
-from collector.domain.carlot import CarLotV1
+from collector.adapters.che168.mapping import model_year, scaled_integer, stored_card, to_lot
+from collector.domain.carlot import CarLotV1, SelectionPhase
 from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, utc_now
 from collector.runlog import RunLog
+from collector.selection import RuleEngine, Verdict
 from collector.storage import Job, JobQueue
 
 # A car whose card is refused (sold between the list and the card, or one the mapping cannot
@@ -46,6 +47,50 @@ BATCH = 10  # cards per buffer write and checkpoint
 SOURCE = "che168"
 
 T = TypeVar("T")
+
+# A rule with no platform is written in Encar's ₩: a limit on the price, the repair cost or the new
+# price would compare ¥ with ₩, so che168 does not take it; a che168 limit is a Che168 rule in ¥.
+KRW_FIELDS = frozenset({"price", "repair_cost", "retail_value"})
+# What the search list knows before the card: the early pass rejects a car without a request.
+LIST_STAGE_FIELDS = frozenset({"year", "mileage"})
+
+
+def che168_rules(rules: RuleEngine) -> RuleEngine:
+    """The selection rules che168 can judge: its own and those with no platform, but not ₩ limits."""
+    return rules.excluding(lambda r: r.source is None and r.field in KRW_FIELDS)
+
+
+def rule_values(lot: CarLotV1) -> dict[str, Any]:
+    """What the rules see: the lots columns, as the core stores the lot (Encar: rule_values)."""
+    v, li = lot.vehicle, lot.listing
+    return {
+        "source": SOURCE,
+        "make": v.make,
+        "model": v.model,
+        "year": v.year,
+        "first_reg_date": v.first_registration.isoformat() if v.first_registration else None,
+        "fuel": v.fuel,
+        "transmission": v.transmission,
+        "drive_type": v.drive_type,
+        "body_type": v.body_type,
+        "engine_volume": v.engine_volume_l,
+        "seat_count": v.seat_count,
+        "color": v.color,
+        "price": li.price.amount,
+        "mileage": li.mileage_km,
+        "location": li.location,
+        "retail_value": li.retail_value.amount if li.retail_value else None,
+        "sell_type": li.sell_type,
+    }
+
+
+def list_values(car: dict[str, Any]) -> dict[str, Any]:
+    """The year and mileage the search list states, for the early pass; unknown stays None."""
+    try:
+        mileage: int | None = scaled_integer(car.get("mileage"))
+    except CollectionError:
+        mileage = None
+    return {"source": SOURCE, "year": model_year(car.get("carname")), "mileage": mileage}
 
 
 class Api(Protocol):
@@ -74,6 +119,7 @@ class Che168State:
     skipped: int = 0
     api_total: int = 0
     stored: int = 0  # of `written`: taken from the card store, no request
+    filtered: int = 0  # rejected by the selection rules (of them, the early ones are never written)
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -104,6 +150,8 @@ class Che168Run:
     # its stored card, fetched less than card_max_age_s ago, is not fetched again
     history: HistoryStore | None = None
     card_max_age_s: float = 7 * 24 * 3600
+    # parse_filters as che168 can judge them (che168_rules); None = every car passes
+    rules: RuleEngine | None = None
 
     @property
     def listers(self) -> list[Api]:
@@ -181,6 +229,7 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "total": state.written,
         "rejected": state.skipped,
         "stored": state.stored,
+        "filtered": state.filtered,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -333,6 +382,11 @@ class _Collection:
         self.facts.update(page.facts)
         stored = await self._stored_cards(fresh)
         for infoid in fresh:
+            if infoid not in stored and self._rejected_early(page.cars.get(infoid)):
+                # never written: it is not in lots (it was never fetched), there is nothing to deactivate
+                self.state.filtered += 1
+                self.done.add(infoid)
+                continue
             self.outstanding[infoid] = None
             if infoid not in stored or not self._from_store(infoid, stored[infoid]):
                 self.ids.put_nowait(infoid)
@@ -354,7 +408,9 @@ class _Collection:
             self.claimed += 1
             try:
                 data = await self._call(api, api.detail, infoid)
-                lot = to_lot(data, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
+                lot = self._judged(
+                    to_lot(data, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
+                )
             except CollectionError as e:
                 self.claimed -= 1
                 self.failures += 1
@@ -398,7 +454,9 @@ class _Collection:
         if self.claimed >= self.max_cars:
             return False  # the worker that takes it marks the car limit
         try:
-            lot = to_lot(card, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
+            lot = self._judged(
+                to_lot(card, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
+            )
         except CollectionError:
             return False
         self.claimed += 1
@@ -408,6 +466,34 @@ class _Collection:
         self.state.written += 1
         self.state.stored += 1
         return True
+
+    def _rejected_early(self, car: dict[str, Any] | None) -> bool:
+        """The list's year and mileage alone reject the car (Encar's list stage): no card to fetch."""
+        rules = self.run_.rules
+        if rules is None or car is None:
+            return False
+        verdict = rules.evaluate(
+            list_values(car), source=SOURCE, phase=SelectionPhase.PRE, only_fields=LIST_STAGE_FIELDS
+        )
+        return verdict.rejects
+
+    def _judged(self, lot: CarLotV1) -> CarLotV1:
+        """The lot with the rules' verdict (PRE, then POST, as Encar); the core acts on it."""
+        rules = self.run_.rules
+        if rules is None:
+            return lot
+        values = rule_values(lot)
+        verdict, phase = rules.evaluate(values, source=SOURCE, phase=SelectionPhase.PRE), SelectionPhase.PRE
+        if not verdict.rejects:
+            post = rules.evaluate(values, source=SOURCE, phase=SelectionPhase.POST)
+            if post.rejects:
+                verdict, phase = post, SelectionPhase.POST
+            else:
+                verdict = Verdict(verdict.action, verdict.matched + post.matched)
+        if verdict.rejects:
+            self.state.filtered += 1
+        extra = {**lot.extra, "selection_evaluated": True}
+        return lot.model_copy(update={"selection": verdict.selection(phase), "extra": extra})
 
     def _halted(self) -> bool:
         return self.error is not None or self.run_.should_stop()
@@ -455,7 +541,7 @@ class _Collection:
         reasons = ", ".join(f"{cause} {n}" for cause, n in t["retry_reasons"].items())
         why = f" ({reasons})" if reasons else ""
         return (
-            f"{state.written} cars{from_store}{per_min}, {state.skipped} skipped"
+            f"{state.written} cars{from_store}{per_min}, {state.skipped} skipped, {state.filtered} filtered"
             f" · {t['requests']} requests, {avg}, {sessions}"
             f" · proxy {t['proxy_bytes'] / 1024**2:.1f} MB"
             f" · {t['proxy_rotations']} rotations, {t['challenges']} challenges, {t['retries']} retries{why}"
@@ -486,6 +572,7 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "pages": state.pages,
         "rejected": state.skipped,
         "stored": state.stored,
+        "filtered": state.filtered,
         # never a full run: lots:lifecycle must not delist che168 lots by it
         "full_run": False,
         "coverage_pct": 0.0,

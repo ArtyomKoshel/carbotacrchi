@@ -177,6 +177,10 @@ class RuleEngine:
     def from_rows(cls, rows: Iterable[Mapping[str, Any]]) -> RuleEngine:
         return cls(Rule.from_row(r) for r in rows)
 
+    def excluding(self, drop: Callable[[Rule], bool]) -> RuleEngine:
+        """The same rules without those `drop` picks (a platform that cannot judge them)."""
+        return RuleEngine(r for r in self._rules if not drop(r))
+
     def applicable(self, source: str, phase: SelectionPhase) -> list[Rule]:
         return [r for r in self._rules if r.phase is phase and (r.source is None or r.source == source)]
 

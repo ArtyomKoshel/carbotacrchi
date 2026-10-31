@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from collector import storage
 from collector.adapters.che168.api import Che168Api, CurlTransport, RequestBudget, RotationPolicy
-from collector.adapters.che168.job import Che168Run, run_che168
+from collector.adapters.che168.job import Che168Run, che168_rules, run_che168
 from collector.adapters.che168.signing import Signer
 from collector.adapters.encar.api import HEADERS, EncarApi
 from collector.config import Settings
@@ -209,6 +209,7 @@ class Service:
         budget = RequestBudget(2 * (max_cars + max_pages) + 50 * (1 + s.che168_workers))
         # planned rotations are bounded by the request limit; a session gives up after 3 challenges
         unbounded = budget.limit
+        rules = che168_rules(await load_rules(self.db, s.core_schema))
         transports: list[CurlTransport] = []
 
         def session(rotation: RotationPolicy) -> Che168Api:
@@ -239,7 +240,7 @@ class Service:
             run = Che168Run(
                 job=job, queue=self.queue, sink=sink, api=listers[0], list_apis=listers, card_apis=cards,
                 max_pages=max_pages, max_cars=max_cars, should_stop=self.stop.is_set, clock=self.clock,
-                runlog=runlog, history=MySqlHistoryStore(self.db),
+                runlog=runlog, history=MySqlHistoryStore(self.db), rules=rules,
                 card_max_age_s=s.che168_card_max_age_hours * 3600,
             )  # fmt: skip
             return await run_che168(run)

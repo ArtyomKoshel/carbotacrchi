@@ -18,10 +18,12 @@ from collector.adapters.che168.api import (
     RotationPolicy,
     transport_cause,
 )
-from collector.adapters.che168.job import Che168Run, run_che168
+from collector.adapters.che168.job import Che168Run, che168_rules, run_che168
 from collector.adapters.che168.mapping import stored_card, to_lot
 from collector.adapters.che168.signing import Signer
+from collector.domain.carlot import RejectAction, SelectionPhase
 from collector.ports import MemoryHistoryStore, MemorySink
+from collector.selection import Action, Rule, RuleEngine
 from collector.storage import Job
 from tests.test_che168 import detail, reply
 
@@ -153,6 +155,7 @@ class Shelf:
         self.pages, self.per_page = pages, per_page
         self.details: list[tuple[str, str]] = []
         self.prices: dict[int, str] = {}  # list price per car; default 12.68
+        self.names: dict[int, str] = {}  # list name per car (its «2023款» is the model year)
         self.lock = threading.Lock()
 
     def session(self, name: str) -> Che168Api:
@@ -170,7 +173,13 @@ class Shelf:
                 "totalcount": self.pages * self.per_page,
             }
             cars = [
-                {"infoid": i, "price": self.prices.get(i, "12.68"), "mileage": "0.8", "photocount": 3}
+                {
+                    "infoid": i,
+                    "price": self.prices.get(i, "12.68"),
+                    "mileage": "0.8",
+                    "photocount": 3,
+                    "carname": self.names.get(i, "逍客 2023款 1.3T CVT豪华版"),
+                }
                 for i in ids
             ]
             return reply({**result, "carlist": cars})
@@ -428,3 +437,58 @@ def test_the_listing_day_is_kept_as_a_date_in_the_raw_fields() -> None:
     stored = to_lot(stored_card(detail("101", publicdate="今天"), NOW), NOW + timedelta(days=2))
     assert fetched.extra["che168"]["publicdate"] == "2026-10-30"
     assert fetched.extra == stored.extra  # a car from the store reads as unchanged
+
+
+def rule(rid: int, field: str, operator: str, value: Any, source: str | None = None) -> Rule:
+    return Rule(
+        id=rid, name=f"r{rid}", field=field, operator=operator, value=value, action=Action.SKIP, source=source
+    )
+
+
+def test_the_list_year_rejects_a_car_before_its_card() -> None:
+    shelf = Shelf(pages=1, per_page=3)
+    shelf.names[102] = "逍客 2012款 1.6L"
+    status, sink, queue, _ = workers_run(shelf, 1, rules=RuleEngine([rule(6, "year", "lt", 2014)]))
+    assert status == "done"
+    assert sorted(i for _, i in shelf.details) == ["101", "103"]  # no request for the 2012 car
+    assert sorted(lot.source_id for lot in sink.lots) == ["101", "103"]
+    assert all(lot.selection.passed for lot in sink.lots)
+    assert queue.finished is not None
+    assert queue.finished[1]["filtered"] == 1
+
+
+def test_a_rejected_card_goes_to_the_core_with_its_verdict() -> None:
+    shelf = Shelf(pages=1, per_page=2)
+    status, sink, _, _ = workers_run(shelf, 1, rules=RuleEngine([rule(9, "make", "eq", "日产")]))
+    assert status == "done"
+    assert len(sink.lots) == 2  # written: the core logs the skip and keeps them out of lots
+    for lot in sink.lots:
+        assert (lot.selection.passed, lot.selection.action, lot.selection.rule_ids) == (
+            False,
+            RejectAction.SKIP,
+            (9,),
+        )
+        assert lot.extra["selection_evaluated"] is True
+
+
+def test_a_stored_car_is_judged_without_a_request() -> None:
+    shelf, store = Shelf(pages=1, per_page=3), MemoryHistoryStore()
+    workers_run(shelf, 1, history=store)
+    shelf.details.clear()
+    _, sink, queue, _ = workers_run(
+        shelf, 1, history=store, rules=RuleEngine([rule(9, "make", "eq", "日产")])
+    )
+    assert shelf.details == []
+    assert [lot.selection.passed for lot in sink.lots] == [False, False, False]
+    assert queue.finished is not None
+    assert (queue.finished[1]["stored"], queue.finished[1]["filtered"]) == (3, 3)
+
+
+def test_a_limit_in_won_without_a_platform_does_not_judge_a_price_in_yuan() -> None:
+    won, yuan, year = (
+        rule(8, "price", "gte", 1_000_000_000),
+        rule(10, "price", "gte", 500_000, "che168"),
+        rule(6, "year", "lt", 2014),
+    )
+    rules = che168_rules(RuleEngine([won, yuan, year]))
+    assert sorted(r.id for r in rules.applicable("che168", SelectionPhase.PRE)) == [6, 10]

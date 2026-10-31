@@ -136,6 +136,8 @@ class SearchPage:
     # what the list itself says of each car (price, mileage, photo count): a stored card
     # whose facts still match need not be fetched again (like Encar's listing facts)
     facts: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # the list's own name and mileage per car, for the early pass of the selection rules
+    cars: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def list_facts(car: dict[str, Any]) -> tuple[str, ...]:
@@ -306,7 +308,13 @@ class Che168Api:
         if total == 0 and (cars or count != 0):
             raise CollectionError("inconsistent_search_total")
         ids = tuple(identifier(c.get("infoid")) for c in cars)
-        return SearchPage(page, count, total, ids, {i: list_facts(c) for i, c in zip(ids, cars, strict=True)})
+        early = {
+            i: {"carname": c.get("carname"), "mileage": c.get("mileage")}
+            for i, c in zip(ids, cars, strict=True)
+        }
+        return SearchPage(
+            page, count, total, ids, {i: list_facts(c) for i, c in zip(ids, cars, strict=True)}, early
+        )
 
     def detail(self, infoid: str) -> dict[str, Any]:
         every = self.rotation.every_cards
