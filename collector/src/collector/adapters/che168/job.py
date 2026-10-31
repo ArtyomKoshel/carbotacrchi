@@ -44,6 +44,11 @@ CARD_ERRORS = (
     "invalid_vehicle_id",
 )
 MAX_CARD_FAILURES_IN_A_ROW = 5
+# a direct report request that failed for these reasons is tried again through the proxy
+DIRECT_FALLBACK = frozenset(
+    {"network_error", "temporary_http_error", "http_error", "access_blocked", "challenge",
+     "rate_limited", "report_unavailable", "request_limit", "time_limit", "post_unavailable"}
+)  # fmt: skip
 BATCH = 10  # cards per buffer write and checkpoint
 SOURCE = "che168"
 
@@ -129,6 +134,7 @@ class Che168State:
     reports: int = 0  # Chaboshi reports fetched with their cards
     reports_failed: int = 0  # linked but not fetched: the car is written without it, the next run retries
     reports_unavailable: int = 0  # Chaboshi refused the link che168 gave: kept as such with the card
+    reports_via_proxy: int = 0  # the direct session could not reach the report: fetched through the proxy
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -161,6 +167,9 @@ class Che168Run:
     card_max_age_s: float = 7 * 24 * 3600
     # parse_filters as che168 can judge them (che168_rules); None = every car passes
     rules: RuleEngine | None = None
+    # the Chaboshi reports without the proxy, one session per card worker (same order); a report
+    # the direct session cannot get is fetched through the worker's proxy session instead
+    report_apis: Sequence[Api] = ()
 
     @property
     def listers(self) -> list[Api]:
@@ -187,6 +196,9 @@ def _traffic(run: Che168Run) -> dict[str, Any]:
     return {
         "requests": requests,
         "proxy_bytes": sum(a.response_bytes for a in apis),
+        # the reports fetched without the proxy: traffic that costs nothing on FloppyData
+        "direct_requests": sum(a.requests for a in run.report_apis),
+        "direct_bytes": sum(a.response_bytes for a in run.report_apis),
         "avg_request_s": round(sum(a.request_seconds for a in apis) / requests, 2) if requests else None,
         "proxy_rotations": sum(a.rotations for a in apis),
         "challenges": sum(a.challenge_rotations for a in apis),
@@ -243,6 +255,7 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "reports": state.reports,
         "reports_failed": state.reports_failed,
         "reports_unavailable": state.reports_unavailable,
+        "reports_via_proxy": state.reports_via_proxy,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -276,6 +289,7 @@ class _Collection:
         self.max_pages = _limit(job.filters, "max_pages", run.max_pages)
         self.max_cars = _limit(job.filters, "max_cars", run.max_cars)
         self.workers = list(run.card_apis) or [run.api]
+        self.report_api = {id(w): r for w, r in zip(self.workers, run.report_apis, strict=False)}
         self.done: set[str] = set()
         self.batch: list[CarLotV1] = []
         self.batch_ids: list[str] = []
@@ -291,7 +305,7 @@ class _Collection:
         self.flushing = asyncio.Lock()
         self.sessions: dict[int, asyncio.Lock] = {}  # without card_apis the list and the cards share `api`
         self.listers = run.listers
-        threads = len(self.workers) + len(self.listers)
+        threads = len(self.workers) + len(self.listers) + len(run.report_apis)
         self.threads = ThreadPoolExecutor(max_workers=threads, thread_name_prefix="che168")
 
     async def run(self) -> str:
@@ -511,7 +525,7 @@ class _Collection:
     async def _report(self, api: Api, infoid: str, link: str) -> dict[str, Any] | None:
         """The Chaboshi report the card links; None when it failed: the car is written without it."""
         try:
-            kind, info = await self._call(api, api.chaboshi, link)
+            kind, info = await self._chaboshi(api, link)
         except CollectionError as e:
             if e.kind == "report_link_rejected":
                 # kept with the card: the dead link is not tried again until the card is fetched again
@@ -525,6 +539,19 @@ class _Collection:
             return None
         self.state.reports += 1
         return chaboshi_report(kind, info)
+
+    async def _chaboshi(self, api: Api, link: str) -> tuple[str, dict[str, Any]]:
+        """The report without the proxy when the worker has a direct session; what that session cannot
+        reach (network, a block) goes through the proxy. Chaboshi's own refusals are final either way."""
+        direct = self.report_api.get(id(api))
+        if direct is not None:
+            try:
+                return await self._call(direct, direct.chaboshi, link)
+            except CollectionError as e:
+                if e.kind not in DIRECT_FALLBACK:
+                    raise
+                self.state.reports_via_proxy += 1
+        return await self._call(api, api.chaboshi, link)
 
     def _rejected_early(self, car: dict[str, Any] | None) -> bool:
         """The list's year and mileage alone reject the car (Encar's list stage): no card to fetch."""
@@ -636,6 +663,7 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "reports": state.reports,
         "reports_failed": state.reports_failed,
         "reports_unavailable": state.reports_unavailable,
+        "reports_via_proxy": state.reports_via_proxy,
         # never a full run: lots:lifecycle must not delist che168 lots by it
         "full_run": False,
         "coverage_pct": 0.0,

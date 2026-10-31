@@ -51,6 +51,8 @@ from collector.storage import (
 )
 
 log = logging.getLogger("collector")
+# a Chaboshi report session goes straight to Chaboshi, not through che168: a short pause is enough
+REPORT_DELAY_S = 0.3
 
 ClientFactory = Callable[[str | None], httpx.AsyncClient]
 
@@ -228,6 +230,21 @@ class Service:
             api.post = transport.post  # the Chaboshi report's data request
             return api
 
+        def direct_session() -> Che168Api:
+            """A card worker's Chaboshi session: no proxy, its own short pause and request limit."""
+            transport = CurlTransport("direct", direct=True)
+            transports.append(transport)
+            api = Che168Api(
+                transport.request,
+                Signer.bundled(),
+                delay=REPORT_DELAY_S,
+                retries=1,
+                max_requests=3 * max_cars,
+                max_seconds=s.che168_max_hours * 3600,
+            )
+            api.post = transport.post
+            return api
+
         try:
             # list sessions read a wave of pages at once; each rotates after two of its own pages
             listers = [
@@ -238,8 +255,10 @@ class Service:
                 session(RotationPolicy(every_pages=0, every_cards=40, max_rotations=unbounded))
                 for _ in range(max(1, s.che168_workers))
             ]
+            reports = [direct_session() for _ in cards] if s.che168_reports_direct else []
             run = Che168Run(
                 job=job, queue=self.queue, sink=sink, api=listers[0], list_apis=listers, card_apis=cards,
+                report_apis=reports,
                 max_pages=max_pages, max_cars=max_cars, should_stop=self.stop.is_set, clock=self.clock,
                 runlog=runlog, history=MySqlHistoryStore(self.db), rules=rules,
                 card_max_age_s=s.che168_card_max_age_hours * 3600,

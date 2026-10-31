@@ -260,3 +260,60 @@ def test_a_link_chaboshi_refuses_is_kept_as_unavailable_and_not_tried_again() ->
     site.details.clear()
     report_run(site, store)
     assert site.details == []  # the stored card says the link was refused: nothing fetched again
+
+
+def direct_run(
+    site: ReportSite, direct: Chaboshi | None, fail: str | None = None
+) -> tuple[MemorySink, Queue]:
+    """A run whose card worker has a direct report session (no proxy); `fail` breaks it that way."""
+    worker = Che168Api(site.request, Signer.bundled(), delay=0)
+    worker.post = site.post
+    reports = []
+    if direct is not None:
+
+        def broken(url: str, params: dict[str, str]) -> Reply:
+            if fail == "network":
+                raise CollectionError("network_error", "connect_timeout")
+            return direct.get(url, params)
+
+        session = Che168Api(broken, Signer.bundled(), delay=0)
+        session.post = direct.post
+        reports = [session]
+    sink, queue = MemorySink(), Queue()
+    run = Che168Run(
+        job=job(), queue=queue, sink=sink, api=worker, card_apis=[worker], report_apis=reports,  # type: ignore[arg-type]
+        max_pages=10, max_cars=100, clock=lambda: NOW, history=MemoryHistoryStore(),
+    )  # fmt: skip
+    assert asyncio.run(run_che168(run)) == "done"
+    return sink, queue
+
+
+def test_reports_go_without_the_proxy_and_count_apart_from_it() -> None:
+    site, direct = ReportSite(), Chaboshi(fixture("fuel"))
+    sink, queue = direct_run(site, direct)
+    assert all(lot.inspection is not None for lot in sink.lots)
+    assert len(direct.posts) == 3
+    assert site.chaboshi.posts == []  # nothing through the proxy session
+    assert queue.finished is not None
+    result = queue.finished[1]
+    assert (result["reports"], result["reports_via_proxy"], result["direct_requests"]) == (3, 0, 6)
+    assert result["direct_bytes"] > 0
+
+
+def test_a_report_the_direct_session_cannot_reach_goes_through_the_proxy() -> None:
+    site, direct = ReportSite(), Chaboshi(fixture("fuel"))
+    sink, queue = direct_run(site, direct, fail="network")
+    assert all(lot.inspection is not None for lot in sink.lots)
+    assert len(site.chaboshi.posts) == 3  # the proxy session fetched them
+    assert queue.finished is not None
+    assert (queue.finished[1]["reports"], queue.finished[1]["reports_via_proxy"]) == (3, 3)
+
+
+def test_chaboshi_refusing_a_link_directly_is_not_asked_again_through_the_proxy() -> None:
+    site, direct = ReportSite(), Chaboshi(fixture("fuel"))
+    refusal = json.dumps({"Code": "1001", "Message": "签名错误"}).encode()
+    direct.get = lambda url, params: Reply(200, refusal)  # type: ignore[method-assign]
+    _, queue = direct_run(site, direct)
+    assert site.chaboshi.posts == []
+    assert queue.finished is not None
+    assert (queue.finished[1]["reports_unavailable"], queue.finished[1]["reports_via_proxy"]) == (3, 0)

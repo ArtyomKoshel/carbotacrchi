@@ -47,6 +47,8 @@ class Settings:
     che168_max_hours: float = 6.0
     che168_workers: int = 4  # card sessions at once, each its own proxy exit (Encar: COLLECTOR_CONCURRENCY)
     che168_list_workers: int = 4  # list sessions reading pages at once (20 cars a page)
+    # the Chaboshi reports without the proxy (they answer outside China): ~85% of a first run's bytes
+    che168_reports_direct: bool = True
     # a stored card (lot_history) whose list facts still match is reused for this long
     che168_card_max_age_hours: int = 168
 
@@ -77,6 +79,7 @@ class Settings:
             che168_workers=_int("CHE168_WORKERS", 4),
             che168_card_max_age_hours=_int("CHE168_CARD_MAX_AGE_HOURS", 168),
             che168_list_workers=_int("CHE168_LIST_WORKERS", 4),
+            che168_reports_direct=_env("CHE168_REPORTS_DIRECT", "1") not in ("0", "false", "no"),
         )
 
     @property

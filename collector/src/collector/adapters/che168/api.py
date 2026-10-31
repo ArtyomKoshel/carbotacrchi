@@ -105,17 +105,20 @@ class Reply:
 
 
 class CurlTransport:
-    def __init__(self, session: str, timeout: float = TIMEOUT_S) -> None:
+    """direct: no proxy at all (the Chaboshi reports answer outside China; che168 itself does not)."""
+
+    def __init__(self, session: str, timeout: float = TIMEOUT_S, *, direct: bool = False) -> None:
+        self.direct = direct
         self.session = self._session(session)
         self.timeout = timeout
 
-    @staticmethod
-    def _session(session: str) -> Any:
-        url = proxy_url(session)
+    def _session(self, session: str) -> Any:
         requests = import_module("curl_cffi.requests")
         client = requests.Session(impersonate="chrome")
         client.trust_env = False
-        client.proxies.update({"http": url, "https": url})
+        if not self.direct:
+            url = proxy_url(session)
+            client.proxies.update({"http": url, "https": url})
         client.headers.update(
             {
                 "Referer": "https://m.che168.com/carlist/index",
