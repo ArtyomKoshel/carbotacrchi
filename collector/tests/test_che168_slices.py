@@ -222,3 +222,45 @@ def test_page_20_answering_page_1_is_the_end_of_the_query() -> None:
 
     with pytest.raises(CollectionError, match="page_cap"):
         Che168Api(capped, Signer.bundled(), delay=0).search(20, 20)
+
+
+def test_list_sessions_take_slices_in_parallel() -> None:
+    site = Site()
+    listers = [Che168Api(site.request, Signer.bundled(), delay=0, max_requests=10_000) for _ in range(4)]
+    sink, queue = MemorySink(), Queue()
+    run = Che168Run(
+        job=job(), queue=queue, sink=sink, api=listers[0], list_apis=listers,  # type: ignore[arg-type]
+        max_pages=10, max_cars=1000, clock=lambda: NOW, history=MemoryHistoryStore(),
+        slices=True, ages=(0, 4),
+    )  # fmt: skip
+    assert asyncio.run(run_che168(run)) == "done"
+    assert len(sink.by_id()) == 800
+    assert all(a.searches > 0 for a in listers)  # every session read slices
+    assert queue.finished is not None
+    assert queue.finished[1]["full_run"] is True
+
+
+def test_the_time_limit_hands_the_pass_back_and_the_next_run_goes_on() -> None:
+    site, store, sink = Site(), MemoryHistoryStore(), MemorySink()
+    ticks = iter(range(1_000_000))
+    slow = Che168Api(site.request, Signer.bundled(), delay=0, max_requests=10_000, max_seconds=3000,
+                     clock=lambda: float(next(ticks)))  # fmt: skip
+    queue = Queue()
+    run = Che168Run(
+        job=job(), queue=queue, sink=sink, api=slow,  # type: ignore[arg-type]
+        max_pages=10, max_cars=1000, clock=lambda: NOW, history=store, slices=True, ages=(0, 4),
+    )  # fmt: skip
+    assert asyncio.run(run_che168(run)) == "interrupted"
+    assert queue.interrupted is not None
+    assert queue.interrupted["slicing"] is True
+    assert queue.interrupted["slices"]  # what is left to list
+    first = len(sink.by_id())
+    assert 0 < first < 800
+
+    api = Che168Api(site.request, Signer.bundled(), delay=0, max_requests=10_000)
+    resumed = Che168Run(
+        job=job(queue.interrupted), queue=Queue(), sink=sink, api=api,  # type: ignore[arg-type]
+        max_pages=10, max_cars=1000, clock=lambda: NOW, history=store, slices=True, ages=(0, 4),
+    )  # fmt: skip
+    assert asyncio.run(run_che168(resumed)) == "done"
+    assert len(sink.by_id()) == 800  # nothing lost between the two runs

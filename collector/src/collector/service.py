@@ -251,10 +251,15 @@ class Service:
 
         try:
             # list sessions read a wave of pages at once; each rotates after two of its own pages
+            # a pass over slices makes ~14 000 list requests and meets a CAPTCHA about once in 120
+            # (live, 2026-10-31): a session rotates on each instead of giving up after three; the
+            # run's request limit still stops a real block
+            challenges = unbounded if slicing else RotationPolicy().max_challenge_rotations
             listers = [
-                session(RotationPolicy(every_pages=0, every_searches=2, max_rotations=unbounded))
+                session(RotationPolicy(every_pages=0, every_searches=2, max_rotations=unbounded,
+                                       max_challenge_rotations=challenges))
                 for _ in range(max(1, s.che168_list_workers))
-            ]
+            ]  # fmt: skip
             cards = [
                 session(RotationPolicy(every_pages=0, every_cards=40, max_rotations=unbounded))
                 for _ in range(max(1, s.che168_workers))

@@ -14,6 +14,7 @@ lots:lifecycle must never delist che168 lots from it.
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
@@ -319,6 +320,8 @@ class _Collection:
         self.batch_cards: list[HistoryState] = []  # fetched cards for the store, saved with their batch
         self.facts: dict[str, tuple[str, ...]] = {}  # the list's facts per listed car
         self.seen: set[str] = set()  # every car this process listed, for the pass's count
+        self.slice_queue: deque[dict[str, str]] = deque()  # a pass's slices not taken yet
+        self.active: dict[int, dict[str, str]] = {}  # the slice each list session is in
         self.outstanding: dict[str, None] = {}  # listed, not yet in the buffer, in list order
         self.ids: asyncio.Queue[str | None] = asyncio.Queue()
         self.claimed = 0  # cars written or in flight, against max_cars
@@ -345,6 +348,13 @@ class _Collection:
             reason = await self._collect()
         except CollectionError as e:
             await self._write()
+            if e.kind == "time_limit" and state.slicing:
+                # a pass outlives one run's time: it hands back the slices left, the next goes on
+                await run.queue.interrupt(run.job.id, self._checkpoint())
+                await self._log(
+                    f"time limit: the pass goes on from the slices left · {self._totals()}", "warning"
+                )
+                return "interrupted"
             await self._log(f"stopped: {e.kind} · {self._totals()}", "error")
             await self._log(self._sessions())
             result = {**_result(run, state, e.kind, self._target()), "error": e.kind}
@@ -428,76 +438,83 @@ class _Collection:
                 await self._listed(page)
 
     async def _slice_lister(self) -> str:
-        """A pass over slices: a slice over CAP is cut, one under it is listed to its last page.
+        """A pass over slices, one slice per list session at a time.
 
-        The first page of a slice is both its count and its first data; its other pages go in a
-        wave, one per list session. The checkpoint holds the slices left: a resume lists the one
-        it stopped in again from its first page (cars already written are not fetched again)."""
+        A slice over CAP is cut: its parts go to the front of the queue, for whichever session is
+        free. One under CAP is listed to its last page by the session that took it. The checkpoint
+        holds the slices left and those in work: a resume lists those again from their first page
+        (cars already written are not fetched again)."""
         state, run = self.state, self.run_
         if not state.slicing:
             state.slicing = True
             state.slices = [dict(run.segment)]
-        while state.slices:
-            ahead = run.pagesize * len(self.listers)
-            while self.ids.qsize() >= ahead and not self._halted() and not self.car_limit:
-                await asyncio.sleep(0.05)
-            if self._halted():
-                return "interrupted"
-            stopped = await self._slice(state.slices[0])
-            if stopped is not None:
-                return stopped
-            if state.slices_done % 20 == 0:
-                await self._flush(f"{state.slices_done} slices, {len(state.slices)} left: {self._totals()}")
+        self.slice_queue = deque(state.slices)
+        await asyncio.gather(*(self._slice_worker(lister) for lister in self.listers))
+        if self.error is not None:
+            return "error"
+        if self._halted():
+            return "interrupted"
         return "slices_done"
 
-    async def _slice(self, filters: dict[str, str]) -> str | None:
-        """The first slice left: cut, or listed to its end and dropped; a stop reason, or None to go on."""
-        state, lister = self.state, self.listers[0]
+    async def _slice_worker(self, lister: Api) -> None:
+        """Takes slices until none are left and no other session may still cut one into more."""
+        ahead = 2 * self.run_.pagesize * len(self.listers)
+        while not self._halted():
+            if self.ids.qsize() >= ahead and not self.car_limit:
+                await asyncio.sleep(0.05)
+                continue
+            if not self.slice_queue:
+                if not self.active:
+                    return
+                await asyncio.sleep(0.05)  # a slice in work may still be cut into more
+                continue
+            filters = self.slice_queue.popleft()
+            self.active[id(lister)] = filters
+            try:
+                done = await self._slice(lister, filters)
+            finally:
+                del self.active[id(lister)]
+            if not done:
+                self.slice_queue.appendleft(filters)  # stopped in it: the checkpoint keeps it
+                return
+
+    async def _slice(self, lister: Api, filters: dict[str, str]) -> bool:
+        """Cut a slice, or list it to its end; False when the run stopped in it."""
+        state = self.state
         first = await self._search(lister, 1, filters)
         if first is None:
-            return "error"
+            return False
         if state.api_total == 0:
             state.api_total = first.total  # the segment: the first slice of a pass
         if first.total > CAP:
             parts = partial(cut, filters, brands=lister.brands, series=lister.series, ages=self.run_.ages)
             children = await self._call(lister, parts)
             if children:
-                state.slices[0:1] = children
+                self.slice_queue.extendleft(reversed(children))
                 state.cuts += 1
-                return None
+                return True
             state.truncated += 1
             await self._log(f"slice {key(filters)}: {first.total} cars, cannot be cut further", "warning")
         await self._listed(first)
-        stopped = await self._rest(first, filters)
-        if stopped is None:
-            state.slices.pop(0)
-            state.slices_done += 1
-        return stopped
+        if not await self._rest(lister, first, filters):
+            return False
+        state.slices_done += 1
+        if state.slices_done % 20 == 0:
+            left = len(self.slice_queue) + len(self.active)
+            await self._flush(f"{state.slices_done} slices, {left} left: {self._totals()}")
+        return True
 
-    async def _rest(self, first: SearchPage, filters: dict[str, str]) -> str | None:
-        """A slice's pages after the first, a wave at a time, up to page_cap."""
+    async def _rest(self, lister: Api, first: SearchPage, filters: dict[str, str]) -> bool:
+        """A slice's pages after the first, up to page_cap; False when the run stopped in them."""
         size = self.run_.pagesize
-        last = min(first.page_count, (CAP + size) // size + 1)
-        number = 2
-        while number <= last:
+        for number in range(2, min(first.page_count, (CAP + size) // size + 1) + 1):
             if self._halted():
-                return "interrupted"
-            numbers = range(number, min(number + len(self.listers), last + 1))
-            answers = await asyncio.gather(
-                *(
-                    self._search(api, n, filters, quiet=True)
-                    for api, n in zip(self.listers, numbers, strict=False)
-                )
-            )
-            if self.error is not None:
-                return "error"
-            pages = [a for a in answers if a is not None]
-            for page in pages:
-                await self._listed(page)
-            if len(pages) < len(answers):  # page_cap: che168 lists no more of this slice
-                return None
-            number += len(numbers)
-        return None
+                return False
+            page = await self._search(lister, number, filters, quiet=True)
+            if page is None:
+                return self.error is None  # None without an error: page_cap, the end of this slice
+            await self._listed(page)
+        return True
 
     async def _search(
         self, api: Api, number: int, filters: dict[str, str], *, quiet: bool = False
@@ -726,6 +743,9 @@ class _Collection:
 
     def _checkpoint(self) -> dict[str, Any]:
         self.state.pending = list(self.outstanding)
+        if self.state.slicing:
+            # in work first: a resume lists them again, then the queue in its order
+            self.state.slices = [*self.active.values(), *self.slice_queue]
         return self.state.to_json()
 
     async def _flush(self, message: str) -> None:
