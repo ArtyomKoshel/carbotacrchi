@@ -5,9 +5,9 @@ namespace App\Catalog\Che168;
 /**
  * The card's extended specs Che168 states (lots.raw_data.che168, collector che168 SOURCE_FIELDS),
  * as the lot card's sections: label → value with its unit. Only what Che168 states: its
- * placeholders («-», "", 0, «0kWh») mean unknown and give no row, and nothing is derived (the
- * number of transfers is not the number of owners, a warranty is the maker's terms, not one the
- * next owner keeps, the range is the declared one).
+ * placeholders («-», "", 0, «0kWh») mean unknown and give no row, and nothing is derived (a
+ * warranty is the maker's terms, not one the next owner keeps, the range is the declared one).
+ * The number of transfers is the lot's owners_count: the history shows it, not this block.
  */
 class Che168Specs
 {
@@ -27,7 +27,6 @@ class Che168Specs
     {
         $sections = [
             'Документы' => [
-                ['Переоформлений', self::count($che['transfercount'] ?? null)],
                 ['Страховка до', self::month($che['insurance'] ?? null)],
                 ['Техосмотр до', self::month($che['examine'] ?? null)],
                 ['Использование', self::named($che['carusename'] ?? null, self::USE)],
@@ -87,12 +86,6 @@ class Che168Specs
         $digits = $n == floor($n) ? 0 : (abs($n * 10 - round($n * 10)) < 1e-9 ? 1 : 2);
 
         return number_format($n, $digits, ',', ' ') . ' ' . $unit;
-    }
-
-    /** transfercount: 0 is a real answer here («no transfers»), not a placeholder. */
-    private static function count(mixed $v): ?string
-    {
-        return is_numeric($v) && (int) $v >= 0 && (int) $v == $v ? (string) (int) $v : null;
     }
 
     /** «2027-07» → «07.2027»; Che168 gives the month, no day is made up. */

@@ -16,6 +16,7 @@ from collector.domain.carlot import (
     CarLotV1,
     DriveType,
     Fuel,
+    History,
     Listing,
     Money,
     Transmission,
@@ -232,6 +233,15 @@ def option_pairs(value: Any) -> list[tuple[str, str]] | None:
     return pairs
 
 
+def owner_changes(value: Any) -> int | None:
+    """transfercount (过户次数): ownership transfers, what Encar's ownerChangeCnt counts; 0 is an answer."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and value.strip().isdigit():
+        value = int(value.strip())
+    return value if type(value) is int and 0 <= value <= 99 else None
+
+
 def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
     infoid = identifier(data.get("infoid"))
     dealerid = identifier(data.get("dealerid"))
@@ -274,6 +284,7 @@ def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
                 image_url=urls[0] if urls else None,
                 options=tuple(f"{OPTION_PREFIX}{oid}" for oid, _ in options or ()),
             ),
+            history=History(owners_count=owner_changes(data.get("transfercount"))),
             # the Chaboshi inspection the card links, when it was fetched
             inspection=inspection(report)
             if isinstance(report := data.get("report"), dict) and "kind" in report

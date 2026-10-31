@@ -41,6 +41,8 @@ class Che168Provider extends AbstractDbProvider
                 engineVolume: isset($raw['engine_volume']) ? (float) $raw['engine_volume'] : null,
                 retailValue:  isset($raw['retail_value']) ? (int) $raw['retail_value'] : null,
                 seatCount:    isset($raw['seat_count']) ? (int) $raw['seat_count'] : null,
+                // transfercount: changes of owner, as Encar's ownerChangeCnt (the history row and the owners filter)
+                ownersCount:  isset($raw['owners_count']) ? (int) $raw['owners_count'] : null,
                 firstRegDate: $raw['first_reg_date'] ?? null,
                 listedAt:     $raw['listed_at'] ?? null,
                 photos:       LotPhotos::urls($raw) ?: array_values(array_filter([$raw['image_url'] ?? null])),

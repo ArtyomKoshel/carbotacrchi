@@ -99,7 +99,7 @@ def test_mapping_units_missing_precision_and_privacy() -> None:
     assert lot.vehicle.year == 2023  # the «2023款» model year, not the 2025 registration
     assert lot.vehicle.first_registration is None
     assert lot.extra["che168"]["firstregdate"] == "2025-07"
-    assert lot.history.owners_count is None  # transfers are not owners
+    assert lot.history.owners_count == 1  # transfers: changes of owner, as Encar's ownerChangeCnt
     assert lot.vehicle.engine_volume_l == 1.3
     assert len(lot.listing.photos) == 1
     assert "DO NOT STORE" not in lot.model_dump_json()
@@ -412,3 +412,10 @@ def test_signer_is_deterministic_and_signs_all_parameters() -> None:
     assert a["_sign"] == b["_sign"]
     assert a["_sign"] != signer.sign({"pageindex": "2", "pagesize": "20"})["_sign"]
     assert signer.salt not in repr(signer)
+
+
+@pytest.mark.parametrize(
+    ("value", "changes"), [(0, 0), ("2", 2), (None, None), (True, None), (-1, None), ("1.5", None)]
+)
+def test_owner_changes_are_the_transfers_che168_states(value: Any, changes: int | None) -> None:
+    assert to_lot(detail(transfercount=value), NOW).history.owners_count == changes

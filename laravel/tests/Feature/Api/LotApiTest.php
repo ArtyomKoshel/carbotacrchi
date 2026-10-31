@@ -71,7 +71,7 @@ final class LotApiTest extends TestCase
             'options' => json_encode(['che168:119', 'che168:999']),
             'raw_data' => json_encode(['che168_options' => ['119' => '方向盘加热', '999' => '座椅通风'], 'che168' => ['transfercount' => 1, 'insurance' => '2027-07']]),
         ])->toArray();
-        $this->assertSame([['title' => 'Документы', 'rows' => [['Переоформлений', '1'], ['Страховка до', '07.2027']]]], $lot['sourceSpecs']);
+        $this->assertSame([['title' => 'Документы', 'rows' => [['Страховка до', '07.2027']]]], $lot['sourceSpecs']);
 
         $this->assertSame(['Подогрев руля', '座椅通风'], array_column($lot['options'], 'name_ru'));
         $this->assertSame($lot['options'], app(OptionEnricher::class)->enrichLots([$lot])[0]['options']);
