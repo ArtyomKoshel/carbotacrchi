@@ -43,6 +43,9 @@ final class LotRowMapper
         $options = $l['options'] ?? [];
         $paidOptions = $l['paid_options'] ?? [];
         $currency = self::currency($l['price']);
+        // The contract lets a platform leave the year unstated (che168: a title without «2020款»),
+        // lots.year cannot keep that: the record is refused, the rest of its batch goes on.
+        $year = $v['year'] ?? throw new UnsupportedRecord('vehicle.year is not stated: lots.year needs one');
 
         return [
             'id' => self::lotId($lot['source'], $lot['source_id']),
@@ -50,7 +53,7 @@ final class LotRowMapper
             'make' => $v['make'],
             'model' => $v['model'],
             'model_group' => $v['model_group'] ?? null,
-            'year' => $v['year'],
+            'year' => $year,
             'price' => self::amount($l['price'], $currency),
             'currency' => $currency,
             'mileage' => $l['mileage_km'],

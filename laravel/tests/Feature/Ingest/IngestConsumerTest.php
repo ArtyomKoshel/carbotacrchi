@@ -280,15 +280,18 @@ final class IngestConsumerTest extends TestCase
         // Malformed JSON cannot reach the buffer at all: ingest_lots.payload is a JSON column.
         $this->buffer(['source' => 'encar', 'source_id' => 'bad'], '{"source":"encar","source_id":"bad"}');
         $this->buffer(self::lot(['source_id' => '7', 'url' => 'https://fem.encar.com/cars/detail/7', 'listing' => ['price' => ['amount' => 5, 'currency' => 'JPY']]]));
+        // lots.year is NOT NULL: a lot without one once failed its whole batch and held the buffer back
+        $this->buffer(self::lot(['source_id' => '8', 'url' => 'https://fem.encar.com/cars/detail/8', 'vehicle' => ['year' => null]]));
         $this->buffer(self::lot());
 
         $result = $this->consume();
 
-        $this->assertSame(3, $result->consumed);
-        $this->assertSame(2, $result->rejected);
+        $this->assertSame(4, $result->consumed);
+        $this->assertSame(3, $result->rejected);
         $this->assertSame(1, $result->inserted);
-        $this->assertSame(2, DB::table('ingest_rejections')->count());
+        $this->assertSame(3, DB::table('ingest_rejections')->count());
         $this->assertStringContainsString('currency JPY', DB::table('ingest_rejections')->where('source_id', '7')->value('errors'));
+        $this->assertStringContainsString('vehicle.year', DB::table('ingest_rejections')->where('source_id', '8')->value('errors'));
         $this->assertSame(0, $this->consume()->consumed, 'offset moved past the rejected rows');
     }
 

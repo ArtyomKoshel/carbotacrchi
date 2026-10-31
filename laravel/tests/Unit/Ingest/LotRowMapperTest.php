@@ -98,6 +98,14 @@ final class LotRowMapperTest extends TestCase
         LotRowMapper::lotRow($lot, self::mask(...));
     }
 
+    public function test_a_lot_without_a_year_is_refused(): void
+    {
+        $lot = self::fixture('minimal');
+        $lot['vehicle']['year'] = null;
+        $this->expectException(UnsupportedRecord::class);
+        LotRowMapper::lotRow($lot, self::mask(...));
+    }
+
     public function test_che168_lot_keeps_yuan_and_china_time(): void
     {
         $lot = self::fixture('minimal');
