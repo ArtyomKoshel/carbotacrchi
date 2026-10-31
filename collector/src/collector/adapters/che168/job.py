@@ -22,9 +22,9 @@ from typing import Any, Protocol, TypeVar
 
 from collector import COLLECTOR_VERSION
 from collector.adapters.che168.api import CollectionError, SearchPage
-from collector.adapters.che168.mapping import to_lot
+from collector.adapters.che168.mapping import stored_card, to_lot
 from collector.domain.carlot import CarLotV1
-from collector.ports import Clock, IngestSink, utc_now
+from collector.ports import Clock, HistoryState, HistoryStore, IngestSink, utc_now
 from collector.runlog import RunLog
 from collector.storage import Job, JobQueue
 
@@ -40,6 +40,7 @@ CARD_ERRORS = (
 )
 MAX_CARD_FAILURES_IN_A_ROW = 5
 BATCH = 10  # cards per buffer write and checkpoint
+SOURCE = "che168"
 
 T = TypeVar("T")
 
@@ -69,6 +70,7 @@ class Che168State:
     written: int = 0
     skipped: int = 0
     api_total: int = 0
+    stored: int = 0  # of `written`: taken from the card store, no request
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> Che168State:
@@ -92,6 +94,10 @@ class Che168Run:
     runlog: RunLog | None = None
     # the cards, one worker per session (its own proxy exit and pause); none = `api` alone
     card_apis: Sequence[Api] = ()
+    # the card store (collector.lot_history, source che168): a listed car whose list facts match
+    # its stored card, fetched less than card_max_age_s ago, is not fetched again
+    history: HistoryStore | None = None
+    card_max_age_s: float = 7 * 24 * 3600
 
     @property
     def apis(self) -> list[Api]:
@@ -163,6 +169,7 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "target": target,
         "total": state.written,
         "rejected": state.skipped,
+        "stored": state.stored,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -199,6 +206,8 @@ class _Collection:
         self.done: set[str] = set()
         self.batch: list[CarLotV1] = []
         self.batch_ids: list[str] = []
+        self.batch_cards: list[HistoryState] = []  # fetched cards for the store, saved with their batch
+        self.facts: dict[str, tuple[str, ...]] = {}  # the list's facts per listed car
         self.outstanding: dict[str, None] = {}  # listed, not yet in the buffer, in list order
         self.ids: asyncio.Queue[str | None] = asyncio.Queue()
         self.claimed = 0  # cars written or in flight, against max_cars
@@ -284,9 +293,12 @@ class _Collection:
             state.next_page = page.number + 1
             state.exhausted = page.number >= page.page_count
             fresh = [i for i in dict.fromkeys(page.ids) if i not in self.done and i not in self.outstanding]
+            self.facts.update(page.facts)
+            stored = await self._stored_cards(fresh)
             for infoid in fresh:
                 self.outstanding[infoid] = None
-                self.ids.put_nowait(infoid)
+                if infoid not in stored or not self._from_store(infoid, stored[infoid]):
+                    self.ids.put_nowait(infoid)
             await self._flush(f"page {page.number}: {len(page.ids)} cars listed")
             listed = f"page {page.number}/{self.max_pages}: {len(page.ids)} listed, {len(fresh)} new"
             await self._log(f"{listed} · {self._totals()}")
@@ -321,9 +333,44 @@ class _Collection:
             self.done.add(infoid)
             self.batch.append(lot)
             self.batch_ids.append(infoid)
+            if infoid in self.facts:  # a resumed car without its list facts is not stored
+                now = self.run_.clock()
+                card = {"card": stored_card(data, now)}
+                self.batch_cards.append(HistoryState(infoid, now, self.facts[infoid], card))
             self.state.written += 1
             if len(self.batch) >= BATCH:
                 await self._flush(f"page {self.state.pages}: {self.state.written} cars")
+
+    async def _stored_cards(self, ids: list[str]) -> dict[str, dict[str, Any]]:
+        """Stored cards of these cars still good for this run: same list facts, fresh enough."""
+        history = self.run_.history
+        if history is None or not ids:
+            return {}
+        cutoff = self.run_.clock().timestamp() - self.run_.card_max_age_s
+        states = await history.states(SOURCE, ids)
+        return {
+            i: s.fields["card"]
+            for i, s in states.items()
+            if isinstance(s.fields.get("card"), dict)
+            and s.condition == self.facts.get(i)
+            and s.checked_at.timestamp() >= cutoff
+        }
+
+    def _from_store(self, infoid: str, card: dict[str, Any]) -> bool:
+        """The car from its stored card, like a fetched one; False: fetch it (limit reached or a bad card)."""
+        if self.claimed >= self.max_cars:
+            return False  # the worker that takes it marks the car limit
+        try:
+            lot = to_lot(card, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
+        except CollectionError:
+            return False
+        self.claimed += 1
+        self.done.add(infoid)
+        self.batch.append(lot)
+        self.batch_ids.append(infoid)
+        self.state.written += 1
+        self.state.stored += 1
+        return True
 
     def _halted(self) -> bool:
         return self.error is not None or self.run_.should_stop()
@@ -337,9 +384,11 @@ class _Collection:
         """The cars gathered so far into the buffer; only then they leave the checkpoint's pending."""
         if not self.batch:
             return
-        batch, ids = self.batch, self.batch_ids
-        self.batch, self.batch_ids = [], []
+        batch, ids, cards = self.batch, self.batch_ids, self.batch_cards
+        self.batch, self.batch_ids, self.batch_cards = [], [], []
         await self.run_.sink.write(batch)
+        if self.run_.history is not None and cards:
+            await self.run_.history.save(SOURCE, cards)  # after the lots: a lost save only costs a refetch
         for infoid in ids:
             self.outstanding.pop(infoid, None)
 
@@ -362,13 +411,14 @@ class _Collection:
         """«97 cars, 10.8 cars/min, 0 skipped · 102 requests, 2.3 s per answer, 4 sessions · proxy …»."""
         t, state = _traffic(self.run_), self.state
         elapsed = _elapsed(self.run_, state)
+        from_store = f" ({state.stored} from the card store)" if state.stored else ""
         per_min = f", {state.written / elapsed * 60:.1f} cars/min" if elapsed > 0 else ""
         avg = f"{t['avg_request_s']:.1f} s per answer" if t["avg_request_s"] is not None else "no answers yet"
         sessions = f"{t['workers']} session{'s' if t['workers'] > 1 else ''}"
         reasons = ", ".join(f"{cause} {n}" for cause, n in t["retry_reasons"].items())
         why = f" ({reasons})" if reasons else ""
         return (
-            f"{state.written} cars{per_min}, {state.skipped} skipped"
+            f"{state.written} cars{from_store}{per_min}, {state.skipped} skipped"
             f" · {t['requests']} requests, {avg}, {sessions}"
             f" · proxy {t['proxy_bytes'] / 1024**2:.1f} MB"
             f" · {t['proxy_rotations']} rotations, {t['challenges']} challenges, {t['retries']} retries{why}"
@@ -398,6 +448,7 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "target": target,
         "pages": state.pages,
         "rejected": state.skipped,
+        "stored": state.stored,
         # never a full run: lots:lifecycle must not delist che168 lots by it
         "full_run": False,
         "coverage_pct": 0.0,

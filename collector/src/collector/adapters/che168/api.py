@@ -9,7 +9,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import import_module
 from typing import Any
 from urllib.parse import quote
@@ -130,6 +130,13 @@ class SearchPage:
     page_count: int
     total: int
     ids: tuple[str, ...]
+    # what the list itself says of each car (price, mileage, photo count): a stored card
+    # whose facts still match need not be fetched again (like Encar's listing facts)
+    facts: dict[str, tuple[str, ...]] = field(default_factory=dict)
+
+
+def list_facts(car: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(f"{key}={car.get(key)}" for key in ("price", "mileage", "photocount"))
 
 
 @dataclass(frozen=True)
@@ -287,7 +294,8 @@ class Che168Api:
             raise CollectionError("incomplete_search_page")
         if total == 0 and (cars or count != 0):
             raise CollectionError("inconsistent_search_total")
-        return SearchPage(page, count, total, tuple(identifier(c.get("infoid")) for c in cars))
+        ids = tuple(identifier(c.get("infoid")) for c in cars)
+        return SearchPage(page, count, total, ids, {i: list_facts(c) for i, c in zip(ids, cars, strict=True)})
 
     def detail(self, infoid: str) -> dict[str, Any]:
         every = self.rotation.every_cards

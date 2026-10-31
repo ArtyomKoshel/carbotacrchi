@@ -235,6 +235,7 @@ class Service:
             run = Che168Run(
                 job=job, queue=self.queue, sink=sink, api=lister, card_apis=cards, max_pages=max_pages,
                 max_cars=max_cars, should_stop=self.stop.is_set, clock=self.clock, runlog=runlog,
+                history=MySqlHistoryStore(self.db), card_max_age_s=s.che168_card_max_age_hours * 3600,
             )  # fmt: skip
             return await run_che168(run)
         finally:

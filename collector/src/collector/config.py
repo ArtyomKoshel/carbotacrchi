@@ -46,6 +46,8 @@ class Settings:
     che168_delay: float = 3.0  # seconds after each request
     che168_max_hours: float = 6.0
     che168_workers: int = 4  # card sessions at once, each its own proxy exit (Encar: COLLECTOR_CONCURRENCY)
+    # a stored card (lot_history) whose list facts still match is reused for this long
+    che168_card_max_age_hours: int = 168
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -72,6 +74,7 @@ class Settings:
             che168_delay=float(_env("CHE168_DELAY", "3")),
             che168_max_hours=float(_env("CHE168_MAX_HOURS", "6")),
             che168_workers=_int("CHE168_WORKERS", 4),
+            che168_card_max_age_hours=_int("CHE168_CARD_MAX_AGE_HOURS", 168),
         )
 
     @property

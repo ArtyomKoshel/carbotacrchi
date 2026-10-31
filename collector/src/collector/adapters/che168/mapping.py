@@ -187,6 +187,15 @@ def location(value: Any) -> str | None:
     return value.strip()[:100] or None if isinstance(value, str) else None
 
 
+def stored_card(data: dict[str, Any], observed_at: datetime) -> dict[str, Any]:
+    """What to_lot reads of a card, for the card store; «今天» / «3天前» become the date they meant."""
+    card = {key: data[key] for key in (*SOURCE_FIELDS, "piclist") if key in data}
+    day = listed_at(data.get("publicdate"), observed_at)
+    if day is not None:
+        card["publicdate"] = day.date().isoformat()
+    return card
+
+
 def to_lot(data: dict[str, Any], observed_at: datetime) -> CarLotV1:
     infoid = identifier(data.get("infoid"))
     dealerid = identifier(data.get("dealerid"))

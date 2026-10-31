@@ -4,7 +4,7 @@ import asyncio
 import json
 import threading
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -19,8 +19,9 @@ from collector.adapters.che168.api import (
     transport_cause,
 )
 from collector.adapters.che168.job import Che168Run, run_che168
+from collector.adapters.che168.mapping import stored_card, to_lot
 from collector.adapters.che168.signing import Signer
-from collector.ports import MemorySink
+from collector.ports import MemoryHistoryStore, MemorySink
 from collector.storage import Job
 from tests.test_che168 import detail, reply
 
@@ -151,6 +152,7 @@ class Shelf:
     def __init__(self, pages: int = 3, per_page: int = 5) -> None:
         self.pages, self.per_page = pages, per_page
         self.details: list[tuple[str, str]] = []
+        self.prices: dict[int, str] = {}  # list price per car; default 12.68
         self.lock = threading.Lock()
 
     def session(self, name: str) -> Che168Api:
@@ -167,7 +169,11 @@ class Shelf:
                 "pagecount": self.pages,
                 "totalcount": self.pages * self.per_page,
             }
-            return reply({**result, "carlist": [{"infoid": i} for i in ids]})
+            cars = [
+                {"infoid": i, "price": self.prices.get(i, "12.68"), "mileage": "0.8", "photocount": 3}
+                for i in ids
+            ]
+            return reply({**result, "carlist": cars})
 
         return Che168Api(request, Signer.bundled(), delay=0)
 
@@ -191,7 +197,7 @@ def workers_run(shelf: Shelf, n: int, **kw: Any) -> tuple[str, MemorySink, Queue
     run = Che168Run(
         job=job(), queue=queue, sink=sink, api=shelf.session("list"),  # type: ignore[arg-type]
         card_apis=[shelf.session(f"w{i}") for i in range(n)], max_pages=kw.pop("max_pages", 10),
-        max_cars=kw.pop("max_cars", 100), clock=lambda: NOW, runlog=log, **kw,  # type: ignore[arg-type]
+        max_cars=kw.pop("max_cars", 100), clock=kw.pop("clock", lambda: NOW), runlog=log, **kw,  # type: ignore[arg-type]
     )  # fmt: skip
     return asyncio.run(run_che168(run)), sink, queue, log
 
@@ -306,3 +312,39 @@ def test_a_stuck_proxy_exit_is_retried_on_a_fresh_session() -> None:
     assert len(sessions) == 1  # the timeout moved to a new exit; the 502 retried on the same one
     assert api.rotations == 1
     assert api.challenge_rotations == 0
+
+
+def test_a_second_run_takes_unchanged_cars_from_the_card_store() -> None:
+    shelf, store = Shelf(pages=2, per_page=5), MemoryHistoryStore()
+    workers_run(shelf, 2, history=store)
+    assert len(shelf.details) == 10
+    shelf.details.clear()
+    shelf.prices[101] = "99.9"  # one car changed its price since
+
+    status, sink, queue, log = workers_run(shelf, 2, history=store)
+    assert status == "done"
+    assert [i for _, i in shelf.details] == ["101"]  # only the changed car is fetched
+    assert sorted(lot.source_id for lot in sink.lots) == [
+        str(i) for i in (101, 102, 103, 104, 105, 201, 202, 203, 204, 205)
+    ]
+    assert {lot.run_id for lot in sink.lots} == {7}
+    assert queue.finished is not None
+    assert queue.finished[1]["stored"] == 9
+    assert "(9 from the card store)" in log.lines[-2][1]
+
+
+def test_an_old_stored_card_is_fetched_again() -> None:
+    shelf, store = Shelf(pages=1, per_page=3), MemoryHistoryStore()
+    workers_run(shelf, 1, history=store)
+    shelf.details.clear()
+    later = NOW + timedelta(hours=2)
+    workers_run(shelf, 1, history=store, card_max_age_s=3600, clock=lambda: later)
+    assert len(shelf.details) == 3
+
+
+def test_the_store_keeps_the_listing_day_not_today() -> None:
+    card = stored_card(detail("101", publicdate="今天"), NOW)  # NOW is 30 Oct, 08:00 in China
+    assert card["publicdate"] == "2026-10-30"
+    lot = to_lot(card, NOW + timedelta(days=3))
+    assert lot.listing.listed_at is not None
+    assert lot.listing.listed_at.date() == date(2026, 10, 30)
