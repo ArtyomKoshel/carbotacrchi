@@ -73,8 +73,8 @@ php artisan options:name-by-ai             # 2. AI генерирует name_kr 
 Считает прогоны, а не дни. Правила и определение «успешного прогона» описаны в
 [04-parser → Жизненный цикл лота](./04-parser.md#жизненный-цикл-лота).
 
-Планировщик запускает команду каждый час в :45 (`routes/console.php`). Пока идёт парсинг
-(`parse_jobs.status = running`), запуск пропускается.
+Планировщик запускает команду каждый час: в :45 для Encar, в :50 с `--source=che168` (`routes/console.php`).
+Пока идёт парсинг (`parse_jobs.status = running`), запуск пропускается.
 
 ```bash
 php artisan lots:lifecycle [OPTIONS]
@@ -178,6 +178,7 @@ php artisan collector:enqueue [--dry-run]                    # поставит�
 php artisan collector:compare [--job=ID] [--json]            # теневой режим: прогон сборщика против lots старого парсера
 php artisan ingest:cutover                                   # один раз при переходе в primary: пропустить теневой буфер
 php artisan collector:seed-history [--dry-run]               # один раз: история из lots → collector.lot_history, первый прогон без перекачки всей истории
+php artisan collector:prune-history [--days=60] [--dry-run]  # раз в сутки в 04:30: строки lot_history без активного лота, не обновлявшиеся N дней
 ```
 
 ### Команды сборщика

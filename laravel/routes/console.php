@@ -19,6 +19,14 @@ Schedule::command('lots:lifecycle')
     ->withoutOverlapping(120)
     ->runInBackground();
 
+// The same for che168, by its own runs. A pass counts once it listed the segment (coverage_pct) and
+// wrote at least half of it, so nothing goes while the che168 lots are still filling up.
+Schedule::command('lots:lifecycle', ['--source' => 'che168'])
+    ->hourlyAt(50)
+    ->skip(fn () => \App\Models\ParseJob::where('status', 'running')->exists())
+    ->withoutOverlapping(120)
+    ->runInBackground();
+
 Schedule::call(function () {
     $baseFile = config('admin.log_file');
     if (!$baseFile) {
@@ -68,6 +76,15 @@ Schedule::command('ingest:consume')
 // full run adds ~200k records, so the buffer would otherwise grow without end.
 Schedule::command('ingest:prune')
     ->hourlyAt(20)
+    ->withoutOverlapping(60)
+    ->runInBackground()
+    ->when(fn () => (bool) config('ingest.enabled'));
+
+// The collector's stored cards and histories of cars without an active lot, older than
+// lifecycle.history_max_age_days: purge deletes a lot's row with it, a rejected car never has one.
+Schedule::command('collector:prune-history')
+    ->dailyAt('04:30')
+    ->skip(fn () => \App\Models\ParseJob::where('status', 'running')->exists())
     ->withoutOverlapping(60)
     ->runInBackground()
     ->when(fn () => (bool) config('ingest.enabled'));

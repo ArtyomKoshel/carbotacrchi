@@ -21,6 +21,10 @@ return [
     // Inactive lots not seen in this many latest successful full runs are purged.
     'purge_after_runs' => (int) env('LOTS_PURGE_AFTER_RUNS', 5),
 
+    // collector:prune-history: a stored card or history older than this, of a car with no active lot,
+    // goes (a car for sale refreshes it every 30 days at most, che168's CHE168_CARD_MAX_AGE_HOURS)
+    'history_max_age_days' => (int) env('COLLECTOR_HISTORY_MAX_AGE_DAYS', 60),
+
     // Lots per delete transaction, and the pause between transactions.
     'batch'    => (int) env('LOTS_LIFECYCLE_BATCH', 2000),
     'pause_ms' => (int) env('LOTS_LIFECYCLE_PAUSE_MS', 200),
