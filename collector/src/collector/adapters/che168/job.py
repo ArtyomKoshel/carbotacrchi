@@ -324,7 +324,7 @@ class _Collection:
         self.active: dict[int, dict[str, str]] = {}  # the slice each list session is in
         self.outstanding: dict[str, None] = {}  # listed, not yet in the buffer, in list order
         self.ids: asyncio.Queue[str | None] = asyncio.Queue()
-        self.claimed = 0  # cars written or in flight, against max_cars
+        self.claimed = 0  # cards fetched or in flight, against max_cars (stored cards are not)
         self.failures = 0
         self.error: CollectionError | None = None
         self.car_limit = False
@@ -546,18 +546,22 @@ class _Collection:
         self.facts.update(page.facts)
         stored = await self._stored_cards(fresh)
         for infoid in fresh:
-            if infoid not in stored and self._rejected_early(page.cars.get(infoid)):
+            card = stored.get(infoid)
+            if card is None and self._rejected_early(page.cars.get(infoid)):
                 # never written: it is not in lots (it was never fetched), there is nothing to deactivate
                 self.state.filtered += 1
                 self.done.add(infoid)
                 continue
-            if infoid not in stored and state.slicing and (self.car_limit or self.claimed >= self.max_cars):
+            self.outstanding[infoid] = None
+            # a stored card costs no request: the car is written whatever the car limit says
+            if card is not None and self._from_store(infoid, card):
+                continue
+            if state.slicing and (self.car_limit or self.claimed >= self.max_cars):
+                del self.outstanding[infoid]
                 state.not_fetched += 1  # listed: a later pass fetches the card
                 self.done.add(infoid)  # a car on a price border is listed twice: count it once
                 continue
-            self.outstanding[infoid] = None
-            if infoid not in stored or not self._from_store(infoid, stored[infoid]):
-                self.ids.put_nowait(infoid)
+            self.ids.put_nowait(infoid)
         await self._flush(f"page {page.number}: {len(page.ids)} cars listed")
         listed = f"page {page.number}/{self.max_pages}: {len(page.ids)} listed, {len(fresh)} new"
         await self._log(f"{listed} · {self._totals()}")
@@ -634,16 +638,15 @@ class _Collection:
         }
 
     def _from_store(self, infoid: str, card: dict[str, Any]) -> bool:
-        """The car from its stored card, like a fetched one; False: fetch it (limit reached or a bad card)."""
-        if self.claimed >= self.max_cars:
-            return False  # the worker that takes it marks the car limit
+        """The car from its stored card, like a fetched one, and outside the car limit: the limit is on
+        requests, and a pass that spent it on cars it already had never got past them (run 43, 31.10:
+        5 849 of 10 000). False: a card the mapping cannot read, fetch it."""
         try:
             lot = self._judged(
                 to_lot(card, self.run_.clock()).model_copy(update={"run_id": self.run_.job.id})
             )
         except CollectionError:
             return False
-        self.claimed += 1
         self.done.add(infoid)
         self.batch.append(lot)
         self.batch_ids.append(infoid)

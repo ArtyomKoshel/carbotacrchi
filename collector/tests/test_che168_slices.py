@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,6 +13,7 @@ from collector.adapters.che168.api import (
     BRANDS_URL,
     DETAIL_URL,
     OPTIONS_URL,
+    SEARCH_URL,
     SERIES_URL,
     Che168Api,
     CollectionError,
@@ -173,6 +175,18 @@ def test_the_car_limit_stops_the_cards_not_the_pass() -> None:
     assert (result["listed"], result["not_fetched"], result["full_run"]) == (800, 750, True)
 
 
+def test_cards_from_the_store_do_not_use_up_the_car_limit() -> None:
+    # run 43 (31.10) spent 5 849 of its 10 000 on cars the store had, and the next pass would start
+    # from the same cars again: each pass now writes all it knows and fetches max_cars it never had
+    site, store = Site(), MemoryHistoryStore()
+    pass_over(site, max_cars=50, store=store)
+    sink, queue = pass_over(site, max_cars=50, store=store)
+    assert queue.finished is not None
+    result = queue.finished[1]
+    assert (result["stored"], result["total"], result["not_fetched"]) == (50, 100, 700)
+    assert len(sink.by_id()) == 100
+
+
 def test_a_slice_that_cannot_be_cut_is_listed_as_far_as_che168_lets_and_the_pass_is_not_full() -> None:
     site = Site()
     for c in site.cars:  # one province, one year, one price: nothing left to cut by
@@ -226,7 +240,15 @@ def test_page_20_answering_page_1_is_the_end_of_the_query() -> None:
 
 def test_list_sessions_take_slices_in_parallel() -> None:
     site = Site()
-    listers = [Che168Api(site.request, Signer.bundled(), delay=0, max_requests=10_000) for _ in range(4)]
+
+    def request(url: str, params: dict[str, str]) -> Reply:
+        # an idle list session looks for a slice every 50 ms: against an instant site one session could
+        # list the whole pass before the others looked once (the test failed about every other run)
+        if url == SEARCH_URL:
+            time.sleep(0.01)
+        return site.request(url, params)
+
+    listers = [Che168Api(request, Signer.bundled(), delay=0, max_requests=10_000) for _ in range(4)]
     sink, queue = MemorySink(), Queue()
     run = Che168Run(
         job=job(), queue=queue, sink=sink, api=listers[0], list_apis=listers,  # type: ignore[arg-type]
