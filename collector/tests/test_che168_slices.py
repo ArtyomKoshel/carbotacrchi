@@ -5,6 +5,7 @@ import json
 import math
 import time
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -161,6 +162,7 @@ def test_a_pass_lists_every_car_through_slices_under_the_cap() -> None:
     result = queue.finished[1]
     assert result["stop_reason"] == "slices_done"
     assert result["full_run"] is True
+    assert result["coverage_pct"] == 100.0  # lots:lifecycle counts a run from 85
     assert (result["listed"], result["api_total"], result["truncated"]) == (800, 800, 0)
     assert result["cuts"] >= 3  # the site, make 1 and its big series were over CAP
     assert len(site.cars) > CAP
@@ -185,6 +187,28 @@ def test_cards_from_the_store_do_not_use_up_the_car_limit() -> None:
     result = queue.finished[1]
     assert (result["stored"], result["total"], result["not_fetched"]) == (50, 100, 700)
     assert len(sink.by_id()) == 100
+
+
+def test_known_cars_past_the_car_limit_are_written_from_their_last_card() -> None:
+    # lots:lifecycle hides a che168 lot a full pass did not write: a known car whose card is due when
+    # the limit is spent (queued or listed past it) goes out with its last card and the list's price
+    site, store = Site(), MemoryHistoryStore()
+    first, _ = pass_over(site, max_cars=50, store=store)
+    known = set(first.by_id())
+    changed = sorted(known)[:5]
+    for car in site.cars:
+        if str(car["infoid"]) in changed:
+            car["price"] = round(car["price"] + 0.05, 2)  # the list's facts change: the card is due
+    sink, queue = pass_over(site, max_cars=1, store=store)
+    assert queue.finished is not None
+    result = queue.finished[1]
+    written = sink.by_id()
+    assert known <= set(written)  # every car the store knew, though the limit allowed one card
+    assert result["stale"] >= 4
+    for car in site.cars:
+        if str(car["infoid"]) in changed:
+            price = int(Decimal(str(car["price"])) * 10_000)
+            assert written[str(car["infoid"])].listing.price.amount == price
 
 
 def test_a_slice_that_cannot_be_cut_is_listed_as_far_as_che168_lets_and_the_pass_is_not_full() -> None:

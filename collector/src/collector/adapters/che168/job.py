@@ -7,8 +7,9 @@ collector runs many requests over its proxy pool. The checkpoint (parse_jobs.pro
 holds the next page and the listed cars not yet in the buffer; lots already in the buffer for this
 run are never fetched again on resume (sink.resume).
 
-A che168 run never counts as a full run: the list is not a proven snapshot of the site, so
-lots:lifecycle must never delist che168 lots from it.
+A pass over slices that listed the whole segment is a full run (full_run, coverage_pct): every car
+it listed and knows is written, so lots:lifecycle hides the che168 lots it did not see. A pass of
+the newest pages never is one.
 """
 
 from __future__ import annotations
@@ -102,6 +103,11 @@ def list_values(car: dict[str, Any]) -> dict[str, Any]:
     return {"source": SOURCE, "year": model_year(car.get("carname")), "mileage": mileage}
 
 
+def with_list_facts(card: dict[str, Any], car: dict[str, Any] | None) -> dict[str, Any]:
+    """A car's last card with the price and mileage the list states now (the same 万 units)."""
+    return {**card, **{k: car[k] for k in ("price", "mileage") if car and car.get(k) is not None}}
+
+
 class Api(Protocol):
     requests: int
     rotations: int
@@ -150,6 +156,9 @@ class Che168State:
     truncated: int = 0  # slices over CAP that could not be cut: che168 listed only part of them
     listed: int = 0  # distinct cars the pass listed (this process: a resumed pass starts it again)
     not_fetched: int = 0  # listed, new, but over the car limit: a later pass fetches their cards
+    # known cars whose card is due (old, or the list's facts changed) past the car limit: written from
+    # their last card with the list's price and mileage, so the pass saw them; a later pass fetches it
+    stale: int = 0
     page_count: int = 0  # known after the first page
 
     @classmethod
@@ -280,6 +289,7 @@ def _progress(run: Che168Run, state: Che168State, target: int, message: str) -> 
         "reports_failed": state.reports_failed,
         "reports_unavailable": state.reports_unavailable,
         "reports_via_proxy": state.reports_via_proxy,
+        "stale": state.stale,
         "page": state.pages,
         "message": message,
         "elapsed_s": _elapsed(run, state),
@@ -323,6 +333,7 @@ class _Collection:
         self.slice_queue: deque[dict[str, str]] = deque()  # a pass's slices not taken yet
         self.active: dict[int, dict[str, str]] = {}  # the slice each list session is in
         self.outstanding: dict[str, None] = {}  # listed, not yet in the buffer, in list order
+        self.last_cards: dict[str, dict[str, Any]] = {}  # queued known cars: last card + list's facts
         self.ids: asyncio.Queue[str | None] = asyncio.Queue()
         self.claimed = 0  # cards fetched or in flight, against max_cars (stored cards are not)
         self.failures = 0
@@ -362,6 +373,10 @@ class _Collection:
             return "error"
         finally:
             self.threads.shutdown(wait=False, cancel_futures=True)
+        if reason == "slices_done":
+            # queued before the car limit, never fetched: the known ones from their last cards
+            for infoid in list(self.outstanding):
+                self._from_last_card(infoid)
         await self._write()  # a limit can end the run mid-batch
         if reason == "slices_done":
             # listed and queued before the car limit, never fetched: a later pass fetches their cards
@@ -379,10 +394,12 @@ class _Collection:
 
     async def _collect(self) -> str:
         """The reason the run ended; raises the first error any session met."""
-        for infoid in self.state.pending:
-            if infoid not in self.done and infoid not in self.outstanding:
-                self.outstanding[infoid] = None
-                self.ids.put_nowait(infoid)
+        pending = [i for i in dict.fromkeys(self.state.pending) if i not in self.done]
+        # a known car among them keeps its last card for the car limit, as a listed one (_from_last_card)
+        self.last_cards.update((await self._stored_cards(pending))[1])
+        for infoid in pending:
+            self.outstanding[infoid] = None
+            self.ids.put_nowait(infoid)
         tasks = [asyncio.create_task(self._card_worker(api)) for api in self.workers]
         try:
             reason = await (self._slice_lister() if self.run_.slices else self._lister())
@@ -544,7 +561,7 @@ class _Collection:
         state.listed += len(new)
         fresh = [i for i in dict.fromkeys(page.ids) if i not in self.done and i not in self.outstanding]
         self.facts.update(page.facts)
-        stored = await self._stored_cards(fresh)
+        stored, last = await self._stored_cards(fresh)
         for infoid in fresh:
             card = stored.get(infoid)
             if card is None and self._rejected_early(page.cars.get(infoid)):
@@ -556,7 +573,13 @@ class _Collection:
             # a stored card costs no request: the car is written whatever the car limit says
             if card is not None and self._from_store(infoid, card):
                 continue
+            if infoid in last:
+                self.last_cards[infoid] = with_list_facts(last[infoid], page.cars.get(infoid))
             if state.slicing and (self.car_limit or self.claimed >= self.max_cars):
+                # a car the store knows is still for sale: written from its last card, or lots:lifecycle
+                # would hide it for a card the limit left for a later pass
+                if self._from_last_card(infoid):
+                    continue
                 del self.outstanding[infoid]
                 state.not_fetched += 1  # listed: a later pass fetches the card
                 self.done.add(infoid)  # a car on a price border is listed twice: count it once
@@ -608,6 +631,7 @@ class _Collection:
                 continue
             self.failures = 0
             self.done.add(infoid)
+            self.last_cards.pop(infoid, None)
             self.batch.append(lot)
             self.batch_ids.append(infoid)
             if infoid in self.facts:  # a resumed car without its list facts is not stored
@@ -618,24 +642,31 @@ class _Collection:
             if len(self.batch) >= BATCH:
                 await self._flush(f"page {self.state.pages}: {self.state.written} cars")
 
-    async def _stored_cards(self, ids: list[str]) -> dict[str, dict[str, Any]]:
-        """Stored cards of these cars still good for this run: same list facts, fresh enough."""
+    async def _stored_cards(
+        self, ids: list[str]
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+        """Stored cards of these cars: those still good for this run (same list facts, fresh enough),
+        and the other cars' last cards, written only when the car limit leaves no request for them."""
         history = self.run_.history
         if history is None or not ids:
-            return {}
+            return {}, {}
         cutoff = self.run_.clock().timestamp() - self.run_.card_max_age_s
-        states = await history.states(SOURCE, ids)
-        return {
-            i: s.fields["card"]
-            for i, s in states.items()
-            if isinstance(s.fields.get("card"), dict)
-            and "options" in s.fields["card"]  # a card stored without its options is fetched again
-            # so is one whose linked report was not fetched
-            and (not s.fields["card"].get("report_link") or "report" in s.fields["card"])
-            and s.fields["card"].get("_v") == CARD_VERSION  # so is one stored before newer fields
-            and s.condition == self.facts.get(i)
-            and s.checked_at.timestamp() >= cutoff
-        }
+        good: dict[str, dict[str, Any]] = {}
+        last: dict[str, dict[str, Any]] = {}
+        for i, s in (await history.states(SOURCE, ids)).items():
+            card = s.fields.get("card")
+            if not isinstance(card, dict):
+                continue
+            fresh = (
+                "options" in card  # a card stored without its options is fetched again
+                # so is one whose linked report was not fetched
+                and (not card.get("report_link") or "report" in card)
+                and card.get("_v") == CARD_VERSION  # so is one stored before newer fields
+                and s.condition == self.facts.get(i)
+                and s.checked_at.timestamp() >= cutoff
+            )
+            (good if fresh else last)[i] = card
+        return good, last
 
     def _from_store(self, infoid: str, card: dict[str, Any]) -> bool:
         """The car from its stored card, like a fetched one, and outside the car limit: the limit is on
@@ -652,6 +683,16 @@ class _Collection:
         self.batch_ids.append(infoid)
         self.state.written += 1
         self.state.stored += 1
+        return True
+
+    def _from_last_card(self, infoid: str) -> bool:
+        """A known car the car limit leaves without a new card: its last card with the list's price and
+        mileage (the pass saw it). The store keeps the old card, so a later pass fetches the new one."""
+        card = self.last_cards.pop(infoid, None)
+        if card is None or not self._from_store(infoid, card):
+            return False
+        self.state.stored -= 1
+        self.state.stale += 1
         return True
 
     async def _options(self, api: Api, infoid: str) -> list[tuple[str, str]] | None:
@@ -766,7 +807,9 @@ class _Collection:
         """«97 cars, 10.8 cars/min, 0 skipped · 102 requests, 2.3 s per answer, 4 sessions · proxy …»."""
         t, state = _traffic(self.run_), self.state
         elapsed = _elapsed(self.run_, state)
-        from_store = f" ({state.stored} from the card store)" if state.stored else ""
+        kept = [f"{state.stored} from the card store"] if state.stored else []
+        kept += [f"{state.stale} from their last card"] if state.stale else []
+        from_store = f" ({', '.join(kept)})" if kept else ""
         per_min = f", {state.written / elapsed * 60:.1f} cars/min" if elapsed > 0 else ""
         avg = f"{t['avg_request_s']:.1f} s per answer" if t["avg_request_s"] is not None else "no answers yet"
         sessions = f"{t['workers']} session{'s' if t['workers'] > 1 else ''}"
@@ -806,6 +849,14 @@ def _complete(state: Che168State, reason: str) -> bool:
     )
 
 
+def _coverage(state: Che168State) -> float:
+    """The share of the segment a pass listed, % (lots:lifecycle counts a run from 85); the newest
+    pages are no segment: 0."""
+    if not state.slicing or state.api_total <= 0:
+        return 0.0
+    return round(min(state.listed / state.api_total, 1.0) * 100, 1)
+
+
 def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dict[str, Any]:
     started = datetime.fromisoformat(state.started_at)
     return {
@@ -831,7 +882,8 @@ def _result(run: Che168Run, state: Che168State, reason: str, target: int) -> dic
         "truncated": state.truncated,
         "listed": state.listed,
         "not_fetched": state.not_fetched,
-        "coverage_pct": 0.0,
+        "stale": state.stale,
+        "coverage_pct": _coverage(state),
         "run_started_at": started.strftime("%Y-%m-%d %H:%M:%S"),
         "ingest_last_id": getattr(run.sink, "last_id", None),
         **_traffic(run),
