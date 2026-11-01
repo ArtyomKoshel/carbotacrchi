@@ -1,7 +1,7 @@
 /* Landed-cost calculator: the sales team's formula, as their standalone calculator counts it.
    Car price ₩ + dealer parking fee, minus the VAT refund → $ at Bithumb USDT/KRW minus the
-   adjustment; + delivery (Korea expenses included) = the transfer; + transfer fee (the part
-   in old banknotes pays the extra percent); + customs = the total. Our service is in BYN, on
+   adjustment; + delivery (Korea expenses included) = the transfer; + transfer fee; + customs
+   (with the benefit, unless the manager unticks it) = the total. Our service is in BYN, on
    its own line. Customs in Belarus is counted from the car (engine type, volume, age) by the
    rates customs.gov.by/calc uses, the duty in € and the fees in BYN turned into $ at the NBRB
    rates. Defaults, rates and duty tables come from /api/calculator (set in /admin/calculator);
@@ -26,7 +26,7 @@ const Calc = (() => {
   // as customs.gov.by: up to 3 years inclusive; over 3 up to 5 inclusive; over 5
   const AGES = { lt3: 'до 3 лет', mid: '3–5 лет', old: 'старше 5 лет' };
   // everything a manager can change, kept per car when it differs from the default
-  const KEPT = [...FIELDS.map(f => f[0]), ...RATES.map(r => r[0]), 'mixed', 'newNotes', 'engine', 'cc', 'age', 'benefit', 'customs'];
+  const KEPT = [...FIELDS.map(f => f[0]), ...RATES.map(r => r[0]), 'engine', 'cc', 'age', 'benefit', 'customs'];
 
   let base = null;
   let pending = null;
@@ -87,11 +87,10 @@ const Calc = (() => {
       price: car?.price > 0 ? +(car.price / 1e6).toFixed(3) : '',
       vat: d.vat_refund_pct, delivery: d.delivery_usd, dealerFee: d.dealer_fee_millions,
       fee: d.transfer_fee_pct, service: d.service_byn, rate: '', usdByn: '', eurByn: '',
-      mixed: false, newNotes: 0,
       engine: car ? engineOf(car.fuel) : 'ice',
       cc: car?.engineVolume > 0 ? Math.round(car.engineVolume * 1000) : '',
       age: car ? ageOf(car).age : 'mid',
-      benefit: false,
+      benefit: true, // counted with the benefit; the manager unticks it for a car without one
       customs: '', // $ by hand, over what is counted
       ...overrides(id),
     };
@@ -182,13 +181,7 @@ const Calc = (() => {
     const carWon = Math.round((n('price') + n('dealerFee')) * 1e6 * (1 - n('vat') / 100));
     const carUsd = carWon / rate;
     const transfer = carUsd + n('delivery');
-    let fee = transfer * n('fee') / 100;
-    if (v.mixed) {
-      const newer = num(v.newNotes);
-      if (!Number.isFinite(newer) || newer < 0) return fail('Проверьте сумму в новых купюрах', cx);
-      if (newer > transfer) return fail(`Сумма в новых купюрах больше перевода (${usd(transfer)})`, cx);
-      fee = newer * n('fee') / 100 + (transfer - newer) * (n('fee') + (num(d.old_banknotes_extra_pct) || 0)) / 100;
-    }
+    const fee = transfer * n('fee') / 100;
     const beforeCustoms = transfer + fee;
     const customsUsd = byHand ? n('customs') : cx.total;
     return {
@@ -308,12 +301,7 @@ const Calc = (() => {
       </section>
       <section class="calc__sec">
         <h4>Доставка и перевод</h4>
-        <div class="calc__fields">${f('delivery')}${f('fee')}${f('service')}
-          <label class="calc__field calc__notes"${v.mixed ? '' : ' hidden'}><span>В новых купюрах</span>
-            <span class="calc__inp"><input class="filter-input" data-k="newNotes" inputmode="decimal" value="${esc(v.newNotes)}"><i>$</i></span></label>
-        </div>
-        <label class="calc__check"><input type="checkbox" data-k="mixed"${v.mixed ? ' checked' : ''}> У клиента разные купюры
-          <small>на старые купюры комиссия на ${fmt(num(base.defaults?.old_banknotes_extra_pct) || 0, 1).replace(',0', '')} % выше</small></label>
+        <div class="calc__fields">${f('delivery')}${f('fee')}${f('service')}</div>
       </section>
       <section class="calc__sec">
         <h4>Таможня в РБ</h4>
@@ -396,7 +384,6 @@ const Calc = (() => {
     el.addEventListener('input', e => {
       const k = e.target.dataset.k;
       if (k) { v[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; remember(); }
-      if (k === 'mixed') $('.calc__notes').hidden = !v.mixed;
       if (k === 'engine') $('[data-cc]').hidden = v.engine === 'ev';
       if (RATES.some(r => r[0] === k)) e.target.closest('.calc__ratebox').classList.toggle('is-own', String(v[k]).trim() !== '');
       const pk = e.target.dataset.pref;

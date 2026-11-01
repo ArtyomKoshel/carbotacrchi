@@ -9,11 +9,10 @@ return [
     // key => [default, label, unit]
     'defaults' => [
         'dealer_fee_millions'     => ['default' => 0.44, 'label' => 'Стояночные дилера',                       'unit' => 'млн ₩'],
-        'vat_refund_pct'          => ['default' => 0,    'label' => 'Возврат НДС',                             'unit' => '%'],
+        'vat_refund_pct'          => ['default' => 1,    'label' => 'Возврат НДС',                             'unit' => '%'],
         'delivery_usd'            => ['default' => 5400, 'label' => 'Доставка до Минска с расходами в Корее',  'unit' => '$'],
         'korea_expenses_usd'      => ['default' => 1000, 'label' => 'Из доставки: расходы в Корее',            'unit' => '$'],
-        'transfer_fee_pct'        => ['default' => 2.5,  'label' => 'Комиссия за перевод',                     'unit' => '%'],
-        'old_banknotes_extra_pct' => ['default' => 1,    'label' => 'Надбавка к комиссии за старые купюры',    'unit' => '%'],
+        'transfer_fee_pct'        => ['default' => 1.5,  'label' => 'Комиссия за перевод',                     'unit' => '%'],
         'rate_adjustment_krw'     => ['default' => 25,   'label' => 'Вычет из курса Bithumb',                  'unit' => '₩'],
         'service_byn'             => ['default' => 800,  'label' => 'Стоимость наших услуг',                   'unit' => 'BYN'],
         // customs in Belarus, on top of the duty (paid in BYN, counted in $ at the NBRB rate)
